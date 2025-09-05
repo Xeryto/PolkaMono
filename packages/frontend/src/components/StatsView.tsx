@@ -1,23 +1,46 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { RussianRuble, TrendingDown, TrendingUp } from "lucide-react";
 import { useEffect, useState } from "react";
-
-// Mock stats data
-const mockStats = {
-  totalSold: 12500,
-  totalWithdrawn: 5000,
-  currentBalance: 7500,
-};
+import { useAuth } from "@/context/AuthContext";
+import * as api from "@/services/api";
+import { useToast } from "@/hooks/use-toast";
 
 export function StatsView() {
-  const [stats, setStats] = useState(mockStats);
+  const [stats, setStats] = useState<api.BrandStatsResponse | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const { token } = useAuth();
+  const { toast } = useToast();
 
-  // TODO: Fetch real data from the API
   useEffect(() => {
-    // fetch('/api/stats')
-    //   .then(res => res.json())
-    //   .then(data => setStats(data));
-  }, []);
+    const fetchStats = async () => {
+      if (!token) {
+        setIsLoading(false);
+        toast({
+          title: "Error",
+          description: "Authentication token not found. Please log in.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      try {
+        setIsLoading(true);
+        const fetchedStats = await api.getBrandStats(token);
+        setStats(fetchedStats);
+      } catch (error: any) {
+        console.error("Failed to fetch stats:", error);
+        toast({
+          title: "Error",
+          description: error.message || "Failed to load statistics.",
+          variant: "destructive",
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchStats();
+  }, [token, toast]);
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('ru-RU', {
@@ -26,6 +49,14 @@ export function StatsView() {
       minimumFractionDigits: 2
     }).format(amount);
   };
+
+  if (isLoading) {
+    return <div>Loading statistics...</div>;
+  }
+
+  if (!stats) {
+    return <div>Could not load statistics.</div>;
+  }
 
   return (
     <div className="space-y-6">
@@ -42,7 +73,7 @@ export function StatsView() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-foreground">
-              {formatCurrency(stats.totalSold)}
+              {formatCurrency(stats.total_sold)}
             </div>
           </CardContent>
         </Card>
@@ -56,7 +87,7 @@ export function StatsView() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-foreground">
-              {formatCurrency(stats.totalWithdrawn)}
+              {formatCurrency(stats.total_withdrawn)}
             </div>
           </CardContent>
         </Card>
@@ -70,7 +101,7 @@ export function StatsView() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-foreground">
-              {formatCurrency(stats.currentBalance)}
+              {formatCurrency(stats.current_balance)}
             </div>
           </CardContent>
         </Card>

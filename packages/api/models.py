@@ -1,7 +1,7 @@
 """
 Database models for PolkaAPI
 """
-from sqlalchemy import Column, String, Boolean, DateTime, Text, ForeignKey, Integer, Enum as SQLEnum, UniqueConstraint
+from sqlalchemy import Column, String, Boolean, DateTime, Text, ForeignKey, Integer, Enum as SQLEnum, UniqueConstraint, Float
 from sqlalchemy.dialects.postgresql import ARRAY
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
@@ -93,6 +93,7 @@ class Brand(Base):
     min_free_shipping = Column(Integer, nullable=True) # NEW
     shipping_price = Column(String(50), nullable=True) # NEW
     shipping_provider = Column(String(100), nullable=True) # NEW
+    amount_withdrawn = Column(Float, nullable=False, default=0.0)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 

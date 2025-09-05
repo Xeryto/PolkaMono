@@ -61,8 +61,15 @@ export interface BrandResponse {
   min_free_shipping?: number;
   shipping_price?: string;
   shipping_provider?: string;
+  amount_withdrawn: number;
   created_at: string;
   updated_at: string;
+}
+
+export interface BrandStatsResponse {
+  total_sold: number;
+  total_withdrawn: number;
+  current_balance: number;
 }
 
 export interface BrandLoginRequest {
@@ -186,8 +193,9 @@ const apiRequest = async (
     // Basic 401 handling (can be expanded)
     if (response.status === 401) {
       console.error('API Request: Authentication required.');
-      // In a real app, you'd redirect to login or refresh token
-      throw new ApiError('Authentication required', 401);
+      window.dispatchEvent(new Event('auth-error'));
+      // Return a promise that never resolves to prevent further processing
+      return new Promise(() => {});
     }
 
     return await handleApiResponse(response);
@@ -283,6 +291,10 @@ export const brandLogin = async (credentials: BrandLoginRequest): Promise<AuthRe
 
 export const getBrandProfile = async (token: string): Promise<BrandResponse> => { // Add token parameter
   return await apiRequest('/api/v1/brands/profile', 'GET', undefined, true, token);
+};
+
+export const getBrandStats = async (token: string): Promise<BrandStatsResponse> => {
+  return await apiRequest('/api/v1/brands/stats', 'GET', undefined, true, token);
 };
 
 export const updateBrandProfile = async (profileData: BrandProfileUpdateRequest, token: string): Promise<BrandResponse> => { // Add token parameter

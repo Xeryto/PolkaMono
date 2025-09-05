@@ -8,8 +8,11 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { useAuth } from "@/context/AuthContext";
 
 export function DashboardHeader() {
+  const { logout } = useAuth();
+
   return (
     <header className="h-16 bg-card/30 border-b border-brown-light/20 flex items-center justify-between px-6">
       <div>
@@ -38,7 +41,7 @@ export function DashboardHeader() {
             <DropdownMenuItem>Profile Settings</DropdownMenuItem>
             <DropdownMenuItem>Security</DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem className="text-destructive">
+            <DropdownMenuItem className="text-destructive" onSelect={logout}>
               Logout
             </DropdownMenuItem>
           </DropdownMenuContent>

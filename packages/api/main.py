@@ -265,8 +265,51 @@ async def get_brand_profile(
         min_free_shipping=brand.min_free_shipping,
         shipping_price=brand.shipping_price,
         shipping_provider=brand.shipping_provider,
+        amount_withdrawn=brand.amount_withdrawn,
         created_at=brand.created_at,
         updated_at=brand.updated_at
+    )
+
+class BrandStatsResponse(BaseModel):
+    total_sold: float
+    total_withdrawn: float
+    current_balance: float
+
+@app.get("/api/v1/brands/stats", response_model=BrandStatsResponse)
+async def get_brand_stats(
+    current_brand_user: Brand = Depends(get_current_brand_user),
+    db: Session = Depends(get_db)
+):
+    """Get statistics for the authenticated brand user"""
+    
+    # 1. Get total amount sold
+    orders_with_brand_products = db.query(Order).join(OrderItem).join(ProductVariant, OrderItem.product_variant_id == ProductVariant.id).join(Product).filter(
+        Product.brand_id == current_brand_user.id
+    ).distinct().all()
+
+    total_sold = 0.0
+    for order in orders_with_brand_products:
+        for item in order.items:
+            # Ensure the product variant belongs to a product of the current brand
+            if item.product_variant.product.brand_id == current_brand_user.id:
+                try:
+                    # Assuming price is a string like "123.45"
+                    price_value = float(item.price)
+                    total_sold += price_value
+                except (ValueError, IndexError):
+                    # Handle cases where price is not in the expected format
+                    pass
+
+    # 2. Get total withdrawn
+    total_withdrawn = current_brand_user.amount_withdrawn
+
+    # 3. Calculate current balance
+    current_balance = total_sold - total_withdrawn
+
+    return BrandStatsResponse(
+        total_sold=total_sold,
+        total_withdrawn=total_withdrawn,
+        current_balance=current_balance
     )
 
 @app.put("/api/v1/brands/profile", response_model=schemas.BrandResponse)

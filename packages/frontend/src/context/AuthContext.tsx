@@ -1,4 +1,5 @@
-import React, { createContext, useState, useContext, useEffect, ReactNode } from 'react';
+import React, { createContext, useState, useContext, useEffect, ReactNode, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import * as api from '@/services/api'; // Import your API service
 
 interface AuthContextType {
@@ -17,50 +18,68 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [user, setUser] = useState<api.UserProfileResponse | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
+  const navigate = useNavigate();
 
-  useEffect(() => {
-    const storedToken = localStorage.getItem('authToken');
-    const storedUser = localStorage.getItem('authUser'); // Assuming you'll store user data too
-
-    if (storedToken && storedUser) {
-      try {
-        const parsedUser: api.UserProfileResponse = JSON.parse(storedUser);
-        setToken(storedToken);
-        setUser(parsedUser);
-        setIsAuthenticated(true);
-      } catch (error) {
-        console.error("Failed to parse stored user data:", error);
-        // Clear invalid data
-        localStorage.removeItem('authToken');
-        localStorage.removeItem('authUser');
-      }
-    }
-    setLoading(false);
-  }, []);
-
-  const login = async (credentials: api.BrandLoginRequest) => {
-    setLoading(true);
-    try {
-      const response = await api.brandLogin(credentials);
-      localStorage.setItem('authToken', response.token);
-      localStorage.setItem('authUser', JSON.stringify(response.user)); // Store user data
-      setToken(response.token);
-      setUser(response.user);
-      setIsAuthenticated(true);
-    } catch (error) {
-      console.error("Login failed:", error);
-      throw error; // Re-throw to allow component to handle
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const logout = () => {
+  const logout = useCallback(() => {
     localStorage.removeItem('authToken');
     localStorage.removeItem('authUser');
     setToken(null);
     setUser(null);
     setIsAuthenticated(false);
+    navigate('/portal');
+  }, [navigate]);
+
+  useEffect(() => {
+    const storedToken = localStorage.getItem('authToken');
+    const storedUser = localStorage.getItem('authUser');
+
+    if (storedToken && storedUser) {
+      try {
+        const parsedUser: api.UserProfileResponse = JSON.parse(storedUser);
+        if (parsedUser.is_brand) {
+          setToken(storedToken);
+          setUser(parsedUser);
+          setIsAuthenticated(true);
+        } else {
+          logout();
+        }
+      } catch (error) {
+        console.error("Failed to parse stored user data:", error);
+        logout();
+      }
+    }
+    setLoading(false);
+
+    const handleAuthError = () => {
+      logout();
+    };
+
+    window.addEventListener('auth-error', handleAuthError);
+
+    return () => {
+      window.removeEventListener('auth-error', handleAuthError);
+    };
+  }, [logout]);
+
+  const login = async (credentials: api.BrandLoginRequest) => {
+    setLoading(true);
+    try {
+      const response = await api.brandLogin(credentials);
+      if (response.user.is_brand) {
+        localStorage.setItem('authToken', response.token);
+        localStorage.setItem('authUser', JSON.stringify(response.user));
+        setToken(response.token);
+        setUser(response.user);
+        setIsAuthenticated(true);
+      } else {
+        throw new Error("User is not a brand.");
+      }
+    } catch (error) {
+      console.error("Login failed:", error);
+      throw error;
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (

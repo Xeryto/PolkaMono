@@ -184,6 +184,7 @@ class BrandResponse(BaseModel):
     min_free_shipping: Optional[int] = None
     shipping_price: Optional[str] = None
     shipping_provider: Optional[str] = None
+    amount_withdrawn: float = 0.0
     created_at: datetime
     updated_at: datetime
 

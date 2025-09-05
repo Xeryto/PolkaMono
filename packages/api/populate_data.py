@@ -2,7 +2,15 @@ from sqlalchemy.orm import Session
 from database import SessionLocal
 from models import Brand, Style, Product, ProductStyle, Category, ProductVariant
 import uuid
+import re
 from auth_service import auth_service # NEW
+
+def generate_sku(product_name: str) -> str:
+    # Convert to uppercase, replace spaces with hyphens, remove non-alphanumeric
+    sku_base = re.sub(r'[^a-zA-Z0-9]', '', product_name.upper().replace(' ', '-'))
+    # Append a short unique identifier
+    unique_id = str(uuid.uuid4())[:8].replace('-', '') # Use first 8 chars of UUID
+    return f"{sku_base}-{unique_id}"
 
 def populate_initial_data():
     
@@ -13,10 +21,10 @@ def populate_initial_data():
         default_password_hash = auth_service.hash_password("brandpassword123")
 
         brands_data = [
-            {"name": "Nike", "email": "nike@example.com", "password_hash": default_password_hash, "slug": "nike", "logo": "https://example.com/logos/nike.png", "description": "Global leader in athletic footwear, apparel, equipment, accessories, and services.", "return_policy": "30-day free returns.", "min_free_shipping": 100, "shipping_price": "5.00", "shipping_provider": "FedEx"},
-            {"name": "Adidas", "email": "adidas@example.com", "password_hash": default_password_hash, "slug": "adidas", "logo": "https://example.com/logos/adidas.png", "description": "German multinational corporation, designs and manufactures shoes, clothing and accessories.", "return_policy": "20-day returns, customer pays shipping.", "min_free_shipping": 150, "shipping_price": "7.50", "shipping_provider": "UPS"},
-            {"name": "Zara", "email": "zara@example.com", "password_hash": default_password_hash, "slug": "zara", "logo": "https://example.com/logos/zara.png", "description": "Spanish apparel retailer based in Arteixo, Galicia, Spain.", "return_policy": "14-day exchange only.", "min_free_shipping": 50, "shipping_price": "3.00", "shipping_provider": "DHL"},
-            {"name": "H&M", "email": "hm@example.com", "password_hash": default_password_hash, "slug": "h&m", "logo": "https://example.com/logos/h&m.png", "description": "Swedish multinational clothing-retail company known for its fast-fashion clothing for men, women, teenagers and children.", "return_policy": "No returns on sale items.", "min_free_shipping": 75, "shipping_price": "4.50", "shipping_provider": "USPS"}
+            {"name": "Nike", "email": "nike@example.com", "password_hash": default_password_hash, "slug": "nike", "description": "Global leader in athletic footwear, apparel, equipment, accessories, and services.", "return_policy": "30-day free returns.", "min_free_shipping": 100, "shipping_price": "5.00", "shipping_provider": "FedEx", "amount_withdrawn": 0.0},
+            {"name": "Adidas", "email": "adidas@example.com", "password_hash": default_password_hash, "slug": "adidas", "description": "German multinational corporation, designs and manufactures shoes, clothing and accessories.", "return_policy": "20-day returns, customer pays shipping.", "min_free_shipping": 150, "shipping_price": "7.50", "shipping_provider": "UPS", "amount_withdrawn": 0.0},
+            {"name": "Zara", "email": "zara@example.com", "password_hash": default_password_hash, "slug": "zara", "description": "Spanish apparel retailer based in Arteixo, Galicia, Spain.", "return_policy": "14-day exchange only.", "min_free_shipping": 50, "shipping_price": "3.00", "shipping_provider": "DHL", "amount_withdrawn": 0.0},
+            {"name": "H&M", "email": "hm@example.com", "password_hash": default_password_hash, "slug": "h&m", "description": "Swedish multinational clothing-retail company known for its fast-fashion clothing for men, women, teenagers and children.", "return_policy": "No returns on sale items.", "min_free_shipping": 75, "shipping_price": "4.50", "shipping_provider": "USPS", "amount_withdrawn": 0.0}
         ]
         for b_data in brands_data:
             if not db.query(Brand).filter(Brand.name == b_data["name"]).first():
@@ -81,7 +89,6 @@ def populate_initial_data():
                 "color": "White",
                 "material": "Mesh",
                 "return_policy": "30-day free returns.",
-                "sku": "NIKEAM270",
                 "honest_sign": "HS-NIKEAM270"
             },
             {
@@ -96,7 +103,6 @@ def populate_initial_data():
                 "color": "Black",
                 "material": "Primeknit",
                 "return_policy": "20-day returns, customer pays shipping.",
-                "sku": "ADIDASUB22",
                 "honest_sign": "HS-ADIDASUB22"
             },
             {
@@ -111,7 +117,6 @@ def populate_initial_data():
                 "color": "Floral Print",
                 "material": "Viscose",
                 "return_policy": "14-day exchange only.",
-                "sku": "ZARAFMD",
                 "honest_sign": "HS-ZARAFMD"
             },
             {
@@ -126,7 +131,6 @@ def populate_initial_data():
                 "color": "Grey Melange",
                 "material": "Cotton Blend",
                 "return_policy": "No returns on sale items.",
-                "sku": "HMOH",
                 "honest_sign": "HS-HMOH"
             },
             {
@@ -141,7 +145,6 @@ def populate_initial_data():
                 "color": "Black",
                 "material": "Tech Fleece",
                 "return_policy": "30-day free returns.",
-                "sku": "NIKESWTF",
                 "honest_sign": "HS-NIKESWTF"
             }
         ]
@@ -158,7 +161,7 @@ def populate_initial_data():
                     category_id=p_data["category"].id,
                     color=p_data["color"], # NEW
                     material=p_data["material"], # NEW
-                    sku=p_data["sku"], # NEW
+                    sku=generate_sku(p_data["name"]), # Auto-generated SKU
                 )
                 db.add(product)
                 db.flush() # Flush to get product.id
