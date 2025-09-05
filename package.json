@@ -1,0 +1,23 @@
+{
+  "name": "polka-monorepo",
+  "private": true,
+  "workspaces": [
+    "packages/mobile",
+    "packages/frontend"
+  ],
+  "scripts": {
+    "install:js": "npm install",
+    "install:py": "cd packages/api && python3 -m venv venv && . venv/bin/activate && pip install -r requirements.txt",
+    "install:all": "npm run install:js && npm run install:py",
+    "start:mobile": "npm start --workspace=packages/mobile",
+    "start:frontend": "npm start --workspace=packages/frontend",
+    "start:api": "cd packages/api && . venv/bin/activate && uvicorn main:app --reload",
+    "dev": "concurrently \"npm:start:*\""
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  },
+  "dependencies": {
+    "typescript": "^5.9.2"
+  }
+}

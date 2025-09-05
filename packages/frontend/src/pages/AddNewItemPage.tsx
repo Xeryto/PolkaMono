@@ -1,0 +1,330 @@
+import React, { useState, useEffect } from 'react';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { PlusCircle, XCircle } from "lucide-react";
+import * as api from "@/services/api"; // Assuming API calls are here
+import { useToast } from "@/hooks/use-toast";
+import { colors } from "@/lib/colors";
+import { materials } from "@/lib/materials";
+import { MultiSelect } from "@/components/ui/multi-select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"; // Keep Select for styles
+import { FileInput } from "@/components/ui/file-input";
+import { sizes } from "@/lib/sizes";
+
+export function AddNewItemPage() {
+  const [name, setName] = useState('');
+  const [price, setPrice] = useState('');
+  const [description, setDescription] = useState('');
+  const [selectedColors, setSelectedColors] = useState<string[]>([]); // Changed to multi-select
+  const [selectedMaterials, setSelectedMaterials] = useState<string[]>([]); // Added for multi-select materials
+  const [images, setImages] = useState<string[]>([]);
+  const [imageFiles, setImageFiles] = useState<File[]>([]);
+  const [styles, setStyles] = useState<any[]>([]); // State to store available styles
+  const [selectedStyle, setSelectedStyle] = useState(''); // State for selected style
+  const [variants, setVariants] = useState([{ size: '', stock_quantity: 0 }]); // For sizes and quantities
+  const [returnPolicy, setReturnPolicy] = useState(''); // NEW
+  const [sku, setSku] = useState(''); // NEW
+  const [isLoading, setIsLoading] = useState(false);
+  const { toast } = useToast();
+
+  // Helper function to check for duplicate sizes
+  const hasDuplicateSizes = (variants: { size: string; stock_quantity: number }[]) => {
+    const seenSizes = new Set<string>();
+    for (const variant of variants) {
+      if (variant.size.trim() === '') {
+        continue; // Ignore empty sizes for duplicate check
+      }
+      if (seenSizes.has(variant.size)) {
+        return true; // Duplicate found
+      }
+      seenSizes.add(variant.size);
+    }
+    return false; // No duplicates
+  };
+
+  useEffect(() => {
+    // Fetch available styles when component mounts
+    const fetchStyles = async () => {
+      try {
+        const fetchedStyles = await api.getStyles();
+        setStyles(fetchedStyles);
+      } catch (error) {
+        console.error("Failed to fetch styles:", error);
+        toast({
+          title: "Error",
+          description: "Failed to load styles.",
+          variant: "destructive",
+        });
+      }
+    };
+    fetchStyles();
+  }, []);
+
+  const handleImageChange = (files: File[]) => {
+    const newImages = [...images, ...files.map(file => URL.createObjectURL(file))];
+    const newImageFiles = [...imageFiles, ...files];
+    if (newImages.length > 5) {
+      toast({
+        title: "Error",
+        description: "You can upload a maximum of 5 images.",
+        variant: "destructive",
+      });
+      return;
+    }
+    setImages(newImages);
+    setImageFiles(newImageFiles);
+  };
+
+  const handleRemoveImage = (imageToRemove: string) => {
+    const imageIndex = images.findIndex(img => img === imageToRemove);
+    if (imageIndex > -1) {
+      const newImages = [...images];
+      newImages.splice(imageIndex, 1);
+      setImages(newImages);
+
+      const newImageFiles = [...imageFiles];
+      newImageFiles.splice(imageIndex, 1);
+      setImageFiles(newImageFiles);
+    }
+  };
+
+  const handleVariantChange = (index: number, field: string, value: string | number) => {
+    const newVariants = [...variants];
+    (newVariants[index] as any)[field] = value;
+    setVariants(newVariants);
+  };
+
+  const handleAddVariant = () => {
+    setVariants([...variants, { size: '', stock_quantity: 0 }]);
+  };
+
+  const handleRemoveVariant = (index: number) => {
+    const newVariants = variants.filter((_, i) => i !== index);
+    setVariants(newVariants);
+  };
+
+  const handleSubmit = async () => {
+    // Validate for duplicate sizes
+    if (hasDuplicateSizes(variants)) {
+      toast({
+        title: "Error",
+        description: "Duplicate sizes are not allowed for product variants.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const productData = {
+        name,
+        price,
+        description,
+        images,
+        colors: selectedColors.length > 0 ? selectedColors : undefined,
+        materials: selectedMaterials.length > 0 ? selectedMaterials : undefined, // Changed to multi-select
+        brand_id: 1, // Placeholder: Replace with actual brand ID from current user
+        category_id: "some_category_id", // Placeholder: Replace with actual category ID
+        styles: selectedStyle ? [selectedStyle] : [], // Send selected style
+        variants: variants.filter(v => v.size.trim() && v.stock_quantity >= 0),
+        return_policy: returnPolicy || undefined, // NEW
+        sku: sku || undefined, // NEW
+      };
+
+      await api.createProduct(productData);
+      toast({
+        title: "Success",
+        description: "Product added successfully!",
+      });
+      // Clear form
+      setName('');
+      setPrice('');
+      setDescription('');
+      setSelectedColors([]); // Clear selected colors
+      setSelectedMaterials([]); // Clear selected materials
+      setImages([]);
+      setImageFiles([]);
+      setSelectedStyle('');
+      setVariants([{ size: '', stock_quantity: 0 }]);
+      setReturnPolicy(''); // NEW
+      setSku(''); // NEW
+    } catch (error: any) {
+      console.error("Failed to add product:", error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to add product.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      <h2 className="text-2xl font-bold text-foreground">Добавить новый товар</h2>
+
+      <Card className="bg-card border-border/30 shadow-lg">
+        <CardHeader>
+          <CardTitle>Детали товара</CardTitle>
+          <CardDescription>Заполните детали нового товара</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div>
+            <Label htmlFor="name">Название товара</Label>
+            <Input id="name" placeholder="напр., Элитное худи" className="mt-1" value={name} onChange={(e) => setName(e.target.value)} />
+          </div>
+          <div>
+            <Label htmlFor="price">Цена</Label>
+            <Input id="price" type="number" placeholder="напр., 150.00" className="mt-1" value={price} onChange={(e) => setPrice(e.target.value)} />
+          </div>
+          <div>
+            <Label htmlFor="description">Описание</Label>
+            <Textarea id="description" placeholder="Краткое описание товара" className="mt-1" value={description} onChange={(e) => setDescription(e.target.value)} />
+          </div>
+
+          {/* Color */}
+          <div>
+            <Label htmlFor="colors">Цвет</Label>
+            <MultiSelect
+              options={colors.map(colorOption => ({
+                label: colorOption.russian,
+                value: colorOption.name,
+                hex: colorOption.hex, // Include hex value
+              }))}
+              value={selectedColors}
+              onValueChange={setSelectedColors}
+              placeholder="Выберите цвета"
+              className="mt-1"
+              renderOption={(option) => (
+                <div className="flex items-center">
+                  <div
+                    className="w-4 h-4 rounded-full mr-2 border"
+                    style={{ background: option.hex }}
+                  ></div>
+                  {option.label}
+                </div>
+              )}
+              renderBadge={(option) => (
+                <div className="flex items-center">
+                  <div
+                    className="w-3 h-3 rounded-full mr-1 border"
+                    style={{ background: option.hex }}
+                  ></div>
+                  {option.label}
+                </div>
+              )}
+            />
+          </div>
+
+          {/* Material */}
+          <div>
+            <Label htmlFor="materials">Материал</Label>
+            <MultiSelect
+              options={materials.map(materialOption => ({
+                label: materialOption.russian,
+                value: materialOption.name,
+              }))}
+              value={selectedMaterials}
+              onValueChange={setSelectedMaterials}
+              placeholder="Выберите материалы"
+              className="mt-1"
+            />
+          </div>
+
+          {/* Return Policy */}
+          <div>
+            <Label htmlFor="returnPolicy">Политика возврата</Label>
+            <Textarea id="returnPolicy" placeholder="Например, 30-дневный бесплатный возврат" className="mt-1" value={returnPolicy} onChange={(e) => setReturnPolicy(e.target.value)} />
+          </div>
+
+          {/* SKU */}
+          <div>
+            <Label htmlFor="sku">Артикул товара (SKU)</Label>
+            <Input id="sku" placeholder="Например, NIKE-AM270-WHI-001" className="mt-1" value={sku} onChange={(e) => setSku(e.target.value)} />
+          </div>
+
+          {/* Images */}
+          <div>
+            <Label htmlFor="images">Изображения (до 5)</Label>
+            <FileInput
+              id="images"
+              multiple
+              accept="image/*"
+              onFilesChange={handleImageChange}
+              selectedFileNames={imageFiles.map(file => file.name)}
+              className="mt-1"
+            />
+            <div className="mt-2 flex flex-wrap gap-2">
+              {images.map((imgUrl) => (
+                <div key={imgUrl} className="relative">
+                  <img src={imgUrl} alt="Product Image" className="w-20 h-20 object-cover rounded-md" />
+                  <XCircle className="absolute -top-2 -right-2 h-4 w-4 text-red-500 cursor-pointer" onClick={() => handleRemoveImage(imgUrl)} />
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Style Selection */}
+          <div>
+            <Label htmlFor="style">Стиль</Label>
+            <Select onValueChange={setSelectedStyle} value={selectedStyle}>
+              <SelectTrigger className="w-full mt-1 h-10 rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50">
+                <SelectValue placeholder="Выберите стиль" className="text-muted-foreground" />
+              </SelectTrigger>
+              <SelectContent>
+                {styles.map((style) => (
+                  <SelectItem key={style.id} value={style.id}>{style.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Product Variants (Sizes & Quantities) */}
+          <div>
+            <Label>Размеры и количество</Label>
+            {variants.map((variant, index) => (
+              <div key={index} className="flex space-x-2 mt-1">
+                <Select
+                onValueChange={(value) => handleVariantChange(index, 'size', value)}
+                value={variant.size}
+              >
+                <SelectTrigger className="flex-1 h-10 rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50">
+                  <SelectValue placeholder="Выберите размер" />
+                </SelectTrigger>
+                <SelectContent>
+                  {sizes.map((s) => (
+                    <SelectItem key={s.name} value={s.name}>
+                      {s.russian}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+                <Input
+                  type="number"
+                  placeholder="Количество"
+                  value={variant.stock_quantity}
+                  onChange={(e) => handleVariantChange(index, 'stock_quantity', parseInt(e.target.value))}
+                  className="w-24"
+                />
+                <Button type="button" onClick={() => handleRemoveVariant(index)} variant="outline" size="icon">
+                  <XCircle className="h-4 w-4" />
+                </Button>
+              </div>
+            ))}
+            <Button type="button" onClick={handleAddVariant} variant="outline" className="mt-2">
+              <PlusCircle className="h-4 w-4 mr-2" /> Добавить размер
+            </Button>
+          </div>
+
+          <Button size="lg" className="w-full" onClick={handleSubmit} disabled={isLoading}>
+            {isLoading ? "Добавление..." : "Добавить товар"}
+          </Button>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
