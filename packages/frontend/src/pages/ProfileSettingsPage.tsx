@@ -6,18 +6,31 @@ import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast"; // NEW
 import * as api from "@/services/api"; // NEW
 import { BrandResponse, BrandProfileUpdateRequest } from "@/services/api"; // NEW
+import { useAuth } from "@/context/AuthContext"; // Import useAuth
 
 export function ProfileSettingsPage() {
   const [isEditing, setIsEditing] = useState(false);
+  const { token } = useAuth(); // Get token from useAuth
+
   const [profile, setProfile] = useState<BrandResponse | null>(null); // Changed to BrandResponse
   const [isLoading, setIsLoading] = useState(true); // NEW
   const { toast } = useToast(); // NEW
 
   useEffect(() => {
     const fetchProfile = async () => {
+      if (!token) {
+        setIsLoading(false);
+        toast({
+          title: "Error",
+          description: "Authentication token not found. Please log in.",
+          variant: "destructive",
+        });
+        return;
+      }
+
       try {
         setIsLoading(true);
-        const fetchedProfile = await api.getBrandProfile();
+        const fetchedProfile = await api.getBrandProfile(token); // Pass token
         setProfile(fetchedProfile);
       } catch (error: any) {
         console.error("Failed to fetch brand profile:", error);
@@ -31,7 +44,7 @@ export function ProfileSettingsPage() {
       }
     };
     fetchProfile();
-  }, []);
+  }, [token, toast]); // Add token and toast to dependency array
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { id, value } = e.target;
@@ -42,6 +55,15 @@ export function ProfileSettingsPage() {
     if (!profile) return;
 
     setIsLoading(true);
+    if (!token) {
+      toast({
+        title: "Error",
+        description: "Authentication token not found. Please log in.",
+        variant: "destructive",
+      });
+      setIsLoading(false);
+      return;
+    }
     try {
       const updatedProfile: BrandProfileUpdateRequest = {
         name: profile.name,
@@ -55,7 +77,7 @@ export function ProfileSettingsPage() {
         shipping_price: profile.shipping_price,
         shipping_provider: profile.shipping_provider,
       };
-      const response = await api.updateBrandProfile(updatedProfile);
+      const response = await api.updateBrandProfile(updatedProfile, token); // Pass token
       setProfile(response);
       setIsEditing(false);
       toast({

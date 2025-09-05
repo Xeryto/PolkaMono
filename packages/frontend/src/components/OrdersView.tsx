@@ -1,23 +1,35 @@
-import { useState, useEffect } from 'react'; // NEW
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { OrderDetailsPage } from '@/pages/OrderDetailsPage';
-import * as api from "@/services/api"; // NEW
-import { OrderResponse } from "@/services/api"; // NEW
-import { useToast } from "@/hooks/use-toast"; // NEW
+import * as api from "@/services/api";
+import { OrderResponse } from "@/services/api";
+import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/context/AuthContext"; // Import useAuth
 
 export function OrdersView() {
-  const [orders, setOrders] = useState<OrderResponse[]>([]); // NEW
-  const [isLoading, setIsLoading] = useState(true); // NEW
-  const [selectedOrder, setSelectedOrder] = useState<OrderResponse | null>(null); // Changed type
-  const { toast } = useToast(); // NEW
+  const [orders, setOrders] = useState<OrderResponse[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [selectedOrder, setSelectedOrder] = useState<OrderResponse | null>(null);
+  const { toast } = useToast();
+  const { token } = useAuth(); // Get token from useAuth
 
   useEffect(() => {
     const fetchOrders = async () => {
+      if (!token) {
+        setIsLoading(false);
+        toast({
+          title: "Error",
+          description: "Authentication token not found. Please log in.",
+          variant: "destructive",
+        });
+        return;
+      }
+
       try {
         setIsLoading(true);
-        const fetchedOrders = await api.getOrders();
+        const fetchedOrders = await api.getOrders(token); // Pass token
         setOrders(fetchedOrders);
       } catch (error: any) {
         console.error("Failed to fetch orders:", error);
@@ -31,7 +43,7 @@ export function OrdersView() {
       }
     };
     fetchOrders();
-  }, []);
+  }, [token, toast]); // Add token and toast to dependency array
 
   const getStatusColor = (status: string) => {
     switch (status) {

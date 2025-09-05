@@ -10,21 +10,14 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-import * as api from "@/services/api"; // Assuming API calls are here
+import * as api from "@/services/api";
+import { useAuth } from "@/context/AuthContext"; // Import useAuth
 
 interface OrderItemDetailsModalProps {
   isOpen: boolean;
   onClose: () => void;
   orderId: string; // ID of the parent order
-  orderItem: {
-    id: string; // OrderItem ID
-    product_id: string;
-    product_name: string;
-    product_image?: string;
-    product_size: string;
-    price: string;
-    honest_sign?: string;
-  };
+  orderItem: api.OrderItemResponse;
   onHonestSignUpdated: (orderItemId: string, newHonestSign: string) => void;
 }
 
@@ -38,6 +31,7 @@ export const OrderItemDetailsModal: React.FC<OrderItemDetailsModalProps> = ({
   const [honestSignInput, setHonestSignInput] = useState(orderItem.honest_sign || '');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
+  const { token } = useAuth(); // Get token from useAuth
 
   const handleSaveHonestSign = async () => {
     if (!honestSignInput.trim()) {
@@ -49,10 +43,19 @@ export const OrderItemDetailsModal: React.FC<OrderItemDetailsModalProps> = ({
       return;
     }
 
+    if (!token) {
+      toast({
+        title: "Error",
+        description: "Authentication token not found. Please log in.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsSubmitting(true);
     try {
       // Call API to update honest sign
-      await api.updateOrderItemHonestSign(orderItem.id, honestSignInput);
+      await api.updateOrderItemHonestSign(orderItem.id, honestSignInput, token); // Pass token
       toast({
         title: "Success",
         description: "Honest Sign updated successfully.",
@@ -76,15 +79,15 @@ export const OrderItemDetailsModal: React.FC<OrderItemDetailsModalProps> = ({
         <DialogHeader>
           <DialogTitle>Order Item Details</DialogTitle>
           <DialogDescription>
-            View details for {orderItem.product_name} (Size: {orderItem.product_size})
+            View details for {orderItem.name} (Size: {orderItem.size})
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-4">
-          {orderItem.product_image && (
-            <img src={orderItem.product_image} alt={orderItem.product_name} className="w-full h-48 object-cover rounded-md mb-4" />
+          {orderItem.image && (
+            <img src={orderItem.image} alt={orderItem.name} className="w-full h-48 object-cover rounded-md mb-4" />
           )}
-          <p><strong>Product:</strong> {orderItem.product_name}</p>
-          <p><strong>Size:</strong> {orderItem.product_size}</p>
+          <p><strong>Product:</strong> {orderItem.name}</p>
+          <p><strong>Size:</strong> {orderItem.size}</p>
           <p><strong>Price:</strong> {orderItem.price}</p>
 
           <div>

@@ -38,12 +38,11 @@ class AuthService:
         return encoded_jwt
     
     @staticmethod
-    def verify_token(token: str) -> Optional[str]:
-        """Verify JWT token and return user ID"""
+    def verify_token_payload(token: str) -> Optional[Dict[str, Any]]:
+        """Verify JWT token and return its payload"""
         try:
             payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
-            user_id: str = payload.get("sub")
-            return user_id
+            return payload
         except jwt.PyJWTError:
             return None
     

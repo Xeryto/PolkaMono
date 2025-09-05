@@ -165,15 +165,15 @@ const apiRequest = async (
   endpoint: string,
   method: 'GET' | 'POST' | 'PUT' | 'DELETE' = 'GET',
   body?: any,
-  requireAuth: boolean = true
+  requireAuth: boolean = true,
+  token: string | null = null // Add token parameter
 ) => {
   try {
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
     };
 
-    const token = localStorage.getItem('authToken');
-    if (requireAuth && token) {
+    if (requireAuth && token) { // Use passed token
       headers['Authorization'] = `Bearer ${token}`;
     }
 
@@ -219,8 +219,8 @@ export const createProduct = async (productData: {
   variants: ProductVariantSchema[];
   return_policy?: string;
   sku?: string;
-}): Promise<ProductResponse> => {
-  return await apiRequest('/api/v1/brands/products', 'POST', productData);
+}, token: string): Promise<ProductResponse> => { // Add token parameter
+  return await apiRequest('/api/v1/brands/products', 'POST', productData, true, token);
 };
 
 export const updateProduct = async (productId: string, productData: {
@@ -238,65 +238,76 @@ export const updateProduct = async (productId: string, productData: {
   variants?: ProductVariantSchema[];
   return_policy?: string;
   sku?: string;
-}): Promise<ProductResponse> => {
-  return await apiRequest(`/api/v1/brands/products/${productId}`, 'PUT', productData);
+}, token: string): Promise<ProductResponse> => { // Add token parameter
+  return await apiRequest(`/api/v1/brands/products/${productId}`, 'PUT', productData, true, token);
 };
 
-export const getBrandProducts = async (): Promise<ProductResponse[]> => {
-  return await apiRequest('/api/v1/brands/products', 'GET');
+export const getBrandProducts = async (token: string): Promise<ProductResponse[]> => { // Add token parameter
+  return await apiRequest('/api/v1/brands/products', 'GET', undefined, true, token);
 };
 
 export const getStyles = async (): Promise<any[]> => {
-  return await apiRequest('/api/v1/styles', 'GET');
+  return await apiRequest('/api/v1/styles', 'GET', undefined, false); // Styles might not require auth
+};
+
+export const uploadProductImages = async (productId: string, formData: FormData, token: string): Promise<any> => {
+  const response = await fetch(`${API_URL}/api/v1/brands/products/${productId}/images`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+    },
+    body: formData,
+  });
+  return await handleApiResponse(response);
 };
 
 // Order related
-export const updateOrderItemHonestSign = async (orderItemId: string, honestSign: string): Promise<any> => {
-  return await apiRequest(`/api/v1/brands/order-items/${orderItemId}/honest-sign`, 'PUT', { honest_sign: honestSign });
+export const updateOrderItemHonestSign = async (orderItemId: string, honestSign: string, token: string): Promise<any> => { // Add token parameter
+  return await apiRequest(`/api/v1/brands/order-items/${orderItemId}/honest-sign`, 'PUT', { honest_sign: honestSign }, true, token);
 };
 
-export const updateOrderTracking = async (orderId: string, trackingData: { tracking_number?: string; tracking_link?: string }): Promise<any> => {
-  return await apiRequest(`/api/v1/brands/orders/${orderId}/tracking`, 'PUT', trackingData);
+export const updateOrderTracking = async (orderId: string, trackingData: { tracking_number?: string; tracking_link?: string }, token: string): Promise<any> => { // Add token parameter
+  return await apiRequest(`/api/v1/brands/orders/${orderId}/tracking`, 'PUT', trackingData, true, token);
 };
 
-export const getOrders = async (): Promise<OrderResponse[]> => {
-  return await apiRequest('/api/v1/orders', 'GET');
+export const getOrders = async (token: string): Promise<OrderResponse[]> => { // Add token parameter
+  return await apiRequest('/api/v1/orders', 'GET', undefined, true, token);
 };
 
 // --- Brand Authentication & Profile ---
 export const brandLogin = async (credentials: BrandLoginRequest): Promise<AuthResponse> => {
   const response = await apiRequest('/api/v1/brands/auth/login', 'POST', credentials, false); // No auth required for login
-  localStorage.setItem('authToken', response.token); // Store token
+  // localStorage.setItem('authToken', response.token); // AuthContext will handle storing token
   return response;
 };
 
-export const getBrandProfile = async (): Promise<BrandResponse> => {
-  return await apiRequest('/api/v1/brands/profile', 'GET');
+export const getBrandProfile = async (token: string): Promise<BrandResponse> => { // Add token parameter
+  return await apiRequest('/api/v1/brands/profile', 'GET', undefined, true, token);
 };
 
-export const updateBrandProfile = async (profileData: BrandProfileUpdateRequest): Promise<BrandResponse> => {
-  return await apiRequest('/api/v1/brands/profile', 'PUT', profileData);
+export const updateBrandProfile = async (profileData: BrandProfileUpdateRequest, token: string): Promise<BrandResponse> => { // Add token parameter
+  return await apiRequest('/api/v1/brands/profile', 'PUT', profileData, true, token);
 };
 
 // --- User Profile (Mobile App User) ---
-export const getUserProfile = async (): Promise<UserProfileResponse> => {
-  return await apiRequest('/api/v1/user/profile', 'GET');
+export const getUserProfile = async (token: string): Promise<UserProfileResponse> => { // Add token parameter
+  return await apiRequest('/api/v1/user/profile', 'GET', undefined, true, token);
 };
 
-export const updateUserProfile = async (profileData: UserProfileResponse): Promise<UserProfileResponse> => {
-  return await apiRequest('/api/v1/user/profile', 'PUT', profileData);
+export const updateUserProfile = async (profileData: UserProfileResponse, token: string): Promise<UserProfileResponse> => { // Add token parameter
+  return await apiRequest('/api/v1/user/profile', 'PUT', profileData, true, token);
 };
 
 // --- Product Liking ---
-export const toggleFavorite = async (toggleData: ToggleFavoriteRequest): Promise<{ message: string }> => {
-  return await apiRequest('/api/v1/user/favorites/toggle', 'POST', toggleData);
+export const toggleFavorite = async (toggleData: ToggleFavoriteRequest, token: string): Promise<{ message: string }> => { // Add token parameter
+  return await apiRequest('/api/v1/user/favorites/toggle', 'POST', toggleData, true, token);
 };
 
-export const getUserFavorites = async (): Promise<ProductResponse[]> => {
-  return await apiRequest('/api/v1/user/favorites', 'GET');
+export const getUserFavorites = async (token: string): Promise<ProductResponse[]> => { // Add token parameter
+  return await apiRequest('/api/v1/user/favorites', 'GET', undefined, true, token);
 };
 
 // --- Product Recommendations ---
-export const getUserRecommendations = async (limit: number = 5): Promise<ProductResponse[]> => {
-  return await apiRequest(`/api/v1/recommendations/for_user?limit=${limit}`, 'GET');
+export const getUserRecommendations = async (limit: number = 5, token: string): Promise<ProductResponse[]> => { // Add token parameter
+  return await apiRequest(`/api/v1/recommendations/for_user?limit=${limit}`, 'GET', undefined, true, token);
 };

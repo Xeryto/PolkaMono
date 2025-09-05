@@ -7,20 +7,18 @@ import { OrderItemDetailsModal } from "@/components/OrderItemDetailsModal"; // N
 import { Input } from "@/components/ui/input"; // NEW Import
 import { Label } from "@/components/ui/label"; // NEW Import
 import { useToast } from "@/hooks/use-toast"; // NEW Import
+import * as api from "@/services/api"; // Import api
+import { useAuth } from "@/context/AuthContext"; // Import useAuth
 
 interface Order {
   id: string;
-  number: string; // Changed from customer to number
-  buyer_name: string;
-  buyer_email: string;
-  buyer_phone: string;
-  shipping_address: string;
+  number: string;
   date: string;
   status: string;
   total: string;
   tracking_number?: string;
   tracking_link?: string;
-  items: { id: string; name: string; size: string; quantity: number; price: string; honest_sign?: string }[];
+    items: api.OrderItemResponse[];
 }
 
 interface OrderDetailsPageProps {
@@ -30,11 +28,12 @@ interface OrderDetailsPageProps {
 
 export function OrderDetailsPage({ order, onBack }: OrderDetailsPageProps) {
   const [isModalOpen, setIsModalOpen] = useState(false); // NEW State
-  const [selectedOrderItem, setSelectedOrderItem] = useState<any | null>(null); // NEW State
+  const [selectedOrderItem, setSelectedOrderItem] = useState<api.OrderItemResponse | null>(null); // Explicitly type selectedOrderItem
   const [trackingNumberInput, setTrackingNumberInput] = useState(order.tracking_number || ''); // NEW State
   const [isSavingTracking, setIsSavingTracking] = useState(false); // NEW State
   const [trackingLinkInput, setTrackingLinkInput] = useState(order.tracking_link || ''); // NEW State
   const { toast } = useToast(); // NEW
+  const { token } = useAuth(); // Get token from useAuth
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -64,11 +63,20 @@ export function OrderDetailsPage({ order, onBack }: OrderDetailsPageProps) {
 
   const handleSaveTrackingNumber = async () => { // NEW Handler
     setIsSavingTracking(true);
+    if (!token) {
+      toast({
+        title: "Error",
+        description: "Authentication token not found. Please log in.",
+        variant: "destructive",
+      });
+      setIsSavingTracking(false);
+      return;
+    }
     try {
       await api.updateOrderTracking(order.id, {
         tracking_number: trackingNumberInput,
         tracking_link: trackingLinkInput,
-      });
+      }, token); // Pass token
       toast({
         title: "Success",
         description: "Tracking information updated successfully.",
@@ -134,10 +142,6 @@ export function OrderDetailsPage({ order, onBack }: OrderDetailsPageProps) {
           <div className="flex justify-between items-start">
             <div>
               <CardTitle>Заказ № {order.number}</CardTitle>
-              {order.buyer_name && <CardDescription>Покупатель: {order.buyer_name}</CardDescription>}
-              {order.buyer_email && <CardDescription>Email: {order.buyer_email}</CardDescription>}
-              {order.buyer_phone && <CardDescription>Телефон: {order.buyer_phone}</CardDescription>}
-              {order.shipping_address && <CardDescription>Адрес доставки: {order.shipping_address}</CardDescription>}
             </div>
             <Badge className={getStatusColor(order.status)} variant="outline">
               {order.status}

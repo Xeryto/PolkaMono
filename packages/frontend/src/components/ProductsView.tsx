@@ -2,60 +2,52 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { ProductDetailsModal } from "@/components/ProductDetailsModal";
 import { useToast } from "@/hooks/use-toast";
-
-// Prepopulated mock products data
-const mockProducts = [
-  {
-    id: "PROD-001",
-    name: "Mock Hoodie",
-    description: "A comfortable mock hoodie.",
-    price: "₽100.00",
-    images: ["https://via.placeholder.com/150/FF0000/FFFFFF?text=Hoodie"],
-    honest_sign: undefined,
-    color: "Red",
-    material: "Cotton",
-    hashtags: ["hoodie", "comfort"],
-    brand_id: 1,
-    category_id: "apparel",
-    styles: ["casual"],
-    variants: [{ size: "M", stock_quantity: 10 }],
-  },
-  {
-    id: "PROD-002",
-    name: "Mock T-Shirt",
-    description: "A stylish mock t-shirt.",
-    price: "₽50.00",
-    images: ["https://via.placeholder.com/150/0000FF/FFFFFF?text=T-Shirt"],
-    honest_sign: "HS12345",
-    color: "Blue",
-    material: "Polyester",
-    hashtags: ["tshirt", "sport"],
-    brand_id: 1,
-    category_id: "apparel",
-    styles: ["sporty"],
-    variants: [{ size: "L", stock_quantity: 20 }],
-  },
-];
+import * as api from "@/services/api"; // Import api
+import { useAuth } from "@/context/AuthContext"; // Import useAuth
 
 export function ProductsView() {
-  const [products, setProducts] = useState<any[]>(mockProducts); // Use mockProducts directly
+  const [products, setProducts] = useState<api.ProductResponse[]>([]); // Initialize with empty array
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [selectedProduct, setSelectedProduct] = useState<any | null>(null);
+  const [selectedProduct, setSelectedProduct] = useState<api.ProductResponse | null>(null);
   const { toast } = useToast();
+  const { token } = useAuth(); // Get token from useAuth
 
-  // Removed fetchProducts and useEffect
+  const fetchProducts = async () => {
+    if (!token) {
+      toast({
+        title: "Error",
+        description: "Authentication token not found. Please log in.",
+        variant: "destructive",
+      });
+      return;
+    }
+    try {
+      const fetchedProducts = await api.getBrandProducts(token);
+      setProducts(fetchedProducts);
+    } catch (error: any) {
+      console.error("Failed to fetch products:", error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to load products.",
+        variant: "destructive",
+      });
+    }
+  };
 
-  const handleProductClick = (product: any) => {
+  useEffect(() => {
+    fetchProducts();
+  }, [token, toast]); // Add token and toast to dependency array
+
+  const handleProductClick = (product: api.ProductResponse) => {
     setSelectedProduct(product);
     setIsModalOpen(true);
   };
 
   const handleProductUpdated = () => {
-    // In a real app, you'd re-fetch products from API here.
-    // For mock data, we can simulate an update or do nothing.
+    fetchProducts(); // Re-fetch products after update
     toast({
       title: "Success",
-      description: "Product updated (mock data).",
+      description: "Product updated successfully.",
     });
   };
 

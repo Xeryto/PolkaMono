@@ -198,34 +198,46 @@ async def get_payment_status(
 
     return PaymentStatusResponse(status=order.status.value)
 
-# Dependency to get current user
+# Dependency to get current user (can be User or Brand)
 def get_current_user(
     credentials: HTTPAuthorizationCredentials = Depends(security),
     db: Session = Depends(get_db)
-) -> User:
-    """Get current user from JWT token"""
-    user_id = auth_service.verify_token(credentials.credentials)
-    if not user_id:
+) -> any: # Return type can be User or Brand
+    """Get current user (User or Brand) from JWT token"""
+    payload = auth_service.verify_token_payload(credentials.credentials)
+    if not payload:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid token"
         )
     
-    user = auth_service.get_user_by_id(db, user_id)
-    if not user:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="User not found"
-        )
+    user_id = payload.get("sub")
+    is_brand = payload.get("is_brand", False)
+
+    if is_brand:
+        entity = db.query(Brand).filter(Brand.id == user_id).first()
+        if not entity:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Brand not found"
+            )
+    else:
+        entity = auth_service.get_user_by_id(db, user_id)
+        if not entity:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="User not found"
+            )
     
-    return user
+    return entity
 
 def get_current_brand_user(
-    current_user: User = Depends(get_current_user),
+    current_user: any = Depends(get_current_user), # current_user can be User or Brand
     db: Session = Depends(get_db)
-) -> User:
+) -> Brand: # Ensure it returns a Brand
     """Get current brand user from JWT token"""
-    if not current_user.is_brand:
+    # Check if the entity is indeed a Brand instance
+    if not isinstance(current_user, Brand):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Not a brand account"
@@ -1811,11 +1823,12 @@ async def create_payment_endpoint(
 
 @app.get("/api/v1/orders", response_model=List[schemas.OrderResponse])
 async def get_orders(
-    current_user: User = Depends(get_current_user),
+    current_user: any = Depends(get_current_user), # current_user can be User or Brand
     db: Session = Depends(get_db)
 ):
     """Get all orders for the current user"""
-    orders = db.query(Order).filter(Order.user_id == current_user.id).all()
+    # Ensure current_user.id is treated as a string for comparison with UUID fields
+    orders = db.query(Order).filter(Order.user_id == str(current_user.id)).all()
     
     response = []
     for order in orders:

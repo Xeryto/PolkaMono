@@ -4,14 +4,18 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { LogIn, Shield } from "lucide-react";
-import * as api from "@/services/api"; // NEW
-import { BrandLoginRequest } from "@/services/api"; // NEW
+import * as api from "@/services/api";
+import { BrandLoginRequest } from "@/services/api";
+import { useAuth } from "@/context/AuthContext"; // Import useAuth
+import { useNavigate } from "react-router-dom"; // Import useNavigate
 
 const Portal = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
+  const { login } = useAuth(); // Use the login function from AuthContext
+  const navigate = useNavigate(); // Initialize useNavigate
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -19,8 +23,8 @@ const Portal = () => {
     
     try {
       const credentials: BrandLoginRequest = { email, password };
-      await api.brandLogin(credentials);
-      window.location.href = "/dashboard"; // Redirect on success
+      await login(credentials); // Use the login function from AuthContext
+      navigate("/dashboard"); // Use navigate for redirection
     } catch (error: any) {
       console.error("Brand login failed:", error);
       toast({

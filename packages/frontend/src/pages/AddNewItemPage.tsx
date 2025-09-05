@@ -13,9 +13,12 @@ import { MultiSelect } from "@/components/ui/multi-select";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"; // Keep Select for styles
 import { FileInput } from "@/components/ui/file-input";
 import { sizes } from "@/lib/sizes";
+import { useAuth } from "@/context/AuthContext"; // Import useAuth
 
 export function AddNewItemPage() {
   const [name, setName] = useState('');
+  const { token } = useAuth(); // Get token from useAuth
+
   const [price, setPrice] = useState('');
   const [description, setDescription] = useState('');
   const [selectedColors, setSelectedColors] = useState<string[]>([]); // Changed to multi-select
@@ -25,8 +28,6 @@ export function AddNewItemPage() {
   const [styles, setStyles] = useState<any[]>([]); // State to store available styles
   const [selectedStyle, setSelectedStyle] = useState(''); // State for selected style
   const [variants, setVariants] = useState([{ size: '', stock_quantity: 0 }]); // For sizes and quantities
-  const [returnPolicy, setReturnPolicy] = useState(''); // NEW
-  const [sku, setSku] = useState(''); // NEW
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
 
@@ -119,6 +120,16 @@ export function AddNewItemPage() {
 
     setIsLoading(true);
     try {
+      if (!token) {
+        toast({
+          title: "Error",
+          description: "Authentication token not found. Please log in.",
+          variant: "destructive",
+        });
+        setIsLoading(false); // Stop loading if no token
+        return;
+      }
+
       const productData = {
         name,
         price,
@@ -130,11 +141,10 @@ export function AddNewItemPage() {
         category_id: "some_category_id", // Placeholder: Replace with actual category ID
         styles: selectedStyle ? [selectedStyle] : [], // Send selected style
         variants: variants.filter(v => v.size.trim() && v.stock_quantity >= 0),
-        return_policy: returnPolicy || undefined, // NEW
-        sku: sku || undefined, // NEW
+        sku: Math.random().toString(36).substring(2, 15),
       };
 
-      await api.createProduct(productData);
+      await api.createProduct(productData, token); // Pass token
       toast({
         title: "Success",
         description: "Product added successfully!",
@@ -149,8 +159,6 @@ export function AddNewItemPage() {
       setImageFiles([]);
       setSelectedStyle('');
       setVariants([{ size: '', stock_quantity: 0 }]);
-      setReturnPolicy(''); // NEW
-      setSku(''); // NEW
     } catch (error: any) {
       console.error("Failed to add product:", error);
       toast({
@@ -233,18 +241,6 @@ export function AddNewItemPage() {
               placeholder="Выберите материалы"
               className="mt-1"
             />
-          </div>
-
-          {/* Return Policy */}
-          <div>
-            <Label htmlFor="returnPolicy">Политика возврата</Label>
-            <Textarea id="returnPolicy" placeholder="Например, 30-дневный бесплатный возврат" className="mt-1" value={returnPolicy} onChange={(e) => setReturnPolicy(e.target.value)} />
-          </div>
-
-          {/* SKU */}
-          <div>
-            <Label htmlFor="sku">Артикул товара (SKU)</Label>
-            <Input id="sku" placeholder="Например, NIKE-AM270-WHI-001" className="mt-1" value={sku} onChange={(e) => setSku(e.target.value)} />
           </div>
 
           {/* Images */}
