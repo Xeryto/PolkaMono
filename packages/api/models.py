@@ -91,7 +91,7 @@ class Brand(Base):
     description = Column(String(1000), nullable=True)
     return_policy = Column(Text, nullable=True) # NEW
     min_free_shipping = Column(Integer, nullable=True) # NEW
-    shipping_price = Column(String(50), nullable=True) # NEW
+    shipping_price = Column(Float, nullable=True)
     shipping_provider = Column(String(100), nullable=True) # NEW
     amount_withdrawn = Column(Float, nullable=False, default=0.0)
     created_at = Column(DateTime, default=datetime.utcnow)
@@ -175,12 +175,10 @@ class Product(Base):
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
     name = Column(String(255), nullable=False)
     description = Column(String(1000), nullable=True)
-    price = Column(String(50), nullable=False) # Storing as string to include currency symbol
+    price = Column(Float, nullable=False)
     images = Column(ARRAY(String), nullable=True) # New field for multiple image URLs
-    honest_sign = Column(String(255), unique=True, nullable=True) # NEW: Honest Sign
     color = Column(String(50), nullable=True) # NEW: Color
     material = Column(String(100), nullable=True) # NEW: Material
-    return_policy = Column(Text, nullable=True) # NEW: Product-specific return policy
     sku = Column(String(255), nullable=True) # NEW: Stock Keeping Unit
     brand_id = Column(Integer, ForeignKey("brands.id"), nullable=False)
     category_id = Column(String(50), ForeignKey("categories.id"), nullable=False)
@@ -284,7 +282,7 @@ class Order(Base):
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
     order_number = Column(String, unique=True, nullable=False)
     user_id = Column(String, ForeignKey("users.id"), nullable=False)
-    total_amount = Column(String(50), nullable=False)
+    total_amount = Column(Float, nullable=False)
     status = Column(SQLEnum(OrderStatus), default=OrderStatus.PENDING, nullable=False)
     tracking_number = Column(String(255), nullable=True) # Existing
     tracking_link = Column(String(500), nullable=True) # NEW: Link to tracking page
@@ -301,7 +299,7 @@ class OrderItem(Base):
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
     order_id = Column(String, ForeignKey("orders.id"), nullable=False)
     product_variant_id = Column(String, ForeignKey("product_variants.id"), nullable=False) # Changed
-    price = Column(String(50), nullable=False)
+    price = Column(Float, nullable=False)
     honest_sign = Column(String(255), unique=True, nullable=True) # NEW
 
     order = relationship("Order", back_populates="items")
@@ -312,7 +310,7 @@ class Payment(Base):
 
     id = Column(String, primary_key=True)
     order_id = Column(String, ForeignKey("orders.id"), nullable=False)
-    amount = Column(String(50), nullable=False)
+    amount = Column(Float, nullable=False)
     currency = Column(String(10), nullable=False)
     status = Column(String(50), nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)

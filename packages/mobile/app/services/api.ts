@@ -272,7 +272,7 @@ export interface Product {
   id: string; // Changed from number to string
   name: string;
   description?: string;
-  price: string;
+  price: number;
   images: string[]; // Changed to string[]
   honest_sign?: string;
   color?: string;
@@ -688,7 +688,7 @@ export const getCategories = async (): Promise<any[]> => {
 
 // Payment API functions
 export interface Amount {
-  value: string;
+  value: number;
   currency: string;
 }
 
@@ -757,11 +757,11 @@ export const toggleFavorite = async (productId: string, action: 'like' | 'unlike
 export interface OrderItem {
   id: string;
   name: string;
-  price: string;
+  price: number;
   size: string;
   image: string;
   delivery: {
-    cost: string;
+    cost: number;
     estimatedTime: string;
     tracking_number?: string;
   };
@@ -770,7 +770,8 @@ export interface OrderItem {
 export interface Order {
   id: string;
   number: string;
-  total: string;
+  total_amount: number;
+  currency: string;
   date: string; // datetime is a string in JSON
   status: string;
   tracking_number?: string;

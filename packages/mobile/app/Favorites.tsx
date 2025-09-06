@@ -497,7 +497,7 @@ const Favorites = ({ navigation }: FavoritesProps) => {
       const newRecommendations = shuffledItems.map((item: Product) => ({
         ...item,
         id: item.id + 1000, // Make sure IDs are unique
-        price: `${Math.floor(Math.random() * 30 + 15)} 000 р`
+        price: Math.floor(Math.random() * 30 + 15) * 1000
       }));
       
       // Update the recommendations
@@ -742,10 +742,10 @@ const Favorites = ({ navigation }: FavoritesProps) => {
             >
               <Image source={item.images[0]} style={styles.itemImage} />
               <View style={styles.itemInfo}>
-                <Text style={styles.itemName} numberOfLines={1}>{item.name}</Text>
+                <Text style={styles.itemName} numberOfLines={1}>{item.brand_name}</Text>
               </View>
               <View style={styles.priceContainer}>
-                <Text style={styles.itemPrice}>{item.price}</Text>
+                <Text style={styles.itemPrice}>{`${item.price.toFixed(2)} ₽`}</Text>
               </View>
             </Pressable>
           </View>
@@ -771,10 +771,10 @@ const Favorites = ({ navigation }: FavoritesProps) => {
             >
               <Image source={item.images[0]} style={styles.itemImage} />
               <View style={styles.itemInfo}>
-                <Text style={styles.itemName} numberOfLines={1}>{item.name}</Text>
+                <Text style={styles.itemName} numberOfLines={1}>{item.brand_name}</Text>
               </View>
               <View style={styles.priceContainer}>
-                <Text style={styles.itemPrice}>{item.price}</Text>
+                <Text style={styles.itemPrice}>{`${item.price.toFixed(2)} ₽`}</Text>
               </View>
             </Pressable>
           </View>
@@ -861,10 +861,10 @@ const Favorites = ({ navigation }: FavoritesProps) => {
             >
               <Image source={item.images[0]} style={styles.itemImage} />
               <View style={styles.itemInfo}>
-                <Text style={styles.itemName} numberOfLines={1}>{item.name}</Text>
+                <Text style={styles.itemName} numberOfLines={1}>{item.brand_name}</Text>
               </View>
               <View style={styles.priceContainer}>
-                <Text style={styles.itemPrice}>{item.price}</Text>
+                <Text style={styles.itemPrice}>{`${item.price.toFixed(2)} ₽`}</Text>
               </View>
             </Pressable>
           </View>
@@ -886,16 +886,16 @@ const Favorites = ({ navigation }: FavoritesProps) => {
           >
             <Image source={item.images[0]} style={styles.itemImage} />
             <View style={styles.itemInfo}>
-              <Text style={styles.itemName} numberOfLines={1}>{item.name}</Text>
+              <Text style={styles.itemName} numberOfLines={1}>{item.brand_name}</Text>
             </View>
             <View style={styles.priceContainer}>
-              <Text style={styles.itemPrice}>{item.price}</Text>
+              <Text style={styles.itemPrice}>{`${item.price.toFixed(2)} ₽`}</Text>
             </View>
           </Pressable>
         </View>
       </View>
-    );
-  };
+      );
+    }
 
   // Custom render function for search results that includes user status
   const renderSearchUser: ListRenderItem<FriendItem> = ({ item, index, separators }) => {

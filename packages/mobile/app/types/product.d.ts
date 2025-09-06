@@ -9,7 +9,7 @@ export interface Product {
   id: string;
   name: string;
   brand_name: string;
-  price: string;
+  price: number;
   images: ImageSourcePropType[];
   isLiked?: boolean;
   size?: string; // This might be specific to a selected variant, or a default
@@ -24,7 +24,7 @@ export interface Product {
 }
 
 export interface DeliveryInfo {
-  cost: string;
+  cost: number;
   estimatedTime: string;
 }
 

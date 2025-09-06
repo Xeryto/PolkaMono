@@ -48,7 +48,11 @@ export function ProfileSettingsPage() {
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { id, value } = e.target;
-    setProfile(prev => prev ? { ...prev, [id]: value } : null);
+    if (id === 'shipping_price' || id === 'min_free_shipping') {
+      setProfile(prev => prev ? { ...prev, [id]: parseFloat(value) } : null);
+    } else {
+      setProfile(prev => prev ? { ...prev, [id]: value } : null);
+    }
   };
 
   const handleSave = async () => {

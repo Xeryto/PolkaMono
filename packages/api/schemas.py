@@ -5,7 +5,7 @@ from models import Gender # Import Gender enum
 from config import settings # Import settings
 
 class Amount(BaseModel):
-    value: str
+    value: float
     currency: str
 
 class Customer(BaseModel):
@@ -36,14 +36,14 @@ class PaymentCreate(BaseModel):
         return v
 
 class Delivery(BaseModel):
-    cost: str
+    cost: float
     estimatedTime: str
     tracking_number: Optional[str] = None
 
 class OrderItemResponse(BaseModel):
     id: str
     name: str
-    price: str
+    price: float
     size: str
     image: str
     delivery: Delivery
@@ -58,7 +58,8 @@ class UpdateTrackingRequest(BaseModel):
 class OrderResponse(BaseModel):
     id: str
     number: str
-    total: str
+    total_amount: float
+    currency: str
     date: datetime
     status: str
     tracking_number: Optional[str] = None
@@ -85,39 +86,41 @@ class ProductVariantSchema(BaseModel):
 class ProductCreateRequest(BaseModel):
     name: str
     description: Optional[str] = None
-    price: str
+    price: float
     images: List[str] = [] # New field for multiple image URLs
     brand_id: int
     category_id: str
     styles: Optional[List[str]] = []
     variants: List[ProductVariantSchema]
-    return_policy: Optional[str] = None # NEW
     sku: Optional[str] = None # NEW
 
 class ProductUpdateRequest(BaseModel):
     name: Optional[str] = None
     description: Optional[str] = None
-    price: Optional[str] = None
+    price: Optional[float] = None
     images: Optional[List[str]] = None # New field for multiple image URLs
     brand_id: Optional[int] = None
     category_id: Optional[str] = None
     styles: Optional[List[str]] = None
     variants: Optional[List[ProductVariantSchema]] = None
-    return_policy: Optional[str] = None # NEW
     sku: Optional[str] = None # NEW
 
 class Product(BaseModel):
     id: Optional[str]
     name: str
-    price: str
-    is_liked: Optional[bool] = False
+    price: float
+    images: List[str] = []
+    brand_id: int
+    category_id: str
+    styles: List[str] = []
     variants: List[ProductVariantSchema] = []
     description: Optional[str] = None
     color: Optional[str] = None
     material: Optional[str] = None
+    sku: Optional[str] = None
     brand_name: Optional[str] = None
     brand_return_policy: Optional[str] = None
-    return_policy: Optional[str] = None
+    is_liked: Optional[bool] = None
 
     class Config:
         from_attributes = True
@@ -154,7 +157,7 @@ class BrandCreate(BaseModel):
     description: Optional[str] = None
     return_policy: Optional[str] = None
     min_free_shipping: Optional[int] = None
-    shipping_price: Optional[str] = None
+    shipping_price: Optional[float] = None
     shipping_provider: Optional[str] = None
 
 class BrandLogin(BaseModel):
@@ -170,7 +173,7 @@ class BrandUpdate(BaseModel):
     description: Optional[str] = None
     return_policy: Optional[str] = None
     min_free_shipping: Optional[int] = None
-    shipping_price: Optional[str] = None
+    shipping_price: Optional[float] = None
     shipping_provider: Optional[str] = None
 
 class BrandResponse(BaseModel):
@@ -182,7 +185,7 @@ class BrandResponse(BaseModel):
     description: Optional[str] = None
     return_policy: Optional[str] = None
     min_free_shipping: Optional[int] = None
-    shipping_price: Optional[str] = None
+    shipping_price: Optional[float] = None
     shipping_provider: Optional[str] = None
     amount_withdrawn: float = 0.0
     created_at: datetime

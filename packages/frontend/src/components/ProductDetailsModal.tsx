@@ -26,17 +26,14 @@ interface ProductDetailsModalProps {
     id: string;
     name: string;
     description?: string;
-    price: string;
+    price: number;
     images: string[];
-    honest_sign?: string;
     color?: string;
     material?: string;
-    hashtags?: string[];
     brand_id: number;
     category_id: string;
     styles: string[];
     variants: { size: string; stock_quantity: number; }[];
-    return_policy?: string; // NEW
     sku?: string; // NEW
   };
   onProductUpdated: () => void; // Callback to refresh product list
@@ -53,13 +50,14 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({
   // Initialize states directly from product prop, they will be re-evaluated on product prop change
   const [name, setName] = useState(product.name);
   const [description, setDescription] = useState(product.description || '');
-  const [price, setPrice] = useState(parseFloat(product.price.replace(/[^0-9.-]+/g,"")) || 0);
+  const [price, setPrice] = useState(product.price || 0);
   const [selectedColors, setSelectedColors] = useState<string[]>(product.color?.split(", ").filter(c => c) || []);
   const [selectedMaterials, setSelectedMaterials] = useState<string[]>(product.material ? product.material.split(", ").filter(m => m) : []);
   const [images, setImages] = useState<string[]>(product.images || []);
   const [imageFiles, setImageFiles] = useState<File[]>([]);
   const [imagePreviews, setImagePreviews] = useState<string[]>([]);
   const [sku, setSku] = useState(product.sku || '');
+  console.log(product);
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
   const [selectedStyles, setSelectedStyles] = useState<string[]>([]);
@@ -84,7 +82,7 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({
   useEffect(() => {
     setName(product.name);
     setDescription(product.description || '');
-    setPrice(parseFloat(product.price.replace(/[^0-9.-]+/g,"")) || 0);
+    setPrice(product.price || 0);
     setSelectedColors(product.color?.split(", ").filter(c => c) || []);
     setSelectedMaterials(product.material ? product.material.split(", ").filter(m => m) : []);
     setImages(product.images || []);
@@ -137,7 +135,7 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({
       const updatedProductData = {
         name,
         description,
-        price: price.toString(),
+        price,
         color: selectedColors.join(", "),
         material: selectedMaterials.join(", "),
         styles: selectedStyles,

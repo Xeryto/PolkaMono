@@ -59,7 +59,7 @@ export interface BrandResponse {
   description?: string;
   return_policy?: string;
   min_free_shipping?: number;
-  shipping_price?: string;
+  shipping_price?: number;
   shipping_provider?: string;
   amount_withdrawn: number;
   created_at: string;
@@ -86,7 +86,7 @@ export interface BrandProfileUpdateRequest {
   description?: string;
   return_policy?: string;
   min_free_shipping?: number;
-  shipping_price?: string;
+  shipping_price?: number;
   shipping_provider?: string;
 }
 
@@ -99,17 +99,14 @@ export interface ProductResponse {
   id: string;
   name: string;
   description?: string;
-  price: string;
+  price: number;
   images: string[];
-  honest_sign?: string;
   color?: string;
   material?: string;
-  hashtags?: string[];
   brand_id: number;
   category_id: string;
   styles: string[];
   variants: ProductVariantSchema[];
-  return_policy?: string; // NEW
   sku?: string; // NEW
   is_liked?: boolean; // Only for user-specific recommendations/favorites
 }
@@ -117,12 +114,12 @@ export interface ProductResponse {
 export interface OrderItemResponse {
   id: string;
   name: string;
-  price: string;
+  price: number;
   size: string;
   image?: string;
   honest_sign?: string;
   delivery: {
-    cost: string;
+    cost: number;
     estimatedTime: string;
     tracking_number?: string;
   };
@@ -131,7 +128,8 @@ export interface OrderItemResponse {
 export interface OrderResponse {
   id: string;
   number: string;
-  total: string;
+  total_amount: number;
+  currency: string;
   date: string;
   status: string;
   tracking_number?: string;
@@ -215,7 +213,7 @@ const apiRequest = async (
 export const createProduct = async (productData: {
   name: string;
   description?: string;
-  price: string;
+  price: number;
   images: string[];
   honest_sign?: string;
   color?: string;
@@ -234,7 +232,7 @@ export const createProduct = async (productData: {
 export const updateProduct = async (productId: string, productData: {
   name?: string;
   description?: string;
-  price?: string;
+  price?: number;
   images?: string[];
   honest_sign?: string;
   color?: string;

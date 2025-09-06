@@ -39,7 +39,7 @@ interface SearchItem {
   id: string;
   name: string;
   brand_name: string;
-  price: string;
+  price: number;
   images: ImageSourcePropType[]; // Changed from 'image: any'
   isLiked: boolean;
   description: string;
@@ -341,7 +341,7 @@ const Search = ({ navigation }: SearchProps) => {
           <Text style={styles.itemName} numberOfLines={1}>{item.name}</Text>
         </View>
         <View style={styles.priceContainer}>
-          <Text style={styles.itemPrice}>{item.price}</Text>
+          <Text style={styles.itemPrice}>{`${item.price.toFixed(2)} ₽`}</Text>
         </View>
       </Pressable>
     </Animated.View>

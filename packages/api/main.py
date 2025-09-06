@@ -292,13 +292,7 @@ async def get_brand_stats(
         for item in order.items:
             # Ensure the product variant belongs to a product of the current brand
             if item.product_variant.product.brand_id == current_brand_user.id:
-                try:
-                    # Assuming price is a string like "123.45"
-                    price_value = float(item.price)
-                    total_sold += price_value
-                except (ValueError, IndexError):
-                    # Handle cases where price is not in the expected format
-                    pass
+                total_sold += item.price
 
     # 2. Get total withdrawn
     total_withdrawn = current_brand_user.amount_withdrawn
@@ -766,7 +760,6 @@ async def create_product(
         hashtags=product_data.hashtags,
         brand_id=product_data.brand_id,
         category_id=product_data.category_id,
-        return_policy=product_data.return_policy, # NEW
         sku=product_data.sku # NEW
     )
     db.add(product)
@@ -800,14 +793,15 @@ async def create_product(
         description=product.description,
         price=product.price,
         images=product.images,
-        honest_sign=product.honest_sign, # NEW
-        color=product.color, # NEW
-        material=product.material, # NEW
-        hashtags=product.hashtags, # NEW
+        color=product.color,
+        material=product.material,
         brand_id=product.brand_id,
         category_id=product.category_id,
         styles=[ps.style_id for ps in product.styles],
-        variants=[schemas.ProductVariantSchema(size=v.size, stock_quantity=v.stock_quantity) for v in product.variants]
+        variants=[schemas.ProductVariantSchema(size=v.size, stock_quantity=v.stock_quantity) for v in product.variants],
+        sku=product.sku,
+        brand_name=brand.name,
+        brand_return_policy=brand.return_policy
     )
 
 @app.put("/api/v1/brands/products/{product_id}", response_model=schemas.Product)
@@ -867,8 +861,6 @@ async def update_product(
             product.material = value
         elif field == "hashtags":
             product.hashtags = value
-        elif field == "return_policy": # NEW
-            product.return_policy = value
         elif field == "sku": # NEW
             product.sku = value
         elif field not in ["honest_sign"]: # Exclude honest_sign as it's handled above
@@ -883,16 +875,15 @@ async def update_product(
         description=product.description,
         price=product.price,
         images=product.images,
-        honest_sign=product.honest_sign,
         color=product.color,
         material=product.material,
-        hashtags=product.hashtags,
         brand_id=product.brand_id,
         category_id=product.category_id,
         styles=[ps.style_id for ps in product.styles],
         variants=[schemas.ProductVariantSchema(size=v.size, stock_quantity=v.stock_quantity) for v in product.variants],
-        return_policy=product.return_policy, # NEW
-        sku=product.sku # NEW
+        sku=product.sku,
+        brand_name=brand.name,
+        brand_return_policy=brand.return_policy
     )
 
 @app.get("/api/v1/brands/products", response_model=List[schemas.Product])
@@ -901,15 +892,7 @@ async def get_brand_products(
     db: Session = Depends(get_db)
 ):
     """Get all products for the authenticated brand user"""
-    # Assuming a brand user is associated with a single brand, or we filter by brand_id
-    # For now, let's assume current_user.id can be used to find associated products
-    # This needs a proper link between User and Brand models if not already present
-    # For demonstration, let's assume brand_id is directly linked to user for now, or filter by a known brand_id
-    # A more robust solution would involve a UserBrand relationship or similar.
-    
-    # For now, let's fetch products from a specific brand (e.g., brand_id = 1 for testing)
-    # In a real app, you'd link the brand user to their brand(s) and filter accordingly.
-    products = db.query(Product).filter(Product.brand_id == 1).all() # Placeholder: filter by a test brand_id
+    products = db.query(Product).filter(Product.brand_id == current_user.id).all()
 
     response_products = []
     for product in products:
@@ -919,16 +902,15 @@ async def get_brand_products(
             description=product.description,
             price=product.price,
             images=product.images, # Use images field
-            honest_sign=product.honest_sign,
             color=product.color,
             material=product.material,
-
             brand_id=product.brand_id,
             category_id=product.category_id,
             styles=[ps.style_id for ps in product.styles],
             variants=[schemas.ProductVariantSchema(size=v.size, stock_quantity=v.stock_quantity) for v in product.variants],
-            return_policy=product.return_policy,
-            sku=product.sku
+            sku=product.sku,
+            brand_name=product.brand.name,
+            brand_return_policy=product.brand.return_policy
         ))
     return response_products
 
@@ -943,9 +925,7 @@ async def get_brand_product_details(
     if not product:
         raise HTTPException(status_code=404, detail="Product not found")
 
-    # Ensure the product belongs to the current brand user (if applicable)
-    brand_id_filter = 1 # Placeholder: check against a test brand_id
-    if product.brand_id != brand_id_filter:
+    if product.brand_id != current_user.id:
         raise HTTPException(status_code=403, detail="Product does not belong to your brand")
 
     return schemas.Product(
@@ -954,16 +934,15 @@ async def get_brand_product_details(
         description=product.description,
         price=product.price,
         images=product.images,
-        honest_sign=product.honest_sign,
         color=product.color,
         material=product.material,
-        hashtags=product.hashtags,
         brand_id=product.brand_id,
         category_id=product.category_id,
         styles=[ps.style_id for ps in product.styles],
         variants=[schemas.ProductVariantSchema(size=v.size, stock_quantity=v.stock_quantity) for v in product.variants],
-        return_policy=product.return_policy, # NEW
-        sku=product.sku # NEW
+        sku=product.sku,
+        brand_name=product.brand.name,
+        brand_return_policy=product.brand.return_policy
     )
 
     
@@ -974,41 +953,38 @@ async def get_brand_orders(
     db: Session = Depends(get_db)
 ):
     """Get all orders containing products from the authenticated brand user"""
-    # This assumes a brand user is associated with a single brand, and we filter orders by that brand's products.
-    # In a real application, you'd link the brand user to their brand(s) and filter accordingly.
-    # For now, let's assume brand_id = 1 for testing.
-    brand_id_filter = 1 # Placeholder: replace with actual brand_id from current_user
-
-    orders_with_brand_products = db.query(Order).join(OrderItem).join(Product).filter(
-        Product.brand_id == brand_id_filter
+    orders_with_brand_products = db.query(Order).join(OrderItem).join(ProductVariant, OrderItem.product_variant_id == ProductVariant.id).join(Product).filter(
+        Product.brand_id == current_user.id
     ).distinct().all()
 
     response = []
     for order in orders_with_brand_products:
         order_items = []
         for item in order.items:
-            product = db.query(Product).filter(Product.id == item.product_id).first()
-            if product and product.brand_id == brand_id_filter: # Only include items from this brand
+            if item.product_variant.product.brand_id == current_user.id: # Only include items from this brand
                 order_items.append(schemas.OrderItemResponse(
                     id=item.id, # Use order item ID here
-                    name=product.name,
+                    name=item.product_variant.product.name,
                     price=item.price,
                     size=item.product_variant.size,
-                    image=product.images[0] if product.images else None,
+                    image=item.product_variant.product.images[0] if item.product_variant.product.images else None,
                     delivery=schemas.Delivery(
-                        cost="350 р",
+                        cost=350.0,
                         estimatedTime="1-3 дня",
-                        tracking_number=item.tracking_number
+                        tracking_number=order.tracking_number
                     )
                 ))
         if order_items: # Only add order if it contains items from this brand
             response.append(schemas.OrderResponse(
                 id=order.id,
                 number=order.order_number,
-                total=f"{order.total_amount} {order.currency}",
+                total_amount=order.total_amount,
+                currency="RUB",
                 date=order.created_at,
                 status=order.status.value,
-                items=order_items
+                items=order_items,
+                tracking_number=order.tracking_number,
+                tracking_link=order.tracking_link
             ))
     return response
 
@@ -1306,25 +1282,22 @@ async def get_user_favorites(
 
     results = []
     for product in liked_products:
-        print(product)
         results.append(schemas.Product(
             id=product.id,
             name=product.name,
             description=product.description,
             price=product.price,
             images=product.images,
-            honest_sign=product.honest_sign,
             color=product.color,
             material=product.material,
-
             brand_id=product.brand_id,
             category_id=product.category_id,
             styles=[ps.style_id for ps in product.styles],
             variants=[schemas.ProductVariantSchema(size=v.size, stock_quantity=v.stock_quantity) for v in product.variants],
-            return_policy=product.return_policy,
-            brand_name=product.brand.name, # Populate brand_name
-            brand_return_policy=product.brand.return_policy, # Populate brand_return_policy
-            is_liked=True # All products returned here are liked by definition
+            sku=product.sku,
+            brand_name=product.brand.name,
+            brand_return_policy=product.brand.return_policy,
+            is_liked=True
         ))
     return results
 
@@ -1343,26 +1316,23 @@ async def get_recommendations_for_user(
 
     recommendations = []
     for product in all_products:
-        print(product)
         recommendations.append(schemas.Product(
             id=product.id,
             name=product.name,
             description=product.description,
             price=product.price,
             images=product.images,
-            honest_sign=product.honest_sign,
             color=product.color,
             material=product.material,
             brand_id=product.brand_id,
             category_id=product.category_id,
             styles=[ps.style_id for ps in product.styles],
             variants=[schemas.ProductVariantSchema(size=v.size, stock_quantity=v.stock_quantity) for v in product.variants],
-            return_policy=product.return_policy,
-            brand_name=product.brand.name, # Populate brand_name
-            brand_return_policy=product.brand.return_policy, # Populate brand_return_policy
+            sku=product.sku,
+            brand_name=product.brand.name,
+            brand_return_policy=product.brand.return_policy,
             is_liked=product.id in liked_product_ids
         ))
-    print(all_products)
     return recommendations
 
 @app.get("/api/v1/recommendations/for_friend/{friend_id}", response_model=List[schemas.Product])
@@ -1372,18 +1342,6 @@ async def get_recommendations_for_friend(
     db: Session = Depends(get_db)
 ):
     """Provide recommended items for a specific friend"""
-    # # Verify friendship (optional, but good practice for privacy)
-    # friendship_exists = db.query(Friendship).filter(
-    #     ((Friendship.user_id == current_user.id) & (Friendship.friend_id == friend_id)) |
-    #     ((Friendship.user_id == friend_id) & (Friendship.friend_id == current_user.id))
-    # ).first()
-
-    # if not friendship_exists:
-    #     raise HTTPException(
-    #         status_code=status.HTTP_403_FORBIDDEN,
-    #         detail="You are not friends with this user."
-    #     )
-
     friend_user = db.query(User).filter(User.id == friend_id).first()
     if not friend_user:
         raise HTTPException(
@@ -1391,31 +1349,26 @@ async def get_recommendations_for_friend(
             detail="Friend not found."
         )
 
-    # This is a placeholder for a real recommendation engine for a friend.
-    # Logic would be similar to for_user, but based on friend_user's profile and interactions.
-    # For now, return exactly 8 random products (without is_liked for friend's view)
-    all_products = db.query(Product).order_by(func.random()).limit(8).all() # Get 8 random products
+    all_products = db.query(Product).join(Brand).order_by(func.random()).limit(8).all() # Get 8 random products
     liked_product_ids = {ulp.product_id for ulp in current_user.liked_products}
 
     recommendations = []
     for product in all_products:
-        print(product)
         recommendations.append(schemas.Product(
             id=product.id,
             name=product.name,
             description=product.description,
             price=product.price,
             images=product.images,
-            honest_sign=product.honest_sign,
             color=product.color,
             material=product.material,
-
             brand_id=product.brand_id,
             category_id=product.category_id,
             styles=[ps.style_id for ps in product.styles],
             variants=[schemas.ProductVariantSchema(size=v.size, stock_quantity=v.stock_quantity) for v in product.variants],
-            return_policy=product.return_policy,
             sku=product.sku,
+            brand_name=product.brand.name,
+            brand_return_policy=product.brand.return_policy,
             is_liked=product.id in liked_product_ids
         ))
     return recommendations
@@ -1432,7 +1385,7 @@ async def search_products(
     db: Session = Depends(get_db)
 ):
     """Search for products based on query and filters"""
-    products_query = db.query(Product)
+    products_query = db.query(Product).join(Brand)
 
     # Apply search query
     if query:
@@ -1447,7 +1400,7 @@ async def search_products(
         products_query = products_query.filter(Product.category_id == category)
 
     if brand and brand != "Бренд":
-        products_query = products_query.join(Brand).filter(Brand.name.ilike(f"%{brand}% "))
+        products_query = products_query.filter(Brand.name.ilike(f"%{brand}% "))
 
     if style and style != "Стиль":
         products_query = products_query.join(Product.styles).join(Style).filter(Style.name.ilike(f"%{style}% "))
@@ -1466,17 +1419,15 @@ async def search_products(
             description=product.description,
             price=product.price,
             images=product.images,
-            honest_sign=product.honest_sign,
             color=product.color,
             material=product.material,
-
             brand_id=product.brand_id,
             category_id=product.category_id,
             styles=[ps.style_id for ps in product.styles],
             variants=[schemas.ProductVariantSchema(size=v.size, stock_quantity=v.stock_quantity) for v in product.variants],
-            return_policy=product.return_policy,
-            brand_name=product.brand.name, # Populate brand_name
-            brand_return_policy=product.brand.return_policy, # Populate brand_return_policy
+            sku=product.sku,
+            brand_name=product.brand.name,
+            brand_return_policy=product.brand.return_policy,
             is_liked=product.id in liked_product_ids
         ))
     return results
@@ -1843,7 +1794,7 @@ async def create_payment_endpoint(
         confirmation_url = payment_service.create_payment(
             db=db,
             user_id=current_user.id,
-            amount=float(payment_data.amount.value),
+            amount=payment_data.amount.value,
             currency=payment_data.amount.currency,
             description=payment_data.description,
             return_url=payment_data.returnUrl,
@@ -1888,7 +1839,7 @@ async def get_orders(
                 size=product_variant.size,
                 image=product.images[0] if product.images else None,
                 delivery=schemas.Delivery(
-                    cost="350 р", # Placeholder
+                    cost=350.0, # Placeholder
                     estimatedTime="1-3 дня", # Placeholder
                     tracking_number=order.tracking_number # Use order's tracking number
                 ),
@@ -1898,7 +1849,8 @@ async def get_orders(
         response.append(schemas.OrderResponse(
             id=order.id,
             number=order.order_number,
-            total=f"{order.total_amount} {order.currency}",
+            total_amount=order.total_amount,
+            currency="RUB",
             date=order.created_at,
             status=order.status.value,
             tracking_number=order.tracking_number,

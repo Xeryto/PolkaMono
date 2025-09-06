@@ -87,7 +87,7 @@ def populate_initial_data():
                 "category": sneakers_category,
                 "styles": [sporty_style, casual_style],
                 "color": "White",
-                "material": "Mesh",
+                "material": "polyester",
                 "return_policy": "30-day free returns.",
                 "honest_sign": "HS-NIKEAM270"
             },
@@ -101,7 +101,7 @@ def populate_initial_data():
                 "category": sneakers_category,
                 "styles": [sporty_style],
                 "color": "Black",
-                "material": "Primeknit",
+                "material": "polyester",
                 "return_policy": "20-day returns, customer pays shipping.",
                 "honest_sign": "HS-ADIDASUB22"
             },
@@ -114,8 +114,8 @@ def populate_initial_data():
                 "brand": zara_brand,
                 "category": dresses_category,
                 "styles": [elegant_style, casual_style],
-                "color": "Floral Print",
-                "material": "Viscose",
+                "color": "Multi-Color",
+                "material": "cotton",
                 "return_policy": "14-day exchange only.",
                 "honest_sign": "HS-ZARAFMD"
             },
@@ -128,8 +128,8 @@ def populate_initial_data():
                 "brand": hm_brand,
                 "category": hoodies_category,
                 "styles": [casual_style, streetwear_style],
-                "color": "Grey Melange",
-                "material": "Cotton Blend",
+                "color": "Grey",
+                "material": "cotton",
                 "return_policy": "No returns on sale items.",
                 "honest_sign": "HS-HMOH"
             },
@@ -143,7 +143,7 @@ def populate_initial_data():
                 "category": hoodies_category,
                 "styles": [sporty_style, casual_style, streetwear_style],
                 "color": "Black",
-                "material": "Tech Fleece",
+                "material": "fleece",
                 "return_policy": "30-day free returns.",
                 "honest_sign": "HS-NIKESWTF"
             }

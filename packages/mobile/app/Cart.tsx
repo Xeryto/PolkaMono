@@ -21,20 +21,19 @@ interface CartProps {
 }
 
 const getItemDeliveryInfo = (itemId: string, quantity: number): DeliveryInfo => {
-  let cost = '350 р';
+  let cost = 350.0;
   let time = '1-3 дня';
   const numericId = parseInt(itemId) || 0;
   if (numericId % 3 === 0) {
-    cost = '250 р';
+    cost = 250.0;
     time = '2-4 дня';
   } else if (numericId % 2 === 0) {
-    cost = '400 р';
+    cost = 400.0;
     time = '1 день';
   }
   if (quantity > 1) {
-    const baseCost = parseInt(cost.replace(/\D/g, ''));
-    const adjustedCost = Math.round(baseCost * (1 + (quantity - 1) * 0.1));
-    cost = `${adjustedCost} р`;
+    const adjustedCost = Math.round(cost * (1 + (quantity - 1) * 0.1));
+    cost = adjustedCost;
   }
   return { cost, estimatedTime: time };
 };
@@ -130,7 +129,7 @@ const Cart = ({ navigation }: CartProps) => {
             quantity: item.quantity,
             isLiked: item.isLiked,
             cartItemId: item.cartItemId || `${item.id}-${item.size}-${Date.now()}`,
-            delivery: { cost: '350 р', estimatedTime: '1-3 дня' }, // Default delivery
+            delivery: { cost: 350.0, estimatedTime: '1-3 дня' }, // Default delivery
             brand_name: item.brand_name,
             brand_return_policy: item.brand_return_policy,
             description: item.description,
@@ -143,7 +142,7 @@ const Cart = ({ navigation }: CartProps) => {
             const delivery = getItemDeliveryInfo(newItem.id, newItem.quantity!);
             return { ...newItem, delivery } as CartItem;
           } catch (error) {
-            return { ...newItem, delivery: { cost: '350 р', estimatedTime: '1-3 дня' } } as CartItem;
+            return { ...newItem, delivery: { cost: 350.0, estimatedTime: '1-3 дня' } } as CartItem;
           }
         });
       setCartItems(itemsWithDelivery);
@@ -193,8 +192,8 @@ const Cart = ({ navigation }: CartProps) => {
     navigation.navigate('Home', { addCardItem: cardItem });
   };
 
-  const calculateRawTotal = () => cartItems.reduce((total, item) => total + (parseInt(item.price.replace(/\D/g, '')) || 0) + (parseInt(item.delivery.cost.replace(/\D/g, '')) || 0), 0);
-  const calculateTotal = () => calculateRawTotal().toLocaleString() + 'р';
+  const calculateRawTotal = () => cartItems.reduce((total, item) => total + item.price + item.delivery.cost, 0);
+  const calculateTotal = () => `${calculateRawTotal().toFixed(2)} ₽`;
 
   const handleCheckout = async () => {
     if (isSubmitting) return;
@@ -217,7 +216,7 @@ const Cart = ({ navigation }: CartProps) => {
 
       const paymentDetails: api.PaymentCreateRequest = {
         amount: {
-          value: totalAmount.toFixed(2), // Convert number to string with 2 decimal places
+          value: totalAmount,
           currency: 'RUB',
         },
         description: `Order #${Math.floor(Math.random() * 1000)}`,
@@ -266,11 +265,11 @@ const Cart = ({ navigation }: CartProps) => {
                       <View style={styles.itemContent}>
                         <View style={styles.imageContainer}><CartItemImage item={item} /></View>
                         <View style={styles.itemDetails}>
-                          <Text style={styles.itemName} numberOfLines={1} ellipsizeMode="tail">{item.name}</Text>
-                          <Text style={styles.itemPrice}>{item.price}</Text>
+                          <Text style={styles.itemName} numberOfLines={1} ellipsizeMode='tail'>{item.brand_name}</Text>
+                          <Text style={styles.itemPrice}>{`${item.price.toFixed(2)} ₽`}</Text>
                           <Text style={styles.itemSize}>{item.size}</Text>
                           <View><Text style={styles.deliveryText}>ожидание</Text><Text style={styles.deliveryText}>доставка</Text></View>
-                          <View style={styles.deliveryInfoChangeable}><Text style={styles.deliveryText}>{item.delivery.estimatedTime}</Text><Text style={styles.deliveryText}>{item.delivery.cost}</Text></View>
+                          <View style={styles.deliveryInfoChangeable}><Text style={styles.deliveryText}>{item.delivery.estimatedTime}</Text><Text style={styles.deliveryText}>{`${item.delivery.cost.toFixed(2)} ₽`}</Text></View>
                         </View>
                       </View>
                       <View style={styles.rightContainer}>

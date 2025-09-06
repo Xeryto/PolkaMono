@@ -810,7 +810,7 @@ const MainPage = ({ navigation, route }: MainPageProps) => {
       materials: currentCard.materials,
       returnPolicy: currentCard.returnPolicy,
       variants: currentCard.variants,
-      delivery: { cost: '', estimatedTime: '' }, // Add dummy delivery info for now, Cart.tsx will update it
+      delivery: { cost: 0, estimatedTime: '' }, // Add dummy delivery info for now, Cart.tsx will update it
     };
     
     // Add item to the cart using global storage
@@ -1306,7 +1306,7 @@ const MainPage = ({ navigation, route }: MainPageProps) => {
                   {cards[currentCardIndex]?.brand_name || 'No Brand'}
                 </Text>
                 <Text style={styles.price}>
-                  {cards[currentCardIndex]?.price || '0 р'}
+                  {`${cards[currentCardIndex]?.price.toFixed(2) || '0.00'} ₽`}
                 </Text>
               </>
             ) : (

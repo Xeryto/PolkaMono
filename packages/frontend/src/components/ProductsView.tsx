@@ -24,6 +24,7 @@ export function ProductsView() {
     try {
       const fetchedProducts = await api.getBrandProducts(token);
       setProducts(fetchedProducts);
+      console.log(fetchedProducts)
     } catch (error: any) {
       console.error("Failed to fetch products:", error);
       toast({
