@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, ScrollView, Image, Pressable, SafeAreaView, Dim
 import { LinearGradient } from 'expo-linear-gradient';
 import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
 import * as WebBrowser from 'expo-web-browser';
-import Cancel from './assets/Cancel.svg';
+import Cancel from './components/svg/Cancel';
 import { RoundedRect, Shadow, Canvas } from '@shopify/react-native-skia';
 import * as api from './services/api';
 import { retrieveUserProfile, getPaymentStatus } from './services/api';

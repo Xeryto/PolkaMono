@@ -8,7 +8,7 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import Animated, { FadeInDown } from 'react-native-reanimated';
-import Logo from '../assets/Logo.svg';
+import Logo from '../components/svg/Logo';
 import { Dimensions } from 'react-native';
 
 const { width, height } = Dimensions.get('window');

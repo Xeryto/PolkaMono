@@ -663,8 +663,10 @@ export const resetPassword = async (token: string, password: string): Promise<vo
   await apiRequest('/api/v1/auth/reset-password', 'POST', { token, password }, false);
 };
 
-export const verifyEmail = async (token: string): Promise<void> => {
-  await apiRequest('/api/v1/auth/verify-email', 'POST', { token }, false);
+export const verifyEmail = async (code: string): Promise<void> => {
+  // Get current user to get email
+  const user = await getCurrentUser();
+  await apiRequest('/api/v1/auth/verify-email', 'POST', { email: user.email, code }, false);
 };
 
 // Password reset simulation

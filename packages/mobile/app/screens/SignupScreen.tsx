@@ -15,12 +15,12 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
-import Logo from '../assets/Logo.svg';
-import VK from '../assets/VK.svg';
-import BackIcon from '../assets/Back.svg';
-import InfoIcon from '../assets/InfoIcon.svg';
-import CheckboxChecked from '../assets/CheckboxChecked.svg';
-import CheckboxUnchecked from '../assets/CheckboxUnchecked.svg';
+import Logo from '../components/svg/Logo';
+import VK from '../components/svg/VK';
+import BackIcon from '../components/svg/BackIcon';
+import InfoIcon from '../components/svg/InfoIcon';
+import CheckboxChecked from '../components/svg/CheckboxChecked';
+import CheckboxUnchecked from '../components/svg/CheckboxUnchecked';
 import { Dimensions } from 'react-native';
 import * as api from '../services/api';
 

@@ -21,7 +21,7 @@ from auth_service import auth_service
 from oauth_service import oauth_service
 import payment_service
 import schemas
-from schemas import UserCreate
+from schemas import UserCreate, EmailVerificationRequest
 from mail_service import mail_service
 
 limiter = Limiter(key_func=get_remote_address)
@@ -391,11 +391,11 @@ async def register(user_data: UserCreate, db: Session = Depends(get_db)):
     )
 
     # Send verification email
-    token = auth_service.create_verification_token(db, user)
+    code = auth_service.create_verification_code(db, user)
     mail_service.send_email(
         to_email=user.email,
         subject="Verify your email address",
-        html_content=f"Please click the following link to verify your email address: <a href=\"http://localhost:3000/verify-email?token={token}\">Verify Email</a>"
+        html_content=f"Your email verification code is: <b>{code}</b>. It will expire in {settings.EMAIL_VERIFICATION_CODE_EXPIRE_MINUTES} minutes. Please enter this code in the app to verify your email."
     )
     
     # Create access token
@@ -635,26 +635,29 @@ async def request_verification(request: Request, current_user: User = Depends(ge
     if current_user.is_email_verified:
         raise HTTPException(status_code=400, detail="Email already verified")
 
-    token = auth_service.create_verification_token(db, current_user)
+    code = auth_service.create_verification_code(db, current_user)
     mail_service.send_email(
         to_email=current_user.email,
         subject="Verify your email address",
-        html_content=f"Please click the following link to verify your email address: <a href=\"http://localhost:3000/verify-email?token={token}\">Verify Email</a>"
+        html_content=f"Your email verification code is: <b>{code}</b>. It will expire in {settings.EMAIL_VERIFICATION_CODE_EXPIRE_MINUTES} minutes. Please enter this code in the app to verify your email."
     )
     return {"message": "Verification email sent"}
 
 @app.post("/api/v1/auth/verify-email")
-async def verify_email(token: str, db: Session = Depends(get_db)):
-    user = db.query(User).filter(User.verification_token == token).first()
+async def verify_email(verification_data: schemas.EmailVerificationRequest, db: Session = Depends(get_db)):
+    user = auth_service.get_user_by_email(db, verification_data.email)
     if not user:
-        raise HTTPException(status_code=400, detail="Invalid token")
+        raise HTTPException(status_code=400, detail="Invalid email or code")
 
-    if user.verification_token_expires < datetime.utcnow():
-        raise HTTPException(status_code=400, detail="Token has expired")
+    if user.email_verification_code != verification_data.code:
+        raise HTTPException(status_code=400, detail="Invalid email or code")
+
+    if user.email_verification_code_expires_at < datetime.utcnow():
+        raise HTTPException(status_code=400, detail="Verification code has expired")
 
     user.is_email_verified = True
-    user.verification_token = None
-    user.verification_token_expires = None
+    user.email_verification_code = None
+    user.email_verification_code_expires_at = None
     db.commit()
 
     return {"message": "Email verified successfully"}
@@ -1068,7 +1071,7 @@ async def get_profile_completion_status(current_user: User = Depends(get_current
     
     if not is_gender_complete:
         missing_fields.append('gender')
-        required_screens.append('gender_selection') # Assuming a screen for gender selection
+        required_screens.append('confirmation') # Assuming a screen for gender selection
     if not is_brands_complete:
         missing_fields.append('favorite_brands')
         required_screens.append('brand_selection') # Assuming a screen for brand selection

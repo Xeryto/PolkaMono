@@ -1,6 +1,6 @@
 import React, { useRef, useEffect } from 'react';
 import { View, Text, StyleSheet, Animated, Dimensions, Easing } from 'react-native';
-import Logo from './assets/Logo.svg';
+import Logo from './components/svg/Logo';
 
 interface LoadingScreenProps {
   onFinish: () => void;
@@ -28,7 +28,7 @@ const AuthLoadingScreen: React.FC<LoadingScreenProps> = ({ onFinish }) => {
   useEffect(() => {
     // Wait for 500ms with the logo showing
     const initialDelay = Animated.delay(500);
-    
+
     // First jump up - use a specific easing function to prevent bounce
     const jumpUp = Animated.timing(positionY, {
       toValue: height * 0.05, // Jump up by 15% of screen height
@@ -36,10 +36,10 @@ const AuthLoadingScreen: React.FC<LoadingScreenProps> = ({ onFinish }) => {
       useNativeDriver: true,
       easing: Easing.out(Easing.cubic), // Smoother deceleration
     });
-    
+
     // Calculate the position to move the logo all the way to the navbar
     const navbarPosition = -height*0.4;
-    
+
     // Keep the background visible but fade the logo
     const fadeOutLogo = Animated.timing(fadeAnim, {
       toValue: 0,
@@ -47,7 +47,7 @@ const AuthLoadingScreen: React.FC<LoadingScreenProps> = ({ onFinish }) => {
       useNativeDriver: true,
       easing: Easing.linear, // Linear fade for consistency
     });
-    
+
     // Important: Fade out the background completely for a smooth transition
     // Fade out background slightly slower to ensure smooth transition
     const fadeOutBg = Animated.timing(bgFadeAnim, {
@@ -56,14 +56,14 @@ const AuthLoadingScreen: React.FC<LoadingScreenProps> = ({ onFinish }) => {
       useNativeDriver: true,
       easing: Easing.linear,
     });
-    
+
     const shrink = Animated.timing(scaleAnim, {
       toValue: LOGO_SIZE_SMALL / LOGO_SIZE_LARGE,
       duration: 500,
       useNativeDriver: true,
       easing: Easing.linear, // Linear scaling for consistency
     });
-    
+
     const moveUp = Animated.timing(positionY, {
       toValue: navbarPosition,
       duration: 500,
@@ -81,24 +81,24 @@ const AuthLoadingScreen: React.FC<LoadingScreenProps> = ({ onFinish }) => {
       // This is important so the Welcome screen is fully visible
       safelyFinish();
     });
-    
+
     // Safety timeout in case animation fails to complete
     const safetyTimeout = setTimeout(() => {
       safelyFinish();
     }, 2500); // 2.5 second timeout
-    
+
     // Clean up on unmount
     return () => clearTimeout(safetyTimeout);
   }, []);
 
   return (
-    <Animated.View 
+    <Animated.View
       style={[
-        styles.container, 
-        { 
+        styles.container,
+        {
           opacity: bgFadeAnim,
           // Make sure background color has alpha for smooth transitions
-          backgroundColor: 'rgba(243, 230, 214, 1)' 
+          backgroundColor: 'rgba(243, 230, 214, 1)'
         }
       ]}
     >
@@ -116,8 +116,8 @@ const AuthLoadingScreen: React.FC<LoadingScreenProps> = ({ onFinish }) => {
       >
         <Logo width={LOGO_SIZE_LARGE} height={LOGO_SIZE_LARGE} />
       </Animated.View>
-      
-      <Animated.Text 
+
+      <Animated.Text
         style={[
           styles.poweredByText,
           { opacity: fadeAnim }
@@ -125,7 +125,7 @@ const AuthLoadingScreen: React.FC<LoadingScreenProps> = ({ onFinish }) => {
       >
         Powered by AI
       </Animated.Text>
-      
+
       <Animated.Text style={[styles.poweredByText, { opacity: fadeAnim, position: 'absolute', bottom: height*0.05 }]}>
         ПОЛКА
       </Animated.Text>
@@ -154,4 +154,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default AuthLoadingScreen;  
+export default AuthLoadingScreen;

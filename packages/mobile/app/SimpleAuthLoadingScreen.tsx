@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet, Dimensions } from 'react-native';
-import Logo from './assets/Logo.svg';
+import Logo from './components/svg/Logo';
 
 const { width, height } = Dimensions.get('window');
 const LOGO_SIZE = Math.min(width, height) * 0.3; // 30% of the smallest dimension

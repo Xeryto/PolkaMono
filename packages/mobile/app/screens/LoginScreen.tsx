@@ -15,9 +15,9 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
-import Logo from '../assets/Logo.svg';
-import VK from '../assets/VK.svg';
-import BackIcon from '../assets/Back.svg';
+import Logo from '../components/svg/Logo';
+import VK from '../components/svg/VK';
+import BackIcon from '../components/svg/BackIcon';
 import { Dimensions } from 'react-native';
 import * as api from '../services/api';
 
@@ -29,10 +29,9 @@ interface LoginScreenProps {
   onLogin: () => void;
   onBack: () => void;
   onForgotPassword: () => void;
-  onEmailNotVerified: () => void;
 }
 
-const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, onBack, onForgotPassword, onEmailNotVerified }) => {
+const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, onBack, onForgotPassword }) => {
   const [usernameOrEmail, setUsernameOrEmail] = useState('');
   const [password, setPassword] = useState('');
   const [errors, setErrors] = useState({
@@ -101,12 +100,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, onBack, onForgotPass
       setIsLoading(false);
       
       // After successful login, check email verification status
-      const userProfile = await api.getCurrentUser();
-      if (userProfile && !userProfile.is_email_verified) {
-        onEmailNotVerified();
-      } else {
-        onLogin(); // Notify parent component
-      }
+      onLogin(); // Notify parent component
     } catch (error) {
       setIsLoading(false);
       

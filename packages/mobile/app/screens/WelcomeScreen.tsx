@@ -13,7 +13,7 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
-import Logo from '../assets/Logo.svg';
+import Logo from '../components/svg/Logo';
 import LoginScreen from './LoginScreen';
 import SignupScreen from './SignupScreen';
 import ConfirmationScreen from './ConfirmationScreen';
@@ -25,21 +25,17 @@ interface WelcomeScreenProps {
 	onLogin: () => void;
 	onRegister: (username: string, email: string, password: string) => void;
   onForgotPassword: () => void;
-  onEmailNotVerified: () => void;
 }
 
 const { width, height } = Dimensions.get('window');
 const LOGO_SIZE = Math.min(width, height) * 0.27; // 25% of the smallest dimension
 
-const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onLogin, onRegister, onForgotPassword, onEmailNotVerified }) => {
+const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onLogin, onRegister, onForgotPassword }) => {
 	const [showLoginScreen, setShowLoginScreen] = useState(false);
 	const [showSignupScreen, setShowSignupScreen] = useState(false);
-	const [showConfirmationScreen, setShowConfirmationScreen] = useState(false);
-	const [showBrandSearchScreen, setShowBrandSearchScreen] = useState(false);
-	const [showStylesSelectionScreen, setShowStylesSelectionScreen] = useState(false);
+	
 	const [showForgotPasswordScreen, setShowForgotPasswordScreen] = useState(false);
-	const [selectedGender, setSelectedGender] = useState<'male' | 'female'>('male');
-	const [selectedBrands, setSelectedBrands] = useState<number[]>([]);
+	
 	const [isReady, setIsReady] = useState(false);
 	const [isSpinning, setIsSpinning] = useState(false);
 	
@@ -135,32 +131,7 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onLogin, onRegister, onFo
 		await onRegister(username, email, password);
 	};
 	
-	// Handle confirmation screen completion and move to brand search
-	const handleConfirmationComplete = (choice: 'male' | 'female') => {
-		console.log(`User selected option: ${choice}`);
-		// Save the selected option and show brand search screen
-		setSelectedGender(choice);
-		setShowConfirmationScreen(false);
-		setShowBrandSearchScreen(true);
-	};
 	
-	// Handle brand search completion and show styles selection
-	const handleBrandSearchComplete = (brands: number[]) => {
-		console.log(`User selected brands: ${brands.join(', ')}`);
-		// Save the selected brands and show styles selection screen
-		setSelectedBrands(brands);
-		setShowBrandSearchScreen(false);
-		setShowStylesSelectionScreen(true);
-	};
-	
-	// Handle styles selection completion and register the user
-	const handleStylesSelectionComplete = (styles: string[]) => {
-    console.log(`User selected styles: ${styles.join(', ')}`);
-    // The actual registration (username, email, password) is handled by handleSuccessfulSignup.
-    // Profile completion (gender, brands, styles) is handled by App.tsx after login.
-    // So, after styles selection, we just signal that the flow is complete.
-    onLogin(); // Signal to parent App.tsx that login flow is complete
-};
 	
 	// If showing login screen
 	if (showLoginScreen) {
@@ -169,7 +140,6 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onLogin, onRegister, onFo
 				onLogin={handleSuccessfulLogin} 
 				onBack={handleBackPress} 
 				onForgotPassword={handleForgotPasswordPress}
-				onEmailNotVerified={onEmailNotVerified}
 			/>
 		);
 	}
@@ -184,45 +154,7 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onLogin, onRegister, onFo
 		);
 	}
 	
-	// If showing confirmation screen
-	if (showConfirmationScreen) {
-		return (
-			<ConfirmationScreen 
-				onComplete={handleConfirmationComplete} 
-				onBack={() => {
-					setShowConfirmationScreen(false);
-					setShowSignupScreen(true);
-				}}
-			/>
-		);
-	}
 	
-	// If showing brand search screen
-	if (showBrandSearchScreen) {
-		return (
-			<BrandSearchScreen 
-				onComplete={handleBrandSearchComplete}
-				onBack={() => {
-					setShowBrandSearchScreen(false);
-					setShowConfirmationScreen(true);
-				}}
-			/>
-		);
-	}
-	
-	// If showing styles selection screen
-	if (showStylesSelectionScreen) {
-		return (
-			<StylesSelectionScreen 
-				gender={selectedGender}
-				onComplete={handleStylesSelectionComplete}
-				onBack={() => {
-					setShowStylesSelectionScreen(false);
-					setShowBrandSearchScreen(true);
-				}}
-			/>
-		);
-	}
 
 	return (
 		<LinearGradient

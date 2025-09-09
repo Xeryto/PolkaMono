@@ -16,12 +16,12 @@ import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
 import Animated, { FadeInDown, FadeOutDown } from 'react-native-reanimated';
 
-import Cart2 from './assets/Cart2.svg';
-import Heart2 from './assets/Heart2.svg';
-import HeartFilled from './assets/HeartFilled.svg';
-import More from './assets/More.svg';
-import Seen from './assets/Seen.svg';
-import Cancel from './assets/Cancel.svg';
+import Cart2 from './components/svg/Cart2';
+import Heart2 from './components/svg/Heart2';
+import HeartFilled from './components/svg/HeartFilled';
+import More from './components/svg/More';
+import Seen from './components/svg/Seen';
+import Cancel from './components/svg/Cancel';
 import * as api from './services/api';
 import fallbackImage from './assets/Vision.png'; // Use as fallback for missing images
 import vision2Image from './assets/Vision2.png';

@@ -14,8 +14,8 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import Animated, { FadeInDown } from 'react-native-reanimated';
-import Logo from '../assets/Logo.svg';
-import BackIcon from '../assets/Back.svg';
+import Logo from '../components/svg/Logo';
+import BackIcon from '../components/svg/BackIcon';
 import { Dimensions } from 'react-native';
 import * as api from '../services/api';
 

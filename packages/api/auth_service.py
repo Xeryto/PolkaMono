@@ -236,13 +236,13 @@ class AuthService:
         """Generate a cryptographically secure random token."""
         return secrets.token_urlsafe(length)
 
-    def create_verification_token(self, db: Session, user: User):
-        """Generate and store a verification token for the user."""
-        token = self._generate_secure_token()
-        user.verification_token = token
-        user.verification_token_expires = datetime.utcnow() + timedelta(minutes=30)
+    def create_verification_code(self, db: Session, user: User):
+        """Generate and store an email verification code for the user."""
+        code = ''.join(secrets.choice('0123456789') for _ in range(6))
+        user.email_verification_code = code
+        user.email_verification_code_expires_at = datetime.utcnow() + timedelta(minutes=settings.EMAIL_VERIFICATION_CODE_EXPIRE_MINUTES)
         db.commit()
-        return token
+        return code
 
     def create_password_reset_token(self, db: Session, user: User):
         """Generate and store a password reset token for the user."""

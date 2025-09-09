@@ -17,7 +17,8 @@ import {
   ListRenderItemInfo,
   FlexAlignType,
   FlexStyle,
-  Alert
+  Alert,
+  ImageStyle // Added ImageStyle
 } from 'react-native';
 import Animated, { 
   FadeIn, 
@@ -31,12 +32,13 @@ import Animated, {
   FadeOut,
   runOnJS
 } from 'react-native-reanimated';
-import PlusSvg from './assets/Plus.svg';
-import BackIcon from './assets/Back.svg';
-import CheckIcon from './assets/Check.svg';
-import CancelIcon from './assets/CancelThin.svg';
-import CancelThickIcon from './assets/Cancel.svg';
-import PlusIcon from './assets/PlusBlack.svg';
+import PlusSvg from './components/svg/PlusSvg';
+import BackIcon from './components/svg/BackIcon';
+import Tick from './assets/Tick';
+import CancelIcon from './components/svg/CancelThinIcon';
+import CancelThickIcon from './components/svg/CancelThickIcon';
+import PlusIcon from './components/svg/PlusBlackIcon';
+import CheckIcon from './components/svg/CheckIcon';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
 import * as api from './services/api';
@@ -740,7 +742,7 @@ const Favorites = ({ navigation }: FavoritesProps) => {
                 handleNavigate('Home', item, true);
               }}
             >
-              <Image source={item.images[0]} style={styles.itemImage} />
+              <Image source={item.images[0]} style={styles.itemImage as ImageStyle} />
               <View style={styles.itemInfo}>
                 <Text style={styles.itemName} numberOfLines={1}>{item.brand_name}</Text>
               </View>
@@ -769,7 +771,7 @@ const Favorites = ({ navigation }: FavoritesProps) => {
                 handleNavigate('Home', item, true);
               }}
             >
-              <Image source={item.images[0]} style={styles.itemImage} />
+              <Image source={item.images[0]} style={styles.itemImage as ImageStyle} />
               <View style={styles.itemInfo}>
                 <Text style={styles.itemName} numberOfLines={1}>{item.brand_name}</Text>
               </View>
@@ -859,7 +861,7 @@ const Favorites = ({ navigation }: FavoritesProps) => {
                 handleNavigate('Home', { ...item, isLiked: item.isLiked }, true);
               }}
             >
-              <Image source={item.images[0]} style={styles.itemImage} />
+              <Image source={item.images[0]} style={styles.itemImage as ImageStyle} />
               <View style={styles.itemInfo}>
                 <Text style={styles.itemName} numberOfLines={1}>{item.brand_name}</Text>
               </View>
@@ -977,7 +979,7 @@ const Favorites = ({ navigation }: FavoritesProps) => {
             }}
           >
             <View style={styles.imageContainer}>
-              <Image source={require('./assets/Vision.png')} style={styles.userImage} />
+              <Image source={require('./assets/Vision.png')} style={styles.userImage as ImageStyle} />
             </View>
             <View style={styles.userInfo}>
               <Text style={styles.itemName} numberOfLines={1}>@{item.username}</Text>

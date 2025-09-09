@@ -21,8 +21,8 @@ import Animated, {
   FadeOutDown,
   FadeOut
 } from 'react-native-reanimated';
-import Logo from '../assets/Logo.svg';
-import BackIcon from '../assets/Back.svg';
+import Logo from '../components/svg/Logo';
+import BackIcon from '../components/svg/BackIcon';
 import * as api from '../services/api';
 
 const { width, height } = Dimensions.get('window');

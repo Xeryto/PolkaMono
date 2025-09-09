@@ -76,6 +76,10 @@ class ResetPasswordRequest(BaseModel):
     token: str
     new_password: str
 
+class EmailVerificationRequest(BaseModel):
+    email: EmailStr
+    code: str
+
 class ExclusiveAccessSignupRequest(BaseModel):
     email: EmailStr
 

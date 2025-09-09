@@ -28,8 +28,8 @@ import Animated, {
   withSequence,
   FadeOut
 } from 'react-native-reanimated';
-import BackIcon from './assets/Back.svg';
-import LogOut from './assets/LogOut.svg';
+import BackIcon from './components/svg/BackIcon';
+import LogOut from './components/svg/LogOut';
 import * as Haptics from 'expo-haptics';
 import Tick from './assets/Tick';
 import { Canvas, RoundedRect, Shadow } from '@shopify/react-native-skia';
@@ -53,7 +53,7 @@ interface CardItem {
   id: string;
   name: string;
   brand: string; // Added brand
-  price: string;
+  price: number;
   images: any[]; // Change to array of images
   isLiked?: boolean;
   size?: string;
@@ -729,7 +729,7 @@ const Settings = ({ navigation, onLogout }: SettingsProps) => {
           ))}
         </ScrollView>
         <Animated.View entering={FadeInDown.duration(500).delay(350)} style={styles.orderTotalContainer}>
-          <Text style={styles.orderTotalText}>ИТОГО {selectedOrder?.total}</Text>
+          <Text style={styles.orderTotalText}>ИТОГО {selectedOrder?.total_amount}</Text>
         </Animated.View>
         <Animated.View entering={FadeInDown.duration(500).delay(400)} style={styles.orderStatusContainer}>
           <Text style={[styles.orderStatusText, {marginLeft: 20}]}>Статус</Text>
@@ -784,7 +784,7 @@ const Settings = ({ navigation, onLogout }: SettingsProps) => {
                     <Text style={styles.orderNumber}>Заказ №{order.number}</Text>
                   </TouchableOpacity>
                   <Text style={styles.orderSummary}>
-                    Итого: {order.total}
+                    Итого: {order.total_amount}
                   </Text>
                 </Animated.View>
               ))}
