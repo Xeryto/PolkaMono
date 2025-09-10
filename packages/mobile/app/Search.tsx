@@ -483,8 +483,8 @@ const Search = ({ navigation }: SearchProps) => {
         >
           {filteredResults.length === 0 ? (
             <View style={styles.noResultsContainer}>
-              <Text style={styles.noResultsText}>No results found</Text>
-              <Text style={styles.loadingText}>Loading...</Text>
+              <Text style={styles.noResultsText}>Результаты не найдены</Text>
+              <Text style={styles.loadingText}>Загрузка...</Text>
             </View>
           ) : (
             <FlatList

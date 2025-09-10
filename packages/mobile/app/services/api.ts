@@ -29,6 +29,9 @@ class SessionManager {
   private refreshPromise: Promise<string> | null = null;
   private sessionState: SessionState = SessionState.UNKNOWN;
   private logoutInProgress = false;
+  private userProfileCache: UserProfile | null = null;
+  private userProfileCacheTime: number = 0;
+  private readonly USER_CACHE_DURATION = 30 * 1000; // 30 seconds
 
   // Add event listener
   addListener(listener: SessionEventListener) {
@@ -174,6 +177,11 @@ class SessionManager {
       await SecureStore.deleteItemAsync('authToken');
       await SecureStore.deleteItemAsync('refreshToken');
       await AsyncStorage.multiRemove(['tokenExpiry', 'userProfile']);
+      
+      // Clear user profile cache
+      this.userProfileCache = null;
+      this.userProfileCacheTime = 0;
+      
       this.sessionState = SessionState.EXPIRED;
       this.emit('session_cleared');
     } catch (error) {
@@ -212,7 +220,22 @@ class SessionManager {
   }
 
   async getCurrentUser(): Promise<UserProfile | null> {
-    return await retrieveUserProfile();
+    const now = Date.now();
+    
+    // Return cached user profile if it's still fresh
+    if (this.userProfileCache && (now - this.userProfileCacheTime) < this.USER_CACHE_DURATION) {
+      console.log('Returning cached user profile from session manager');
+      return this.userProfileCache;
+    }
+    
+    console.log('Fetching fresh user profile from session manager');
+    const user = await retrieveUserProfile();
+    
+    // Cache the result
+    this.userProfileCache = user;
+    this.userProfileCacheTime = now;
+    
+    return user;
   }
 }
 
@@ -496,13 +519,57 @@ export const oauthLogin = async (provider: string, token: string): Promise<AuthR
 
 // Updated User profile API functions
 export const getCurrentUser = async (): Promise<UserProfile> => {
-  const response: UserProfile = await apiRequest('/api/v1/user/profile', 'GET');
-  await storeUserProfile(response); // Update stored profile
-  return response;
+  const requestKey = 'getCurrentUser';
+  
+  // Check if there's already a pending request
+  if (pendingRequests.has(requestKey)) {
+    console.log('Waiting for existing user profile request');
+    return pendingRequests.get(requestKey)!;
+  }
+  
+  console.log('Fetching user profile from API');
+  const userPromise = apiRequest('/api/v1/user/profile', 'GET').then(response => {
+    // Update stored profile
+    storeUserProfile(response);
+    // Remove from pending requests
+    pendingRequests.delete(requestKey);
+    return response;
+  }).catch(error => {
+    // Remove from pending requests on error
+    pendingRequests.delete(requestKey);
+    throw error;
+  });
+  
+  // Store the pending request
+  pendingRequests.set(requestKey, userPromise);
+  
+  return userPromise;
 };
 
 export const getProfileCompletionStatus = async (): Promise<ProfileCompletionStatus> => {
-  return await apiRequest('/api/v1/user/profile/completion-status', 'GET');
+  const requestKey = 'getProfileCompletionStatus';
+  
+  // Check if there's already a pending request
+  if (pendingRequests.has(requestKey)) {
+    console.log('Waiting for existing profile completion status request');
+    return pendingRequests.get(requestKey)!;
+  }
+  
+  console.log('Fetching profile completion status from API');
+  const completionPromise = apiRequest('/api/v1/user/profile/completion-status', 'GET').then(status => {
+    // Remove from pending requests
+    pendingRequests.delete(requestKey);
+    return status;
+  }).catch(error => {
+    // Remove from pending requests on error
+    pendingRequests.delete(requestKey);
+    throw error;
+  });
+  
+  // Store the pending request
+  pendingRequests.set(requestKey, completionPromise);
+  
+  return completionPromise;
 };
 
 export const getOAuthAccounts = async (): Promise<any[]> => {
@@ -545,13 +612,97 @@ export const updateUserStyles = async (styleIds: string[]): Promise<any> => {
   return response;
 };
 
-// NEW: Brand and Style API functions
+// Data caching for brands and styles to prevent refetching
+let brandsCache: Brand[] | null = null;
+let stylesCache: Style[] | null = null;
+let brandsCacheTime: number = 0;
+let stylesCacheTime: number = 0;
+const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+
+// Request deduplication to prevent multiple identical requests
+const pendingRequests = new Map<string, Promise<any>>();
+
+// NEW: Brand and Style API functions with caching and deduplication
 export const getBrands = async (): Promise<Brand[]> => {
-  return await apiRequest('/api/v1/brands', 'GET', undefined, false);
+  const now = Date.now();
+  
+  // Return cached data if it's still fresh
+  if (brandsCache && (now - brandsCacheTime) < CACHE_DURATION) {
+    console.log('Returning cached brands data');
+    return brandsCache;
+  }
+  
+  // Check if there's already a pending request
+  const requestKey = 'getBrands';
+  if (pendingRequests.has(requestKey)) {
+    console.log('Waiting for existing brands request');
+    return pendingRequests.get(requestKey)!;
+  }
+  
+  console.log('Fetching fresh brands data from API');
+  const brandsPromise = apiRequest('/api/v1/brands', 'GET', undefined, false).then(brands => {
+    // Cache the result
+    brandsCache = brands;
+    brandsCacheTime = now;
+    // Remove from pending requests
+    pendingRequests.delete(requestKey);
+    return brands;
+  }).catch(error => {
+    // Remove from pending requests on error
+    pendingRequests.delete(requestKey);
+    throw error;
+  });
+  
+  // Store the pending request
+  pendingRequests.set(requestKey, brandsPromise);
+  
+  return brandsPromise;
 };
 
 export const getStyles = async (): Promise<Style[]> => {
-  return await apiRequest('/api/v1/styles', 'GET', undefined, false);
+  const now = Date.now();
+  
+  // Return cached data if it's still fresh
+  if (stylesCache && (now - stylesCacheTime) < CACHE_DURATION) {
+    console.log('Returning cached styles data');
+    return stylesCache;
+  }
+  
+  // Check if there's already a pending request
+  const requestKey = 'getStyles';
+  if (pendingRequests.has(requestKey)) {
+    console.log('Waiting for existing styles request');
+    return pendingRequests.get(requestKey)!;
+  }
+  
+  console.log('Fetching fresh styles data from API');
+  const stylesPromise = apiRequest('/api/v1/styles', 'GET', undefined, false).then(styles => {
+    // Cache the result
+    stylesCache = styles;
+    stylesCacheTime = now;
+    // Remove from pending requests
+    pendingRequests.delete(requestKey);
+    return styles;
+  }).catch(error => {
+    // Remove from pending requests on error
+    pendingRequests.delete(requestKey);
+    throw error;
+  });
+  
+  // Store the pending request
+  pendingRequests.set(requestKey, stylesPromise);
+  
+  return stylesPromise;
+};
+
+// Clear cache function for when user logs out
+export const clearDataCache = () => {
+  brandsCache = null;
+  stylesCache = null;
+  brandsCacheTime = 0;
+  stylesCacheTime = 0;
+  pendingRequests.clear();
+  console.log('Data cache and pending requests cleared');
 };
 
 // Friends interfaces
@@ -655,12 +806,21 @@ export const healthCheck = async (): Promise<any> => {
   return await apiRequest('/health', 'GET', undefined, false);
 };
 
-export const requestPasswordReset = async (email: string): Promise<void> => {
-  await apiRequest('/api/v1/auth/forgot-password', 'POST', { email }, false);
+export const requestPasswordReset = async (identifier: string): Promise<void> => {
+  await apiRequest('/api/v1/auth/forgot-password', 'POST', { identifier }, false);
 };
 
 export const resetPassword = async (token: string, password: string): Promise<void> => {
   await apiRequest('/api/v1/auth/reset-password', 'POST', { token, password }, false);
+};
+
+export const resetPasswordWithCode = async (identifier: string, code: string, password: string): Promise<void> => {
+  await apiRequest('/api/v1/auth/reset-password-with-code', 'POST', { identifier, code, new_password: password }, false);
+};
+
+// Validate password reset code with backend
+export const validatePasswordResetCode = async (identifier: string, code: string): Promise<void> => {
+  await apiRequest('/api/v1/auth/validate-password-reset-code', 'POST', { identifier, code }, false);
 };
 
 export const verifyEmail = async (code: string): Promise<void> => {

@@ -17,6 +17,7 @@ import StylesSelectionScreen from './app/screens/StylesSelectionScreen';
 import ForgotPasswordScreen from './app/screens/ForgotPasswordScreen';
 import ResetPasswordScreen from './app/screens/ResetPasswordScreen';
 import VerificationCodeScreen from './app/screens/VerificationCodeScreen';
+import PasswordResetVerificationScreen from './app/screens/PasswordResetVerificationScreen';
 
 
 import * as SplashScreen from 'expo-splash-screen';
@@ -100,6 +101,8 @@ export default function App() {
   const [gender, setGender] = useState<'male' | 'female' | null>(null);
   const [selectedBrands, setSelectedBrands] = useState<number[]>([]);
   const [userEmail, setUserEmail] = useState<string>('');
+  const [forgotPasswordEmail, setForgotPasswordEmail] = useState<string>('');
+  const [passwordResetCode, setPasswordResetCode] = useState<string>('');
   
   const [currentScreen, setCurrentScreen] = useState<ScreenName>('Home');
   const [previousScreen, setPreviousScreen] = useState<ScreenName | null>(null);
@@ -108,8 +111,9 @@ export default function App() {
   const [comingFromSignup, setComingFromSignup] = useState(false); // Track if user is coming from signup
   
   const [isInitialLoad, setIsInitialLoad] = useState(true);
+  const [isAuthFlowInProgress, setIsAuthFlowInProgress] = useState(false);
 
-  type AppPhase = 'boot' | 'unauthenticated' | 'email_verification' | 'profile_confirm' | 'profile_brands' | 'profile_styles' | 'main';
+  type AppPhase = 'boot' | 'unauthenticated' | 'email_verification' | 'forgot_password' | 'password_reset_verification' | 'password_reset' | 'profile_confirm' | 'profile_brands' | 'profile_styles' | 'main';
   type Overlay = 'none' | 'static' | 'up' | 'down';
 
   interface AppNavState {
@@ -224,7 +228,12 @@ export default function App() {
 
       try {
         console.log('Checking user profile and email verification...');
-        const user = await api.getCurrentUser();
+        // Try to get user from session manager first to avoid duplicate API calls
+        let user = await sessionManager.getCurrentUser();
+        if (!user) {
+          // Fallback to API call if session manager doesn't have user
+          user = await api.getCurrentUser();
+        }
         setUserEmail(user.email);
         
         // Check email verification first
@@ -239,6 +248,23 @@ export default function App() {
         setProfileCompletionStatus(completionStatus);
         const required = completionStatus.requiredScreens || [];
         if (!completionStatus.isComplete && required.length > 0) {
+          // Preload data for the next screen to prevent timing issues
+          const preloadPromises = [];
+          if (required.includes('brand_selection')) {
+            preloadPromises.push(api.getBrands());
+          }
+          if (required.includes('style_selection')) {
+            preloadPromises.push(api.getStyles());
+          }
+          
+          // Wait for preloading to complete before transitioning
+          if (preloadPromises.length > 0) {
+            console.log('Preloading data for profile completion screens...');
+            await Promise.all(preloadPromises);
+            console.log('Data preloading completed');
+          }
+          
+          // Keep static loading screen until we're ready to show the completion screen
           if (required.includes('confirmation')) {
             transitionTo('profile_confirm', 'up');
           } else if (required.includes('brand_selection')) {
@@ -325,8 +351,18 @@ export default function App() {
   };
 
   const handleLogin = async () => {
+    // Prevent multiple simultaneous login flows
+    if (isAuthFlowInProgress) {
+      console.log('Login flow already in progress, skipping...');
+      return;
+    }
+    
     try {
+      setIsAuthFlowInProgress(true);
       console.log('App - User logged in, checking profile completion status');
+      
+      // Show loading screen immediately to prevent UI flicker
+      dispatchNav({ type: 'SET_OVERLAY', overlay: 'static' });
       
       // Use the login function from the useSession hook to update the auth state
       await login();
@@ -347,8 +383,25 @@ export default function App() {
       setProfileCompletionStatus(completionStatus);
       console.log('Profile completion status after login:', JSON.stringify(completionStatus));
       const required = completionStatus.requiredScreens || [];
+      
       if (!completionStatus.isComplete && required.length > 0) {
-        dispatchNav({ type: 'SET_OVERLAY', overlay: 'up' });
+        // Preload data for the next screen to prevent timing issues
+        const preloadPromises = [];
+        if (required.includes('brand_selection')) {
+          preloadPromises.push(api.getBrands());
+        }
+        if (required.includes('style_selection')) {
+          preloadPromises.push(api.getStyles());
+        }
+        
+        // Wait for preloading to complete before transitioning
+        if (preloadPromises.length > 0) {
+          console.log('Preloading data for profile completion screens...');
+          await Promise.all(preloadPromises);
+          console.log('Data preloading completed');
+        }
+        
+        // Keep static loading screen until we're ready to show the completion screen
         if (required.includes('confirmation')) {
           transitionTo('profile_confirm');
         } else if (required.includes('brand_selection')) {
@@ -369,13 +422,25 @@ export default function App() {
       setComingFromSignup(false);
       dispatchNav({ type: 'SET_OVERLAY', overlay: 'down' });
       transitionTo('main');
+    } finally {
+      setIsAuthFlowInProgress(false);
     }
   };
 
   const handleRegister = async (username: string, email: string, password: string) => {
+    // Prevent multiple simultaneous registration flows
+    if (isAuthFlowInProgress) {
+      console.log('Registration flow already in progress, skipping...');
+      return;
+    }
+    
     try {
+      setIsAuthFlowInProgress(true);
       await api.registerUser(username, email, password);
       console.log('App - User registered, checking profile completion status');
+
+      // Show loading screen immediately to prevent UI flicker
+      dispatchNav({ type: 'SET_OVERLAY', overlay: 'static' });
 
       await login(); // Automatically log in the user after registration
       
@@ -398,7 +463,24 @@ export default function App() {
       const required = completionStatus.requiredScreens || [];
       if (!completionStatus.isComplete && required.length > 0) {
         setComingFromSignup(true);
-        dispatchNav({ type: 'SET_OVERLAY', overlay: 'up' });
+        
+        // Preload data for the next screen to prevent timing issues
+        const preloadPromises = [];
+        if (required.includes('brand_selection')) {
+          preloadPromises.push(api.getBrands());
+        }
+        if (required.includes('style_selection')) {
+          preloadPromises.push(api.getStyles());
+        }
+        
+        // Wait for preloading to complete before transitioning
+        if (preloadPromises.length > 0) {
+          console.log('Preloading data for profile completion screens...');
+          await Promise.all(preloadPromises);
+          console.log('Data preloading completed');
+        }
+        
+        // Keep static loading screen until we're ready to show the completion screen
         if (required.includes('confirmation')) {
           transitionTo('profile_confirm');
         } else if (required.includes('brand_selection')) {
@@ -419,6 +501,8 @@ export default function App() {
       setComingFromSignup(false);
       dispatchNav({ type: 'SET_OVERLAY', overlay: 'down' });
       transitionTo('main');
+    } finally {
+      setIsAuthFlowInProgress(false);
     }
   };
 
@@ -428,6 +512,9 @@ export default function App() {
       
       // Clear cart
       await cartStorage.clearCart();
+      
+      // Clear data cache
+      api.clearDataCache();
       
       // Clear session
       await api.logoutUser();
@@ -544,9 +631,19 @@ export default function App() {
   };
 
   const handleEmailVerificationSuccess = async () => {
-    console.log('Email verification successful, checking profile completion...');
+    // Prevent multiple simultaneous verification flows
+    if (isAuthFlowInProgress) {
+      console.log('Email verification flow already in progress, skipping...');
+      return;
+    }
     
     try {
+      setIsAuthFlowInProgress(true);
+      console.log('Email verification successful, checking profile completion...');
+      
+      // Show loading screen immediately to prevent UI flicker
+      dispatchNav({ type: 'SET_OVERLAY', overlay: 'static' });
+      
       // Refresh user profile to get updated email verification status
       const user = await api.getCurrentUser();
       setUserEmail(user.email);
@@ -557,6 +654,23 @@ export default function App() {
       const required = completionStatus.requiredScreens || [];
       
       if (!completionStatus.isComplete && required.length > 0) {
+        // Preload data for the next screen to prevent timing issues
+        const preloadPromises = [];
+        if (required.includes('brand_selection')) {
+          preloadPromises.push(api.getBrands());
+        }
+        if (required.includes('style_selection')) {
+          preloadPromises.push(api.getStyles());
+        }
+        
+        // Wait for preloading to complete before transitioning
+        if (preloadPromises.length > 0) {
+          console.log('Preloading data for profile completion screens...');
+          await Promise.all(preloadPromises);
+          console.log('Data preloading completed');
+        }
+        
+        // Keep static loading screen until we're ready to show the completion screen
         if (required.includes('confirmation')) {
           transitionTo('profile_confirm');
         } else if (required.includes('brand_selection')) {
@@ -575,7 +689,31 @@ export default function App() {
       console.error('Error checking profile completion after email verification:', error);
       dispatchNav({ type: 'SET_OVERLAY', overlay: 'down' });
       transitionTo('main');
+    } finally {
+      setIsAuthFlowInProgress(false);
     }
+  };
+
+  const handleForgotPassword = async (usernameOrEmail: string) => {
+    console.log('Password reset requested for:', usernameOrEmail);
+    setForgotPasswordEmail(usernameOrEmail);
+    dispatchNav({ type: 'SET_OVERLAY', overlay: 'up' });
+    transitionTo('password_reset_verification');
+  };
+
+  const handlePasswordResetVerificationSuccess = async (code: string) => {
+    console.log('Password reset verification successful, showing reset form...');
+    setPasswordResetCode(code);
+    transitionTo('password_reset');
+  };
+
+  const handlePasswordResetSuccess = async () => {
+    console.log('Password reset successful, returning to login...');
+    // Clear forgot password state
+    setForgotPasswordEmail('');
+    setPasswordResetCode('');
+    // Return to welcome screen
+    transitionTo('unauthenticated');
   };
 
   // Notify listeners before screen change
@@ -749,7 +887,7 @@ export default function App() {
       )}
 
       {navState.phase === 'unauthenticated' && (
-        <WelcomeScreen onLogin={handleLogin} onRegister={handleRegister} onForgotPassword={() => {}} />
+        <WelcomeScreen onLogin={handleLogin} onRegister={handleRegister} onForgotPassword={() => transitionTo('forgot_password')} />
       )}
 
       {navState.phase === 'email_verification' && (
@@ -759,6 +897,30 @@ export default function App() {
           onBack={() => {
             logout();
           }}
+        />
+      )}
+
+      {navState.phase === 'forgot_password' && (
+        <ForgotPasswordScreen 
+          onBack={() => transitionTo('unauthenticated')}
+          onSuccess={(usernameOrEmail: string) => handleForgotPassword(usernameOrEmail)}
+        />
+      )}
+
+      {navState.phase === 'password_reset_verification' && (
+        <PasswordResetVerificationScreen 
+          email={forgotPasswordEmail}
+          onVerificationSuccess={handlePasswordResetVerificationSuccess}
+          onBack={() => transitionTo('forgot_password')}
+        />
+      )}
+
+      {navState.phase === 'password_reset' && (
+        <ResetPasswordScreen 
+          onBack={() => transitionTo('password_reset_verification')}
+          onSuccess={handlePasswordResetSuccess}
+          identifier={forgotPasswordEmail}
+          code={passwordResetCode}
         />
       )}
 

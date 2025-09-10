@@ -50,7 +50,10 @@ const StylesSelectionScreen: React.FC<StylesSelectionScreenProps> = ({ gender, o
     setIsLoadingStyles(true);
     api.getStyles().then((styleList: any[]) => {
       setStylesOptions(styleList);
-      setIsLoadingStyles(false);
+      // Add a small delay to ensure smooth animation timing
+      setTimeout(() => {
+        setIsLoadingStyles(false);
+      }, 100);
     }).catch(err => {
       setStylesOptions([]);
       setIsLoadingStyles(false);
@@ -180,17 +183,25 @@ const StylesSelectionScreen: React.FC<StylesSelectionScreenProps> = ({ gender, o
                 </Animated.View>
               )}
               
-              <FlatList
-                data={styleOptions}
-                renderItem={renderStyleItem}
-                keyExtractor={(item) => item.id}
-                numColumns={1}
-                //contentContainerStyle={styles.stylesList}
-                onScroll={handleScroll}
-                scrollEventThrottle={16}
-                style={styles.stylesList}
-                showsVerticalScrollIndicator={false}
-              />
+              {isLoadingStyles ? (
+                <View style={styles.loadingContainer}>
+                  <Text style={styles.loadingText}>Загрузка стилей...</Text>
+                </View>
+              ) : (
+                <FlatList
+                  data={styleOptions}
+                  renderItem={renderStyleItem}
+                  keyExtractor={(item) => item.id}
+                  numColumns={1}
+                  onScroll={handleScroll}
+                  scrollEventThrottle={16}
+                  style={styles.stylesList}
+                  showsVerticalScrollIndicator={false}
+                  initialNumToRender={8}
+                  maxToRenderPerBatch={8}
+                  windowSize={8}
+                />
+              )}
             </Animated.View>
             <Animated.View 
               entering={FadeInDown.duration(500).delay(100)} 
@@ -452,6 +463,17 @@ const styles = StyleSheet.create({
     fontFamily: 'IgraSans',
     fontSize: 38,
     color: '#fff',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 20,
+  },
+  loadingText: {
+    fontFamily: 'IgraSans',
+    fontSize: 20,
+    color: '#000',
   },
 });
 

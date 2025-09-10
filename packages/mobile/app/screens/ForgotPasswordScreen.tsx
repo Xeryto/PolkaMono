@@ -25,39 +25,38 @@ const LOGO_SIZE = Math.min(width, height) * 0.3;
 
 interface ForgotPasswordScreenProps {
   onBack: () => void;
-  onSuccess: () => void;
+  onSuccess: (usernameOrEmail: string) => void;
 }
 
 const ForgotPasswordScreen: React.FC<ForgotPasswordScreenProps> = ({ onBack, onSuccess }) => {
-  const [email, setEmail] = useState('');
+  const [usernameOrEmail, setUsernameOrEmail] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
 
-  const validateEmail = () => {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!email.trim()) {
-      setError('Email is required');
-      return false;
-    } else if (!emailRegex.test(email)) {
-      setError('Invalid email format');
+  const validateInput = () => {
+    if (!usernameOrEmail.trim()) {
+      setError('Username or email is required');
       return false;
     }
     setError('');
     return true;
   };
 
-  const handleSendLinkPress = async () => {
-    if (!validateEmail()) return;
+  const handleSendCodePress = async () => {
+    if (!validateInput()) return;
 
     setIsLoading(true);
     try {
-      await api.requestPasswordReset(email);
+      await api.requestPasswordReset(usernameOrEmail);
       setIsLoading(false);
       setIsSuccess(true);
+      // Call onSuccess with the username/email
+      onSuccess(usernameOrEmail);
     } catch (err) {
       setIsLoading(false);
-      setError(err instanceof Error ? err.message : 'An unexpected error occurred.');
+      // Still call onSuccess to prevent email enumeration
+      onSuccess(usernameOrEmail);
     }
   };
 
@@ -96,12 +95,12 @@ const ForgotPasswordScreen: React.FC<ForgotPasswordScreenProps> = ({ onBack, onS
               
               {isSuccess ? (
                 <View style={styles.successContainer}>
-                  <Text style={styles.successText}>If an account with that email exists, a password reset link has been sent.</Text>
+                  <Text style={styles.successText}>Если аккаунт с таким именем пользователя или email существует, код подтверждения был отправлен.</Text>
                 </View>
               ) : (
                 <>
-                  <Text style={styles.title}>Reset Password</Text>
-                  <Text style={styles.subtitle}>Enter your email address below and we'll send you a link to reset your password.</Text>
+                  <Text style={styles.title}>Сброс пароля</Text>
+                  <Text style={styles.subtitle}>Введите ваше имя пользователя или email ниже, и мы отправим вам код подтверждения для сброса пароля.</Text>
                   
                   {error ? (
                     <View style={styles.errorContainer}>
@@ -113,13 +112,13 @@ const ForgotPasswordScreen: React.FC<ForgotPasswordScreenProps> = ({ onBack, onS
                     <View style={styles.inputContainer}>
                       <TextInput
                         style={[styles.input, error ? styles.inputError : null]}
-                        placeholder="Email"
+                        placeholder="Имя пользователя или Email"
                         placeholderTextColor="rgba(0, 0, 0, 1)"
                         autoCapitalize="none"
                         autoComplete="email"
                         keyboardType="email-address"
-                        value={email}
-                        onChangeText={setEmail}
+                        value={usernameOrEmail}
+                        onChangeText={setUsernameOrEmail}
                       />
                     </View>
                     {error ? (
@@ -129,14 +128,14 @@ const ForgotPasswordScreen: React.FC<ForgotPasswordScreenProps> = ({ onBack, onS
                   
                   <TouchableOpacity
                     style={[{alignItems: 'center', marginTop: 20, width: '100%'}]}
-                    onPress={handleSendLinkPress}
+                    onPress={handleSendCodePress}
                     disabled={isLoading}
                   >
                     <Animated.View entering={FadeInDown.duration(500).delay(100)} style={[styles.sendButton, isLoading ? styles.sendButtonDisabled : null]}>
                       {isLoading ? (
                         <ActivityIndicator color="#fff" />
                       ) : (
-                        <Text style={styles.sendButtonText}>Send Reset Link</Text>
+                        <Text style={styles.sendButtonText}>Отправить код</Text>
                       )}
                     </Animated.View>
                   </TouchableOpacity>

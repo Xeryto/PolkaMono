@@ -57,7 +57,10 @@ const BrandSearchScreen: React.FC<BrandSearchScreenProps> = ({ onComplete, onBac
     setIsLoadingBrands(true);
     api.getBrands().then((brandList: any[]) => {
       setBrands(brandList.map(b => ({ id: b.id, name: b.name })));
-      setIsLoadingBrands(false);
+      // Add a small delay to ensure smooth animation timing
+      setTimeout(() => {
+        setIsLoadingBrands(false);
+      }, 100);
     }).catch(err => {
       setBrands([]);
       setIsLoadingBrands(false);
@@ -285,6 +288,9 @@ const BrandSearchScreen: React.FC<BrandSearchScreenProps> = ({ onComplete, onBac
                   numColumns={1}
                   contentContainerStyle={styles.brandsList}
                   showsVerticalScrollIndicator={false}
+                  initialNumToRender={10}
+                  maxToRenderPerBatch={10}
+                  windowSize={10}
                 />
               )}
             </Animated.View>

@@ -39,6 +39,7 @@ class User(Base):
     email_verification_code_expires_at = Column(DateTime, nullable=True)
     password_reset_token = Column(String, nullable=True)
     password_reset_expires = Column(DateTime, nullable=True)
+    password_history = Column(ARRAY(String), default=list)  # Store last 5 password hashes
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     

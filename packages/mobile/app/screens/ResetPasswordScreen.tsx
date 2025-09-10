@@ -26,10 +26,11 @@ const LOGO_SIZE = Math.min(width, height) * 0.3;
 interface ResetPasswordScreenProps {
   onBack: () => void;
   onSuccess: () => void;
-  token: string; // The token from the deep link
+  identifier: string; // Can be username or email
+  code: string;
 }
 
-const ResetPasswordScreen: React.FC<ResetPasswordScreenProps> = ({ onBack, onSuccess, token }) => {
+const ResetPasswordScreen: React.FC<ResetPasswordScreenProps> = ({ onBack, onSuccess, identifier, code }) => {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [errors, setErrors] = useState({ password: '', confirmPassword: '', general: '' });
@@ -39,19 +40,33 @@ const ResetPasswordScreen: React.FC<ResetPasswordScreenProps> = ({ onBack, onSuc
     let valid = true;
     const newErrors = { password: '', confirmPassword: '', general: '' };
 
+    const illegalCharRegex = /[^a-zA-Z0-9#$-_!]/; // Only allow letters, numbers, and #$-_!
+    const passwordRegex = /^(?=.*[A-Za-z])(?=.*\d).+$/;
+
+    // Validate password
     if (!password) {
-      newErrors.password = 'Password is required';
+      newErrors.password = 'Пароль обязателен';
       valid = false;
     } else if (password.length < 6) {
-      newErrors.password = 'Password must be at least 6 characters';
+      newErrors.password = 'Пароль должен быть не менее 6 символов';
+      valid = false;
+    } else if (!passwordRegex.test(password)) {
+      newErrors.password = 'Пароль должен содержать буквы и цифры';
+      valid = false;
+    } else if (password.includes(' ')) {
+      newErrors.password = 'Пароль не должен содержать пробелов';
+      valid = false;
+    } else if (illegalCharRegex.test(password)) {
+      newErrors.password = 'Пароль содержит недопустимые символы';
       valid = false;
     }
 
+    // Validate password confirmation
     if (!confirmPassword) {
-      newErrors.confirmPassword = 'Please confirm your password';
+      newErrors.confirmPassword = 'Пожалуйста, подтвердите пароль';
       valid = false;
     } else if (password !== confirmPassword) {
-      newErrors.confirmPassword = 'Passwords do not match';
+      newErrors.confirmPassword = 'Пароли не совпадают';
       valid = false;
     }
 
@@ -64,14 +79,27 @@ const ResetPasswordScreen: React.FC<ResetPasswordScreenProps> = ({ onBack, onSuc
 
     setIsLoading(true);
     try {
-      await api.resetPassword(token, password);
+      // Use the new code-based reset API
+      await api.resetPasswordWithCode(identifier, code, password);
       setIsLoading(false);
-      Alert.alert('Success', 'Your password has been reset successfully.', [
-        { text: 'OK', onPress: onSuccess },
+      Alert.alert('Успех', 'Ваш пароль был успешно сброшен.', [
+        { text: 'ОК', onPress: onSuccess },
       ]);
     } catch (err) {
       setIsLoading(false);
-      setErrors(prev => ({ ...prev, general: err instanceof Error ? err.message : 'An unexpected error occurred.' }));
+      let errorMessage = 'Произошла неожиданная ошибка.';
+      
+      if (err instanceof Error) {
+        if (err.message.includes('You cannot reuse a previous password')) {
+          errorMessage = 'Вы не можете использовать предыдущий пароль.';
+        } else if (err.message.includes('You cannot reuse your current password')) {
+          errorMessage = 'Вы не можете использовать текущий пароль.';
+        } else {
+          errorMessage = err.message;
+        }
+      }
+      
+      setErrors(prev => ({ ...prev, general: errorMessage }));
     }
   };
 
@@ -108,7 +136,7 @@ const ResetPasswordScreen: React.FC<ResetPasswordScreenProps> = ({ onBack, onSuc
                 <Logo width={LOGO_SIZE} height={LOGO_SIZE} />
               </View>
 
-              <Text style={styles.title}>Set New Password</Text>
+              <Text style={styles.title}>Установить новый пароль</Text>
 
               {errors.general ? (
                 <View style={styles.errorContainer}>
@@ -120,7 +148,7 @@ const ResetPasswordScreen: React.FC<ResetPasswordScreenProps> = ({ onBack, onSuc
                 <View style={styles.inputContainer}>
                   <TextInput
                     style={[styles.input, errors.password ? styles.inputError : null]}
-                    placeholder="New Password"
+                    placeholder="Новый пароль"
                     placeholderTextColor="rgba(0, 0, 0, 1)"
                     secureTextEntry
                     value={password}
@@ -134,7 +162,7 @@ const ResetPasswordScreen: React.FC<ResetPasswordScreenProps> = ({ onBack, onSuc
                 <View style={styles.inputContainer}>
                   <TextInput
                     style={[styles.input, errors.confirmPassword ? styles.inputError : null]}
-                    placeholder="Confirm New Password"
+                    placeholder="Подтвердите новый пароль"
                     placeholderTextColor="rgba(0, 0, 0, 1)"
                     secureTextEntry
                     value={confirmPassword}
@@ -153,7 +181,7 @@ const ResetPasswordScreen: React.FC<ResetPasswordScreenProps> = ({ onBack, onSuc
                   {isLoading ? (
                     <ActivityIndicator color="#fff" />
                   ) : (
-                    <Text style={styles.resetButtonText}>Reset Password</Text>
+                    <Text style={styles.resetButtonText}>Сбросить пароль</Text>
                   )}
                 </Animated.View>
               </TouchableOpacity>
@@ -213,6 +241,7 @@ const styles = StyleSheet.create({
     fontSize: 24,
     color: '#4A3120',
     marginBottom: 30,
+    textAlign: 'center',
   },
   inputContainer: {
     borderRadius: 41,

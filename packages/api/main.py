@@ -665,19 +665,32 @@ async def verify_email(verification_data: schemas.EmailVerificationRequest, db: 
 @app.post("/api/v1/auth/forgot-password")
 @limiter.limit("5/minute")
 async def forgot_password(request: Request, forgot_password_request: schemas.ForgotPasswordRequest, db: Session = Depends(get_db)):
-    user = auth_service.get_user_by_email(db, forgot_password_request.email)
+    # Determine if the identifier is an email or username
+    identifier = forgot_password_request.identifier.strip()
+    
+    # Check if it's an email
+    email_pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+    is_email = bool(re.match(email_pattern, identifier))
+    
+    if is_email:
+        user = auth_service.get_user_by_email(db, identifier)
+    else:
+        # Treat as username
+        user = auth_service.get_user_by_username(db, identifier)
+    
     if not user:
-        # Still return a success message to prevent email enumeration
-        return {"message": "If an account with that email exists, a password reset link has been sent."}
+        # Still return a success message to prevent enumeration
+        return {"message": "If an account with that username or email exists, a password reset code has been sent."}
 
-    token = auth_service.create_password_reset_token(db, user)
+    # Create verification code instead of token for code-based reset
+    code = auth_service.create_verification_code(db, user)
     mail_service.send_email(
         to_email=user.email,
-        subject="Password Reset Request",
-        html_content=f"Please click the following link to reset your password: <a href=\"http://localhost:3000/reset-password?token={token}\">Reset Password</a>"
+        subject="Password Reset Code",
+        html_content=f"Your password reset code is: <b>{code}</b>. It will expire in {settings.EMAIL_VERIFICATION_CODE_EXPIRE_MINUTES} minutes. Please enter this code in the app to reset your password."
     )
 
-    return {"message": "If an account with that email exists, a password reset link has been sent."}
+    return {"message": "If an account with that username or email exists, a password reset code has been sent."}
 
 @app.post("/api/v1/auth/reset-password")
 async def reset_password(reset_password_request: schemas.ResetPasswordRequest, db: Session = Depends(get_db)):
@@ -688,9 +701,127 @@ async def reset_password(reset_password_request: schemas.ResetPasswordRequest, d
     if user.password_reset_expires < datetime.utcnow():
         raise HTTPException(status_code=400, detail="Token has expired")
 
-    user.password_hash = auth_service.hash_password(reset_password_request.new_password)
+    # Check if new password matches current password or is in password history
+    new_password_hash = auth_service.hash_password(reset_password_request.new_password)
+    
+    # Check if new password is the same as current password
+    if user.password_hash and auth_service.verify_password(reset_password_request.new_password, user.password_hash):
+        raise HTTPException(status_code=400, detail="You cannot reuse your current password")
+    
+    # Check if new password matches any password in history
+    if user.password_history:
+        for historical_hash in user.password_history:
+            if auth_service.verify_password(reset_password_request.new_password, historical_hash):
+                raise HTTPException(status_code=400, detail="You cannot reuse a previous password")
+    
+    # Store current password in history before updating
+    # Initialize password_history if it doesn't exist
+    if not user.password_history:
+        user.password_history = []
+    
+    # Add current password to history (if it exists)
+    if user.password_hash:
+        user.password_history.append(user.password_hash)
+    
+    # Keep only last 5 passwords
+    if len(user.password_history) > 5:
+        user.password_history = user.password_history[-5:]
+    
+    # Mark password_history as modified for SQLAlchemy
+    from sqlalchemy.orm.attributes import flag_modified
+    flag_modified(user, 'password_history')
+
+    user.password_hash = new_password_hash
     user.password_reset_token = None
     user.password_reset_expires = None
+    db.commit()
+
+    return {"message": "Password has been reset successfully."}
+
+@app.post("/api/v1/auth/validate-password-reset-code")
+async def validate_password_reset_code(validation_request: schemas.ValidatePasswordResetCodeRequest, db: Session = Depends(get_db)):
+    # Determine if the identifier is an email or username
+    identifier = validation_request.identifier.strip()
+    
+    # Check if it's an email
+    email_pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+    is_email = bool(re.match(email_pattern, identifier))
+    
+    if is_email:
+        user = auth_service.get_user_by_email(db, identifier)
+    else:
+        # Treat as username
+        user = auth_service.get_user_by_username(db, identifier)
+    
+    if not user:
+        raise HTTPException(status_code=400, detail="Invalid username/email or code")
+
+    if user.email_verification_code != validation_request.code:
+        raise HTTPException(status_code=400, detail="Invalid username/email or code")
+
+    if user.email_verification_code_expires_at < datetime.utcnow():
+        raise HTTPException(status_code=400, detail="Verification code has expired")
+
+    return {"message": "Code is valid"}
+
+@app.post("/api/v1/auth/reset-password-with-code")
+async def reset_password_with_code(reset_password_request: schemas.ResetPasswordWithCodeRequest, db: Session = Depends(get_db)):
+    # Determine if the identifier is an email or username
+    identifier = reset_password_request.identifier.strip()
+    
+    # Check if it's an email
+    email_pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+    is_email = bool(re.match(email_pattern, identifier))
+    
+    if is_email:
+        user = auth_service.get_user_by_email(db, identifier)
+    else:
+        # Treat as username
+        user = auth_service.get_user_by_username(db, identifier)
+    
+    if not user:
+        raise HTTPException(status_code=400, detail="Invalid username/email or code")
+
+    if user.email_verification_code != reset_password_request.code:
+        raise HTTPException(status_code=400, detail="Invalid username/email or code")
+
+    if user.email_verification_code_expires_at < datetime.utcnow():
+        raise HTTPException(status_code=400, detail="Verification code has expired")
+
+    # Check if new password matches current password or is in password history
+    new_password_hash = auth_service.hash_password(reset_password_request.new_password)
+    
+    # Check if new password is the same as current password
+    if user.password_hash and auth_service.verify_password(reset_password_request.new_password, user.password_hash):
+        raise HTTPException(status_code=400, detail="You cannot reuse your current password")
+    
+    # Check if new password matches any password in history
+    if user.password_history:
+        for historical_hash in user.password_history:
+            if auth_service.verify_password(reset_password_request.new_password, historical_hash):
+                raise HTTPException(status_code=400, detail="You cannot reuse a previous password")
+    
+    # Store current password in history before updating
+    # Initialize password_history if it doesn't exist
+    if not user.password_history:
+        user.password_history = []
+    
+    # Add current password to history (if it exists)
+    if user.password_hash:
+        user.password_history.append(user.password_hash)
+    
+    # Keep only last 5 passwords
+    if len(user.password_history) > 5:
+        user.password_history = user.password_history[-5:]
+    
+    # Mark password_history as modified for SQLAlchemy
+    from sqlalchemy.orm.attributes import flag_modified
+    flag_modified(user, 'password_history')
+    
+    # Reset the password
+    user.password_hash = new_password_hash
+    user.email_verification_code = None
+    user.email_verification_code_expires_at = None
     db.commit()
 
     return {"message": "Password has been reset successfully."}

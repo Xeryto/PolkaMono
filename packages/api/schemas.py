@@ -70,11 +70,20 @@ class OrderResponse(BaseModel):
         from_attributes = True
 
 class ForgotPasswordRequest(BaseModel):
-    email: EmailStr
+    identifier: str  # Can be either email or username
 
 class ResetPasswordRequest(BaseModel):
     token: str
     new_password: str
+
+class ResetPasswordWithCodeRequest(BaseModel):
+    identifier: str  # Can be either email or username
+    code: str
+    new_password: str
+
+class ValidatePasswordResetCodeRequest(BaseModel):
+    identifier: str  # Can be either email or username
+    code: str
 
 class EmailVerificationRequest(BaseModel):
     email: EmailStr

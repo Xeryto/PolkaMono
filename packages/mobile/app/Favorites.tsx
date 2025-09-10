@@ -1076,7 +1076,7 @@ const Favorites = ({ navigation }: FavoritesProps) => {
     return (
       <View style={styles.container}>
         <View style={styles.loadingContainer}>
-          <Text style={styles.loadingText}>Loading...</Text>
+          <Text style={styles.loadingText}>Загрузка...</Text>
         </View>
       </View>
     );
@@ -1101,7 +1101,7 @@ const Favorites = ({ navigation }: FavoritesProps) => {
       {!isReady ? (
         // Simple loading screen until heavy animations are ready
         <View style={styles.loadingContainer}>
-          <Text style={styles.loadingText}>Loading...</Text>
+          <Text style={styles.loadingText}>Загрузка...</Text>
         </View>
       ) : (
         <>

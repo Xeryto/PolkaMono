@@ -21,7 +21,11 @@ export const useSession = () => {
     const checkAuthStatus = async () => {
       try {
         const isAuth = await sessionManager.isAuthenticated();
-        const user = await sessionManager.getCurrentUser();
+        // Only fetch user if authenticated to avoid unnecessary API calls
+        let user = null;
+        if (isAuth) {
+          user = await sessionManager.getCurrentUser();
+        }
         setSessionState({
           isAuthenticated: isAuth,
           isEmailVerified: user?.is_email_verified || false,
@@ -106,19 +110,20 @@ export const useSession = () => {
 
   const login = async () => {
     try {
-      const user = await sessionManager.getCurrentUser();
-      setSessionState({
+      // Just update the authentication state without making additional API calls
+      // The parent component will handle fetching user data
+      setSessionState(prev => ({
+        ...prev,
         isAuthenticated: true,
-        isEmailVerified: user?.is_email_verified || false,
         isLoading: false,
         error: null,
-      });
+      }));
     } catch (error) {
       setSessionState(prev => ({
         ...prev,
         isAuthenticated: true, // Still authenticated, but couldn't fetch profile
         isLoading: false,
-        error: 'Failed to fetch user profile after login',
+        error: 'Failed to update session state after login',
       }));
     }
   };

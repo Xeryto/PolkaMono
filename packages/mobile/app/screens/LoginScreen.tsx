@@ -219,7 +219,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, onBack, onForgotPass
               </Animated.View>
               
               <Animated.View style={styles.socialContainer} entering={FadeInDown.duration(500).delay(250)}>
-                <TouchableOpacity style={styles.vkButton} onPress={() => Alert.alert('VK Login', 'VK login will be implemented in a future update.')}>
+                <TouchableOpacity style={styles.vkButton} onPress={() => Alert.alert('VK Вход', 'VK вход будет реализован в будущем обновлении.')}>
                   <VK width={30} height={30} />
                 </TouchableOpacity>
               </Animated.View>

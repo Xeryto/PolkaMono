@@ -841,8 +841,8 @@ const MainPage = ({ navigation, route }: MainPageProps) => {
   const renderEmptyState = () => {
     return (
       <View style={[styles.whiteBox, styles.noCardsContainer]}>
-        <Text style={styles.noCardsText}>Loading new cards...</Text>
-        <Text style={styles.noCardsSubtext}>Please wait a moment</Text>
+        <Text style={styles.noCardsText}>Загрузка новых карточек...</Text>
+        <Text style={styles.noCardsSubtext}>Пожалуйста, подождите</Text>
       </View>
     );
   };

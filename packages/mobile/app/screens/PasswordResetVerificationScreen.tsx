@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import {
   View,
@@ -18,13 +17,13 @@ import Animated, { FadeInDown } from 'react-native-reanimated';
 import BackIcon from '../components/svg/BackIcon';
 import * as api from '../services/api';
 
-interface VerificationCodeScreenProps {
-  onVerificationSuccess: () => void;
+interface PasswordResetVerificationScreenProps {
+  onVerificationSuccess: (code: string) => void;
   onBack: () => void;
   email: string;
 }
 
-const VerificationCodeScreen: React.FC<VerificationCodeScreenProps> = ({ onVerificationSuccess, onBack, email }) => {
+const PasswordResetVerificationScreen: React.FC<PasswordResetVerificationScreenProps> = ({ onVerificationSuccess, onBack, email }) => {
   const [code, setCode] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -38,9 +37,10 @@ const VerificationCodeScreen: React.FC<VerificationCodeScreenProps> = ({ onVerif
     setIsLoading(true);
     setError('');
     try {
-      await api.verifyEmail(code);
+      // Validate the password reset code with the backend
+      await api.validatePasswordResetCode(email, code);
       setIsLoading(false);
-      onVerificationSuccess();
+      onVerificationSuccess(code);
     } catch (err) {
       setIsLoading(false);
       const message = (err instanceof Error) ? err.message : 'An unknown error occurred.';
@@ -52,7 +52,7 @@ const VerificationCodeScreen: React.FC<VerificationCodeScreenProps> = ({ onVerif
     setResendLoading(true);
     setError('');
     try {
-      await api.requestVerificationEmail(); // This function should now trigger sending a code
+      await api.requestPasswordReset(email);
       Alert.alert('Код отправлен повторно', 'Новый код подтверждения был отправлен на ваш email.');
     } catch (err) {
       const message = (err instanceof Error) ? err.message : 'An unknown error occurred.';
@@ -79,9 +79,9 @@ const VerificationCodeScreen: React.FC<VerificationCodeScreenProps> = ({ onVerif
               <TouchableOpacity style={styles.backButton} onPress={onBack} activeOpacity={0.7}>
                 <BackIcon width={33} height={33} />
               </TouchableOpacity>
-              <Text style={styles.title}>Подтвердите почту</Text>
+              <Text style={styles.title}>Подтвердите код</Text>
               <Text style={styles.subtitle}>
-                Мы отправили 6-значный код на {email}. Пожалуйста, введите его ниже.
+                Мы отправили 6-значный код на {email}. Пожалуйста, введите его ниже для сброса пароля.
               </Text>
 
               {error ? (
@@ -249,4 +249,4 @@ const styles = StyleSheet.create({
   errorText: { fontFamily: 'REM', fontSize: 14, color: '#D9534F', textAlign: 'center' },
 });
 
-export default VerificationCodeScreen;
+export default PasswordResetVerificationScreen;
