@@ -282,42 +282,7 @@ const Favorites = ({ navigation }: FavoritesProps) => {
     loadSavedItems();
   }, []); // Remove sessionValid dependency
 
-  // Load friend recommendations on component mount
-  useEffect(() => {
-    if (selectedFriend && selectedFriend.id) {
-      loadFriendRecommendations(selectedFriend.id);
-    }
-  }, [selectedFriend]);
-
-  const loadFriendRecommendations = async (friendId: string) => {
-    setIsLoadingFriendRecs(prev => ({ ...prev, [friendId]: true }));
-    try {
-      const recs = await api.getFriendRecommendations(friendId);
-      setFriendRecommendations(prev => ({
-        ...prev,
-        [friendId]: recs.map((item: api.Product): Product => ({
-          id: item.id,
-          name: item.name,
-          brand_name: item.brand_name || `Brand ${item.brand_id}`,
-          price: item.price,
-          images: (item.images && item.images.length > 0) ? item.images.map(img => ({ uri: img })) : [require('./assets/Vision.png'), require('./assets/Vision2.png')],
-          isLiked: item.is_liked,
-          available_sizes: item.variants ? item.variants.map(v => v.size) : [],
-          description: item.description || '',
-          color: item.color || '',
-          materials: item.material || '',
-          returnPolicy: item.return_policy || '',
-          brand_return_policy: item.brand_return_policy || '',
-          variants: item.variants || [],
-        }))
-      }));
-    } catch (error) {
-      setFriendRecommendations(prev => ({ ...prev, [friendId]: [] }));
-      Alert.alert('Ошибка', 'Не удалось загрузить рекомендации для друга.');
-    } finally {
-      setIsLoadingFriendRecs(prev => ({ ...prev, [friendId]: false }));
-    }
-  };
+  // Note: Friend recommendations are now loaded in FriendProfileView component
 
   // Animated styles for views
   const mainViewAnimatedStyle = useAnimatedStyle(() => ({
@@ -1160,6 +1125,7 @@ const Favorites = ({ navigation }: FavoritesProps) => {
                 isRegenerating={isRegenerating}
                 setCustomRecommendations={setCustomRecommendations}
                 isLoadingFriendRecs={isLoadingFriendRecs[selectedFriend?.id]}
+                setIsLoadingFriendRecs={setIsLoadingFriendRecs}
               />
             )}
           </Animated.View>
@@ -1494,6 +1460,7 @@ interface FriendProfileViewProps {
   isRegenerating: boolean;
   setCustomRecommendations: React.Dispatch<React.SetStateAction<{[key: string]: Product[]}>>;
   isLoadingFriendRecs: boolean;
+  setIsLoadingFriendRecs: React.Dispatch<React.SetStateAction<{[key: string]: boolean}>>;
 }
 
 // Friend Profile View Component
@@ -1505,7 +1472,8 @@ const FriendProfileView = React.memo(({
   onRegenerate,
   isRegenerating,
   setCustomRecommendations,
-  isLoadingFriendRecs
+  isLoadingFriendRecs,
+  setIsLoadingFriendRecs
 }: FriendProfileViewProps) => {
   // Track whether recommendations have been regenerated for animation purposes
   const [isNewRecommendation, setIsNewRecommendation] = useState(false);
@@ -1629,6 +1597,7 @@ const FriendProfileView = React.memo(({
     const loadFriendRecommendations = async () => {
       if (!friend.id) return;
       try {
+        setIsLoadingFriendRecs(prev => ({ ...prev, [friend.id]: true }));
         const recs = await api.getFriendRecommendations(friend.id);
         // Convert to RecommendedItem[] for rendering
         const recommendedItems = recs.map(item => ({
@@ -1647,8 +1616,23 @@ const FriendProfileView = React.memo(({
           variants: item.variants || [],
         }));
         setCustomRecommendations((prev: {[key: string]: RecommendedItem[]}) => ({ ...prev, [friend.id]: recommendedItems }));
-      } catch (error) {
+      } catch (error: any) {
         console.error('Error loading friend recommendations:', error);
+        setCustomRecommendations((prev: {[key: string]: RecommendedItem[]}) => ({ ...prev, [friend.id]: [] }));
+        
+        // Show appropriate error message based on error type
+        if (error.status === 401) {
+          // Don't show alert for authentication errors, just log them
+          console.log('Authentication error loading friend recommendations');
+        } else if (error.status === 404) {
+          Alert.alert('Ошибка', 'Друг не найден');
+        } else if (error.status >= 500) {
+          Alert.alert('Ошибка', 'Проблема с сервером. Попробуйте позже');
+        } else {
+          Alert.alert('Ошибка', 'Не удалось загрузить рекомендации для друга');
+        }
+      } finally {
+        setIsLoadingFriendRecs(prev => ({ ...prev, [friend.id]: false }));
       }
     };
     loadFriendRecommendations();
@@ -1734,9 +1718,11 @@ const FriendProfileView = React.memo(({
         {/* Recommendations section */}
         <Animated.View style={styles.recommendationsContainer} entering={FadeInDown.duration(500).delay(150)}>
           
-          {isRegenerating ? (
+          {isRegenerating || isLoadingFriendRecs ? (
             <View style={styles.loadingContainer}>
-              <Text style={styles.loadingText}>Подбираем новые рекомендации...</Text>
+              <Text style={styles.loadingText}>
+                {isRegenerating ? 'Подбираем новые рекомендации...' : 'Загружаем рекомендации...'}
+              </Text>
             </View>
           ) : (
             <FlatList<RecommendedItem>

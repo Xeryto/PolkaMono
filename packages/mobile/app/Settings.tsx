@@ -171,9 +171,29 @@ const Settings = ({ navigation, onLogout }: SettingsProps) => {
       // Set selected brands from profile
       if (profile.favorite_brands) {
         setSelectedBrands(profile.favorite_brands.map(brand => brand.name));
+      } else {
+        setSelectedBrands([]);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error loading user profile:', error);
+      
+      // Show appropriate error message based on error type
+      if (error.status === 401) {
+        console.log('Authentication error loading user profile');
+        // Don't show alert for auth errors
+      } else if (error.status >= 500) {
+        Alert.alert(
+          'Ошибка сервера',
+          'Проблема с сервером. Попробуйте позже.',
+          [{ text: 'OK' }]
+        );
+      } else {
+        Alert.alert(
+          'Ошибка загрузки',
+          'Не удалось загрузить профиль пользователя.',
+          [{ text: 'OK' }]
+        );
+      }
     } finally {
       setIsLoadingProfile(false);
     }
@@ -184,24 +204,70 @@ const Settings = ({ navigation, onLogout }: SettingsProps) => {
     try {
       const brands = await api.getBrands();
       setPopularBrands(brands.map(brand => brand.name));
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error loading brands:', error);
-      // Show user-friendly error message
-      Alert.alert(
-        'Ошибка загрузки',
-        'Не удалось загрузить список брендов. Попробуйте позже.',
-        [{ text: 'OK' }]
-      );
+      
+      // Show appropriate error message based on error type
+      if (error.status === 401) {
+        console.log('Authentication error loading brands');
+        // Don't show alert for auth errors
+      } else if (error.status >= 500) {
+        Alert.alert(
+          'Ошибка сервера',
+          'Проблема с сервером. Попробуйте позже.',
+          [{ text: 'OK' }]
+        );
+      } else {
+        Alert.alert(
+          'Ошибка загрузки',
+          'Не удалось загрузить список брендов. Попробуйте позже.',
+          [{ text: 'OK' }]
+        );
+      }
     }
   };
 
-  // Update user size preference
+  // Update user size preference with optimistic updates
   const updateUserSize = async (size: string) => {
     try {
-      await api.updateUserProfile({ selected_size: size });
+      // Store original state for rollback
+      const originalSelectedSize = selectedSize;
+      const originalUserProfile = userProfile;
+      
+      // Optimistically update local state immediately
       setSelectedSize(size);
-    } catch (error) {
+      
+      // Update user profile state optimistically
+      if (userProfile) {
+        setUserProfile({
+          ...userProfile,
+          selected_size: size
+        });
+      }
+      
+      // Perform API call in background
+      try {
+        await api.updateUserProfile({ selected_size: size });
+        console.log('User size updated successfully');
+      } catch (apiError: any) {
+        console.error('API error updating user size:', apiError);
+        
+        // Rollback local changes
+        setSelectedSize(originalSelectedSize);
+        setUserProfile(originalUserProfile);
+        
+        // Show appropriate error message
+        if (apiError.status === 401) {
+          console.log('Authentication error updating user size');
+        } else if (apiError.status >= 500) {
+          Alert.alert('Ошибка', 'Проблема с сервером. Попробуйте позже.');
+        } else {
+          Alert.alert('Ошибка', 'Не удалось обновить размер. Попробуйте позже.');
+        }
+      }
+    } catch (error: any) {
       console.error('Error updating user size:', error);
+      Alert.alert('Ошибка', 'Не удалось обновить размер.');
     }
   };
 
@@ -225,36 +291,85 @@ const Settings = ({ navigation, onLogout }: SettingsProps) => {
     }
   };
 
-  // Handle brand selection in wall section
+  // Handle brand selection in wall section with optimistic updates
   const handleBrandSelect = async (brandName: string) => {
     try {
-        const allBrands = await api.getBrands();
-        const brand = allBrands.find(b => b.name === brandName);
-
+        // Use already loaded brands instead of fetching again
+        const brand = popularBrands.find(b => b === brandName);
         if (!brand) {
-            console.error('Brand not found:', brandName);
+            console.error('Brand not found in loaded brands:', brandName);
+            Alert.alert('Ошибка', 'Бренд не найден.');
+            return;
+        }
+
+        // Get brand ID from the API brands list
+        const allBrands = await api.getBrands();
+        const brandObj = allBrands.find(b => b.name === brandName);
+        if (!brandObj) {
+            console.error('Brand object not found:', brandName);
             Alert.alert('Ошибка', 'Бренд не найден.');
             return;
         }
 
         const currentBrandIds = userProfile?.favorite_brands?.map(b => b.id) || [];
         
+        // Determine new brand IDs and operation type
         let newBrandIds: number[];
-        if (currentBrandIds.includes(brand.id)) {
-            newBrandIds = currentBrandIds.filter(id => id !== brand.id);
+        let isAdding = false;
+        if (currentBrandIds.includes(brandObj.id)) {
+            newBrandIds = currentBrandIds.filter(id => id !== brandObj.id);
+            isAdding = false;
         } else {
-            newBrandIds = [...currentBrandIds, brand.id];
+            newBrandIds = [...currentBrandIds, brandObj.id];
+            isAdding = true;
         }
         
-        await api.updateUserBrands(newBrandIds);
-        await loadUserProfile(); // Refetch profile
-    } catch (error) {
+        // Store original state for rollback
+        const originalSelectedBrands = [...selectedBrands];
+        const originalUserProfile = userProfile;
+        
+        // Optimistically update local state immediately
+        const newSelectedBrands = allBrands
+          .filter(b => newBrandIds.includes(b.id))
+          .map(b => b.name);
+        setSelectedBrands(newSelectedBrands);
+        
+        // Update user profile state optimistically
+        if (userProfile) {
+          const updatedFavoriteBrands = allBrands
+            .filter(b => newBrandIds.includes(b.id))
+            .map(b => ({ id: b.id, name: b.name, slug: b.slug, logo: b.logo, description: b.description }));
+          
+          setUserProfile({
+            ...userProfile,
+            favorite_brands: updatedFavoriteBrands
+          });
+        }
+        
+        // Perform API call in background
+        try {
+          await api.updateUserBrands(newBrandIds);
+          console.log('Brand selection updated successfully');
+        } catch (apiError: any) {
+          console.error('API error updating brands:', apiError);
+          
+          // Rollback local changes
+          setSelectedBrands(originalSelectedBrands);
+          setUserProfile(originalUserProfile);
+          
+          // Show appropriate error message
+          if (apiError.status === 401) {
+            console.log('Authentication error updating brands');
+          } else if (apiError.status >= 500) {
+            Alert.alert('Ошибка', 'Проблема с сервером. Попробуйте позже.');
+          } else {
+            Alert.alert('Ошибка', 'Не удалось обновить выбор бренда. Попробуйте позже.');
+          }
+        }
+        
+    } catch (error: any) {
         console.error('Error selecting brand:', error);
-        Alert.alert(
-            'Ошибка',
-            'Не удалось обновить выбор бренда. Попробуйте позже.',
-            [{ text: 'OK' }]
-        );
+        Alert.alert('Ошибка', 'Не удалось обновить список брендов.');
     }
   };
 
@@ -313,8 +428,7 @@ const Settings = ({ navigation, onLogout }: SettingsProps) => {
 
   const handleSizeSelect = (size: string) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    setSelectedSize(size);
-    updateUserSize(size); // Update the user's size preference in the API
+    updateUserSize(size); // Update the user's size preference in the API with optimistic updates
     
     RNAnimated.parallel([
       RNAnimated.timing(sizeContainerWidth, {
@@ -438,7 +552,7 @@ const Settings = ({ navigation, onLogout }: SettingsProps) => {
   );
 
   const renderBrandItem = ({ item }: { item: string }) => {
-    const isSelected = userProfile?.favorite_brands?.some(brand => brand.name === item) || false;
+    const isSelected = selectedBrands.includes(item);
     
     return (
       <Pressable

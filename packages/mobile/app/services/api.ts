@@ -901,7 +901,7 @@ export const getUserFavorites = async (): Promise<Product[]> => {
 
 // Get recommendations for a friend
 export const getFriendRecommendations = async (friendId: string): Promise<Product[]> => {
-  return await apiRequest(`/api/v1/friends/${friendId}/recommendations`, 'GET');
+  return await apiRequest(`/api/v1/recommendations/for_friend/${friendId}`, 'GET');
 };
 
 // Get recommendations for the current user
