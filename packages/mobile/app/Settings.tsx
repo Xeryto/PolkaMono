@@ -116,6 +116,17 @@ const Settings = ({ navigation, onLogout }: SettingsProps) => {
   const [userProfile, setUserProfile] = useState<api.UserProfile | null>(null);
   const [isLoadingProfile, setIsLoadingProfile] = useState(true);
   
+  // User statistics state
+  const [userStats, setUserStats] = useState<api.UserStats | null>(null);
+  const [isLoadingStats, setIsLoadingStats] = useState(false);
+  const [statsLastLoaded, setStatsLastLoaded] = useState<number>(0);
+  
+  // Swipe count from session storage (for real-time updates)
+  const [swipeCount, setSwipeCount] = useState<number>(0);
+  
+  // Cache duration: 5 minutes
+  const STATS_CACHE_DURATION = 5 * 60 * 1000;
+  
   // Animation values
   const sizeContainerWidth = useRef(new RNAnimated.Value(height*0.1)).current;
   const sizeTextOpacity = useRef(new RNAnimated.Value(0)).current;
@@ -124,22 +135,63 @@ const Settings = ({ navigation, onLogout }: SettingsProps) => {
   const searchResultsOpacity = useRef(new RNAnimated.Value(0)).current;
   const selectedBrandsOpacity = useSharedValue(0);
 
-  const stats: StatItem[] = [
-    { label: 'Куплено', value: '56' },
-    { label: 'Пролистано', value: '1,234' },
-  ];
+  // Generate stats from real data with fallback to mock data
+  const getStats = (): StatItem[] => {
+    if (userStats) {
+      return [
+        { label: 'Куплено', value: userStats.items_purchased.toString() },
+        { label: 'Пролистано', value: swipeCount.toString() }, // Use session storage count for real-time updates
+      ];
+    }
+    
+    // Fallback to mock data while loading or on error
+    return [
+      { label: 'Куплено', value: '0' },
+      { label: 'Пролистано', value: swipeCount > 0 ? swipeCount.toString() : '0' },
+    ];
+  };
+
+  const stats = getStats();
 
   const sizeOptions = ['XS', 'S', 'M', 'L', 'XL'];
+
+  // Load swipe count from session storage
+  const loadSwipeCount = async () => {
+    try {
+      const count = await api.getCurrentSwipeCount();
+      setSwipeCount(count);
+      console.log('Settings - Loaded swipe count from session storage:', count);
+    } catch (error) {
+      console.error('Error loading swipe count:', error);
+      setSwipeCount(0);
+    }
+  };
 
   // Load user profile on component mount
   useEffect(() => {
     loadUserProfile();
     loadBrands();
+    loadUserStats();
+    loadSwipeCount();
   }, []);
 
   useEffect(() => {
     if (activeSection === 'orders') {
       loadOrders();
+    }
+  }, [activeSection]);
+
+  // Refresh stats when returning to the wall section (in case user made purchases or likes)
+  useEffect(() => {
+    if (activeSection === 'wall' && userStats) {
+      // Only refresh if stats are older than 1 minute to avoid excessive API calls
+      const now = Date.now();
+      if ((now - statsLastLoaded) > 60 * 1000) {
+        loadUserStats(true);
+      }
+      
+      // Always refresh swipe count from session storage for real-time updates
+      loadSwipeCount();
     }
   }, [activeSection]);
 
@@ -162,6 +214,8 @@ const Settings = ({ navigation, onLogout }: SettingsProps) => {
       setIsLoadingProfile(true);
       const profile = await api.getCurrentUser();
       setUserProfile(profile);
+      console.log('Settings - User profile loaded:', profile);
+      console.log('Settings - Profile favorite_brands:', profile.favorite_brands);
       
       // Set selected size from profile
       if (profile.selected_size) {
@@ -169,10 +223,13 @@ const Settings = ({ navigation, onLogout }: SettingsProps) => {
       }
       
       // Set selected brands from profile
-      if (profile.favorite_brands) {
-        setSelectedBrands(profile.favorite_brands.map(brand => brand.name));
+      if (profile.favorite_brands && profile.favorite_brands.length > 0) {
+        const brandNames = profile.favorite_brands.map(brand => brand.name);
+        setSelectedBrands(brandNames);
+        console.log('Settings - Loaded favorite brands from profile:', brandNames);
       } else {
         setSelectedBrands([]);
+        console.log('Settings - No favorite brands found in profile');
       }
     } catch (error: any) {
       console.error('Error loading user profile:', error);
@@ -224,6 +281,37 @@ const Settings = ({ navigation, onLogout }: SettingsProps) => {
           [{ text: 'OK' }]
         );
       }
+    }
+  };
+
+  // Load user statistics with caching
+  const loadUserStats = async (forceRefresh: boolean = false) => {
+    const now = Date.now();
+    
+    // Check if we have cached data that's still fresh
+    if (!forceRefresh && userStats && (now - statsLastLoaded) < STATS_CACHE_DURATION) {
+      console.log('Using cached user stats');
+      return;
+    }
+    
+    try {
+      setIsLoadingStats(true);
+      const stats = await api.getUserStats();
+      setUserStats(stats);
+      setStatsLastLoaded(now);
+      console.log('User stats loaded successfully');
+    } catch (error: any) {
+      console.error('Error loading user stats:', error);
+      
+      // Don't show alerts for stats loading errors to avoid interrupting user experience
+      // Just log the error and continue with mock data
+      if (error.status === 401) {
+        console.log('Authentication error loading user stats');
+      } else {
+        console.log('Failed to load user stats, using fallback data');
+      }
+    } finally {
+      setIsLoadingStats(false);
     }
   };
 

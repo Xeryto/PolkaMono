@@ -112,8 +112,10 @@ const fetchMoreCards = async (count: number = 2): Promise<Product[]> => {
     }
 
     // Map RecommendationProduct to CardItem and slice to count
-    return products.slice(0, count).map((p: api.Product, i: number): Product => ({
-      id: p.id.toString(),
+    return products.slice(0, count).map((p: api.Product, i: number): Product => {
+      console.log(`fetchMoreCards - Processing product ${i}:`, { id: p.id, name: p.name, idType: typeof p.id });
+      return {
+        id: p.id ? p.id.toString() : `fallback-${i}`,
       name: p.name,
       brand_name: p.brand_name || `Brand ${p.brand_id}`, // Use brand_name from API
       price: p.price,
@@ -125,7 +127,8 @@ const fetchMoreCards = async (count: number = 2): Promise<Product[]> => {
       materials: p.material || '95% Cotton, 5% Spandex',
       returnPolicy: p.return_policy || 'Free returns within 30 days of purchase. Item must be in original condition.',
       brand_return_policy: p.brand_return_policy || 'No specific brand return policy provided.',
-    }));
+      };
+    });
   } catch (error: any) {
     if (error && error.message && error.message.toLowerCase().includes('invalid token')) {
       Alert.alert('Сессия истекла', 'Пожалуйста, войдите в аккаунт снова.');
@@ -314,20 +317,24 @@ const MainPage = ({ navigation, route }: MainPageProps) => {
   const [cards, setCards] = useState<Product[]>([]);
   const [isLoadingInitialCards, setIsLoadingInitialCards] = useState(true);
 
-  // Fetch user's selected size from profile
+  // Fetch user's selected size from profile and initialize swipe count
   useEffect(() => {
-    const fetchUserSize = async () => {
+    const fetchUserData = async () => {
       try {
         const userProfile = await api.getCurrentUser();
         setUserSelectedSize(userProfile.selected_size || null);
         console.log('MainPage - User selected size:', userProfile.selected_size);
+        
+        // Initialize swipe count from API
+        await api.initializeSwipeCount();
+        console.log('MainPage - Swipe count initialized from API');
       } catch (error) {
-        console.error('Error fetching user size:', error);
+        console.error('Error fetching user data:', error);
         setUserSelectedSize(null);
       }
     };
     
-    fetchUserSize();
+    fetchUserData();
   }, []);
 
   useEffect(() => {
@@ -336,6 +343,8 @@ const MainPage = ({ navigation, route }: MainPageProps) => {
       setIsLoadingInitialCards(true);
       const starterCards = await fetchMoreCards(MIN_CARDS_THRESHOLD + 1);
       if (isMounted) {
+        console.log('MainPage - Setting initial cards:', starterCards.length, 'cards');
+        console.log('MainPage - First card ID:', starterCards[0]?.id);
         setCards(starterCards);
         persistentCardStorage.cards = starterCards;
         persistentCardStorage.initialized = true;
@@ -345,6 +354,8 @@ const MainPage = ({ navigation, route }: MainPageProps) => {
     if (!persistentCardStorage.initialized) {
       loadInitialCards();
     } else {
+      console.log('MainPage - Loading from persistent storage:', persistentCardStorage.cards.length, 'cards');
+      console.log('MainPage - First persistent card ID:', persistentCardStorage.cards[0]?.id);
       setCards(persistentCardStorage.cards);
       setIsLoadingInitialCards(false);
     }
@@ -355,6 +366,36 @@ const MainPage = ({ navigation, route }: MainPageProps) => {
 
   // Swipe threshold (how far the card needs to be dragged to trigger a swipe)
   const SWIPE_THRESHOLD = screenHeight * 0.1; // 10% of screen height
+
+  // Track swipe for analytics with optimistic updates
+  const trackSwipe = async (productId: string, direction: 'up' | 'right') => {
+    console.log('MainPage - trackSwipe called with:', { productId, direction });
+    
+    if (!productId) {
+      console.error('MainPage - Cannot track swipe: productId is missing');
+      return;
+    }
+    
+    try {
+      // Convert direction to API format
+      const swipeDirection = direction === 'up' ? 'right' : 'left';
+      
+      // Use optimistic tracking with rollback
+      const result = await api.trackSwipeWithOptimisticUpdate({
+        product_id: productId,
+        swipe_direction: swipeDirection
+      });
+      
+      if (result.success) {
+        console.log(`MainPage - Swipe tracked successfully: ${productId} - ${swipeDirection}, new count: ${result.newCount}`);
+      } else {
+        console.log(`MainPage - Swipe tracking failed, rolled back to count: ${result.newCount}`);
+      }
+    } catch (error) {
+      console.error('MainPage - Error tracking swipe:', error);
+      // Don't show error to user, just log it
+    }
+  };
 
   // Add a text fade animation function
   const animateTextChange = () => {
@@ -426,8 +467,22 @@ const MainPage = ({ navigation, route }: MainPageProps) => {
 
         // Check if drag exceeds threshold
         if (gestureState.dy < -SWIPE_THRESHOLD) {
-          // Swipe up
-          swipeCard('up');
+          // Swipe up - get fresh state values
+          console.log('MainPage - Gesture handler - cards length:', cards.length);
+          console.log('MainPage - Gesture handler - currentCardIndex:', currentCardIndex);
+          console.log('MainPage - Gesture handler - cards:', cards.map(c => ({ id: c.id, name: c.name })));
+          
+          // Use a callback to get the most current state
+          setCards(currentCards => {
+            const currentCard = currentCards[currentCardIndex];
+            console.log('MainPage - Gesture handler - current card from callback:', currentCard);
+            if (currentCard) {
+              swipeCard('up', currentCard);
+            } else {
+              console.error('MainPage - Gesture handler - no card found at index:', currentCardIndex);
+            }
+            return currentCards; // Don't modify the cards, just get the current state
+          });
         } else {
           // Return card to original position
           RNAnimated.spring(pan, {
@@ -562,8 +617,17 @@ const MainPage = ({ navigation, route }: MainPageProps) => {
     };
   }, []);
 
-  const swipeCard = (direction: 'up' | 'right' = 'up') => {
+  const swipeCard = (direction: 'up' | 'right' = 'up', cardToSwipe?: Product) => {
     if (isAnimating) return;
+
+    // Use the passed card or fall back to getting it from state
+    const currentCard = cardToSwipe || cards[currentCardIndex];
+    console.log('MainPage - Current card object:', currentCard);
+    console.log('MainPage - Current card ID:', currentCard?.id);
+    console.log('MainPage - Cards array length at start:', cards.length);
+    console.log('MainPage - Current card index:', currentCardIndex);
+    console.log('MainPage - Cards array:', cards.map(c => ({ id: c.id, name: c.name })));
+    console.log('MainPage - Card passed to function:', cardToSwipe);
 
     // Only block swipe if there is truly only one card left
     if (cards.length === 1) {
@@ -593,8 +657,6 @@ const MainPage = ({ navigation, route }: MainPageProps) => {
     }
 
     setIsAnimating(true);
-    // Get current card before it's removed
-    const currentCard = cards[currentCardIndex];
     // Set a timeout that will reset animation state if something goes wrong
     const animationSafetyTimeout = setTimeout(() => {
       console.log('MainPage - Animation safety timeout triggered');
@@ -615,16 +677,33 @@ const MainPage = ({ navigation, route }: MainPageProps) => {
       clearTimeout(animationSafetyTimeout);
       // Remove the current card from the array
       setCards(prevCards => {
+        console.log('MainPage - setCards callback - prevCards length:', prevCards.length);
+        console.log('MainPage - setCards callback - currentCardIndex:', currentCardIndex);
+        console.log('MainPage - setCards callback - prevCards:', prevCards.map(c => ({ id: c.id, name: c.name })));
+        
         if (prevCards.length === 0) {
+          console.log('MainPage - setCards callback - prevCards is empty, returning empty array');
           return [];
         }
         const newCards = [...prevCards];
         if (newCards.length > 0) {
+          console.log('MainPage - setCards callback - removing card at index:', currentCardIndex);
           newCards.splice(currentCardIndex, 1);
         }
         // Log removed card info
         console.log(`MainPage - Card ${currentCard?.id} was swiped ${direction}`);
         console.log('MainPage - Remaining cards:', newCards.length);
+        
+        // Update persistent storage to match local state
+        persistentCardStorage.cards = newCards;
+        
+        // Track swipe for analytics
+        console.log('MainPage - Tracking swipe for card:', currentCard);
+        if (currentCard?.id) {
+          trackSwipe(currentCard.id, direction);
+        } else {
+          console.error('MainPage - Cannot track swipe: currentCard.id is missing');
+        }
         // Reset current index if needed
         const newIndex = currentCardIndex >= newCards.length ? 
           Math.max(0, newCards.length - 1) : 

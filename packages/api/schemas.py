@@ -145,6 +145,25 @@ class UserProfileUpdateRequest(BaseModel):
     selected_size: Optional[str] = None
     avatar_url: Optional[str] = None
 
+class StyleResponse(BaseModel):
+    id: str
+    name: str
+    description: Optional[str] = None
+    image: Optional[str] = None
+
+    class Config:
+        from_attributes = True
+
+class UserBrandResponse(BaseModel):
+    id: int
+    name: str
+    slug: str
+    logo: Optional[str] = None
+    description: Optional[str] = None
+
+    class Config:
+        from_attributes = True
+
 class UserProfileResponse(BaseModel):
     id: str
     username: str
@@ -157,6 +176,8 @@ class UserProfileResponse(BaseModel):
     is_brand: bool = False
     created_at: datetime
     updated_at: datetime
+    favorite_brands: Optional[List[UserBrandResponse]] = []
+    favorite_styles: Optional[List[StyleResponse]] = []
 
     class Config:
         from_attributes = True
@@ -206,6 +227,7 @@ class BrandResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
 
 class UserCreate(BaseModel):
     username: str

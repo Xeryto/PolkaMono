@@ -16,7 +16,7 @@ from slowapi.errors import RateLimitExceeded
 # Import our modules
 from config import settings
 from database import get_db, init_db
-from models import User, OAuthAccount, Brand, Style, UserBrand, UserStyle, Gender, FriendRequest, Friendship, FriendRequestStatus, Product, UserLikedProduct, Category, Order, OrderItem, OrderStatus, ExclusiveAccessEmail, ProductVariant, ProductStyle
+from models import User, OAuthAccount, Brand, Style, UserBrand, UserStyle, Gender, FriendRequest, Friendship, FriendRequestStatus, Product, UserLikedProduct, UserSwipe, Category, Order, OrderItem, OrderStatus, ExclusiveAccessEmail, ProductVariant, ProductStyle
 from auth_service import auth_service
 from oauth_service import oauth_service
 import payment_service
@@ -89,11 +89,6 @@ class BrandResponse(BaseModel):
     logo: Optional[str] = None
     description: Optional[str] = None
 
-class StyleResponse(BaseModel):
-    id: str
-    name: str
-    description: Optional[str] = None
-    image: Optional[str] = None
 
 class CategoryResponse(BaseModel):
     id: str
@@ -275,6 +270,16 @@ class BrandStatsResponse(BaseModel):
     total_withdrawn: float
     current_balance: float
 
+class UserStatsResponse(BaseModel):
+    items_purchased: int
+    items_swiped: int
+    total_orders: int
+    account_age_days: int
+
+class SwipeTrackingRequest(BaseModel):
+    product_id: str
+    swipe_direction: Literal["left", "right"]
+
 @app.get("/api/v1/brands/stats", response_model=BrandStatsResponse)
 async def get_brand_stats(
     current_brand_user: Brand = Depends(get_current_brand_user),
@@ -305,6 +310,67 @@ async def get_brand_stats(
         total_withdrawn=total_withdrawn,
         current_balance=current_balance
     )
+
+@app.get("/api/v1/user/stats", response_model=UserStatsResponse)
+async def get_user_stats(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Get statistics for the authenticated user"""
+    
+    # Calculate items purchased (from completed orders)
+    items_purchased = db.query(func.count(OrderItem.id)).join(Order).filter(
+        Order.user_id == current_user.id,
+        Order.status == OrderStatus.PAID
+    ).scalar() or 0
+    
+    # Calculate items swiped
+    items_swiped = db.query(func.count(UserSwipe.id)).filter(
+        UserSwipe.user_id == current_user.id
+    ).scalar() or 0
+    
+    # Calculate total orders (all orders regardless of status)
+    total_orders = db.query(func.count(Order.id)).filter(
+        Order.user_id == current_user.id
+    ).scalar() or 0
+    
+    # Calculate account age in days
+    account_age_days = (datetime.utcnow() - current_user.created_at).days
+    
+    return UserStatsResponse(
+        items_purchased=items_purchased,
+        items_swiped=items_swiped,
+        total_orders=total_orders,
+        account_age_days=account_age_days
+    )
+
+@app.post("/api/v1/user/swipe", response_model=MessageResponse)
+async def track_user_swipe(
+    swipe_data: SwipeTrackingRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Track user swipe on a product"""
+    
+    # Verify product exists
+    product = db.query(Product).filter(Product.id == swipe_data.product_id).first()
+    if not product:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Product not found"
+        )
+    
+    # Create swipe record
+    user_swipe = UserSwipe(
+        user_id=current_user.id,
+        product_id=swipe_data.product_id,
+        swipe_direction=swipe_data.swipe_direction
+    )
+    
+    db.add(user_swipe)
+    db.commit()
+    
+    return {"message": "Swipe tracked successfully"}
 
 @app.put("/api/v1/brands/profile", response_model=schemas.BrandResponse)
 async def update_brand_profile(
@@ -850,7 +916,8 @@ async def exclusive_access_signup(signup_data: schemas.ExclusiveAccessSignupRequ
 async def get_user_profile(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     """Get current user's complete profile"""
     # Get favorite brands and styles
-    
+    favorite_brands = db.query(Brand).join(UserBrand).filter(UserBrand.user_id == current_user.id).all()
+    favorite_styles = db.query(Style).join(UserStyle).filter(UserStyle.user_id == current_user.id).all()
     
     return schemas.UserProfileResponse(
         id=current_user.id,
@@ -862,7 +929,20 @@ async def get_user_profile(current_user: User = Depends(get_current_user), db: S
         is_active=current_user.is_active,
         is_email_verified=current_user.is_email_verified,
         created_at=current_user.created_at,
-        updated_at=current_user.updated_at
+        updated_at=current_user.updated_at,
+        favorite_brands=[schemas.UserBrandResponse(
+            id=brand.id,
+            name=brand.name,
+            slug=brand.slug,
+            logo=brand.logo,
+            description=brand.description
+        ) for brand in favorite_brands],
+        favorite_styles=[schemas.StyleResponse(
+            id=style.id,
+            name=style.name,
+            description=style.description,
+            image=style.image
+        ) for style in favorite_styles]
     )
 
 @app.post("/api/v1/brands/products", response_model=schemas.Product, status_code=status.HTTP_201_CREATED)
@@ -1311,12 +1391,12 @@ async def update_user_brands(
     return {"message": "Favorite brands updated successfully"}
 
 # Style Management
-@app.get("/api/v1/styles", response_model=List[StyleResponse])
+@app.get("/api/v1/styles", response_model=List[schemas.StyleResponse])
 async def get_styles(db: Session = Depends(get_db)):
     """Get all available styles"""
     styles = db.query(Style).all()
     return [
-        StyleResponse(
+        schemas.StyleResponse(
             id=style.id,
             name=style.name,
             description=style.description

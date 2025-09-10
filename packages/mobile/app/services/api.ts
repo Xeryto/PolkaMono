@@ -963,3 +963,109 @@ export const getProductSearchResults = async (params: {
 
   return await apiRequest(`/api/v1/products/search?${searchParams.toString()}`, 'GET');
 };
+
+// User Statistics
+export interface UserStats {
+  items_purchased: number;
+  items_swiped: number;
+  total_orders: number;
+  account_age_days: number;
+}
+
+export const getUserStats = async (): Promise<UserStats> => {
+  return await apiRequest('/api/v1/user/stats', 'GET');
+};
+
+// Swipe Tracking
+export interface SwipeTrackingRequest {
+  product_id: string;
+  swipe_direction: 'left' | 'right';
+}
+
+export const trackUserSwipe = async (swipeData: SwipeTrackingRequest): Promise<{ message: string }> => {
+  return await apiRequest('/api/v1/user/swipe', 'POST', swipeData);
+};
+
+// Session storage for swipe tracking
+const SWIPE_COUNT_KEY = 'PolkaMobile_swipeCount';
+const PENDING_SWIPES_KEY = 'PolkaMobile_pendingSwipes';
+
+// Initialize swipe count from API
+export const initializeSwipeCount = async (): Promise<number> => {
+  try {
+    const stats = await getUserStats();
+    const swipeCount = stats.items_swiped;
+    
+    // Store in session storage
+    await AsyncStorage.setItem(SWIPE_COUNT_KEY, swipeCount.toString());
+    console.log('Initialized swipe count from API:', swipeCount);
+    
+    return swipeCount;
+  } catch (error) {
+    console.error('Error initializing swipe count:', error);
+    // Fallback to 0 if API fails
+    await AsyncStorage.setItem(SWIPE_COUNT_KEY, '0');
+    return 0;
+  }
+};
+
+// Get current swipe count from session storage
+export const getCurrentSwipeCount = async (): Promise<number> => {
+  try {
+    const count = await AsyncStorage.getItem(SWIPE_COUNT_KEY);
+    return count ? parseInt(count, 10) : 0;
+  } catch (error) {
+    console.error('Error getting swipe count:', error);
+    return 0;
+  }
+};
+
+// Increment swipe count optimistically
+export const incrementSwipeCount = async (): Promise<number> => {
+  try {
+    const currentCount = await getCurrentSwipeCount();
+    const newCount = currentCount + 1;
+    await AsyncStorage.setItem(SWIPE_COUNT_KEY, newCount.toString());
+    console.log('Incremented swipe count to:', newCount);
+    return newCount;
+  } catch (error) {
+    console.error('Error incrementing swipe count:', error);
+    return 0;
+  }
+};
+
+// Decrement swipe count (for rollback)
+export const decrementSwipeCount = async (): Promise<number> => {
+  try {
+    const currentCount = await getCurrentSwipeCount();
+    const newCount = Math.max(0, currentCount - 1);
+    await AsyncStorage.setItem(SWIPE_COUNT_KEY, newCount.toString());
+    console.log('Decremented swipe count to:', newCount);
+    return newCount;
+  } catch (error) {
+    console.error('Error decrementing swipe count:', error);
+    return 0;
+  }
+};
+
+// Track swipe with optimistic updates and rollback
+export const trackSwipeWithOptimisticUpdate = async (swipeData: SwipeTrackingRequest): Promise<{ success: boolean; newCount: number }> => {
+  try {
+    // 1. Optimistically increment the count
+    const newCount = await incrementSwipeCount();
+    
+    // 2. Send to API
+    await trackUserSwipe(swipeData);
+    
+    console.log('Swipe tracked successfully, count:', newCount);
+    return { success: true, newCount };
+    
+  } catch (error) {
+    console.error('Error tracking swipe, rolling back:', error);
+    
+    // 3. Rollback on failure
+    const rollbackCount = await decrementSwipeCount();
+    
+    return { success: false, newCount: rollbackCount };
+  }
+};

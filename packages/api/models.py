@@ -1,7 +1,7 @@
 """
 Database models for PolkaAPI
 """
-from sqlalchemy import Column, String, Boolean, DateTime, Text, ForeignKey, Integer, Enum as SQLEnum, UniqueConstraint, Float
+from sqlalchemy import Column, String, Boolean, DateTime, Text, ForeignKey, Integer, Enum as SQLEnum, UniqueConstraint, Float, Index
 from sqlalchemy.dialects.postgresql import ARRAY
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
@@ -228,6 +228,27 @@ class UserLikedProduct(Base):
 
 # Add liked_products relationship to User model
 User.liked_products = relationship("UserLikedProduct", back_populates="user", cascade="all, delete-orphan")
+
+class UserSwipe(Base):
+    """User swipe tracking for analytics and recommendations"""
+    __tablename__ = "user_swipes"
+    __table_args__ = {"extend_existing": True}
+    
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    user_id = Column(String, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    product_id = Column(String, ForeignKey("products.id", ondelete="CASCADE"), nullable=False)
+    swipe_direction = Column(String(10), nullable=False)  # 'left' or 'right'
+    created_at = Column(DateTime, default=datetime.utcnow)
+    
+    user = relationship("User")
+    product = relationship("Product")
+    
+    __table_args__ = (
+        # Index for efficient queries
+        Index('idx_user_swipes_user_id', 'user_id'),
+        Index('idx_user_swipes_product_id', 'product_id'),
+        Index('idx_user_swipes_created_at', 'created_at'),
+    )
 
 class FriendRequest(Base):
     """Friend request model"""
