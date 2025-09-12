@@ -27,6 +27,8 @@ export function AddNewItemPage() {
   const [imageFiles, setImageFiles] = useState<File[]>([]);
   const [styles, setStyles] = useState<any[]>([]); // State to store available styles
   const [selectedStyle, setSelectedStyle] = useState(''); // State for selected style
+  const [categories, setCategories] = useState<any[]>([]); // State to store available categories
+  const [selectedCategory, setSelectedCategory] = useState(''); // State for selected category
   const [variants, setVariants] = useState([{ size: '', stock_quantity: 0 }]); // For sizes and quantities
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
@@ -47,21 +49,25 @@ export function AddNewItemPage() {
   };
 
   useEffect(() => {
-    // Fetch available styles when component mounts
-    const fetchStyles = async () => {
+    // Fetch available styles and categories when component mounts
+    const fetchData = async () => {
       try {
-        const fetchedStyles = await api.getStyles();
+        const [fetchedStyles, fetchedCategories] = await Promise.all([
+          api.getStyles(),
+          api.getCategories()
+        ]);
         setStyles(fetchedStyles);
+        setCategories(fetchedCategories);
       } catch (error) {
-        console.error("Failed to fetch styles:", error);
+        console.error("Failed to fetch data:", error);
         toast({
           title: "Error",
-          description: "Failed to load styles.",
+          description: "Failed to load styles and categories.",
           variant: "destructive",
         });
       }
     };
-    fetchStyles();
+    fetchData();
   }, []);
 
   const handleImageChange = (files: File[]) => {
@@ -108,6 +114,16 @@ export function AddNewItemPage() {
   };
 
   const handleSubmit = async () => {
+    // Validate required fields
+    if (!name.trim() || !price.trim() || !description.trim() || !selectedCategory) {
+      toast({
+        title: "Error",
+        description: "Please fill in all required fields including category.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     // Validate for duplicate sizes
     if (hasDuplicateSizes(variants)) {
       toast({
@@ -132,13 +148,13 @@ export function AddNewItemPage() {
 
       const productData = {
         name,
-        price,
+        price: parseFloat(price),
         description,
         images,
         colors: selectedColors.length > 0 ? selectedColors : undefined,
         materials: selectedMaterials.length > 0 ? selectedMaterials : undefined, // Changed to multi-select
         brand_id: 1, // Placeholder: Replace with actual brand ID from current user
-        category_id: "some_category_id", // Placeholder: Replace with actual category ID
+        category_id: selectedCategory,
         styles: selectedStyle ? [selectedStyle] : [], // Send selected style
         variants: variants.filter(v => v.size.trim() && v.stock_quantity >= 0),
         sku: Math.random().toString(36).substring(2, 15),
@@ -158,6 +174,7 @@ export function AddNewItemPage() {
       setImages([]);
       setImageFiles([]);
       setSelectedStyle('');
+      setSelectedCategory('');
       setVariants([{ size: '', stock_quantity: 0 }]);
     } catch (error: any) {
       console.error("Failed to add product:", error);
@@ -264,6 +281,21 @@ export function AddNewItemPage() {
             </div>
           </div>
 
+          {/* Category Selection */}
+          <div>
+            <Label htmlFor="category">Категория *</Label>
+            <Select onValueChange={setSelectedCategory} value={selectedCategory}>
+              <SelectTrigger className="w-full mt-1 h-10 rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50">
+                <SelectValue placeholder="Выберите категорию" className="text-muted-foreground" />
+              </SelectTrigger>
+              <SelectContent>
+                {categories.map((category) => (
+                  <SelectItem key={category.id} value={category.id}>{category.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
           {/* Style Selection */}
           <div>
             <Label htmlFor="style">Стиль</Label>
@@ -303,7 +335,13 @@ export function AddNewItemPage() {
                   type="number"
                   placeholder="Количество"
                   value={variant.stock_quantity}
-                  onChange={(e) => handleVariantChange(index, 'stock_quantity', parseInt(e.target.value))}
+                  min="0"
+                  onChange={(e) => {
+                    const value = parseInt(e.target.value) || 0;
+                    if (value >= 0) {
+                      handleVariantChange(index, 'stock_quantity', value);
+                    }
+                  }}
                   className="w-24"
                 />
                 <Button type="button" onClick={() => handleRemoveVariant(index)} variant="outline" size="icon">

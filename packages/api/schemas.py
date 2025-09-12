@@ -95,6 +95,12 @@ class ExclusiveAccessSignupRequest(BaseModel):
 class ProductVariantSchema(BaseModel):
     size: str
     stock_quantity: int
+    
+    @validator('stock_quantity')
+    def validate_stock_quantity(cls, v):
+        if v < 0:
+            raise ValueError('Stock quantity cannot be negative')
+        return v
 
 class ProductCreateRequest(BaseModel):
     name: str
@@ -106,6 +112,8 @@ class ProductCreateRequest(BaseModel):
     styles: Optional[List[str]] = []
     variants: List[ProductVariantSchema]
     sku: Optional[str] = None # NEW
+    color: Optional[str] = None
+    material: Optional[str] = None
 
 class ProductUpdateRequest(BaseModel):
     name: Optional[str] = None

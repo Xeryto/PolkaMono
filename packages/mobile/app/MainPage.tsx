@@ -1041,37 +1041,85 @@ const MainPage = ({ navigation, route }: MainPageProps) => {
             }
           ]}
         >
-          {card?.variants?.map((variant) => {
-            const isAvailable = variant.stock_quantity > 0;
-            const isUserSize = variant.size === userSelectedSize;
-            
-            return (
+          {card?.variants && card.variants.length === 1 ? (
+            // Single size layout - centered relative to full card width
+            <>
+              {card.variants.map((variant) => {
+                const isAvailable = variant.stock_quantity > 0;
+                const isUserSize = variant.size === userSelectedSize;
+                const isOneSize = variant.size === 'One Size';
+                
+                return (
+                  <Pressable 
+                    key={variant.size} 
+                    style={[
+                      isOneSize ? styles.sizeOval : styles.sizeCircle,
+                      isAvailable ? styles.sizeCircleAvailable : styles.sizeCircleUnavailable,
+                      isUserSize && isAvailable ? styles.sizeCircleUserSize : null
+                    ]}
+                    onPress={() => {
+                      if (isAvailable) {
+                        handleSizeSelect(variant.size);
+                      } else {
+                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                      }
+                    }}
+                    disabled={!isAvailable}
+                  >
+                    <Text style={isOneSize ? styles.sizeOvalText : styles.sizeText}>
+                      {variant.size}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+              <Pressable onPress={handleCancelSizeSelection} style={styles.cancelSizeSelectionButtonAbsolute}>
+                <Cancel width={27} height={27} />
+              </Pressable>
+            </>
+          ) : (
+            // Multiple sizes layout - cancel acts as another size
+            <>
+              {card?.variants?.map((variant, index) => {
+                const isAvailable = variant.stock_quantity > 0;
+                const isUserSize = variant.size === userSelectedSize;
+                const isOneSize = variant.size === 'One Size';
+                
+                return (
+                  <Pressable 
+                    key={variant.size} 
+                    style={[
+                      isOneSize ? styles.sizeOval : styles.sizeCircle,
+                      isAvailable ? styles.sizeCircleAvailable : styles.sizeCircleUnavailable,
+                      isUserSize && isAvailable ? styles.sizeCircleUserSize : null,
+                      index > 0 ? { marginLeft: 10 } : null
+                    ]}
+                    onPress={() => {
+                      if (isAvailable) {
+                        handleSizeSelect(variant.size);
+                      } else {
+                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                      }
+                    }}
+                    disabled={!isAvailable}
+                  >
+                    <Text style={isOneSize ? styles.sizeOvalText : styles.sizeText}>
+                      {variant.size}
+                    </Text>
+                  </Pressable>
+                );
+              })}
               <Pressable 
-                key={variant.size} 
+                onPress={handleCancelSizeSelection} 
                 style={[
                   styles.sizeCircle,
-                  isAvailable ? styles.sizeCircleAvailable : styles.sizeCircleUnavailable,
-                  isUserSize && isAvailable ? styles.sizeCircleUserSize : null
+                  styles.cancelSizeButton,
+                  { marginLeft: 10 }
                 ]}
-                onPress={() => {
-                  if (isAvailable) {
-                    handleSizeSelect(variant.size);
-                  } else {
-                    // Provide haptic feedback for unavailable sizes
-                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                  }
-                }}
-                disabled={!isAvailable}
               >
-                <Text style={styles.sizeText}>
-                  {variant.size}
-                </Text>
+                <Cancel width={27} height={27} />
               </Pressable>
-            );
-          })}
-        <Pressable onPress={handleCancelSizeSelection} style={styles.cancelSizeSelectionButton}>
-            <Cancel width={27} height={27} />
-          </Pressable>
+            </>
+          )}
         </RNAnimated.View>
       </>
     );
@@ -1573,8 +1621,11 @@ const styles = StyleSheet.create({
   sizeContainer: {
     flexDirection: 'row',
     justifyContent: 'space-around',
+    alignItems: 'center',
     width: '100%',
     marginBottom: 0,
+    paddingHorizontal: 20,
+    position: 'relative',
   },
   sizeCircle: {
     width: 41,
@@ -1603,10 +1654,54 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     fontSize: 16,
   },
+  sizeOval: {
+    width: 80,
+    height: 41,
+    borderRadius: 20.5,
+    backgroundColor: '#E2CCB2',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
+  sizeOvalText: {
+    color: '#000',
+    fontWeight: 'bold',
+    fontSize: 12,
+    textAlign: 'center',
+  },
   cancelSizeSelectionButton: {
     width: 41,
     height: 41,
     borderRadius: 20.5,
+    backgroundColor: 'rgba(230, 109, 123, 0.54)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
+  cancelSizeSelectionButtonAbsolute: {
+    position: 'absolute',
+    right: 20,
+    width: 41,
+    height: 41,
+    borderRadius: 20.5,
+    backgroundColor: 'rgba(230, 109, 123, 0.54)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
+  cancelSizeButton: {
     backgroundColor: 'rgba(230, 109, 123, 0.54)',
     justifyContent: 'center',
     alignItems: 'center',

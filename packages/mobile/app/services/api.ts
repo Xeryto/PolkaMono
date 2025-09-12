@@ -300,7 +300,6 @@ export interface Product {
   honest_sign?: string;
   color?: string;
   material?: string;
-  hashtags?: string[];
   brand_id: number;
   category_id: string;
   styles: string[];

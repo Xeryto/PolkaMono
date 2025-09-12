@@ -62,6 +62,8 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({
   const { toast } = useToast();
   const [selectedStyles, setSelectedStyles] = useState<string[]>([]);
   const [styles, setStyles] = useState<any[]>([]);
+  const [categories, setCategories] = useState<any[]>([]);
+  const [selectedCategory, setSelectedCategory] = useState(product.category_id || '');
   const [variants, setVariants] = useState(product.variants || []);
 
   // Helper function to check for duplicate sizes
@@ -92,19 +94,23 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({
   }, [product]);
 
   useEffect(() => {
-    const fetchStyles = async () => {
+    const fetchData = async () => {
       try {
-        const fetchedStyles = await api.getStyles();
+        const [fetchedStyles, fetchedCategories] = await Promise.all([
+          api.getStyles(),
+          api.getCategories()
+        ]);
         setStyles(fetchedStyles);
+        setCategories(fetchedCategories);
       } catch (error) {
         toast({
-          title: "Error fetching styles",
-          description: "Could not fetch styles. Please try again later.",
+          title: "Error fetching data",
+          description: "Could not fetch styles and categories. Please try again later.",
           variant: "destructive",
         });
       }
     };
-    fetchStyles();
+    fetchData();
 
     return () => {
       imagePreviews.forEach(url => URL.revokeObjectURL(url));
@@ -139,6 +145,7 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({
         color: selectedColors.join(", "),
         material: selectedMaterials.join(", "),
         styles: selectedStyles,
+        category_id: selectedCategory,
         sku,
         variants,
         images, // Send the updated list of existing images
@@ -300,6 +307,19 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({
                   </div>
                 </div>
                 <div>
+                  <Label htmlFor="category">Категория *</Label>
+                  <Select onValueChange={setSelectedCategory} value={selectedCategory}>
+                    <SelectTrigger className="w-full mt-1 h-10 rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50">
+                      <SelectValue placeholder="Выберите категорию" className="text-muted-foreground" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {categories.map((category) => (
+                        <SelectItem key={category.id} value={category.id}>{category.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
                   <Label>Размеры и количество</Label>
                   {variants.map((variant, index) => (
                     <div key={index} className="flex space-x-2 mt-1">
@@ -322,7 +342,13 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({
                         type="number"
                         placeholder="Количество"
                         value={variant.stock_quantity}
-                        onChange={(e) => handleVariantChange(index, 'stock_quantity', parseInt(e.target.value))}
+                        min="0"
+                        onChange={(e) => {
+                          const value = parseInt(e.target.value) || 0;
+                          if (value >= 0) {
+                            handleVariantChange(index, 'stock_quantity', value);
+                          }
+                        }}
                         className="w-24"
                       />
                       <Button type="button" onClick={() => handleRemoveVariant(index)} variant="outline" size="icon">

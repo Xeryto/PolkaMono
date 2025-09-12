@@ -9,7 +9,7 @@ from yookassa import Configuration, Payment
 from dotenv import load_dotenv
 import os
 from sqlalchemy.orm import Session
-from models import Order, OrderItem, Payment as PaymentModel, OrderStatus, Product
+from models import Order, OrderItem, Payment as PaymentModel, OrderStatus, Product, ProductVariant
 import ipaddress
 
 import schemas
@@ -62,12 +62,27 @@ def create_payment(db: Session, user_id: str, amount: float, currency: str, desc
         if not product:
             raise Exception(f"Product with id {item.product_id} not found")
 
+        # Find the product variant for the specific size
+        variant = db.query(ProductVariant).filter(
+            ProductVariant.product_id == item.product_id,
+            ProductVariant.size == item.size
+        ).first()
+        
+        if not variant:
+            raise Exception(f"Product variant with size {item.size} not found for product {item.product_id}")
+        
+        # Check if there's enough stock
+        if variant.stock_quantity < item.quantity:
+            raise Exception(f"Insufficient stock for product {product.name} in size {item.size}. Available: {variant.stock_quantity}, Requested: {item.quantity}")
+        
+        # Reduce stock quantity
+        variant.stock_quantity -= item.quantity
+
         order_item = OrderItem(
             order_id=order.id,
-            product_id=item.product_id,
+            product_variant_id=variant.id,
             quantity=item.quantity,
-            price=product.price,
-            size=item.size
+            price=product.price
         )
         db.add(order_item)
 
@@ -117,6 +132,17 @@ def update_order_status(db: Session, order_id: str, status: OrderStatus):
     order = db.query(Order).filter(Order.id == order_id).first()
     if order:
         print(f"Found order {order_id}. Current status: {order.status.value}. New status: {status.value}")
+        
+        # If order is being cancelled, restore stock quantities
+        if status == OrderStatus.CANCELED and order.status != OrderStatus.CANCELED:
+            print(f"Restoring stock for cancelled order {order_id}")
+            for item in order.items:
+                # Find the product variant and restore stock
+                variant = db.query(ProductVariant).filter(ProductVariant.id == item.product_variant_id).first()
+                if variant:
+                    variant.stock_quantity += item.quantity
+                    print(f"Restored {item.quantity} units to product variant {variant.id}")
+        
         order.status = status
         # db.commit() # Removed commit from here
         print(f"Order {order_id} status updated to {order.status.value}")

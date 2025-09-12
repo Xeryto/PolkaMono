@@ -256,6 +256,10 @@ export const getStyles = async (): Promise<any[]> => {
   return await apiRequest('/api/v1/styles', 'GET', undefined, false); // Styles might not require auth
 };
 
+export const getCategories = async (): Promise<any[]> => {
+  return await apiRequest('/api/v1/categories', 'GET', undefined, false); // Categories might not require auth
+};
+
 export const uploadProductImages = async (productId: string, formData: FormData, token: string): Promise<any> => {
   const response = await fetch(`${API_URL}/api/v1/brands/products/${productId}/images`, {
     method: 'POST',

@@ -24,6 +24,23 @@ import schemas
 from schemas import UserCreate, EmailVerificationRequest
 from mail_service import mail_service
 
+# Size ordering utility
+def get_size_order(size: str) -> int:
+    """Get the order index for size sorting (XS to XL)"""
+    size_order = {
+        "XS": 1,
+        "S": 2, 
+        "M": 3,
+        "L": 4,
+        "XL": 5,
+        "One Size": 6
+    }
+    return size_order.get(size, 999)  # Unknown sizes go to the end
+
+def sort_variants_by_size(variants):
+    """Sort variants by size order (XS to XL)"""
+    return sorted(variants, key=lambda v: get_size_order(v.size))
+
 limiter = Limiter(key_func=get_remote_address)
 app = FastAPI(
     title="PolkaAPI - Authentication Backend",
@@ -956,11 +973,6 @@ async def create_product(
     if not brand:
         raise HTTPException(status_code=400, detail="Brand not found")
 
-    # Check if honest_sign is provided and if it's unique
-    if product_data.honest_sign:
-        existing_honest_sign_product = db.query(Product).filter(Product.honest_sign == product_data.honest_sign).first()
-        if existing_honest_sign_product:
-            raise HTTPException(status_code=400, detail="Honest sign already exists for another product.")
 
     # Create product
     product = Product(
@@ -968,10 +980,8 @@ async def create_product(
         description=product_data.description,
         price=product_data.price,
         images=product_data.images,
-        honest_sign=product_data.honest_sign,
         color=product_data.color,
         material=product_data.material,
-        hashtags=product_data.hashtags,
         brand_id=product_data.brand_id,
         category_id=product_data.category_id,
         sku=product_data.sku # NEW
@@ -1012,7 +1022,7 @@ async def create_product(
         brand_id=product.brand_id,
         category_id=product.category_id,
         styles=[ps.style_id for ps in product.styles],
-        variants=[schemas.ProductVariantSchema(size=v.size, stock_quantity=v.stock_quantity) for v in product.variants],
+        variants=[schemas.ProductVariantSchema(size=v.size, stock_quantity=v.stock_quantity) for v in sort_variants_by_size(product.variants)],
         sku=product.sku,
         brand_name=brand.name,
         brand_return_policy=brand.return_policy
@@ -1035,16 +1045,6 @@ async def update_product(
     if not brand:
         raise HTTPException(status_code=400, detail="Brand not found for this product")
 
-    # Handle honest_sign immutability
-    if product_data.honest_sign is not None:
-        if product.honest_sign and product.honest_sign != product_data.honest_sign:
-            raise HTTPException(status_code=400, detail="Honest sign cannot be changed once assigned.")
-        # If honest_sign is being set for the first time, check for uniqueness
-        if not product.honest_sign:
-            existing_honest_sign_product = db.query(Product).filter(Product.honest_sign == product_data.honest_sign).first()
-            if existing_honest_sign_product and existing_honest_sign_product.id != product.id:
-                raise HTTPException(status_code=400, detail="Honest sign already exists for another product.")
-            product.honest_sign = product_data.honest_sign
 
     # Update product fields
     for field, value in product_data.dict(exclude_unset=True).items():
@@ -1054,8 +1054,8 @@ async def update_product(
             for variant_data in value:
                 variant = ProductVariant(
                     product_id=product.id,
-                    size=variant_data.size,
-                    stock_quantity=variant_data.stock_quantity
+                    size=variant_data["size"],
+                    stock_quantity=variant_data["stock_quantity"]
                 )
                 db.add(variant)
         elif field == "styles":
@@ -1073,11 +1073,9 @@ async def update_product(
             product.color = value
         elif field == "material":
             product.material = value
-        elif field == "hashtags":
-            product.hashtags = value
         elif field == "sku": # NEW
             product.sku = value
-        elif field not in ["honest_sign"]: # Exclude honest_sign as it's handled above
+        elif field not in ["honest_sign"]: # Exclude honest_sign as it's only for order items
             setattr(product, field, value)
 
     db.commit()
@@ -1094,7 +1092,7 @@ async def update_product(
         brand_id=product.brand_id,
         category_id=product.category_id,
         styles=[ps.style_id for ps in product.styles],
-        variants=[schemas.ProductVariantSchema(size=v.size, stock_quantity=v.stock_quantity) for v in product.variants],
+        variants=[schemas.ProductVariantSchema(size=v.size, stock_quantity=v.stock_quantity) for v in sort_variants_by_size(product.variants)],
         sku=product.sku,
         brand_name=brand.name,
         brand_return_policy=brand.return_policy
@@ -1121,7 +1119,7 @@ async def get_brand_products(
             brand_id=product.brand_id,
             category_id=product.category_id,
             styles=[ps.style_id for ps in product.styles],
-            variants=[schemas.ProductVariantSchema(size=v.size, stock_quantity=v.stock_quantity) for v in product.variants],
+            variants=[schemas.ProductVariantSchema(size=v.size, stock_quantity=v.stock_quantity) for v in sort_variants_by_size(product.variants)],
             sku=product.sku,
             brand_name=product.brand.name,
             brand_return_policy=product.brand.return_policy
@@ -1153,7 +1151,7 @@ async def get_brand_product_details(
         brand_id=product.brand_id,
         category_id=product.category_id,
         styles=[ps.style_id for ps in product.styles],
-        variants=[schemas.ProductVariantSchema(size=v.size, stock_quantity=v.stock_quantity) for v in product.variants],
+        variants=[schemas.ProductVariantSchema(size=v.size, stock_quantity=v.stock_quantity) for v in sort_variants_by_size(product.variants)],
         sku=product.sku,
         brand_name=product.brand.name,
         brand_return_policy=product.brand.return_policy
@@ -1251,7 +1249,7 @@ async def update_order_item_honest_sign(
         raise HTTPException(status_code=404, detail="Order item not found")
 
     # Verify that the order item belongs to a product from the current brand user
-    brand_id_filter = 1 # Placeholder: replace with actual brand_id from current_user
+    brand_id_filter = current_user.id
     
     product = db.query(Product).join(ProductVariant).filter(
         ProductVariant.id == order_item.product_variant_id,
@@ -1507,7 +1505,7 @@ async def get_user_favorites(
             brand_id=product.brand_id,
             category_id=product.category_id,
             styles=[ps.style_id for ps in product.styles],
-            variants=[schemas.ProductVariantSchema(size=v.size, stock_quantity=v.stock_quantity) for v in product.variants],
+            variants=[schemas.ProductVariantSchema(size=v.size, stock_quantity=v.stock_quantity) for v in sort_variants_by_size(product.variants)],
             sku=product.sku,
             brand_name=product.brand.name,
             brand_return_policy=product.brand.return_policy,
@@ -1541,7 +1539,7 @@ async def get_recommendations_for_user(
             brand_id=product.brand_id,
             category_id=product.category_id,
             styles=[ps.style_id for ps in product.styles],
-            variants=[schemas.ProductVariantSchema(size=v.size, stock_quantity=v.stock_quantity) for v in product.variants],
+            variants=[schemas.ProductVariantSchema(size=v.size, stock_quantity=v.stock_quantity) for v in sort_variants_by_size(product.variants)],
             sku=product.sku,
             brand_name=product.brand.name,
             brand_return_policy=product.brand.return_policy,
@@ -1579,7 +1577,7 @@ async def get_recommendations_for_friend(
             brand_id=product.brand_id,
             category_id=product.category_id,
             styles=[ps.style_id for ps in product.styles],
-            variants=[schemas.ProductVariantSchema(size=v.size, stock_quantity=v.stock_quantity) for v in product.variants],
+            variants=[schemas.ProductVariantSchema(size=v.size, stock_quantity=v.stock_quantity) for v in sort_variants_by_size(product.variants)],
             sku=product.sku,
             brand_name=product.brand.name,
             brand_return_policy=product.brand.return_policy,
@@ -1638,7 +1636,7 @@ async def search_products(
             brand_id=product.brand_id,
             category_id=product.category_id,
             styles=[ps.style_id for ps in product.styles],
-            variants=[schemas.ProductVariantSchema(size=v.size, stock_quantity=v.stock_quantity) for v in product.variants],
+            variants=[schemas.ProductVariantSchema(size=v.size, stock_quantity=v.stock_quantity) for v in sort_variants_by_size(product.variants)],
             sku=product.sku,
             brand_name=product.brand.name,
             brand_return_policy=product.brand.return_policy,
