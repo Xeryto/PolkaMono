@@ -29,6 +29,8 @@ import BackIcon from '../components/svg/BackIcon';
 import Tick from '../assets/Tick';
 import Cancel from '../components/svg/Cancel';
 import * as api from '../services/api';
+import NetworkLoadingIndicator from '../components/NetworkLoadingIndicator';
+import { useNetworkRequest } from '../hooks/useNetworkRequest';
 const { width, height } = Dimensions.get('window');
 const LOGO_SIZE = Math.min(width, height) * 0.275;
 
@@ -43,9 +45,27 @@ const BrandSearchScreen: React.FC<BrandSearchScreenProps> = ({ onComplete, onBac
   const [isSearchActive, setIsSearchActive] = useState(false);
   const [selectedBrands, setSelectedBrands] = useState<number[]>(initialBrands);
   const [brands, setBrands] = useState<{id: number, name: string}[]>([]);
-  const [isLoadingBrands, setIsLoadingBrands] = useState(true);
   const [visibleBubblesHeight, setVisibleBubblesHeight] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  // Use network request hook for brands loading
+  const {
+    data: brandsData,
+    isLoading: isLoadingBrands,
+    error: brandsError,
+    execute: fetchBrands,
+    retry: retryFetchBrands,
+  } = useNetworkRequest(
+    async () => {
+      const brandList = await api.getBrands();
+      return brandList.map((b: any) => ({ id: b.id, name: b.name }));
+    },
+    {
+      timeout: 15000, // 15 seconds for brands
+      retries: 2,
+      onSuccess: (data) => setBrands(data || []),
+    }
+  );
   
   // Animation values
   const searchResultsHeight = useSharedValue(height*0.125);
@@ -54,18 +74,8 @@ const BrandSearchScreen: React.FC<BrandSearchScreenProps> = ({ onComplete, onBac
   
   // Fetch brands from API on mount
   useEffect(() => {
-    setIsLoadingBrands(true);
-    api.getBrands().then((brandList: any[]) => {
-      setBrands(brandList.map(b => ({ id: b.id, name: b.name })));
-      // Add a small delay to ensure smooth animation timing
-      setTimeout(() => {
-        setIsLoadingBrands(false);
-      }, 100);
-    }).catch(err => {
-      setBrands([]);
-      setIsLoadingBrands(false);
-    });
-  }, []);
+    fetchBrands();
+  }, [fetchBrands]);
   
   // Handle animation when search becomes active
   useEffect(() => {
@@ -277,9 +287,13 @@ const BrandSearchScreen: React.FC<BrandSearchScreenProps> = ({ onComplete, onBac
               ]}
             >
               {isLoadingBrands ? (
-                <View style={styles.loadingContainer}>
-                  <Text style={styles.loadingText}>Загрузка брендов...</Text>
-                </View>
+                <NetworkLoadingIndicator
+                  isLoading={isLoadingBrands}
+                  error={brandsError}
+                  onRetry={retryFetchBrands}
+                  timeout={15000}
+                  message="Загрузка брендов..."
+                />
               ) : (
                 <FlatList
                   data={filteredBrands}

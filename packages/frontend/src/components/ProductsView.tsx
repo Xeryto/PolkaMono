@@ -5,40 +5,47 @@ import { useToast } from "@/hooks/use-toast";
 import * as api from "@/services/api"; // Import api
 import { useAuth } from "@/context/AuthContext"; // Import useAuth
 import { translateColorToRussian, translateMaterialToRussian } from "@/lib/translations";
+import NetworkLoadingIndicator from "@/components/NetworkLoadingIndicator";
+import { useNetworkRequest } from "@/hooks/useNetworkRequest";
 
 export function ProductsView() {
-  const [products, setProducts] = useState<api.ProductResponse[]>([]); // Initialize with empty array
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<api.ProductResponse | null>(null);
   const { toast } = useToast();
   const { token } = useAuth(); // Get token from useAuth
 
-  const fetchProducts = async () => {
-    if (!token) {
-      toast({
-        title: "Ошибка",
-        description: "Токен аутентификации не найден. Пожалуйста, войдите в систему.",
-        variant: "destructive",
-      });
-      return;
+  // Use network request hook for products loading
+  const {
+    data: products,
+    isLoading,
+    error,
+    execute: fetchProducts,
+    retry: retryFetchProducts,
+  } = useNetworkRequest(
+    async (token: string) => {
+      if (!token) {
+        throw new Error("Токен аутентификации не найден. Пожалуйста, войдите в систему.");
+      }
+      return await api.getBrandProducts(token);
+    },
+    {
+      timeout: 15000, // 15 seconds for products
+      retries: 2,
+      onError: (error) => {
+        toast({
+          title: "Ошибка",
+          description: error.message || "Не удалось загрузить товары.",
+          variant: "destructive",
+        });
+      },
     }
-    try {
-      const fetchedProducts = await api.getBrandProducts(token);
-      setProducts(fetchedProducts);
-      console.log(fetchedProducts)
-    } catch (error: any) {
-      console.error("Failed to fetch products:", error);
-      toast({
-        title: "Ошибка",
-        description: error.message || "Не удалось загрузить товары.",
-        variant: "destructive",
-      });
-    }
-  };
+  );
 
   useEffect(() => {
-    fetchProducts();
-  }, [token, toast]); // Add token and toast to dependency array
+    if (token) {
+      fetchProducts(token);
+    }
+  }, [token, fetchProducts]);
 
   const handleProductClick = (product: api.ProductResponse) => {
     setSelectedProduct(product);
@@ -46,7 +53,9 @@ export function ProductsView() {
   };
 
   const handleProductUpdated = () => {
-    fetchProducts(); // Re-fetch products after update
+    if (token) {
+      fetchProducts(token); // Re-fetch products after update
+    }
     toast({
       title: "Успех",
       description: "Товар успешно обновлен.",
@@ -63,8 +72,17 @@ export function ProductsView() {
           <CardDescription>Управление запасами товаров</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="space-y-4">
-            {products.map((product) => (
+          <NetworkLoadingIndicator
+            isLoading={isLoading}
+            error={error}
+            onRetry={retryFetchProducts}
+            timeout={15000}
+            message="Загрузка товаров..."
+          />
+          
+          {!isLoading && !error && products && (
+            <div className="space-y-4">
+              {products.map((product) => (
               <div key={product.id} className="flex items-center justify-between p-2 rounded-lg hover:bg-muted/50 cursor-pointer" onClick={() => handleProductClick(product)}>
                 <div className="flex-1">
                   <p className="font-medium text-foreground">{product.name}</p>
@@ -85,7 +103,8 @@ export function ProductsView() {
                 <p className="font-bold text-foreground">{product.price} ₽</p>
               </div>
             ))}
-          </div>
+            </div>
+          )}
         </CardContent>
       </Card>
 

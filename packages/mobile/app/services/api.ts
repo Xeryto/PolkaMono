@@ -2,6 +2,12 @@ import * as SecureStore from 'expo-secure-store';
 import { API_CONFIG } from './config';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ApiError, handleApiResponse } from './apiHelpers';
+import { 
+  fetchWithTimeoutAndRetry, 
+  getNetworkErrorMessage, 
+  isRetryableError,
+  RequestOptions 
+} from './networkUtils';
 
 // API configuration
 const API_URL = API_CONFIG.API_BASE_URL;
@@ -329,12 +335,13 @@ export interface Style {
 
 
 
-// API request helper with automatic token refresh
+// API request helper with automatic token refresh, timeout, and retry logic
 const apiRequest = async (
   endpoint: string,
   method: 'GET' | 'POST' | 'PUT' | 'DELETE' = 'GET',
   body?: any,
-  requireAuth: boolean = true
+  requireAuth: boolean = true,
+  requestOptions: RequestOptions = {}
 ) => {
   try {
     let token: string | null = null;
@@ -360,11 +367,20 @@ const apiRequest = async (
       headers['Authorization'] = `Bearer ${token}`;
     }
 
-    const response = await fetch(`${API_URL}${endpoint}`, {
-      method,
-      headers,
-      body: body ? JSON.stringify(body) : undefined,
-    });
+    // Use the enhanced fetch with timeout and retry logic
+    const response = await fetchWithTimeoutAndRetry(
+      `${API_URL}${endpoint}`,
+      {
+        method,
+        headers,
+        body: body ? JSON.stringify(body) : undefined,
+      },
+      {
+        ...requestOptions,
+        // Use API config timeout if not specified
+        timeout: requestOptions.timeout ?? API_CONFIG.PROD.API_TIMEOUT,
+      }
+    );
 
     if (response.status === 401) {
       console.log('API Request: Received 401 status.');
@@ -379,6 +395,12 @@ const apiRequest = async (
 
     return await handleApiResponse(response);
   } catch (error) {
+    // Handle network errors with user-friendly messages
+    if (isRetryableError(error as Error)) {
+      const friendlyMessage = getNetworkErrorMessage(error as Error);
+      throw new ApiError(friendlyMessage, 0); // Use 0 status for network errors
+    }
+    
     if (error instanceof ApiError && error.status === 401) {
       // Log the authentication error for debugging
       console.log('API authentication error:', error.message);

@@ -13,6 +13,12 @@ import * as api from "@/services/api"; // Assuming API calls are here
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { 
+  fetchWithTimeoutAndRetry, 
+  getNetworkErrorMessage, 
+  isRetryableError,
+  RequestOptions 
+} from './networkUtils';
 
 // API configuration
 const API_URL = "http://localhost:8000"; // Assuming API is running on this URL
@@ -165,13 +171,14 @@ const handleApiResponse = async (response: Response) => {
   return data;
 };
 
-// API request helper with automatic token refresh (simplified for frontend)
+// API request helper with automatic token refresh, timeout, and retry logic
 const apiRequest = async (
   endpoint: string,
   method: 'GET' | 'POST' | 'PUT' | 'DELETE' = 'GET',
   body?: any,
   requireAuth: boolean = true,
-  token: string | null = null // Add token parameter
+  token: string | null = null, // Add token parameter
+  requestOptions: RequestOptions = {}
 ) => {
   try {
     const headers: Record<string, string> = {
@@ -182,11 +189,20 @@ const apiRequest = async (
       headers['Authorization'] = `Bearer ${token}`;
     }
 
-    const response = await fetch(`${API_URL}${endpoint}`, {
-      method,
-      headers,
-      body: body ? JSON.stringify(body) : undefined,
-    });
+    // Use the enhanced fetch with timeout and retry logic
+    const response = await fetchWithTimeoutAndRetry(
+      `${API_URL}${endpoint}`,
+      {
+        method,
+        headers,
+        body: body ? JSON.stringify(body) : undefined,
+      },
+      {
+        ...requestOptions,
+        // Default timeout of 10 seconds
+        timeout: requestOptions.timeout ?? 10000,
+      }
+    );
 
     // Basic 401 handling (can be expanded)
     if (response.status === 401) {
@@ -198,6 +214,12 @@ const apiRequest = async (
 
     return await handleApiResponse(response);
   } catch (error) {
+    // Handle network errors with user-friendly messages
+    if (isRetryableError(error as Error)) {
+      const friendlyMessage = getNetworkErrorMessage(error as Error);
+      throw new ApiError(friendlyMessage, 0); // Use 0 status for network errors
+    }
+    
     if (error instanceof ApiError) {
       console.error('API Error:', error.message, error.status);
     } else {
@@ -225,8 +247,8 @@ export const createProduct = async (productData: {
   variants: ProductVariantSchema[];
   return_policy?: string;
   sku?: string;
-}, token: string): Promise<ProductResponse> => { // Add token parameter
-  return await apiRequest('/api/v1/brands/products', 'POST', productData, true, token);
+}, token: string, requestOptions?: RequestOptions): Promise<ProductResponse> => { // Add token parameter
+  return await apiRequest('/api/v1/brands/products', 'POST', productData, true, token, requestOptions);
 };
 
 export const updateProduct = async (productId: string, productData: {
@@ -248,8 +270,8 @@ export const updateProduct = async (productId: string, productData: {
   return await apiRequest(`/api/v1/brands/products/${productId}`, 'PUT', productData, true, token);
 };
 
-export const getBrandProducts = async (token: string): Promise<ProductResponse[]> => { // Add token parameter
-  return await apiRequest('/api/v1/brands/products', 'GET', undefined, true, token);
+export const getBrandProducts = async (token: string, requestOptions?: RequestOptions): Promise<ProductResponse[]> => { // Add token parameter
+  return await apiRequest('/api/v1/brands/products', 'GET', undefined, true, token, requestOptions);
 };
 
 export const getStyles = async (): Promise<any[]> => {
