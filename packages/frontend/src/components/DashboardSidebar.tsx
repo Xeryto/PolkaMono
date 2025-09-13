@@ -21,9 +21,9 @@ interface DashboardSidebarProps {
 
 const menuItems = [
   { id: 'stats', title: 'Статистика', icon: BarChart3 },
-  { id: 'orders', title: 'Orders', icon: ShoppingCart },
-  { id: 'products', title: 'Products', icon: Package },
-  { id: 'add-item', title: 'Add Item', icon: PlusSquare },
+  { id: 'orders', title: 'Заказы', icon: ShoppingCart },
+  { id: 'products', title: 'Товары', icon: Package },
+  { id: 'add-item', title: 'Добавить товар', icon: PlusSquare },
   { id: 'profile', title: 'Профиль', icon: User },
 ];
 
@@ -47,7 +47,7 @@ export function DashboardSidebar({ currentView, onViewChange }: DashboardSidebar
       <SidebarContent>
         <SidebarGroup>
           <SidebarGroupLabel className="text-muted-foreground font-semibold">
-            Brand Portal
+            Портал брендов
           </SidebarGroupLabel>
 
           <SidebarGroupContent>

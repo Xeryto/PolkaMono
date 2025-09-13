@@ -5,14 +5,15 @@
     "packages/mobile",
     "packages/frontend"
   ],
+  "packageManager": "yarn@1.22.22",
   "scripts": {
-    "install:js": "npm install",
+    "install:js": "yarn install",
     "install:py": "cd packages/api && python3 -m venv venv && . venv/bin/activate && pip install -r requirements.txt",
-    "install:all": "npm run install:js && npm run install:py",
-    "start:mobile": "npm start --workspace=packages/mobile",
-    "start:frontend": "npm start --workspace=packages/frontend",
+    "install:all": "yarn install:js && yarn install:py",
+    "start:mobile": "yarn workspace polkamobile start",
+    "start:frontend": "yarn workspace vite_react_shadcn_ts start",
     "start:api": "cd packages/api && . venv/bin/activate && uvicorn main:app --reload",
-    "dev": "concurrently \"npm:start:*\""
+    "dev": "concurrently \"yarn:start:*\""
   },
   "devDependencies": {
     "concurrently": "^8.2.2"

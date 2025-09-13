@@ -348,7 +348,7 @@ const apiRequest = async (
       
       if (!isValid) {
         sessionManager.handleLoginRequired();
-        throw new ApiError('Authentication required', 401);
+        throw new ApiError('Требуется аутентификация. Пожалуйста, войдите в систему.', 401);
       }
     }
 
@@ -373,13 +373,14 @@ const apiRequest = async (
         console.log('API Request: Authentication required, triggering handleLoginRequired.');
         sessionManager.handleLoginRequired();
       }
-      throw new ApiError('Authentication required', 401);
+      // Let the actual API error message come through instead of generic message
+      return await handleApiResponse(response);
     }
 
     return await handleApiResponse(response);
   } catch (error) {
     if (error instanceof ApiError && error.status === 401) {
-      // Don't show authentication errors to users, just log them
+      // Log the authentication error for debugging
       console.log('API authentication error:', error.message);
     }
     throw error;

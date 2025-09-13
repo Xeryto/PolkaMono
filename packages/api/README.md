@@ -59,7 +59,7 @@ oauth_accounts (id, user_id, provider, provider_user_id,
 
 -- Fashion preferences
 brands (id, name, slug, logo, description)
-styles (id, name, description, image)
+styles (id, name, description)
 user_brands (user_id, brand_id) -- Many-to-many
 user_styles (user_id, style_id) -- Many-to-many
 ```

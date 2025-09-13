@@ -28,8 +28,8 @@ const Portal = () => {
     } catch (error: any) {
       console.error("Brand login failed:", error);
       toast({
-        title: "Login Failed",
-        description: error.message || "Invalid credentials. Please try again.",
+        title: "Ошибка входа",
+        description: error.message || "Неверные учетные данные. Попробуйте снова.",
         variant: "destructive",
       });
     } finally {
@@ -42,15 +42,15 @@ const Portal = () => {
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
           <img src="/assets/Logo.svg" alt="Polka Logo" className="mx-auto h-20 w-20" />
-          <h1 className="text-3xl font-bold text-foreground mb-2">Polka Brand Portal</h1>
-          <p className="text-muted-foreground">Restricted Access Zone</p>
+          <h1 className="text-3xl font-bold text-foreground mb-2">Портал брендов Polka</h1>
+          <p className="text-muted-foreground">Зона ограниченного доступа</p>
         </div>
 
         <Card className="bg-card/90 backdrop-blur border-brown-light/30 shadow-ominous">
           <CardHeader>
-            <CardTitle className="text-center">Secure Access</CardTitle>
+            <CardTitle className="text-center">Безопасный доступ</CardTitle>
             <CardDescription className="text-center">
-              Enter your credentials to access the portal
+              Введите ваши учетные данные для доступа к порталу
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -58,7 +58,7 @@ const Portal = () => {
               <div>
                 <Input
                   type="email"
-                  placeholder="Brand Email"
+                  placeholder="Email бренда"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
@@ -69,7 +69,7 @@ const Portal = () => {
               <div>
                 <Input
                   type="password"
-                  placeholder="Access Code"
+                  placeholder="Код доступа"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
@@ -85,7 +85,7 @@ const Portal = () => {
                 disabled={isSubmitting}
               >
                 <LogIn className="mr-2 h-4 w-4" />
-                {isSubmitting ? "Authenticating..." : "Access Portal"}
+                {isSubmitting ? "Аутентификация..." : "Доступ к порталу"}
               </Button>
             </form>
           </CardContent>

@@ -61,8 +61,8 @@ export function AddNewItemPage() {
       } catch (error) {
         console.error("Failed to fetch data:", error);
         toast({
-          title: "Error",
-          description: "Failed to load styles and categories.",
+          title: "Ошибка",
+          description: "Не удалось загрузить стили и категории.",
           variant: "destructive",
         });
       }
@@ -75,8 +75,8 @@ export function AddNewItemPage() {
     const newImageFiles = [...imageFiles, ...files];
     if (newImages.length > 5) {
       toast({
-        title: "Error",
-        description: "You can upload a maximum of 5 images.",
+        title: "Ошибка",
+        description: "Вы можете загрузить максимум 5 изображений.",
         variant: "destructive",
       });
       return;
@@ -117,8 +117,8 @@ export function AddNewItemPage() {
     // Validate required fields
     if (!name.trim() || !price.trim() || !description.trim() || !selectedCategory) {
       toast({
-        title: "Error",
-        description: "Please fill in all required fields including category.",
+        title: "Ошибка",
+        description: "Пожалуйста, заполните все обязательные поля, включая категорию.",
         variant: "destructive",
       });
       return;
@@ -127,8 +127,8 @@ export function AddNewItemPage() {
     // Validate for duplicate sizes
     if (hasDuplicateSizes(variants)) {
       toast({
-        title: "Error",
-        description: "Duplicate sizes are not allowed for product variants.",
+        title: "Ошибка",
+        description: "Дублирующиеся размеры не допускаются для вариантов товара.",
         variant: "destructive",
       });
       return;
@@ -138,8 +138,8 @@ export function AddNewItemPage() {
     try {
       if (!token) {
         toast({
-          title: "Error",
-          description: "Authentication token not found. Please log in.",
+          title: "Ошибка",
+          description: "Токен аутентификации не найден. Пожалуйста, войдите в систему.",
           variant: "destructive",
         });
         setIsLoading(false); // Stop loading if no token
@@ -151,8 +151,8 @@ export function AddNewItemPage() {
         price: parseFloat(price),
         description,
         images,
-        colors: selectedColors.length > 0 ? selectedColors : undefined,
-        materials: selectedMaterials.length > 0 ? selectedMaterials : undefined, // Changed to multi-select
+        color: selectedColors.length > 0 ? selectedColors.join(", ") : undefined,
+        material: selectedMaterials.length > 0 ? selectedMaterials.join(", ") : undefined,
         brand_id: 1, // Placeholder: Replace with actual brand ID from current user
         category_id: selectedCategory,
         styles: selectedStyle ? [selectedStyle] : [], // Send selected style
@@ -162,8 +162,8 @@ export function AddNewItemPage() {
 
       await api.createProduct(productData, token); // Pass token
       toast({
-        title: "Success",
-        description: "Product added successfully!",
+        title: "Успех",
+        description: "Товар успешно добавлен!",
       });
       // Clear form
       setName('');
@@ -179,8 +179,8 @@ export function AddNewItemPage() {
     } catch (error: any) {
       console.error("Failed to add product:", error);
       toast({
-        title: "Error",
-        description: error.message || "Failed to add product.",
+        title: "Ошибка",
+        description: error.message || "Не удалось добавить товар.",
         variant: "destructive",
       });
     } finally {

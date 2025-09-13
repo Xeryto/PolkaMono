@@ -16,7 +16,7 @@ export function DashboardHeader() {
   return (
     <header className="h-16 bg-card/30 border-b border-brown-light/20 flex items-center justify-between px-6">
       <div>
-        <h1 className="text-xl font-bold text-foreground">Command Center</h1>
+        <h1 className="text-xl font-bold text-foreground">Командный центр</h1>
         <p className="text-sm text-muted-foreground">Панель управления Polka</p>
       </div>
       
@@ -36,13 +36,13 @@ export function DashboardHeader() {
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="bg-card border-brown-light/30">
-            <DropdownMenuLabel>Brand Account</DropdownMenuLabel>
+            <DropdownMenuLabel>Аккаунт бренда</DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <DropdownMenuItem>Profile Settings</DropdownMenuItem>
-            <DropdownMenuItem>Security</DropdownMenuItem>
+            <DropdownMenuItem>Настройки профиля</DropdownMenuItem>
+            <DropdownMenuItem>Безопасность</DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem className="text-destructive" onSelect={logout}>
-              Logout
+              Выйти
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

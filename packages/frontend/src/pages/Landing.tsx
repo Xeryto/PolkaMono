@@ -16,7 +16,7 @@ const Landing = () => {
     // Mock API call to /api/v1/exclusive-access-signup
     setTimeout(() => {
       toast({
-        title: "Access Requested",
+        title: "Запрос на доступ",
         description: "Вы добавлены в наш список эксклюзивного доступа. Мы скоро свяжемся с вами.",
       });
       setEmail("");
@@ -31,7 +31,7 @@ const Landing = () => {
                         <img src="/assets/Logo.svg" alt="Polka Logo" className="mx-auto h-20 w-20" />
             <CardTitle className="text-center text-2xl font-bold">Polka</CardTitle>
             <CardDescription className="text-center">
-              Enter your email to join the waitlist.
+              Введите ваш email, чтобы присоединиться к списку ожидания.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -39,7 +39,7 @@ const Landing = () => {
               <div>
                 <Input
                   type="email"
-                  placeholder="you@example.com"
+                  placeholder="ваш@email.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
@@ -54,7 +54,7 @@ const Landing = () => {
                 className="w-full h-12"
                 disabled={isSubmitting}
               >
-                {isSubmitting ? "Submitting..." : "Request Access"}
+                {isSubmitting ? "Отправка..." : "Запросить доступ"}
               </Button>
             </form>
           </CardContent>

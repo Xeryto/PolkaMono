@@ -16,8 +16,8 @@ export function StatsView() {
       if (!token) {
         setIsLoading(false);
         toast({
-          title: "Error",
-          description: "Authentication token not found. Please log in.",
+          title: "Ошибка",
+          description: "Токен аутентификации не найден. Пожалуйста, войдите в систему.",
           variant: "destructive",
         });
         return;
@@ -30,8 +30,8 @@ export function StatsView() {
       } catch (error: any) {
         console.error("Failed to fetch stats:", error);
         toast({
-          title: "Error",
-          description: error.message || "Failed to load statistics.",
+          title: "Ошибка",
+          description: error.message || "Не удалось загрузить статистику.",
           variant: "destructive",
         });
       } finally {
@@ -51,23 +51,23 @@ export function StatsView() {
   };
 
   if (isLoading) {
-    return <div>Loading statistics...</div>;
+    return <div>Загрузка статистики...</div>;
   }
 
   if (!stats) {
-    return <div>Could not load statistics.</div>;
+    return <div>Не удалось загрузить статистику.</div>;
   }
 
   return (
     <div className="space-y-6">
-      <h2 className="text-2xl font-bold text-foreground">Statistics</h2>
+      <h2 className="text-2xl font-bold text-foreground">Статистика</h2>
 
       {/* Key Metrics */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <Card className="bg-card border-border/30 shadow-lg">
           <CardHeader className="pb-2">
             <div className="flex items-center justify-between">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Total Sold</CardTitle>
+              <CardTitle className="text-sm font-medium text-muted-foreground">Всего продано</CardTitle>
               <TrendingUp className="h-4 w-4 text-muted-foreground" />
             </div>
           </CardHeader>
@@ -81,7 +81,7 @@ export function StatsView() {
         <Card className="bg-card border-border/30 shadow-lg">
           <CardHeader className="pb-2">
             <div className="flex items-center justify-between">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Total Withdrawn</CardTitle>
+              <CardTitle className="text-sm font-medium text-muted-foreground">Всего выведено</CardTitle>
               <TrendingDown className="h-4 w-4 text-muted-foreground" />
             </div>
           </CardHeader>
@@ -95,7 +95,7 @@ export function StatsView() {
         <Card className="bg-card border-border/30 shadow-lg">
           <CardHeader className="pb-2">
             <div className="flex items-center justify-between">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Current Balance</CardTitle>
+              <CardTitle className="text-sm font-medium text-muted-foreground">Текущий баланс</CardTitle>
               <RussianRuble className="h-4 w-4 text-muted-foreground" />
             </div>
           </CardHeader>

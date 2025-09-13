@@ -1,8 +1,8 @@
 import { Platform } from 'react-native';
 
 // Environment-aware configuration
-const DEV_API_URL = Platform.OS === 'android' ? 'http://10.0.2.2:8000' : 'http://localhost:8000'; // Your local backend URL
-const PROD_API_URL = 'https://polkaapi.onrender.com'; // Your production backend URL
+const DEV_API_URL = Platform.OS === 'android' ? 'http://10.0.2.2:8000' : 'https://polkamono.onrender.com'; // Your local backend URL
+const PROD_API_URL = 'https://polkamono.onrender.com'; // Your production backend URL
 
 // The __DEV__ global variable is set to true in development mode by React Native.
 const isDevelopment = __DEV__;

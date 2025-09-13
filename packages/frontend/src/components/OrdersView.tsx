@@ -20,8 +20,8 @@ export function OrdersView() {
       if (!token) {
         setIsLoading(false);
         toast({
-          title: "Error",
-          description: "Authentication token not found. Please log in.",
+          title: "Ошибка",
+          description: "Токен аутентификации не найден. Пожалуйста, войдите в систему.",
           variant: "destructive",
         });
         return;
@@ -34,8 +34,8 @@ export function OrdersView() {
       } catch (error: any) {
         console.error("Failed to fetch orders:", error);
         toast({
-          title: "Error",
-          description: error.message || "Failed to load orders.",
+          title: "Ошибка",
+          description: error.message || "Не удалось загрузить заказы.",
           variant: "destructive",
         });
       } finally {
@@ -60,28 +60,28 @@ export function OrdersView() {
 
   return (
     <div className="space-y-6">
-      <h2 className="text-2xl font-bold text-foreground">Orders</h2>
+      <h2 className="text-2xl font-bold text-foreground">Заказы</h2>
 
       <Card className="bg-card border-border/30 shadow-lg">
         <CardHeader>
-          <CardTitle>All Orders</CardTitle>
-          <CardDescription>View and manage customer orders</CardDescription>
+          <CardTitle>Все заказы</CardTitle>
+          <CardDescription>Просмотр и управление заказами клиентов</CardDescription>
         </CardHeader>
         <CardContent>
           {isLoading ? (
-            <div>Loading orders...</div>
+            <div>Загрузка заказов...</div>
           ) : orders.length === 0 ? (
-            <div>No orders found.</div>
+            <div>Заказы не найдены.</div>
           ) : (
             <div className="space-y-4">
               {orders.map((order) => (
                 <div key={order.id} className="flex items-center justify-between p-2 rounded-lg hover:bg-muted/50 cursor-pointer" onClick={() => setSelectedOrder(order)}>
                   <div>
-                    <p className="font-medium text-foreground">Order # {order.number}</p>
+                    <p className="font-medium text-foreground">Заказ № {order.number}</p>
                     {order.tracking_number && (
-                      <p className="text-sm text-muted-foreground">Tracking: {order.tracking_number}</p>
+                      <p className="text-sm text-muted-foreground">Отслеживание: {order.tracking_number}</p>
                     )}
-                    <p className="text-sm text-muted-foreground">Total: {order.total}</p>
+                    <p className="text-sm text-muted-foreground">Итого: {order.total}</p>
                   </div>
                   <div className="text-right">
                     <p className="font-bold text-foreground">{new Date(order.date).toLocaleDateString()}</p>

@@ -125,6 +125,8 @@ class ProductUpdateRequest(BaseModel):
     styles: Optional[List[str]] = None
     variants: Optional[List[ProductVariantSchema]] = None
     sku: Optional[str] = None # NEW
+    color: Optional[str] = None
+    material: Optional[str] = None
 
 class Product(BaseModel):
     id: Optional[str]
@@ -157,7 +159,6 @@ class StyleResponse(BaseModel):
     id: str
     name: str
     description: Optional[str] = None
-    image: Optional[str] = None
 
     class Config:
         from_attributes = True

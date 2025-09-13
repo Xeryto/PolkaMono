@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label"; // NEW Import
 import { useToast } from "@/hooks/use-toast"; // NEW Import
 import * as api from "@/services/api"; // Import api
 import { useAuth } from "@/context/AuthContext"; // Import useAuth
+import { translateColorToRussian, translateMaterialToRussian } from "@/lib/translations";
 
 interface Order {
   id: string;

@@ -220,7 +220,7 @@ def get_current_user(
     if not payload:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid token"
+            detail="Недействительный токен. Пожалуйста, войдите в систему заново."
         )
     
     user_id = payload.get("sub")
@@ -231,14 +231,14 @@ def get_current_user(
         if not entity:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Brand not found"
+                detail="Бренд не найден. Проверьте правильность учетных данных."
             )
     else:
         entity = auth_service.get_user_by_id(db, user_id)
         if not entity:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="User not found"
+                detail="Пользователь не найден. Проверьте правильность учетных данных."
             )
     
     return entity
@@ -264,7 +264,7 @@ async def get_brand_profile(
     """Get the authenticated brand user's profile"""
     brand = db.query(Brand).filter(Brand.id == int(current_brand_user.id)).first()
     if not brand:
-        raise HTTPException(status_code=404, detail="Brand not found")
+        raise HTTPException(status_code=404, detail="Бренд не найден. Проверьте правильность данных.")
     
     return schemas.BrandResponse(
         id=brand.id,
@@ -398,7 +398,7 @@ async def update_brand_profile(
     """Update the authenticated brand user's profile"""
     brand = db.query(Brand).filter(Brand.id == int(current_brand_user.id)).first()
     if not brand:
-        raise HTTPException(status_code=404, detail="Brand not found")
+        raise HTTPException(status_code=404, detail="Бренд не найден. Проверьте правильность данных.")
     
     # Update fields
     if brand_data.name is not None:
@@ -452,13 +452,13 @@ async def register(user_data: UserCreate, db: Session = Depends(get_db)):
     if auth_service.get_user_by_email(db, user_data.email):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="User with this email already exists"
+            detail="Пользователь с таким email уже существует. Используйте другой email или войдите в систему."
         )
     
     if auth_service.get_user_by_username(db, user_data.username):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Username already taken"
+            detail="Имя пользователя уже занято. Выберите другое имя пользователя."
         )
     
     # Create new user
@@ -515,19 +515,19 @@ async def login(user_data: UserLogin, db: Session = Depends(get_db)):
     else:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid identifier format. Please provide a valid email or username."
+            detail="Неверный формат идентификатора. Пожалуйста, введите действительный email или имя пользователя."
         )
     
     if not user or not user.password_hash:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid credentials"
+            detail="Неверные учетные данные. Проверьте правильность email/имени пользователя и пароля."
         )
     
     if not auth_service.verify_password(user_data.password, user.password_hash):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid credentials"
+            detail="Неверный пароль. Проверьте правильность введенного пароля."
         )
     
     # Create access token
@@ -576,7 +576,7 @@ async def brand_login(brand_data: schemas.BrandLogin, db: Session = Depends(get_
     if not brand or not auth_service.verify_password(brand_data.password, brand.password_hash):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid credentials"
+            detail="Неверные учетные данные бренда. Проверьте правильность email и пароля."
         )
     
     # Create access token for the brand
@@ -957,8 +957,7 @@ async def get_user_profile(current_user: User = Depends(get_current_user), db: S
         favorite_styles=[schemas.StyleResponse(
             id=style.id,
             name=style.name,
-            description=style.description,
-            image=style.image
+            description=style.description
         ) for style in favorite_styles]
     )
 
@@ -1038,7 +1037,7 @@ async def update_product(
     """Update an existing product for the authenticated brand user"""
     product = db.query(Product).filter(Product.id == product_id).first()
     if not product:
-        raise HTTPException(status_code=404, detail="Product not found")
+        raise HTTPException(status_code=404, detail="Товар не найден. Возможно, он был удален или перемещен.")
 
     # Ensure the product belongs to the current brand user (if applicable)
     brand = db.query(Brand).filter(Brand.id == product.brand_id).first()
@@ -1135,7 +1134,7 @@ async def get_brand_product_details(
     """Get details of a specific product for the authenticated brand user"""
     product = db.query(Product).filter(Product.id == product_id).first()
     if not product:
-        raise HTTPException(status_code=404, detail="Product not found")
+        raise HTTPException(status_code=404, detail="Товар не найден. Возможно, он был удален или перемещен.")
 
     if product.brand_id != current_user.id:
         raise HTTPException(status_code=403, detail="Product does not belong to your brand")
@@ -1210,7 +1209,7 @@ async def update_order_tracking(
     """Update tracking number for a specific order belonging to the authenticated brand user"""
     order = db.query(Order).filter(Order.id == order_id).first()
     if not order:
-        raise HTTPException(status_code=404, detail="Order not found")
+        raise HTTPException(status_code=404, detail="Заказ не найден. Проверьте правильность номера заказа.")
 
     # Verify that the order belongs to a product from the current brand user
     # This logic needs to be refined based on how brands are linked to orders.

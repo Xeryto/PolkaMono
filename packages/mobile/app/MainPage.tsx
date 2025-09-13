@@ -26,6 +26,7 @@ import * as api from './services/api';
 import fallbackImage from './assets/Vision.png'; // Use as fallback for missing images
 import vision2Image from './assets/Vision2.png';
 import { Product, CartItem } from './types/product';
+import { translateColorToRussian, translateMaterialToRussian } from './lib/translations';
 
 
 // Define a simpler navigation type that our custom navigation can satisfy
@@ -1157,10 +1158,10 @@ const MainPage = ({ navigation, route }: MainPageProps) => {
           <Text style={styles.cardBackName}>{card.name}</Text>
         </View>
         <View style={styles.expandableSectionsContainer}>
-          <ExpandableSection title="Description" content={card.description} />
-          <ExpandableSection title="Color" content={card.color} />
-          <ExpandableSection title="Materials" content={card.materials} />
-          <ExpandableSection title="Brand Return Policy" content={card.brand_return_policy} />
+          <ExpandableSection title="Описание" content={card.description} />
+          <ExpandableSection title="Цвет" content={translateColorToRussian(card.color)} />
+          <ExpandableSection title="Материалы" content={translateMaterialToRussian(card.materials)} />
+          <ExpandableSection title="Политика возврата" content={card.brand_return_policy} />
         </View>
       </View>
     );
@@ -1747,7 +1748,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 20,
     width: '100%',
-    justifyContent: 'center',
+    justifyContent: 'flex-start',
     paddingRight: 50, // Added to prevent overlap with the button
   },
   cardBackImage: {
@@ -1760,10 +1761,12 @@ const styles = StyleSheet.create({
     fontFamily: 'IgraSans',
     fontSize: 24,
     color: '#333',
-    flexShrink: 1,
+    flex: 1,
+    flexWrap: 'wrap',
   },
   expandableSectionsContainer: {
     width: '100%',
+    flex: 1,
   },
   expandableContainer: {
     marginBottom: 10,

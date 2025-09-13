@@ -4,6 +4,7 @@ import { ProductDetailsModal } from "@/components/ProductDetailsModal";
 import { useToast } from "@/hooks/use-toast";
 import * as api from "@/services/api"; // Import api
 import { useAuth } from "@/context/AuthContext"; // Import useAuth
+import { translateColorToRussian, translateMaterialToRussian } from "@/lib/translations";
 
 export function ProductsView() {
   const [products, setProducts] = useState<api.ProductResponse[]>([]); // Initialize with empty array
@@ -15,8 +16,8 @@ export function ProductsView() {
   const fetchProducts = async () => {
     if (!token) {
       toast({
-        title: "Error",
-        description: "Authentication token not found. Please log in.",
+        title: "Ошибка",
+        description: "Токен аутентификации не найден. Пожалуйста, войдите в систему.",
         variant: "destructive",
       });
       return;
@@ -28,8 +29,8 @@ export function ProductsView() {
     } catch (error: any) {
       console.error("Failed to fetch products:", error);
       toast({
-        title: "Error",
-        description: error.message || "Failed to load products.",
+        title: "Ошибка",
+        description: error.message || "Не удалось загрузить товары.",
         variant: "destructive",
       });
     }
@@ -47,8 +48,8 @@ export function ProductsView() {
   const handleProductUpdated = () => {
     fetchProducts(); // Re-fetch products after update
     toast({
-      title: "Success",
-      description: "Product updated successfully.",
+      title: "Успех",
+      description: "Товар успешно обновлен.",
     });
   };
 
@@ -65,11 +66,23 @@ export function ProductsView() {
           <div className="space-y-4">
             {products.map((product) => (
               <div key={product.id} className="flex items-center justify-between p-2 rounded-lg hover:bg-muted/50 cursor-pointer" onClick={() => handleProductClick(product)}>
-                <div>
+                <div className="flex-1">
                   <p className="font-medium text-foreground">{product.name}</p>
-                  <p className="text-sm text-muted-foreground">В наличии: {product.variants.reduce((sum: number, v: any) => sum + v.stock_quantity, 0)}</p>
+                  <div className="flex flex-wrap gap-2 mt-1">
+                    {product.color && (
+                      <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
+                        Цвет: {translateColorToRussian(product.color)}
+                      </span>
+                    )}
+                    {product.material && (
+                      <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full">
+                        Материал: {translateMaterialToRussian(product.material)}
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-sm text-muted-foreground mt-1">В наличии: {product.variants.reduce((sum: number, v: any) => sum + v.stock_quantity, 0)}</p>
                 </div>
-                <p className="font-bold text-foreground">{product.price}</p>
+                <p className="font-bold text-foreground">{product.price} ₽</p>
               </div>
             ))}
           </div>
