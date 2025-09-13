@@ -445,6 +445,20 @@ async def update_brand_profile(
     )
 
 # API Endpoints
+@app.get("/api/v1/auth/check-username/{username}")
+async def check_username_availability(username: str, db: Session = Depends(get_db)):
+    """Check if username is available"""
+    existing_user = auth_service.get_user_by_username(db, username)
+    return {"available": existing_user is None}
+
+
+@app.get("/api/v1/auth/check-email/{email}")
+async def check_email_availability(email: str, db: Session = Depends(get_db)):
+    """Check if email is available"""
+    existing_user = auth_service.get_user_by_email(db, email)
+    return {"available": existing_user is None}
+
+
 @app.post("/api/v1/auth/register", response_model=AuthResponse, status_code=status.HTTP_201_CREATED)
 async def register(user_data: UserCreate, db: Session = Depends(get_db)):
     """Register a new user"""

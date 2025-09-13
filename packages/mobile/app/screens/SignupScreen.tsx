@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   View, 
   Text, 
@@ -48,6 +48,96 @@ const SignupScreen: React.FC<SignupScreenProps> = ({ onSignup, onBack }) => {
     general: ''
   });
   const [isLoading, setIsLoading] = useState(false);
+  const [isCheckingUsername, setIsCheckingUsername] = useState(false);
+  const [isCheckingEmail, setIsCheckingEmail] = useState(false);
+  const [usernameAvailable, setUsernameAvailable] = useState<boolean | null>(null);
+  const [emailAvailable, setEmailAvailable] = useState<boolean | null>(null);
+  
+  // Debounce timers
+  const usernameTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const emailTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  
+  // Debounced username validation
+  const debouncedCheckUsername = (username: string) => {
+    if (usernameTimeoutRef.current) {
+      clearTimeout(usernameTimeoutRef.current);
+    }
+    
+    usernameTimeoutRef.current = setTimeout(async () => {
+      if (username.trim() && username.trim().length >= 3) {
+        setIsCheckingUsername(true);
+        try {
+          const available = await api.checkUsernameAvailability(username.trim());
+          setUsernameAvailable(available);
+          if (!available) {
+            setErrors(prev => ({
+              ...prev,
+              username: 'Этот ник уже занят'
+            }));
+          } else {
+            setErrors(prev => ({
+              ...prev,
+              username: ''
+            }));
+          }
+        } catch (error) {
+          console.error('Error checking username:', error);
+          setUsernameAvailable(null);
+        } finally {
+          setIsCheckingUsername(false);
+        }
+      } else {
+        setUsernameAvailable(null);
+      }
+    }, 500); // 500ms delay
+  };
+  
+  // Debounced email validation
+  const debouncedCheckEmail = (email: string) => {
+    if (emailTimeoutRef.current) {
+      clearTimeout(emailTimeoutRef.current);
+    }
+    
+    emailTimeoutRef.current = setTimeout(async () => {
+      if (email.trim() && /\S+@\S+\.\S+/.test(email.trim())) {
+        setIsCheckingEmail(true);
+        try {
+          const available = await api.checkEmailAvailability(email.trim());
+          setEmailAvailable(available);
+          if (!available) {
+            setErrors(prev => ({
+              ...prev,
+              email: 'Этот email уже используется'
+            }));
+          } else {
+            setErrors(prev => ({
+              ...prev,
+              email: ''
+            }));
+          }
+        } catch (error) {
+          console.error('Error checking email:', error);
+          setEmailAvailable(null);
+        } finally {
+          setIsCheckingEmail(false);
+        }
+      } else {
+        setEmailAvailable(null);
+      }
+    }, 500); // 500ms delay
+  };
+  
+  // Cleanup timeouts on unmount
+  useEffect(() => {
+    return () => {
+      if (usernameTimeoutRef.current) {
+        clearTimeout(usernameTimeoutRef.current);
+      }
+      if (emailTimeoutRef.current) {
+        clearTimeout(emailTimeoutRef.current);
+      }
+    };
+  }, []);
   
   // Validate form
   const validateForm = () => {
@@ -76,6 +166,12 @@ const SignupScreen: React.FC<SignupScreenProps> = ({ onSignup, onBack }) => {
     } else if (illegalCharRegex.test(username)) {
       newErrors.username = 'Ник содержит недопустимые символы';
       valid = false;
+    } else if (usernameAvailable === false) {
+      newErrors.username = 'Этот ник уже занят';
+      valid = false;
+    } else if (usernameAvailable === null && isCheckingUsername) {
+      newErrors.username = 'Проверяем доступность ника...';
+      valid = false;
     }
     
     // Validate email
@@ -90,6 +186,12 @@ const SignupScreen: React.FC<SignupScreenProps> = ({ onSignup, onBack }) => {
       valid = false;
     } else if (illegalCharRegex.test(email)) {
       newErrors.email = 'Email содержит недопустимые символы';
+      valid = false;
+    } else if (emailAvailable === false) {
+      newErrors.email = 'Этот email уже используется';
+      valid = false;
+    } else if (emailAvailable === null && isCheckingEmail) {
+      newErrors.email = 'Проверяем доступность email...';
       valid = false;
     }
     
@@ -138,12 +240,31 @@ const SignupScreen: React.FC<SignupScreenProps> = ({ onSignup, onBack }) => {
       setIsLoading(false);
       
       let errorMessage = 'Ошибка регистрации. Попробуйте позже.';
+      let fieldErrors = { ...errors };
+      
       if (error instanceof Error) {
-        errorMessage = error.message;
+        const message = error.message;
+        
+        // Parse specific error messages from the API
+        if (message.includes('email уже существует') || message.includes('email уже используется')) {
+          fieldErrors.email = 'Этот email уже используется';
+          setEmailAvailable(false);
+        } else if (message.includes('имя пользователя уже занято') || message.includes('username уже занят')) {
+          fieldErrors.username = 'Этот ник уже занят';
+          setUsernameAvailable(false);
+        } else if (message.includes('Пользователь с таким email уже существует')) {
+          fieldErrors.email = 'Этот email уже используется';
+          setEmailAvailable(false);
+        } else if (message.includes('Имя пользователя уже занято')) {
+          fieldErrors.username = 'Этот ник уже занят';
+          setUsernameAvailable(false);
+        } else {
+          errorMessage = message;
+        }
       }
       
       setErrors({
-        ...errors,
+        ...fieldErrors,
         general: errorMessage
       });
     }
@@ -203,13 +324,34 @@ const SignupScreen: React.FC<SignupScreenProps> = ({ onSignup, onBack }) => {
               <Animated.View style={styles.inputShadow} entering={FadeInDown.duration(500).delay(50)}>
                 <View style={styles.inputContainer}>
                   <TextInput
-                    style={[styles.input, errors.username ? styles.inputError : null]}
+                    style={[
+                      styles.input, 
+                      errors.username ? styles.inputError : null,
+                      usernameAvailable === true ? styles.inputSuccess : null,
+                      isCheckingUsername ? styles.inputChecking : null
+                    ]}
                     placeholder="Ник"
                     placeholderTextColor="rgba(0, 0, 0, 1)"
                     autoCapitalize="none"
                     value={username}
-                    onChangeText={setUsername}
+                    onChangeText={(text) => {
+                      setUsername(text);
+                      debouncedCheckUsername(text);
+                    }}
                   />
+                  {isCheckingUsername && (
+                    <ActivityIndicator 
+                      size="small" 
+                      color="#FFA500" 
+                      style={styles.statusIndicator} 
+                    />
+                  )}
+                  {usernameAvailable === true && !isCheckingUsername && (
+                    <Text style={[styles.statusText, styles.statusTextSuccess]}>✓</Text>
+                  )}
+                  {usernameAvailable === false && !isCheckingUsername && (
+                    <Text style={[styles.statusText, styles.statusTextError]}>✗</Text>
+                  )}
                 </View>
                 {errors.username ? (
                   <Text style={styles.errorText}>{errors.username}</Text>
@@ -219,15 +361,36 @@ const SignupScreen: React.FC<SignupScreenProps> = ({ onSignup, onBack }) => {
               <Animated.View style={styles.inputShadow} entering={FadeInDown.duration(500).delay(100)}>
                 <View style={styles.inputContainer}>
                   <TextInput
-                    style={[styles.input, errors.email ? styles.inputError : null]}
+                    style={[
+                      styles.input, 
+                      errors.email ? styles.inputError : null,
+                      emailAvailable === true ? styles.inputSuccess : null,
+                      isCheckingEmail ? styles.inputChecking : null
+                    ]}
                     placeholder="Email"
                     placeholderTextColor="rgba(0, 0, 0, 1)"
                     autoCapitalize="none"
                     autoComplete="email"
                     keyboardType="email-address"
                     value={email}
-                    onChangeText={setEmail}
+                    onChangeText={(text) => {
+                      setEmail(text);
+                      debouncedCheckEmail(text);
+                    }}
                   />
+                  {isCheckingEmail && (
+                    <ActivityIndicator 
+                      size="small" 
+                      color="#FFA500" 
+                      style={styles.statusIndicator} 
+                    />
+                  )}
+                  {emailAvailable === true && !isCheckingEmail && (
+                    <Text style={[styles.statusText, styles.statusTextSuccess]}>✓</Text>
+                  )}
+                  {emailAvailable === false && !isCheckingEmail && (
+                    <Text style={[styles.statusText, styles.statusTextError]}>✗</Text>
+                  )}
                 </View>
                 {errors.email ? (
                   <Text style={styles.errorText}>{errors.email}</Text>
@@ -445,6 +608,37 @@ const styles = StyleSheet.create({
   inputError: {
     borderColor: 'rgba(255, 100, 100, 0.7)',
     borderWidth: 1,
+  },
+  inputSuccess: {
+    borderColor: 'rgba(0, 170, 0, 0.7)',
+    borderWidth: 1,
+  },
+  inputChecking: {
+    borderColor: 'rgba(255, 165, 0, 0.7)',
+    borderWidth: 1,
+  },
+  statusIndicator: {
+    position: 'absolute',
+    right: 15,
+    top: '50%',
+    transform: [{ translateY: -10 }],
+  },
+  statusText: {
+    fontFamily: 'IgraSans',
+    fontSize: 10,
+    position: 'absolute',
+    right: 15,
+    top: '50%',
+    transform: [{ translateY: -5 }],
+  },
+  statusTextSuccess: {
+    color: '#00AA00',
+  },
+  statusTextError: {
+    color: '#FF0000',
+  },
+  statusTextChecking: {
+    color: '#FFA500',
   },
   errorText: {
     fontFamily: 'REM',

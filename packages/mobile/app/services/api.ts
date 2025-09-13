@@ -420,6 +420,27 @@ export const retrieveUserProfile = async (): Promise<UserProfile | null> => {
   }
 };
 
+// Username and email availability checks
+export const checkUsernameAvailability = async (username: string): Promise<boolean> => {
+  try {
+    const response = await apiRequest(`/api/v1/auth/check-username/${encodeURIComponent(username)}`, 'GET', null, false);
+    return response.available;
+  } catch (error) {
+    console.error('Error checking username availability:', error);
+    return false; // Assume not available on error to be safe
+  }
+};
+
+export const checkEmailAvailability = async (email: string): Promise<boolean> => {
+  try {
+    const response = await apiRequest(`/api/v1/auth/check-email/${encodeURIComponent(email)}`, 'GET', null, false);
+    return response.available;
+  } catch (error) {
+    console.error('Error checking email availability:', error);
+    return false; // Assume not available on error to be safe
+  }
+};
+
 // Updated Authentication API functions
 export const registerUser = async (
   username: string,

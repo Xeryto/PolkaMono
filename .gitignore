@@ -4,3 +4,5 @@ generate_migration.sh
 run_migration.sh
 package-lock.json
 .expo/
+
+yarn.lock

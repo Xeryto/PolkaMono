@@ -119,7 +119,7 @@ const LoadingScreen: React.FC<LoadingScreenProps> = ({ onFinish }) => {
         Powered by AI
       </Animated.Text>
 
-      <Animated.Text style={[styles.poweredByText, { opacity: fadeAnim, position: 'absolute', bottom: height*0.05 }]}>
+      <Animated.Text style={[styles.poweredByText, styles.bottomText, { opacity: fadeAnim, position: 'absolute', bottom: height*0.05 }]}>
         ПОЛКА
       </Animated.Text>
     </Animated.View>
@@ -143,6 +143,16 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#4A3120',
     marginTop: 20,
+    textAlign: 'center',
+    width: '100%',
+    paddingHorizontal: 20,
+  },
+  bottomText: {
+    textAlign: 'center',
+    width: '100%',
+    paddingHorizontal: 20,
+    left: 0,
+    right: 0,
   },
 });
 
