@@ -10,22 +10,23 @@ This guide covers deploying your Polka monorepo to Render. Your project consists
 
 ## Deployment Strategy: Separate Services (Recommended)
 
-### 1. API Backend Deployment
+### 1. API Backend Deployment (Using Docker)
 
 #### Service Configuration:
 
 - **Service Type**: Web Service
-- **Language**: Python
-- **Root Directory**: `packages/api`
-- **Build Command**:
-  ```bash
-  pip install -r requirements.txt
-  alembic upgrade head
-  ```
-- **Start Command**:
-  ```bash
-  uvicorn main:app --host 0.0.0.0 --port $PORT
-  ```
+- **Environment**: Docker
+- **Dockerfile Path**: `./packages/api/Dockerfile`
+- **Docker Context**: `./packages/api`
+- **Port**: 8000 (automatically exposed by Dockerfile)
+
+#### Why Docker?
+
+- ✅ **Consistent Environment**: Same environment locally and in production
+- ✅ **Dependency Management**: All dependencies are pre-installed and cached
+- ✅ **Security**: Runs as non-root user
+- ✅ **Optimized**: Multi-stage build reduces image size
+- ✅ **Database Migrations**: Can be handled in the Dockerfile or startup script
 
 #### Environment Variables to Set:
 
@@ -74,19 +75,26 @@ VITE_APPLE_CLIENT_ID=your-apple-client-id
 1. Ensure all your code is committed and pushed to GitHub
 2. Make sure your `requirements.txt` and `package.json` files are up to date
 
-### Step 2: Deploy API Backend
+### Step 2: Deploy API Backend (Docker)
 
 1. Go to [Render Dashboard](https://dashboard.render.com)
 2. Click "New +" → "Web Service"
 3. Connect your GitHub repository
 4. Configure the service:
    - **Name**: `polka-api`
-   - **Root Directory**: `packages/api`
-   - **Environment**: `Python 3`
-   - **Build Command**: `pip install -r requirements.txt && alembic upgrade head`
-   - **Start Command**: `uvicorn main:app --host 0.0.0.0 --port $PORT`
+   - **Environment**: `Docker`
+   - **Dockerfile Path**: `./packages/api/Dockerfile`
+   - **Docker Context**: `./packages/api`
 5. Add all required environment variables
 6. Click "Create Web Service"
+
+#### Alternative: Using render.yaml
+
+You can also use the provided `render.yaml` file for automatic configuration:
+
+1. Ensure `packages/api/render.yaml` is in your repository
+2. In Render Dashboard, select "Infrastructure as Code" when creating the service
+3. Render will automatically read the configuration from the YAML file
 
 ### Step 3: Deploy Frontend
 
@@ -135,6 +143,30 @@ If you prefer to deploy everything as one service:
 ### Option 2: External Database
 
 Use any PostgreSQL provider (AWS RDS, Supabase, etc.) and set the `DATABASE_URL` accordingly.
+
+### Database Migrations with Docker
+
+Your Dockerfile doesn't include database migrations. You have two options:
+
+#### Option A: Add migrations to Dockerfile (Recommended)
+
+Add this line after line 28 in your Dockerfile:
+
+```dockerfile
+# Run database migrations
+RUN alembic upgrade head
+```
+
+#### Option B: Run migrations on startup
+
+Create a startup script that runs migrations before starting the server:
+
+```dockerfile
+# Create startup script
+RUN echo '#!/bin/bash\nalembic upgrade head\nuvicorn main:app --host 0.0.0.0 --port 8000' > /app/start.sh
+RUN chmod +x /app/start.sh
+CMD ["/app/start.sh"]
+```
 
 ## Environment Variables Reference
 

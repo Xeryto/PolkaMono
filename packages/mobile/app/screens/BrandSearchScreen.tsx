@@ -75,7 +75,7 @@ const BrandSearchScreen: React.FC<BrandSearchScreenProps> = ({ onComplete, onBac
   // Fetch brands from API on mount
   useEffect(() => {
     fetchBrands();
-  }, [fetchBrands]);
+  }, []); // Remove fetchBrands from dependencies to prevent infinite loop
   
   // Handle animation when search becomes active
   useEffect(() => {

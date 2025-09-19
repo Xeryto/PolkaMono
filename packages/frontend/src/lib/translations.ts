@@ -50,3 +50,4 @@ export const getColorHex = (colorName: string): string => {
   const colorOption = colors.find(c => c.name === colorName);
   return colorOption ? colorOption.hex : '#000000';
 };
+

@@ -18,7 +18,6 @@ import { materials } from "@/lib/materials";
 import { FileInput } from "@/components/ui/file-input";
 import { sizes } from "@/lib/sizes";
 import { useAuth } from "@/context/AuthContext"; // Import useAuth
-import { translateColorToRussian, translateMaterialToRussian } from "@/lib/translations";
 
 interface ProductDetailsModalProps {
   isOpen: boolean;

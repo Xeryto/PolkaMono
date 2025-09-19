@@ -45,7 +45,7 @@ export function ProductsView() {
     if (token) {
       fetchProducts(token);
     }
-  }, [token, fetchProducts]);
+  }, [token]); // Remove fetchProducts from dependencies to prevent infinite loop
 
   const handleProductClick = (product: api.ProductResponse) => {
     setSelectedProduct(product);

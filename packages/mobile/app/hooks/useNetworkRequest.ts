@@ -84,7 +84,7 @@ export const useNetworkRequest = <T = any>(
       setIsLoading(false);
       setIsRetrying(false);
     }
-  }, [requestFn, timeout, retries, retryDelay, retryBackoff, onError, onSuccess]);
+  }, [timeout, retries, retryDelay, retryBackoff, onError, onSuccess]); // Remove requestFn from dependencies
 
   const retry = useCallback(async (): Promise<T | null> => {
     if (lastArgsRef.current.length === 0) {
