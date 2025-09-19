@@ -46,6 +46,13 @@ export interface UserProfileResponse {
   is_active: boolean;
   is_email_verified: boolean;
   is_brand: boolean;
+  // Shopping information fields
+  full_name?: string;
+  delivery_email?: string;
+  phone?: string;
+  address?: string;
+  city?: string;
+  postal_code?: string;
   created_at: string;
   updated_at: string;
 }
@@ -54,6 +61,16 @@ export interface AuthResponse {
   token: string;
   expires_at: string;
   user: UserProfileResponse;
+}
+
+// Shopping Information
+export interface ShoppingInfo {
+  full_name: string;
+  delivery_email: string;
+  phone: string;
+  address: string;
+  city: string;
+  postal_code?: string;
 }
 
 export interface BrandResponse {
@@ -141,6 +158,13 @@ export interface OrderResponse {
   tracking_number?: string;
   tracking_link?: string; // NEW
   items: OrderItemResponse[];
+  // Delivery information stored at order creation time
+  delivery_full_name?: string;
+  delivery_email?: string;
+  delivery_phone?: string;
+  delivery_address?: string;
+  delivery_city?: string;
+  delivery_postal_code?: string;
 }
 
 export interface StyleResponse {
@@ -332,6 +356,27 @@ export const getUserProfile = async (token: string): Promise<UserProfileResponse
 
 export const updateUserProfile = async (profileData: UserProfileResponse, token: string): Promise<UserProfileResponse> => { // Add token parameter
   return await apiRequest('/api/v1/user/profile', 'PUT', profileData, true, token);
+};
+
+// Shopping Information API functions
+export const getShoppingInfo = async (token: string): Promise<ShoppingInfo> => {
+  // For brands, shopping info is not applicable, return empty values
+  // Brands don't have delivery information as they are the sellers, not buyers
+  return {
+    full_name: '',
+    delivery_email: '',
+    phone: '',
+    address: '',
+    city: '',
+    postal_code: '',
+  };
+};
+
+export const updateShoppingInfo = async (shoppingInfo: ShoppingInfo, token: string): Promise<ShoppingInfo> => {
+  // For brands, shopping info updates are not applicable
+  // Brands don't have delivery information as they are the sellers, not buyers
+  console.log('updateShoppingInfo called for brand - no action needed');
+  return shoppingInfo;
 };
 
 // --- Product Liking ---

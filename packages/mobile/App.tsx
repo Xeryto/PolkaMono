@@ -93,6 +93,34 @@ export default function App() {
   // Use the new session management hook
   const { isAuthenticated, isLoading: sessionLoading, error: sessionError, login, logout } = useSession();
   
+  // Handle session expiration and clearing
+  useEffect(() => {
+    const handleSessionExpired = async () => {
+      console.log('App - Session expired, clearing cart');
+      try {
+        // Clear cart storage
+        await cartStorage.clearCart();
+        
+        // Clear global cart storage
+        if (global.cartStorage) {
+          global.cartStorage = cartStorage.createCartStorage([]);
+          console.log('App - Global cart storage reset due to session expiration');
+        }
+      } catch (error) {
+        console.error('Error clearing cart on session expiration:', error);
+      }
+    };
+
+    // Listen for session events
+    const unsubscribe = api.sessionManager.addListener((event) => {
+      if (event === 'session_cleared' || event === 'token_expired' || event === 'login_required') {
+        handleSessionExpired();
+      }
+    });
+
+    return unsubscribe;
+  }, []);
+  
   // Profile completion states
   const [profileCompletionStatus, setProfileCompletionStatus] = useState<api.ProfileCompletionStatus | null>(null);
   const [showConfirmationScreen, setShowConfirmationScreen] = useState(false);
@@ -512,6 +540,12 @@ export default function App() {
       
       // Clear cart
       await cartStorage.clearCart();
+      
+      // Clear global cart storage
+      if (global.cartStorage) {
+        global.cartStorage = cartStorage.createCartStorage([]);
+        console.log('App - Global cart storage reset during logout');
+      }
       
       // Clear data cache
       api.clearDataCache();

@@ -184,6 +184,15 @@ class SessionManager {
       await SecureStore.deleteItemAsync('refreshToken');
       await AsyncStorage.multiRemove(['tokenExpiry', 'userProfile']);
       
+      // Clear cart data when session is cleared
+      try {
+        const { clearCart } = await import('../cartStorage');
+        await clearCart();
+        console.log('SessionManager - Cart cleared during session clear');
+      } catch (cartError) {
+        console.error('Error clearing cart during session clear:', cartError);
+      }
+      
       // Clear user profile cache
       this.userProfileCache = null;
       this.userProfileCacheTime = 0;
@@ -263,6 +272,13 @@ export interface UserProfile {
   updated_at: string;
   favorite_brands?: Brand[];
   favorite_styles?: Style[];
+  // Shopping information fields (will be added to backend)
+  phone?: string;
+  address?: string;
+  city?: string;
+  postal_code?: string;
+  full_name?: string;
+  delivery_email?: string;
 }
 
 export interface AuthResponse {
@@ -970,6 +986,16 @@ export interface OrderItem {
     estimatedTime: string;
     tracking_number?: string;
   };
+  // Additional product details for main page compatibility
+  brand_name?: string;
+  description?: string;
+  color?: string;
+  materials?: string;
+  sku?: string;
+  images?: string[];
+  honest_sign?: string;
+  return_policy?: string;
+  product_id?: string; // Original product ID for swipe tracking
 }
 
 export interface Order {
@@ -1017,6 +1043,46 @@ export interface UserStats {
 
 export const getUserStats = async (): Promise<UserStats> => {
   return await apiRequest('/api/v1/user/stats', 'GET');
+};
+
+// Shopping Information
+export interface ShoppingInfo {
+  full_name: string;
+  delivery_email: string;
+  phone: string;
+  address: string;
+  city: string;
+  postal_code?: string;
+}
+
+// Shopping Information API functions
+export const getShoppingInfo = async (): Promise<ShoppingInfo> => {
+  // For now, we'll get this from the user profile
+  // In the future, this could be a separate endpoint
+  const profile = await getCurrentUser();
+  return {
+    full_name: profile.full_name || '', // Don't fallback to username
+    delivery_email: profile.delivery_email || profile.email, // Fallback to account email if no delivery email set
+    phone: profile.phone || '',
+    address: profile.address || '',
+    city: profile.city || '',
+    postal_code: profile.postal_code || '',
+  };
+};
+
+export const updateShoppingInfo = async (shoppingInfo: ShoppingInfo): Promise<ShoppingInfo> => {
+  // For now, we'll update the user profile with the shopping information
+  // In the future, this could be a separate endpoint
+  await updateUserProfile({
+    delivery_email: shoppingInfo.delivery_email,
+    full_name: shoppingInfo.full_name,
+    phone: shoppingInfo.phone,
+    address: shoppingInfo.address,
+    city: shoppingInfo.city,
+    postal_code: shoppingInfo.postal_code,
+  });
+  
+  return shoppingInfo;
 };
 
 // Swipe Tracking

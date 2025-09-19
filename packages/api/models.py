@@ -40,6 +40,13 @@ class User(Base):
     password_reset_token = Column(String, nullable=True)
     password_reset_expires = Column(DateTime, nullable=True)
     password_history = Column(ARRAY(String), default=list)  # Store last 5 password hashes
+    # Shopping information fields
+    full_name = Column(String(255), nullable=True)  # Full name for delivery
+    delivery_email = Column(String(255), nullable=True)  # Email for delivery notifications
+    phone = Column(String(20), nullable=True)  # Phone number for delivery
+    address = Column(Text, nullable=True)  # Delivery address
+    city = Column(String(100), nullable=True)  # City for delivery
+    postal_code = Column(String(20), nullable=True)  # Postal code
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
@@ -308,6 +315,15 @@ class Order(Base):
     status = Column(SQLEnum(OrderStatus), default=OrderStatus.PENDING, nullable=False)
     tracking_number = Column(String(255), nullable=True) # Existing
     tracking_link = Column(String(500), nullable=True) # NEW: Link to tracking page
+    
+    # Delivery information stored at order creation time
+    delivery_full_name = Column(String(255), nullable=True)
+    delivery_email = Column(String(255), nullable=True)
+    delivery_phone = Column(String(20), nullable=True)
+    delivery_address = Column(Text, nullable=True)
+    delivery_city = Column(String(100), nullable=True)
+    delivery_postal_code = Column(String(20), nullable=True)
+    
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 

@@ -20,6 +20,11 @@ import ConfirmationScreen from './ConfirmationScreen';
 import BrandSearchScreen from './BrandSearchScreen';
 import StylesSelectionScreen from './StylesSelectionScreen';
 import ForgotPasswordScreen from './ForgotPasswordScreen';
+import { 
+  ANIMATION_DURATIONS, 
+  ANIMATION_DELAYS,
+  ANIMATION_EASING
+} from '../lib/animations';
 
 interface WelcomeScreenProps {
 	onLogin: () => void;
@@ -77,23 +82,23 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onLogin, onRegister, onFo
 			// Scale down button slightly
 			RNAnimated.timing(buttonScaleValue, {
 				toValue: 0.95,
-				duration: 150,
+				duration: ANIMATION_DURATIONS.FAST,
 				useNativeDriver: true,
-				easing: Easing.out(Easing.cubic),
+				easing: ANIMATION_EASING.CUBIC,
 			}),
 			// Spin border with acceleration and deceleration
 			RNAnimated.timing(borderSpinValue, {
 				toValue: 1,
-				duration: 1200,
+				duration: ANIMATION_DURATIONS.VERY_LONG,
 				useNativeDriver: true,
-				easing: Easing.inOut(Easing.cubic), // Accelerate and decelerate smoothly
+				easing: ANIMATION_EASING.CUBIC, // Accelerate and decelerate smoothly
 			}),
 			// Scale back up
 			RNAnimated.timing(buttonScaleValue, {
 				toValue: 1,
-				duration: 150,
+				duration: ANIMATION_DURATIONS.FAST,
 				useNativeDriver: true,
-				easing: Easing.out(Easing.cubic),
+				easing: ANIMATION_EASING.CUBIC,
 			})
 		]).start(() => {
 			// Animation completed
@@ -173,7 +178,7 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onLogin, onRegister, onFo
 				{isReady && (
 					<View style={styles.whiteBox}>
 						<Animated.View 
-							entering={FadeInDown.duration(500)}
+							entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM)}
 							style={styles.logoContainer}
 						>
 							<Logo width={LOGO_SIZE} height={LOGO_SIZE} />
@@ -181,7 +186,7 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onLogin, onRegister, onFo
 						</Animated.View>
 						
 						<Animated.View 
-							entering={FadeInDown.duration(500).delay(50)}
+							entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(ANIMATION_DELAYS.SMALL)}
 							style={styles.shadowWrap}
 						>
 							{/* Container for the button - this stays still */}
@@ -225,7 +230,7 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onLogin, onRegister, onFo
 							</View>
 						</Animated.View>
 						<Animated.View 
-							entering={FadeInDown.duration(500).delay(100)}
+							entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(ANIMATION_DELAYS.STANDARD)}
 							style={{justifyContent: 'flex-end'}}
 						>
 							<View style={styles.loginContainer}>

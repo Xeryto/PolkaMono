@@ -5,30 +5,39 @@ export interface ProductVariant {
   stock_quantity: number;
 }
 
-export interface Product {
+// Unified CardItem interface used across all screens
+export interface CardItem {
   id: string;
   name: string;
   brand_name: string;
   price: number;
   images: ImageSourcePropType[];
   isLiked?: boolean;
-  size?: string; // This might be specific to a selected variant, or a default
-  quantity?: number; // This might be specific to cart items
+  size?: string; // Selected size or default size
+  quantity?: number; // For cart items
   variants?: ProductVariant[];
   description: string;
   color: string;
   materials: string;
-  returnPolicy: string;
-  brand_return_policy: string;
-  available_sizes?: string[]; // Added this
+  brand_return_policy: string; // Brand's return policy (required)
+  sku?: string; // Stock keeping unit
+  available_sizes?: string[]; // Available sizes
+  // API-specific fields (optional for compatibility)
+  brand_id?: number;
+  category_id?: string;
+  styles?: string[];
+  honest_sign?: string;
 }
+
+// Keep Product as alias for backward compatibility
+export type Product = CardItem;
 
 export interface DeliveryInfo {
   cost: number;
   estimatedTime: string;
 }
 
-export interface CartItem extends Product {
+export interface CartItem extends CardItem {
   cartItemId?: string; // Unique ID for cart item instance
   delivery: DeliveryInfo;
 }
@@ -47,6 +56,6 @@ export interface FriendRequestItem { // Added this
   username: string;
 }
 
-// FavoriteItem and RecommendedItem seem to be aliases for Product
-export type FavoriteItem = Product;
-export type RecommendedItem = Product;
+// Type aliases for backward compatibility
+export type FavoriteItem = CardItem;
+export type RecommendedItem = CardItem;

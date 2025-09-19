@@ -31,6 +31,10 @@ import Cancel from '../components/svg/Cancel';
 import * as api from '../services/api';
 import NetworkLoadingIndicator from '../components/NetworkLoadingIndicator';
 import { useNetworkRequest } from '../hooks/useNetworkRequest';
+import { 
+  ANIMATION_DURATIONS, 
+  ANIMATION_DELAYS
+} from '../lib/animations';
 const { width, height } = Dimensions.get('window');
 const LOGO_SIZE = Math.min(width, height) * 0.275;
 
@@ -80,13 +84,13 @@ const BrandSearchScreen: React.FC<BrandSearchScreenProps> = ({ onComplete, onBac
   // Handle animation when search becomes active
   useEffect(() => {
     if (isSearchActive) {
-      searchResultsHeight.value = withTiming(height*0.35, { duration: 300 });
-      searchResultsOpacity.value = withTiming(1, { duration: 300 });
-      bubblesHeight.value = withTiming(height*0.125, { duration: 300 });
+      searchResultsHeight.value = withTiming(height*0.35, { duration: ANIMATION_DURATIONS.STANDARD });
+      searchResultsOpacity.value = withTiming(1, { duration: ANIMATION_DURATIONS.STANDARD });
+      bubblesHeight.value = withTiming(height*0.125, { duration: ANIMATION_DURATIONS.STANDARD });
     } else {
-      searchResultsHeight.value = withTiming(height*0.125, { duration: 300 });
-      searchResultsOpacity.value = withTiming(0, { duration: 300 });
-      bubblesHeight.value = withTiming(height*0.2, { duration: 300 });
+      searchResultsHeight.value = withTiming(height*0.125, { duration: ANIMATION_DURATIONS.STANDARD });
+      searchResultsOpacity.value = withTiming(0, { duration: ANIMATION_DURATIONS.STANDARD });
+      bubblesHeight.value = withTiming(height*0.2, { duration: ANIMATION_DURATIONS.STANDARD });
     }
   }, [isSearchActive]);
   
@@ -214,7 +218,7 @@ const BrandSearchScreen: React.FC<BrandSearchScreenProps> = ({ onComplete, onBac
       end={{ x: 1, y: 0.8 }}
     >
       <SafeAreaView style={styles.safeArea}>
-      <Animated.View style={styles.roundedBox} entering={FadeInDown.duration(500)}>
+      <Animated.View style={styles.roundedBox} entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM)}>
         <LinearGradient
           colors={["rgba(205, 166, 122, 0.5)", "transparent"]}
           start={{ x: 0.1, y: 1 }}

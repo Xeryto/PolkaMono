@@ -45,8 +45,18 @@ class OrderItemResponse(BaseModel):
     name: str
     price: float
     size: str
-    image: str
+    image: Optional[str] = None
     delivery: Delivery
+    honest_sign: Optional[str] = None
+    # Additional product details for main page compatibility
+    brand_name: Optional[str] = None
+    description: Optional[str] = None
+    color: Optional[str] = None
+    materials: Optional[str] = None
+    sku: Optional[str] = None
+    images: Optional[List[str]] = None
+    return_policy: Optional[str] = None  # Brand's return policy
+    product_id: Optional[str] = None  # Original product ID for swipe tracking
 
     class Config:
         from_attributes = True
@@ -65,6 +75,14 @@ class OrderResponse(BaseModel):
     tracking_number: Optional[str] = None
     tracking_link: Optional[str] = None # NEW
     items: List[OrderItemResponse]
+    
+    # Delivery information stored at order creation time
+    delivery_full_name: Optional[str] = None
+    delivery_email: Optional[str] = None
+    delivery_phone: Optional[str] = None
+    delivery_address: Optional[str] = None
+    delivery_city: Optional[str] = None
+    delivery_postal_code: Optional[str] = None
 
     class Config:
         from_attributes = True
@@ -154,6 +172,13 @@ class UserProfileUpdateRequest(BaseModel):
     gender: Optional[str] = None
     selected_size: Optional[str] = None
     avatar_url: Optional[str] = None
+    # Shopping information fields
+    full_name: Optional[str] = None
+    delivery_email: Optional[EmailStr] = None
+    phone: Optional[str] = None
+    address: Optional[str] = None
+    city: Optional[str] = None
+    postal_code: Optional[str] = None
 
 class StyleResponse(BaseModel):
     id: str
@@ -183,6 +208,13 @@ class UserProfileResponse(BaseModel):
     is_active: bool
     is_email_verified: bool
     is_brand: bool = False
+    # Shopping information fields
+    full_name: Optional[str] = None
+    delivery_email: Optional[str] = None
+    phone: Optional[str] = None
+    address: Optional[str] = None
+    city: Optional[str] = None
+    postal_code: Optional[str] = None
     created_at: datetime
     updated_at: datetime
     favorite_brands: Optional[List[UserBrandResponse]] = []

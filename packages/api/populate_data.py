@@ -1,6 +1,6 @@
 from sqlalchemy.orm import Session
 from database import SessionLocal
-from models import Brand, Style, Product, ProductStyle, Category, ProductVariant
+from models import Brand, Style, Product, ProductStyle, Category, ProductVariant, User, Order, OrderItem, OrderStatus, Payment
 import uuid
 import re
 from auth_service import auth_service # NEW
@@ -80,8 +80,8 @@ def populate_initial_data():
             {
                 "name": "Nike Air Max 270",
                 "description": "Comfortable and stylish everyday sneakers.",
-                "price": "150.00 р",
-                "images": ["https://example.com/products/nike_airmax_1.jpg", "https://example.com/products/nike_airmax_2.jpg"],
+                "price": 150.00,
+                "images": [],
                 "sizes": ["S", "M", "L"],
                 "brand": nike_brand,
                 "category": sneakers_category,
@@ -94,8 +94,8 @@ def populate_initial_data():
             {
                 "name": "Adidas Ultraboost 22",
                 "description": "Responsive running shoes for daily miles.",
-                "price": "180.00 р",
-                "images": ["https://example.com/products/adidas_ultraboost_1.jpg", "https://example.com/products/adidas_ultraboost_2.jpg"],
+                "price": 180.00,
+                "images": [],
                 "sizes": ["XS", "S", "M"],
                 "brand": adidas_brand,
                 "category": sneakers_category,
@@ -108,8 +108,8 @@ def populate_initial_data():
             {
                 "name": "Zara Flowy Midi Dress",
                 "description": "Lightweight and elegant dress for any occasion.",
-                "price": "79.99 р",
-                "images": ["https://example.com/products/zara_dress_1.jpg", "https://example.com/products/zara_dress_2.jpg"],
+                "price": 79.99,
+                "images": [],
                 "sizes": ["M", "L", "XL"],
                 "brand": zara_brand,
                 "category": dresses_category,
@@ -122,8 +122,8 @@ def populate_initial_data():
             {
                 "name": "H&M Oversized Hoodie",
                 "description": "Cozy and trendy oversized hoodie.",
-                "price": "35.00 р",
-                "images": ["https://example.com/products/hm_hoodie_1.jpg", "https://example.com/products/hm_hoodie_2.jpg"],
+                "price": 35.00,
+                "images": [],
                 "sizes": ["XS", "S"],
                 "brand": hm_brand,
                 "category": hoodies_category,
@@ -136,8 +136,8 @@ def populate_initial_data():
             {
                 "name": "Nike Sportswear Tech Fleece",
                 "description": "Premium fleece for warmth without the weight.",
-                "price": "110.00 р",
-                "images": ["https://example.com/products/nike_techfleece_1.jpg", "https://example.com/products/nike_techfleece_2.jpg"],
+                "price": 110.00,
+                "images": [],
                 "sizes": ["S", "M", "L", "XL"],
                 "brand": nike_brand,
                 "category": hoodies_category,
@@ -182,6 +182,170 @@ def populate_initial_data():
                 print(f"Product already exists: {p_data['name']}")
         
         db.commit()
+        print("Products populated.")
+
+        # Create test user account
+        test_user_password_hash = auth_service.hash_password("123abc")
+        test_user_data = {
+            "username": "test",
+            "email": "test@example.com",
+            "password_hash": test_user_password_hash,
+            "full_name": "Test User",
+            "delivery_email": "test@example.com",
+            "phone": "+1234567890",
+            "address": "123 Test Street",
+            "city": "Test City",
+            "postal_code": "12345",
+            "is_email_verified": True
+        }
+        
+        test_user = db.query(User).filter(User.username == "test").first()
+        if not test_user:
+            test_user = User(**test_user_data)
+            db.add(test_user)
+            db.commit()
+            print("Test user created.")
+        else:
+            print("Test user already exists.")
+
+        # Create fake orders
+        if test_user:
+            # Get some products and their variants for orders
+            nike_product = db.query(Product).filter(Product.name == "Nike Air Max 270").first()
+            adidas_product = db.query(Product).filter(Product.name == "Adidas Ultraboost 22").first()
+            zara_product = db.query(Product).filter(Product.name == "Zara Flowy Midi Dress").first()
+            
+            if nike_product and adidas_product and zara_product:
+                # Get product variants
+                nike_variant_m = db.query(ProductVariant).filter(
+                    ProductVariant.product_id == nike_product.id,
+                    ProductVariant.size == "M"
+                ).first()
+                adidas_variant_s = db.query(ProductVariant).filter(
+                    ProductVariant.product_id == adidas_product.id,
+                    ProductVariant.size == "S"
+                ).first()
+                zara_variant_l = db.query(ProductVariant).filter(
+                    ProductVariant.product_id == zara_product.id,
+                    ProductVariant.size == "L"
+                ).first()
+
+                # Create Order 1: Nike sneakers
+                if nike_variant_m:
+                    order1 = Order(
+                        order_number="ORD-001",
+                        user_id=test_user.id,
+                        total_amount=150.00,
+                        status=OrderStatus.PAID,
+                        tracking_number="TN123456789",
+                        tracking_link="https://track.example.com/TN123456789",
+                        # Store delivery information at order creation time
+                        delivery_full_name=test_user.full_name,
+                        delivery_email=test_user.delivery_email,
+                        delivery_phone=test_user.phone,
+                        delivery_address=test_user.address,
+                        delivery_city=test_user.city,
+                        delivery_postal_code=test_user.postal_code
+                    )
+                    db.add(order1)
+                    db.flush()
+
+                    order_item1 = OrderItem(
+                        order_id=order1.id,
+                        product_variant_id=nike_variant_m.id,
+                        price=150.00,
+                        honest_sign="HS-NIKEAM270-M-001"
+                    )
+                    db.add(order_item1)
+
+                    payment1 = Payment(
+                        id=str(uuid.uuid4()),
+                        order_id=order1.id,
+                        amount=150.00,
+                        currency="RUB",
+                        status="completed"
+                    )
+                    db.add(payment1)
+                    print("Created Order 1: Nike Air Max 270")
+
+                # Create Order 2: Adidas sneakers
+                if adidas_variant_s:
+                    order2 = Order(
+                        order_number="ORD-002",
+                        user_id=test_user.id,
+                        total_amount=180.00,
+                        status=OrderStatus.PENDING,
+                        tracking_number=None,
+                        tracking_link=None,
+                        # Store delivery information at order creation time
+                        delivery_full_name=test_user.full_name,
+                        delivery_email=test_user.delivery_email,
+                        delivery_phone=test_user.phone,
+                        delivery_address=test_user.address,
+                        delivery_city=test_user.city,
+                        delivery_postal_code=test_user.postal_code
+                    )
+                    db.add(order2)
+                    db.flush()
+
+                    order_item2 = OrderItem(
+                        order_id=order2.id,
+                        product_variant_id=adidas_variant_s.id,
+                        price=180.00,
+                        honest_sign="HS-ADIDASUB22-S-002"
+                    )
+                    db.add(order_item2)
+
+                    payment2 = Payment(
+                        id=str(uuid.uuid4()),
+                        order_id=order2.id,
+                        amount=180.00,
+                        currency="RUB",
+                        status="pending"
+                    )
+                    db.add(payment2)
+                    print("Created Order 2: Adidas Ultraboost 22")
+
+                # Create Order 3: Zara dress
+                if zara_variant_l:
+                    order3 = Order(
+                        order_number="ORD-003",
+                        user_id=test_user.id,
+                        total_amount=79.99,
+                        status=OrderStatus.PAID,
+                        tracking_number="TN987654321",
+                        tracking_link="https://track.example.com/TN987654321",
+                        # Store delivery information at order creation time
+                        delivery_full_name=test_user.full_name,
+                        delivery_email=test_user.delivery_email,
+                        delivery_phone=test_user.phone,
+                        delivery_address=test_user.address,
+                        delivery_city=test_user.city,
+                        delivery_postal_code=test_user.postal_code
+                    )
+                    db.add(order3)
+                    db.flush()
+
+                    order_item3 = OrderItem(
+                        order_id=order3.id,
+                        product_variant_id=zara_variant_l.id,
+                        price=79.99,
+                        honest_sign="HS-ZARAFMD-L-003"
+                    )
+                    db.add(order_item3)
+
+                    payment3 = Payment(
+                        id=str(uuid.uuid4()),
+                        order_id=order3.id,
+                        amount=79.99,
+                        currency="RUB",
+                        status="completed"
+                    )
+                    db.add(payment3)
+                    print("Created Order 3: Zara Flowy Midi Dress")
+
+                db.commit()
+                print("Fake orders created successfully.")
     except Exception as e:
         db.rollback()
         print(f"Error populating data: {e}")
@@ -189,6 +353,6 @@ def populate_initial_data():
         db.close()
 
 if __name__ == "__main__":
-    print("Populating initial data (Brands, Styles, Products)...")
+    print("Populating initial data (Brands, Styles, Products, Test User, Orders)...")
     populate_initial_data()
     print("Initial data population complete.")

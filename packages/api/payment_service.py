@@ -9,7 +9,8 @@ from yookassa import Configuration, Payment
 from dotenv import load_dotenv
 import os
 from sqlalchemy.orm import Session
-from models import Order, OrderItem, Payment as PaymentModel, OrderStatus, Product, ProductVariant
+from models import Order, OrderItem, Payment as PaymentModel, OrderStatus, Product, ProductVariant, User
+import models
 import ipaddress
 
 import schemas
@@ -47,11 +48,23 @@ def create_payment(db: Session, user_id: str, amount: float, currency: str, desc
 
     order_number = generate_order_number(db)
 
+    # Fetch user's current delivery information to store with the order
+    user = db.query(models.User).filter(models.User.id == user_id).first()
+    if not user:
+        raise Exception(f"User with id {user_id} not found")
+
     order = Order(
         user_id=user_id,
         order_number=order_number,
         total_amount=str(amount),
         currency=currency,
+        # Store delivery information at order creation time
+        delivery_full_name=user.full_name,
+        delivery_email=user.delivery_email,
+        delivery_phone=user.phone,
+        delivery_address=user.address,
+        delivery_city=user.city,
+        delivery_postal_code=user.postal_code,
     )
     db.add(order)
     db.commit()

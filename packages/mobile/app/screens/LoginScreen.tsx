@@ -20,6 +20,11 @@ import VK from '../components/svg/VK';
 import BackIcon from '../components/svg/BackIcon';
 import { Dimensions } from 'react-native';
 import * as api from '../services/api';
+import { 
+  ANIMATION_DURATIONS, 
+  ANIMATION_DELAYS,
+  getStaggeredDelay
+} from '../lib/animations';
 
 const { width, height } = Dimensions.get('window');
 
@@ -139,7 +144,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, onBack, onForgotPass
             keyboardShouldPersistTaps="handled"
           >
             <Animated.View 
-              entering={FadeInDown.duration(500)}
+              entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM)}
               style={styles.formContainer}
             >
               <TouchableOpacity
@@ -161,7 +166,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, onBack, onForgotPass
                 </View>
               ) : null}
               
-              <Animated.View style={styles.inputShadow} entering={FadeInDown.duration(500).delay(50)}>
+              <Animated.View style={styles.inputShadow} entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(ANIMATION_DELAYS.SMALL)}>
                 <View style={styles.inputContainer}>
                   <TextInput
                   style={[styles.input, errors.usernameOrEmail ? styles.inputError : null]}
@@ -179,7 +184,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, onBack, onForgotPass
                 ) : null}
               </Animated.View>
               
-              <Animated.View style={styles.inputShadow} entering={FadeInDown.duration(500).delay(100)}>
+              <Animated.View style={styles.inputShadow} entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(ANIMATION_DELAYS.STANDARD)}>
                 <View style={styles.inputContainer}>
                   <TextInput
                     style={[styles.input, errors.password ? styles.inputError : null]}
@@ -202,7 +207,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, onBack, onForgotPass
                   onPress={handleLoginPress}
                 disabled={isLoading}
               >
-                <Animated.View entering={FadeInDown.duration(500).delay(150)} style={[styles.loginButton, isLoading ? styles.loginButtonDisabled : null]}>
+                <Animated.View entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(ANIMATION_DELAYS.MEDIUM)} style={[styles.loginButton, isLoading ? styles.loginButtonDisabled : null]}>
                 {isLoading ? (
                   <ActivityIndicator color="#fff" />
                 ) : (
@@ -212,13 +217,13 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, onBack, onForgotPass
               </TouchableOpacity>
               
 
-              <Animated.View style={styles.forgotPasswordButton} entering={FadeInDown.duration(500).delay(200)}>
+              <Animated.View style={styles.forgotPasswordButton} entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(ANIMATION_DELAYS.LARGE)}>
                 <TouchableOpacity onPress={onForgotPassword}>
                   <Text style={styles.forgotPasswordText}>Забыли пароль?</Text>
                 </TouchableOpacity>
               </Animated.View>
               
-              <Animated.View style={styles.socialContainer} entering={FadeInDown.duration(500).delay(250)}>
+              <Animated.View style={styles.socialContainer} entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(ANIMATION_DELAYS.EXTENDED)}>
                 <TouchableOpacity style={styles.vkButton} onPress={() => Alert.alert('VK Вход', 'VK вход будет реализован в будущем обновлении.')}>
                   <VK width={30} height={30} />
                 </TouchableOpacity>

@@ -14,6 +14,10 @@ export function ProfileSettingsPage() {
 
   const [profile, setProfile] = useState<BrandResponse | null>(null); // Changed to BrandResponse
   const [isLoading, setIsLoading] = useState(true); // NEW
+  // Shopping information state
+  const [shoppingInfo, setShoppingInfo] = useState<api.ShoppingInfo | null>(null);
+  const [isLoadingShoppingInfo, setIsLoadingShoppingInfo] = useState(false);
+  const [isSavingShoppingInfo, setIsSavingShoppingInfo] = useState(false);
   const { toast } = useToast(); // NEW
 
   useEffect(() => {
@@ -46,12 +50,63 @@ export function ProfileSettingsPage() {
     fetchProfile();
   }, [token, toast]); // Add token and toast to dependency array
 
+  // Load shopping information
+  useEffect(() => {
+    const loadShoppingInfo = async () => {
+      if (!token) return;
+      
+      try {
+        setIsLoadingShoppingInfo(true);
+        const info = await api.getShoppingInfo(token);
+        setShoppingInfo(info);
+      } catch (error: any) {
+        console.error('Failed to load shopping information:', error);
+        toast({
+          title: "Ошибка",
+          description: "Не удалось загрузить информацию о доставке.",
+          variant: "destructive",
+        });
+      } finally {
+        setIsLoadingShoppingInfo(false);
+      }
+    };
+
+    loadShoppingInfo();
+  }, [token, toast]);
+
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { id, value } = e.target;
     if (id === 'shipping_price' || id === 'min_free_shipping') {
       setProfile(prev => prev ? { ...prev, [id]: parseFloat(value) } : null);
     } else {
       setProfile(prev => prev ? { ...prev, [id]: value } : null);
+    }
+  };
+
+  const handleShoppingInfoChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const { id, value } = e.target;
+    setShoppingInfo(prev => prev ? { ...prev, [id]: value } : null);
+  };
+
+  const handleSaveShoppingInfo = async () => {
+    if (!shoppingInfo || !token) return;
+
+    try {
+      setIsSavingShoppingInfo(true);
+      await api.updateShoppingInfo(shoppingInfo, token);
+      toast({
+        title: "Успешно",
+        description: "Информация о доставке сохранена.",
+      });
+    } catch (error: any) {
+      console.error('Failed to save shopping information:', error);
+      toast({
+        title: "Ошибка",
+        description: "Не удалось сохранить информацию о доставке.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSavingShoppingInfo(false);
     }
   };
 
@@ -179,6 +234,96 @@ export function ProfileSettingsPage() {
             )
           ) : (
             <div>No profile data available.</div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Shopping Information Form */}
+      <Card className="bg-card border-border/30 shadow-lg">
+        <CardHeader>
+          <CardTitle>Информация о доставке</CardTitle>
+          <CardDescription>Управление данными для доставки заказов</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {isLoadingShoppingInfo ? (
+            <div>Загрузка информации о доставке...</div>
+          ) : shoppingInfo ? (
+            <>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label htmlFor="full_name" className="text-sm font-medium text-muted-foreground">Полное имя для доставки *</label>
+                  <Input 
+                    id="full_name" 
+                    value={shoppingInfo.full_name} 
+                    onChange={handleShoppingInfoChange} 
+                    className="mt-1" 
+                    placeholder="Введите ваше полное имя для доставки"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="delivery_email" className="text-sm font-medium text-muted-foreground">Email для доставки *</label>
+                  <Input 
+                    id="delivery_email" 
+                    type="email" 
+                    value={shoppingInfo.delivery_email} 
+                    onChange={handleShoppingInfoChange} 
+                    className="mt-1" 
+                    placeholder="Введите email для доставки"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="phone" className="text-sm font-medium text-muted-foreground">Телефон *</label>
+                  <Input 
+                    id="phone" 
+                    value={shoppingInfo.phone} 
+                    onChange={handleShoppingInfoChange} 
+                    className="mt-1" 
+                    placeholder="Введите ваш телефон"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="city" className="text-sm font-medium text-muted-foreground">Город *</label>
+                  <Input 
+                    id="city" 
+                    value={shoppingInfo.city} 
+                    onChange={handleShoppingInfoChange} 
+                    className="mt-1" 
+                    placeholder="Введите город"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="postal_code" className="text-sm font-medium text-muted-foreground">Почтовый индекс</label>
+                  <Input 
+                    id="postal_code" 
+                    value={shoppingInfo.postal_code} 
+                    onChange={handleShoppingInfoChange} 
+                    className="mt-1" 
+                    placeholder="Введите почтовый индекс"
+                  />
+                </div>
+              </div>
+              <div>
+                <label htmlFor="address" className="text-sm font-medium text-muted-foreground">Адрес доставки *</label>
+                <Textarea 
+                  id="address" 
+                  value={shoppingInfo.address} 
+                  onChange={handleShoppingInfoChange} 
+                  className="mt-1" 
+                  placeholder="Введите полный адрес доставки"
+                  rows={3}
+                />
+              </div>
+              <div className="flex justify-end">
+                <Button 
+                  onClick={handleSaveShoppingInfo} 
+                  disabled={isSavingShoppingInfo}
+                >
+                  {isSavingShoppingInfo ? "Сохранение..." : "Сохранить информацию о доставке"}
+                </Button>
+              </div>
+            </>
+          ) : (
+            <div>Не удалось загрузить информацию о доставке.</div>
           )}
         </CardContent>
       </Card>

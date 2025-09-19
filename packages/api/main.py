@@ -945,10 +945,13 @@ async def exclusive_access_signup(signup_data: schemas.ExclusiveAccessSignupRequ
 
 @app.get("/api/v1/user/profile", response_model=schemas.UserProfileResponse)
 async def get_user_profile(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    """Get current user's complete profile"""
+    """Get current user's complete profile (users only)"""
+    # Ensure user_id is treated as a string for database comparison
+    user_id = str(current_user.id)
+    
     # Get favorite brands and styles
-    favorite_brands = db.query(Brand).join(UserBrand).filter(UserBrand.user_id == current_user.id).all()
-    favorite_styles = db.query(Style).join(UserStyle).filter(UserStyle.user_id == current_user.id).all()
+    favorite_brands = db.query(Brand).join(UserBrand).filter(UserBrand.user_id == user_id).all()
+    favorite_styles = db.query(Style).join(UserStyle).filter(UserStyle.user_id == user_id).all()
     
     return schemas.UserProfileResponse(
         id=current_user.id,
@@ -959,6 +962,14 @@ async def get_user_profile(current_user: User = Depends(get_current_user), db: S
         avatar_url=current_user.avatar_url,
         is_active=current_user.is_active,
         is_email_verified=current_user.is_email_verified,
+        is_brand=False,  # Mark as regular user
+        # Shopping information fields
+        full_name=current_user.full_name,
+        delivery_email=current_user.delivery_email,
+        phone=current_user.phone,
+        address=current_user.address,
+        city=current_user.city,
+        postal_code=current_user.postal_code,
         created_at=current_user.created_at,
         updated_at=current_user.updated_at,
         favorite_brands=[schemas.UserBrandResponse(
@@ -973,6 +984,33 @@ async def get_user_profile(current_user: User = Depends(get_current_user), db: S
             name=style.name,
             description=style.description
         ) for style in favorite_styles]
+    )
+
+@app.get("/api/v1/brands/profile", response_model=schemas.UserProfileResponse)
+async def get_brand_profile(current_user: Brand = Depends(get_current_brand_user), db: Session = Depends(get_db)):
+    """Get current brand's complete profile (brands only)"""
+    # For brands: Return brand profile in UserProfileResponse format
+    return schemas.UserProfileResponse(
+        id=str(current_user.id),  # Convert integer to string
+        username=current_user.name,  # Use brand name as username
+        email=current_user.email,
+        gender=None,  # Brands don't have gender
+        selected_size=None,  # Brands don't have selected size
+        avatar_url=current_user.logo,  # Use brand logo as avatar
+        is_active=True,  # Brands are always active
+        is_email_verified=True,  # Assuming brand emails are verified
+        is_brand=True,  # Mark as brand
+        # Shopping information fields (not applicable for brands)
+        full_name=None,
+        delivery_email=None,
+        phone=None,
+        address=None,
+        city=None,
+        postal_code=None,
+        created_at=current_user.created_at,
+        updated_at=current_user.updated_at,
+        favorite_brands=[],  # Brands don't have favorite brands
+        favorite_styles=[]  # Brands don't have favorite styles
     )
 
 @app.post("/api/v1/brands/products", response_model=schemas.Product, status_code=status.HTTP_201_CREATED)
@@ -1172,46 +1210,6 @@ async def get_brand_product_details(
 
     
 
-@app.get("/api/v1/brands/orders", response_model=List[schemas.OrderResponse])
-async def get_brand_orders(
-    current_user: User = Depends(get_current_brand_user),
-    db: Session = Depends(get_db)
-):
-    """Get all orders containing products from the authenticated brand user"""
-    orders_with_brand_products = db.query(Order).join(OrderItem).join(ProductVariant, OrderItem.product_variant_id == ProductVariant.id).join(Product).filter(
-        Product.brand_id == current_user.id
-    ).distinct().all()
-
-    response = []
-    for order in orders_with_brand_products:
-        order_items = []
-        for item in order.items:
-            if item.product_variant.product.brand_id == current_user.id: # Only include items from this brand
-                order_items.append(schemas.OrderItemResponse(
-                    id=item.id, # Use order item ID here
-                    name=item.product_variant.product.name,
-                    price=item.price,
-                    size=item.product_variant.size,
-                    image=item.product_variant.product.images[0] if item.product_variant.product.images else None,
-                    delivery=schemas.Delivery(
-                        cost=350.0,
-                        estimatedTime="1-3 дня",
-                        tracking_number=order.tracking_number
-                    )
-                ))
-        if order_items: # Only add order if it contains items from this brand
-            response.append(schemas.OrderResponse(
-                id=order.id,
-                number=order.order_number,
-                total_amount=order.total_amount,
-                currency="RUB",
-                date=order.created_at,
-                status=order.status.value,
-                items=order_items,
-                tracking_number=order.tracking_number,
-                tracking_link=order.tracking_link
-            ))
-    return response
 
 @app.put("/api/v1/brands/orders/{order_id}/tracking", response_model=MessageResponse)
 async def update_order_tracking(
@@ -1286,8 +1284,9 @@ async def get_profile_completion_status(current_user: User = Depends(get_current
     required_screens = []
     
     is_gender_complete = current_user.gender is not None
-    is_brands_complete = db.query(UserBrand).filter(UserBrand.user_id == current_user.id).count() > 0
-    is_styles_complete = db.query(UserStyle).filter(UserStyle.user_id == current_user.id).count() > 0
+    user_id = str(current_user.id)
+    is_brands_complete = db.query(UserBrand).filter(UserBrand.user_id == user_id).count() > 0
+    is_styles_complete = db.query(UserStyle).filter(UserStyle.user_id == user_id).count() > 0
     
     is_complete = is_gender_complete and is_brands_complete and is_styles_complete
     
@@ -1343,6 +1342,20 @@ async def update_user_profile(
     if profile_data.avatar_url is not None:
         current_user.avatar_url = profile_data.avatar_url
     
+    # Update shopping information fields
+    if profile_data.full_name is not None:
+        current_user.full_name = profile_data.full_name
+    if profile_data.delivery_email is not None:
+        current_user.delivery_email = profile_data.delivery_email
+    if profile_data.phone is not None:
+        current_user.phone = profile_data.phone
+    if profile_data.address is not None:
+        current_user.address = profile_data.address
+    if profile_data.city is not None:
+        current_user.city = profile_data.city
+    if profile_data.postal_code is not None:
+        current_user.postal_code = profile_data.postal_code
+    
     current_user.updated_at = datetime.utcnow()
     db.commit()
     db.refresh(current_user)
@@ -1356,6 +1369,13 @@ async def update_user_profile(
         avatar_url=current_user.avatar_url,
         is_active=current_user.is_active,
         is_email_verified=current_user.is_email_verified,
+        # Shopping information fields
+        full_name=current_user.full_name,
+        delivery_email=current_user.delivery_email,
+        phone=current_user.phone,
+        address=current_user.address,
+        city=current_user.city,
+        postal_code=current_user.postal_code,
         created_at=current_user.created_at,
         updated_at=current_user.updated_at
     )
@@ -1383,7 +1403,8 @@ async def update_user_brands(
 ):
     """Update user's favorite brands"""
     # Remove existing brand associations
-    db.query(UserBrand).filter(UserBrand.user_id == current_user.id).delete()
+    user_id = str(current_user.id)
+    db.query(UserBrand).filter(UserBrand.user_id == user_id).delete()
     
     # Add new brand associations
     for brand_id in brands_data.brand_ids:
@@ -1395,7 +1416,7 @@ async def update_user_brands(
                 detail=f"Brand with ID {brand_id} not found"
             )
         
-        user_brand = UserBrand(user_id=current_user.id, brand_id=brand_id)
+        user_brand = UserBrand(user_id=user_id, brand_id=brand_id)
         db.add(user_brand)
     
     db.commit()
@@ -1422,7 +1443,8 @@ async def update_user_styles(
 ):
     """Update user's favorite styles"""
     # Remove existing style associations
-    db.query(UserStyle).filter(UserStyle.user_id == current_user.id).delete()
+    user_id = str(current_user.id)
+    db.query(UserStyle).filter(UserStyle.user_id == user_id).delete()
     
     # Add new style associations
     for style_id in styles_data.style_ids:
@@ -1434,7 +1456,7 @@ async def update_user_styles(
                 detail=f"Style with ID {style_id} not found"
             )
         
-        user_style = UserStyle(user_id=current_user.id, style_id=style_id)
+        user_style = UserStyle(user_id=user_id, style_id=style_id)
         db.add(user_style)
     
     db.commit()
@@ -2045,44 +2067,127 @@ async def get_orders(
     current_user: any = Depends(get_current_user), # current_user can be User or Brand
     db: Session = Depends(get_db)
 ):
-    """Get all orders for the current user"""
-    # Ensure current_user.id is treated as a string for comparison with UUID fields
-    orders = db.query(Order).filter(Order.user_id == str(current_user.id)).all()
+    """Get all orders for the current user or brand"""
     
-    response = []
-    for order in orders:
-        order_items = []
-        for item in order.items:
-            # Access product details via product_variant relationship
-            product_variant = item.product_variant
-            product = product_variant.product
+    # Check if current_user is a Brand or User
+    is_brand = isinstance(current_user, Brand)
+    
+    if is_brand:
+        # For brands: Get orders containing products from this brand
+        orders_with_brand_products = db.query(Order).join(OrderItem).join(
+            ProductVariant, OrderItem.product_variant_id == ProductVariant.id
+        ).join(Product).filter(
+            Product.brand_id == current_user.id
+        ).distinct().all()
+        
+        response = []
+        for order in orders_with_brand_products:
+            order_items = []
+            for item in order.items:
+                # Only include items from this brand
+                if item.product_variant.product.brand_id == current_user.id:
+                    product_variant = item.product_variant
+                    product = product_variant.product
+                    
+                    order_items.append(schemas.OrderItemResponse(
+                        id=item.id,
+                        name=product.name,
+                        price=item.price,
+                        size=product_variant.size,
+                        image=product.images[0] if product.images and len(product.images) > 0 else None,
+                        delivery=schemas.Delivery(
+                            cost=350.0, # Placeholder
+                            estimatedTime="1-3 дня", # Placeholder
+                            tracking_number=order.tracking_number
+                        ),
+                        honest_sign=item.honest_sign,
+                        # Additional product details for main page compatibility
+                        brand_name=product.brand.name if product.brand else None,
+                        description=product.description,
+                        color=product.color,
+                        materials=product.material,
+                        sku=product.sku,
+                        images=product.images if product.images else [],
+                        return_policy=product.brand.return_policy if product.brand else None,
+                        product_id=product.id  # Original product ID for swipe tracking
+                    ))
+            
+            # Only add order if it contains items from this brand
+            if order_items:
+                response.append(schemas.OrderResponse(
+                    id=order.id,
+                    number=order.order_number,
+                    total_amount=order.total_amount,
+                    currency="RUB",
+                    date=order.created_at.isoformat(),
+                    status=order.status.value,
+                    tracking_number=order.tracking_number,
+                    tracking_link=order.tracking_link,
+                    items=order_items,
+                    # Include delivery information stored at order creation time
+                    delivery_full_name=order.delivery_full_name,
+                    delivery_email=order.delivery_email,
+                    delivery_phone=order.delivery_phone,
+                    delivery_address=order.delivery_address,
+                    delivery_city=order.delivery_city,
+                    delivery_postal_code=order.delivery_postal_code
+                ))
+        return response
+    
+    else:
+        # For regular users: Get orders placed by this user
+        orders = db.query(Order).filter(Order.user_id == str(current_user.id)).all()
+        
+        response = []
+        for order in orders:
+            order_items = []
+            for item in order.items:
+                # Access product details via product_variant relationship
+                product_variant = item.product_variant
+                product = product_variant.product
 
-            order_items.append(schemas.OrderItemResponse(
-                id=item.id,
-                name=product.name,
-                price=item.price,
-                size=product_variant.size,
-                image=product.images[0] if product.images else None,
-                delivery=schemas.Delivery(
-                    cost=350.0, # Placeholder
-                    estimatedTime="1-3 дня", # Placeholder
-                    tracking_number=order.tracking_number # Use order's tracking number
-                ),
-                honest_sign=item.honest_sign
+                order_items.append(schemas.OrderItemResponse(
+                    id=item.id,
+                    name=product.name,
+                    price=item.price,
+                    size=product_variant.size,
+                    image=product.images[0] if product.images and len(product.images) > 0 else None,
+                    delivery=schemas.Delivery(
+                        cost=350.0, # Placeholder
+                        estimatedTime="1-3 дня", # Placeholder
+                        tracking_number=order.tracking_number # Use order's tracking number
+                    ),
+                    honest_sign=item.honest_sign,
+                    # Additional product details for main page compatibility
+                    brand_name=product.brand.name if product.brand else None,
+                    description=product.description,
+                    color=product.color,
+                    materials=product.material,
+                    sku=product.sku,
+                    images=product.images if product.images else [],
+                    return_policy=product.brand.return_policy if product.brand else None,
+                    product_id=product.id  # Original product ID for swipe tracking
+                ))
+
+            response.append(schemas.OrderResponse(
+                id=order.id,
+                number=order.order_number,
+                total_amount=order.total_amount,
+                currency="RUB", # Assuming RUB as default currency
+                date=order.created_at.isoformat(),
+                status=order.status.value,
+                tracking_number=order.tracking_number,
+                tracking_link=order.tracking_link,
+                items=order_items,
+                # Include delivery information stored at order creation time
+                delivery_full_name=order.delivery_full_name,
+                delivery_email=order.delivery_email,
+                delivery_phone=order.delivery_phone,
+                delivery_address=order.delivery_address,
+                delivery_city=order.delivery_city,
+                delivery_postal_code=order.delivery_postal_code
             ))
-
-        response.append(schemas.OrderResponse(
-            id=order.id,
-            number=order.order_number,
-            total_amount=order.total_amount,
-            currency="RUB",
-            date=order.created_at,
-            status=order.status.value,
-            tracking_number=order.tracking_number,
-            tracking_link=order.tracking_link, # NEW
-            items=order_items
-        ))
-    return response
+        return response
 
 
 @app.post("/api/v1/payments/webhook")
