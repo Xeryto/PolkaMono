@@ -22,9 +22,15 @@ import Animated, {
 } from "react-native-reanimated";
 import { AntDesign } from "@expo/vector-icons";
 import * as api from "./services/api";
+import { apiWrapper } from "./services/apiWrapper";
 
 import { ImageSourcePropType } from "react-native";
 import { CardItem, ProductVariant } from "./types/product";
+import {
+  ANIMATION_DURATIONS,
+  ANIMATION_DELAYS,
+  ANIMATION_EASING,
+} from "./lib/animations";
 
 // Create animated text component using proper method for this version
 const AnimatedText = Animated.createAnimatedComponent(Text);
@@ -78,7 +84,11 @@ const fetchMoreSearchResults = async (
       params.brand = filters.brand;
     if (filters.style && filters.style !== "Стиль")
       params.style = filters.style;
-    const results = await api.getProductSearchResults(params);
+    const results = await apiWrapper.getProductSearchResults(
+      params,
+      "SearchPage"
+    );
+    if (!results) return [];
     return results.map((item: api.Product) => ({
       id: item.id,
       name: item.name,
@@ -155,14 +165,14 @@ const Search = ({ navigation }: SearchProps) => {
       setIsLoadingFilters(true);
       try {
         const [brands, styles, categories] = await Promise.all([
-          api.getBrands(),
-          api.getStyles(),
-          api.getCategories(),
+          apiWrapper.getBrands("SearchPage"),
+          apiWrapper.getStyles("SearchPage"),
+          apiWrapper.getCategories("SearchPage"),
         ]);
         setFilterOptions({
-          brand: brands.map((b: any) => b.name),
-          style: styles.map((s: any) => s.id), // use id for search param
-          category: categories.map((c: any) => c.id), // use id for search param
+          brand: brands?.map((b: any) => b.name) || [],
+          style: styles?.map((s: any) => s.id) || [], // use id for search param
+          category: categories?.map((c: any) => c.id) || [], // use id for search param
         });
       } catch (error) {
         console.error("Error loading filter options:", error);
@@ -360,7 +370,9 @@ const Search = ({ navigation }: SearchProps) => {
 
   const renderItem = ({ item, index }: { item: SearchItem; index: number }) => (
     <Animated.View
-      entering={FadeInDown.duration(300).delay(100 + index * 50)}
+      entering={FadeInDown.duration(ANIMATION_DURATIONS.STANDARD).delay(
+        ANIMATION_DELAYS.STANDARD + index * ANIMATION_DELAYS.SMALL
+      )}
       style={styles.searchItem}
     >
       <Pressable
@@ -381,9 +393,14 @@ const Search = ({ navigation }: SearchProps) => {
   );
 
   return (
-    <Animated.View style={styles.container} exiting={FadeOutDown.duration(50)}>
+    <Animated.View
+      style={styles.container}
+      exiting={FadeOutDown.duration(ANIMATION_DURATIONS.MICRO)}
+    >
       <Animated.View
-        entering={FadeInDown.duration(500).delay(200)}
+        entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
+          ANIMATION_DELAYS.LARGE
+        )}
         style={[
           styles.searchContainer,
           isSearchActive && styles.searchContainerActive,
@@ -404,8 +421,8 @@ const Search = ({ navigation }: SearchProps) => {
 
           {isSearchActive && (
             <Animated.View
-              entering={FadeInDown.duration(300)}
-              exiting={FadeOutDown.duration(100)}
+              entering={FadeInDown.duration(ANIMATION_DURATIONS.STANDARD)}
+              exiting={FadeOutDown.duration(ANIMATION_DURATIONS.QUICK)}
               style={styles.cancelButtonContainer}
             >
               <TouchableOpacity
@@ -421,8 +438,8 @@ const Search = ({ navigation }: SearchProps) => {
       </Animated.View>
       {isSearchActive && (
         <Animated.View
-          entering={FadeInDown.duration(500)}
-          exiting={FadeOutDown.duration(100)}
+          entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM)}
+          exiting={FadeOutDown.duration(ANIMATION_DURATIONS.QUICK)}
           style={styles.filtersContainer}
         >
           {/* Main Filter Buttons */}
@@ -466,7 +483,7 @@ const Search = ({ navigation }: SearchProps) => {
           {/* Options Dropdown */}
           {activeFilter && (
             <Animated.View
-              entering={FadeInDown.duration(300)}
+              entering={FadeInDown.duration(ANIMATION_DURATIONS.STANDARD)}
               style={styles.optionsContainer}
             >
               <View style={styles.optionsHeader}>
@@ -525,7 +542,9 @@ const Search = ({ navigation }: SearchProps) => {
         </Animated.View>
       )}
       <Animated.View
-        entering={FadeInDown.duration(500).delay(250)}
+        entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
+          ANIMATION_DELAYS.EXTENDED
+        )}
         style={[styles.roundedBox, !isSearchActive && styles.roundedBoxInitial]}
       >
         <Animated.View
@@ -555,7 +574,7 @@ const Search = ({ navigation }: SearchProps) => {
         </Animated.View>
         {!isSearchActive && (
           <AnimatedText
-            entering={FadeInDown.duration(300)}
+            entering={FadeInDown.duration(ANIMATION_DURATIONS.STANDARD)}
             style={styles.popularItemsText}
           >
             ПОПУЛЯРНОЕ

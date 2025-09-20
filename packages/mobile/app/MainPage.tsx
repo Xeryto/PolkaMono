@@ -28,6 +28,7 @@ import More from "./components/svg/More";
 import Seen from "./components/svg/Seen";
 import Cancel from "./components/svg/Cancel";
 import * as api from "./services/api";
+import { apiWrapper } from "./services/apiWrapper";
 import fallbackImage from "./assets/Vision.png"; // Use as fallback for missing images
 import vision2Image from "./assets/Vision2.png";
 import { CardItem, CartItem } from "./types/product";
@@ -119,7 +120,7 @@ const ExpandableSection: React.FC<{ title: string; content: string }> = ({
 // Fetch recommendations from the real API
 const fetchMoreCards = async (count: number = 2): Promise<CardItem[]> => {
   try {
-    const products = await api.getUserRecommendations();
+    const products = await apiWrapper.getUserRecommendations("MainPage");
     console.log("fetchMoreCards - API returned products:", products);
 
     // Add a check to ensure products is an array
@@ -363,12 +364,14 @@ const MainPage = ({ navigation, route }: MainPageProps) => {
   useEffect(() => {
     const fetchUserData = async () => {
       try {
-        const userProfile = await api.getCurrentUser();
-        setUserSelectedSize(userProfile.selected_size || null);
-        console.log(
-          "MainPage - User selected size:",
-          userProfile.selected_size
-        );
+        const userProfile = await apiWrapper.getCurrentUser("MainPage");
+        if (userProfile) {
+          setUserSelectedSize(userProfile.selected_size || null);
+          console.log(
+            "MainPage - User selected size:",
+            userProfile.selected_size
+          );
+        }
 
         // Initialize swipe count from API
         await api.initializeSwipeCount();
@@ -1611,7 +1614,7 @@ const MainPage = ({ navigation, route }: MainPageProps) => {
         entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
           ANIMATION_DELAYS.LARGE
         )}
-        exiting={FadeOutDown.duration(50)}
+        exiting={FadeOutDown.duration(ANIMATION_DURATIONS.MICRO)}
       >
         <View style={styles.roundedBox}>
           <LinearGradient

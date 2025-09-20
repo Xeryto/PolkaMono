@@ -27,6 +27,8 @@ export const API_CONFIG = {
   PROD: {
     // Real API timeout in milliseconds
     API_TIMEOUT: 10000,
+    // Longer timeout for critical authentication flows
+    AUTH_TIMEOUT: 20000,
   },
 
   // SSL Pinning Configuration

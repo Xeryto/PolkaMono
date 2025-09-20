@@ -26,6 +26,11 @@ import {
   sessionManager,
 } from "./services/api";
 import { CartItem, DeliveryInfo, Product } from "./types/product";
+import {
+  ANIMATION_DURATIONS,
+  ANIMATION_DELAYS,
+  ANIMATION_EASING,
+} from "./lib/animations";
 
 const { height, width } = Dimensions.get("window");
 
@@ -403,7 +408,7 @@ const Cart = ({ navigation }: CartProps) => {
 
   const LoadingScreen = () => (
     <Animated.View
-      entering={FadeIn.duration(300)}
+      entering={FadeIn.duration(ANIMATION_DURATIONS.STANDARD)}
       style={styles.loadingContainer}
     >
       <Text style={styles.loadingText}>Перенаправление на оплату...</Text>
@@ -411,7 +416,7 @@ const Cart = ({ navigation }: CartProps) => {
   );
   const ConfirmationScreen = () => (
     <Animated.View
-      entering={FadeIn.duration(300)}
+      entering={FadeIn.duration(ANIMATION_DURATIONS.STANDARD)}
       style={styles.confirmationContainer}
     >
       <Text style={styles.confirmationTitle}>Заказ оформлен!</Text>
@@ -428,7 +433,7 @@ const Cart = ({ navigation }: CartProps) => {
   return (
     <View style={styles.container}>
       <Animated.View
-        entering={FadeInDown.duration(500)}
+        entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM)}
         style={styles.roundedBox}
       >
         <LinearGradient
@@ -445,7 +450,9 @@ const Cart = ({ navigation }: CartProps) => {
             <ConfirmationScreen />
           ) : cartItems.length === 0 ? (
             <Animated.View
-              entering={FadeInDown.duration(500).delay(100)}
+              entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
+                ANIMATION_DELAYS.STANDARD
+              )}
               style={styles.emptyCartContainer}
             >
               <Text style={styles.emptyCartText}>Ваша корзина пуста</Text>
@@ -465,7 +472,11 @@ const Cart = ({ navigation }: CartProps) => {
                 {cartItems.map((item, index) => (
                   <Animated.View
                     key={item.cartItemId || `${item.id}-${item.size}-${index}`}
-                    entering={FadeInDown.duration(500).delay(100 + index * 50)}
+                    entering={FadeInDown.duration(
+                      ANIMATION_DURATIONS.MEDIUM
+                    ).delay(
+                      ANIMATION_DELAYS.STANDARD + index * ANIMATION_DELAYS.SMALL
+                    )}
                     style={styles.cartItem}
                   >
                     <Pressable
@@ -544,7 +555,9 @@ const Cart = ({ navigation }: CartProps) => {
               <Animated.View style={styles.checkoutContainer}>
                 <Animated.View
                   style={styles.summaryContainer}
-                  entering={FadeInDown.duration(500).delay(200)}
+                  entering={FadeInDown.duration(
+                    ANIMATION_DURATIONS.MEDIUM
+                  ).delay(ANIMATION_DELAYS.LARGE)}
                 >
                   <View style={styles.horizontalLine} />
                   <View style={styles.totalContainer}>
@@ -555,7 +568,7 @@ const Cart = ({ navigation }: CartProps) => {
                 </Animated.View>
                 {paymentError && (
                   <Animated.View
-                    entering={FadeIn.duration(300)}
+                    entering={FadeIn.duration(ANIMATION_DURATIONS.STANDARD)}
                     style={styles.errorContainer}
                   >
                     <Text style={styles.errorText}>{paymentError}</Text>
@@ -571,7 +584,11 @@ const Cart = ({ navigation }: CartProps) => {
                     )}
                   </Animated.View>
                 )}
-                <Animated.View entering={FadeInDown.duration(500).delay(250)}>
+                <Animated.View
+                  entering={FadeInDown.duration(
+                    ANIMATION_DURATIONS.MEDIUM
+                  ).delay(ANIMATION_DELAYS.EXTENDED)}
+                >
                   <TouchableOpacity
                     style={[
                       styles.checkoutButton,
