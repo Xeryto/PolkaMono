@@ -20,9 +20,7 @@ const isDevelopmentBuild = Constants.expoConfig?.extra?.isDevelopmentBuild === t
 // Standard Expo environment configuration using EXPO_PUBLIC_ variables
 export const API_CONFIG = {
   // API Configuration - Use production URL for EAS updates, local for development
-  API_BASE_URL: isEASUpdate 
-    ? "https://polkamono.onrender.com" 
-    : process.env.EXPO_PUBLIC_API_URL,
+  API_BASE_URL: process.env.EXPO_PUBLIC_API_URL,
   API_TIMEOUT: parseInt(process.env.EXPO_PUBLIC_API_TIMEOUT),
   AUTH_TIMEOUT: parseInt(process.env.EXPO_PUBLIC_AUTH_TIMEOUT),
   
