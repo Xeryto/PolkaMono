@@ -3,32 +3,53 @@ Configuration settings for PolkaAPI
 """
 import os
 from typing import List, Optional
+from functools import lru_cache
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 class Settings:
     """Application settings"""
     
+    # Environment
+    ENVIRONMENT: str = os.getenv("ENVIRONMENT", "development")
+    DEBUG: bool = os.getenv("DEBUG", "False").lower() == "true"
+    
     # API Configuration
     API_V1_STR: str = "/api/v1"
-    PROJECT_NAME: str = "PolkaAPI - Authentication Backend"
-    VERSION: str = "1.0.0"
+    PROJECT_NAME: str = os.getenv("PROJECT_NAME", "PolkaAPI - Authentication Backend")
+    VERSION: str = os.getenv("VERSION", "1.0.0")
     
     # Security
-    SECRET_KEY: str = os.getenv("SECRET_KEY", "your-secret-key-change-in-production")
+    SECRET_KEY: str = os.getenv("SECRET_KEY")
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "30"))
     EMAIL_VERIFICATION_CODE_EXPIRE_MINUTES: int = int(os.getenv("EMAIL_VERIFICATION_CODE_EXPIRE_MINUTES", "10"))
     
-    # Database
-    DATABASE_URL: str = os.getenv("DATABASE_URL", "postgresql://polkagress_v3gb_user:hjheyoIQMxYRUWCMAkwlknYDLTkTWYw0@dpg-d2qkao0dl3ps73cetk60-a.oregon-postgres.render.com/polkagress_v3gb")
+    # Database Configuration
+    DATABASE_URL: str = os.getenv("DATABASE_URL")
     
-    # CORS
-    BACKEND_CORS_ORIGINS: List[str] = [
-        "http://localhost:3000",  # React development
-        "http://localhost:8080",  # Vue development
-        "http://localhost:4200",  # Angular development
-        "http://localhost:19006", # Expo development
-        "*"  # Allow all origins in development
-    ]
+    @property
+    def get_database_url(self) -> str:
+        """Get database URL from environment variable"""
+        if not self.DATABASE_URL:
+            raise ValueError("DATABASE_URL environment variable must be set")
+        return self.DATABASE_URL
+    
+    # CORS - Environment-specific origins
+    @property
+    def get_cors_origins(self) -> List[str]:
+        """Get CORS origins based on environment"""
+        cors_origins_env = os.getenv("BACKEND_CORS_ORIGINS")
+        if cors_origins_env:
+            return [origin.strip() for origin in cors_origins_env.split(",")]
+            
+    
+    @property
+    def BACKEND_CORS_ORIGINS(self) -> List[str]:
+        """Get CORS origins for FastAPI middleware"""
+        return self.get_cors_origins
     
     # OAuth Configuration
     # Google OAuth
@@ -52,7 +73,7 @@ class Settings:
     APPLE_PRIVATE_KEY: Optional[str] = os.getenv("APPLE_PRIVATE_KEY")
     
     # OAuth Redirect URLs
-    OAUTH_REDIRECT_URL: str = os.getenv("OAUTH_REDIRECT_URL", "http://localhost:8000/api/v1/auth/oauth/callback")
+    OAUTH_REDIRECT_URL: str = os.getenv("OAUTH_REDIRECT_URL")
     
     # Validation Rules
     MIN_USERNAME_LENGTH: int = 3
@@ -61,10 +82,32 @@ class Settings:
     MAX_EMAIL_LENGTH: int = 255
     
     # Logging
-    LOG_LEVEL: str = os.getenv("LOG_LEVEL", "INFO")
+    LOG_LEVEL: str = os.getenv("LOG_LEVEL", "INFO" if ENVIRONMENT == "production" else "DEBUG")
     
-    # Development
-    DEBUG: bool = os.getenv("DEBUG", "True").lower() == "true"
+    # Validation
+    @classmethod
+    def validate_config(cls) -> bool:
+        """Validate configuration settings"""
+        try:
+            settings = cls()
+            
+            # Check required environment variables
+            required_vars = ["DATABASE_URL", "SECRET_KEY", "OAUTH_REDIRECT_URL"]
+            
+            for var in required_vars:
+                if not os.getenv(var):
+                    print(f"ERROR: {var} environment variable is required")
+                    return False
+            
+            # Validate database URL
+            settings.get_database_url  # This will raise an error if DATABASE_URL is not set
+            
+            print(f"Configuration validated successfully for {settings.ENVIRONMENT} environment")
+            return True
+            
+        except Exception as e:
+            print(f"Configuration validation failed: {e}")
+            return False
 
     # YooKassa
     YOOKASSA_SHOP_ID: Optional[str] = os.getenv("YOOKASSA_SHOP_ID")
@@ -77,4 +120,8 @@ class Settings:
     UNISENDER_LIST_ID: Optional[str] = os.getenv("UNISENDER_LIST_ID")
 
 # Create settings instance
-settings = Settings() 
+settings = Settings()
+
+# Validate configuration on import
+if not Settings.validate_config():
+    print("WARNING: Configuration validation failed. Please check your environment variables.") 

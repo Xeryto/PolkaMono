@@ -6,10 +6,10 @@ from sqlalchemy.orm import sessionmaker, Session
 from config import settings
 from models import Base
 
-print(settings.DATABASE_URL)
+print(settings.get_database_url)
 # Create database engine
 engine = create_engine(
-    settings.DATABASE_URL,
+    settings.get_database_url,
     pool_pre_ping=True,
     pool_recycle=3600,
     echo=settings.DEBUG

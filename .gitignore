@@ -6,3 +6,65 @@ package-lock.json
 .expo/
 
 yarn.lock
+
+# Environment files
+.env
+.env.local
+.env.development
+.env.staging
+.env.production
+packages/*/.env
+packages/*/.env.local
+packages/*/.env.development
+packages/*/.env.staging
+packages/*/.env.production
+
+# But allow example files
+!.env.example
+!packages/*/.env.example
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+.venv/
+pip-log.txt
+pip-delete-this-directory.txt
+.tox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.log
+.git
+.mypy_cache
+.pytest_cache
+.hypothesis
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Build outputs
+dist/
+build/
+*.tgz
+*.tar.gz

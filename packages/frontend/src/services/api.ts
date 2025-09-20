@@ -19,9 +19,10 @@ import {
   isRetryableError,
   RequestOptions 
 } from './networkUtils';
+import { ENV_CONFIG, log } from '@/config/environment';
 
 // API configuration
-const API_URL = "http://localhost:8000"; // Assuming API is running on this URL
+const API_URL = ENV_CONFIG.API_BASE_URL;
 
 // Error handling
 class ApiError extends Error {
@@ -223,17 +224,16 @@ const apiRequest = async (
       },
       {
         ...requestOptions,
-        // Default timeout of 10 seconds
-        timeout: requestOptions.timeout ?? 10000,
+        // Use configured timeout
+        timeout: requestOptions.timeout ?? ENV_CONFIG.API_TIMEOUT,
       }
     );
 
-    // Basic 401 handling (can be expanded)
-    if (response.status === 401) {
+    // Handle 401 responses properly - let handleApiResponse process the error
+    // Only dispatch auth-error event for authenticated requests, not login attempts
+    if (response.status === 401 && requireAuth) {
       console.error('API Request: Authentication required.');
       window.dispatchEvent(new Event('auth-error'));
-      // Return a promise that never resolves to prevent further processing
-      return new Promise(() => {});
     }
 
     return await handleApiResponse(response);

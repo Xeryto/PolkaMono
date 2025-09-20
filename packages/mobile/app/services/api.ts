@@ -1,5 +1,5 @@
 import * as SecureStore from 'expo-secure-store';
-import { API_CONFIG } from './config';
+import { API_CONFIG, log } from './config';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ApiError, handleApiResponse } from './apiHelpers';
 import { 
@@ -11,7 +11,7 @@ import {
 
 // API configuration
 const API_URL = API_CONFIG.API_BASE_URL;
-console.log(API_URL);
+log.info(`API URL configured: ${API_URL}`);
 const USER_PROFILE_KEY = 'PolkaMobile_userProfile';
 
 // Session management events
@@ -405,7 +405,7 @@ const apiRequest = async (
       {
         ...requestOptions,
         // Use API config timeout if not specified
-        timeout: requestOptions.timeout ?? API_CONFIG.PROD.API_TIMEOUT,
+        timeout: requestOptions.timeout ?? API_CONFIG.API_TIMEOUT,
       }
     );
 
@@ -599,7 +599,7 @@ export const getCurrentUser = async (): Promise<UserProfile> => {
   
   console.log('Fetching user profile from API');
   const userPromise = apiRequest('/api/v1/user/profile', 'GET', undefined, true, {
-    timeout: API_CONFIG.PROD.AUTH_TIMEOUT
+    timeout: API_CONFIG.AUTH_TIMEOUT
   }).then(response => {
     // Update stored profile
     storeUserProfile(response);
@@ -629,7 +629,7 @@ export const getProfileCompletionStatus = async (): Promise<ProfileCompletionSta
   
   console.log('Fetching profile completion status from API');
   const completionPromise = apiRequest('/api/v1/user/profile/completion-status', 'GET', undefined, true, {
-    timeout: API_CONFIG.PROD.AUTH_TIMEOUT
+    timeout: API_CONFIG.AUTH_TIMEOUT
   }).then(status => {
     // Remove from pending requests
     pendingRequests.delete(requestKey);
@@ -655,7 +655,7 @@ export const updateUserProfile = async (
   profileData: Partial<UserProfile> // Use Partial to allow partial updates
 ): Promise<UserProfile> => {
   const response = await apiRequest('/api/v1/user/profile', 'PUT', profileData, true, {
-    timeout: API_CONFIG.PROD.AUTH_TIMEOUT
+    timeout: API_CONFIG.AUTH_TIMEOUT
   });
   
   // Update stored profile
@@ -668,7 +668,7 @@ export const updateUserBrands = async (brandIds: number[]): Promise<any> => {
   const response = await apiRequest('/api/v1/user/brands', 'POST', {
     brand_ids: brandIds
   }, true, {
-    timeout: API_CONFIG.PROD.AUTH_TIMEOUT
+    timeout: API_CONFIG.AUTH_TIMEOUT
   });
   
   // Refresh user profile to get updated data
@@ -682,7 +682,7 @@ export const updateUserStyles = async (styleIds: string[]): Promise<any> => {
   const response = await apiRequest('/api/v1/user/styles', 'POST', {
     style_ids: styleIds
   }, true, {
-    timeout: API_CONFIG.PROD.AUTH_TIMEOUT
+    timeout: API_CONFIG.AUTH_TIMEOUT
   });
   
   // Refresh user profile to get updated data
