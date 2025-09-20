@@ -35,6 +35,7 @@ import Tick from "./assets/Tick";
 import { Canvas, RoundedRect, Shadow } from "@shopify/react-native-skia";
 import { AnimatedCircularProgress } from "react-native-circular-progress";
 import * as api from "./services/api";
+import { apiWrapper } from "./services/apiWrapper";
 import {
   ANIMATION_DURATIONS,
   ANIMATION_DELAYS,
@@ -148,7 +149,6 @@ const Settings = ({ navigation, onLogout }: SettingsProps) => {
   const sizeIndicatorOpacity = useRef(new RNAnimated.Value(1)).current;
   const searchResultsTranslateY = useRef(new RNAnimated.Value(0)).current;
   const searchResultsOpacity = useRef(new RNAnimated.Value(0)).current;
-  const selectedBrandsOpacity = useSharedValue(0);
 
   // Generate stats from real data with fallback to mock data
   const getStats = (): StatItem[] => {
@@ -238,27 +238,29 @@ const Settings = ({ navigation, onLogout }: SettingsProps) => {
   const loadUserProfile = async () => {
     try {
       setIsLoadingProfile(true);
-      const profile = await api.getCurrentUser();
-      setUserProfile(profile);
-      console.log("Settings - User profile loaded:", profile);
-      console.log(
-        "Settings - Profile favorite_brands:",
-        profile.favorite_brands
-      );
-
-      // Set selected size from profile
-      if (profile.selected_size) {
-        setSelectedSize(profile.selected_size);
-      }
-
-      // Set selected brands from profile
-      if (profile.favorite_brands && profile.favorite_brands.length > 0) {
-        const brandNames = profile.favorite_brands.map((brand) => brand.name);
-        setSelectedBrands(brandNames);
+      const profile = await apiWrapper.getCurrentUser("SettingsPage");
+      if (profile) {
+        setUserProfile(profile);
+        console.log("Settings - User profile loaded:", profile);
         console.log(
-          "Settings - Loaded favorite brands from profile:",
-          brandNames
+          "Settings - Profile favorite_brands:",
+          profile.favorite_brands
         );
+
+        // Set selected size from profile
+        if (profile.selected_size) {
+          setSelectedSize(profile.selected_size);
+        }
+
+        // Set selected brands from profile
+        if (profile.favorite_brands && profile.favorite_brands.length > 0) {
+          const brandNames = profile.favorite_brands.map((brand) => brand.name);
+          setSelectedBrands(brandNames);
+          console.log(
+            "Settings - Loaded favorite brands from profile:",
+            brandNames
+          );
+        }
       } else {
         setSelectedBrands([]);
         console.log("Settings - No favorite brands found in profile");
@@ -291,8 +293,8 @@ const Settings = ({ navigation, onLogout }: SettingsProps) => {
   // Load brands from API
   const loadBrands = async () => {
     try {
-      const brands = await api.getBrands();
-      setPopularBrands(brands.map((brand) => brand.name));
+      const brands = await apiWrapper.getBrands("SettingsPage");
+      setPopularBrands((brands || []).map((brand) => brand.name));
     } catch (error: any) {
       console.error("Error loading brands:", error);
 
@@ -332,8 +334,10 @@ const Settings = ({ navigation, onLogout }: SettingsProps) => {
 
     try {
       setIsLoadingStats(true);
-      const stats = await api.getUserStats();
-      setUserStats(stats);
+      const stats = await apiWrapper.getUserStats("SettingsPage");
+      if (stats) {
+        setUserStats(stats);
+      }
       setStatsLastLoaded(now);
       console.log("User stats loaded successfully");
     } catch (error: any) {
@@ -403,8 +407,8 @@ const Settings = ({ navigation, onLogout }: SettingsProps) => {
     try {
       await api.updateUserBrands(brandIds);
       // Update local state with brand names
-      const allBrands = await api.getBrands();
-      const selectedBrandNames = allBrands
+      const allBrands = await apiWrapper.getBrands("SettingsPage");
+      const selectedBrandNames = (allBrands || [])
         .filter((brand) => brandIds.includes(brand.id))
         .map((brand) => brand.name);
       setSelectedBrands(selectedBrandNames);
@@ -507,8 +511,8 @@ const Settings = ({ navigation, onLogout }: SettingsProps) => {
       }
 
       // Get brand ID from the API brands list
-      const allBrands = await api.getBrands();
-      const brandObj = allBrands.find((b) => b.name === brandName);
+      const allBrands = await apiWrapper.getBrands("SettingsPage");
+      const brandObj = (allBrands || []).find((b) => b.name === brandName);
       if (!brandObj) {
         console.error("Brand object not found:", brandName);
         Alert.alert("Ошибка", "Бренд не найден.");
@@ -534,22 +538,34 @@ const Settings = ({ navigation, onLogout }: SettingsProps) => {
       const originalUserProfile = userProfile;
 
       // Optimistically update local state immediately
-      const newSelectedBrands = allBrands
-        .filter((b) => newBrandIds.includes(b.id))
-        .map((b) => b.name);
+      // Maintain the order of selection - append new brands to the end
+      let newSelectedBrands: string[];
+      if (isAdding) {
+        // Add the new brand to the end of the current list
+        newSelectedBrands = [...selectedBrands, brandName];
+      } else {
+        // Remove the brand from the current list
+        newSelectedBrands = selectedBrands.filter((name) => name !== brandName);
+      }
       setSelectedBrands(newSelectedBrands);
 
       // Update user profile state optimistically
       if (userProfile) {
-        const updatedFavoriteBrands = allBrands
-          .filter((b) => newBrandIds.includes(b.id))
-          .map((b) => ({
-            id: b.id,
-            name: b.name,
-            slug: b.slug,
-            logo: b.logo,
-            description: b.description,
-          }));
+        // Maintain the same order as the selectedBrands array
+        const updatedFavoriteBrands = newSelectedBrands
+          .map((brandName) => {
+            const brand = (allBrands || []).find((b) => b.name === brandName);
+            return brand
+              ? {
+                  id: brand.id,
+                  name: brand.name,
+                  slug: brand.slug,
+                  logo: brand.logo,
+                  description: brand.description,
+                }
+              : null;
+          })
+          .filter((brand) => brand !== null) as any[];
 
         setUserProfile({
           ...userProfile,
@@ -599,26 +615,6 @@ const Settings = ({ navigation, onLogout }: SettingsProps) => {
     transform: [{ translateY: searchResultsTranslateY }],
     opacity: searchResultsOpacity,
   };
-
-  useEffect(() => {
-    if (selectedBrands.length > 0) {
-      selectedBrandsOpacity.value = withTiming(1, {
-        duration: ANIMATION_DURATIONS.STANDARD,
-      });
-    } else {
-      selectedBrandsOpacity.value = withTiming(0, {
-        duration: ANIMATION_DURATIONS.STANDARD,
-      });
-    }
-  }, [selectedBrands]);
-
-  const selectedBrandsAnimatedStyle = useAnimatedStyle(() => {
-    return {
-      opacity: selectedBrandsOpacity.value,
-      height: selectedBrandsOpacity.value === 0 ? 0 : 0.1 * height,
-      marginTop: selectedBrandsOpacity.value === 0 ? 0 : height * 0.05,
-    };
-  });
 
   const handleSizePress = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -812,20 +808,22 @@ const Settings = ({ navigation, onLogout }: SettingsProps) => {
       </Animated.View>
 
       {/* Selected brands bubbles */}
-      <Animated.View
-        entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
-          ANIMATION_DELAYS.EXTENDED
-        )}
-        style={[styles.selectedBubblesContainer, selectedBrandsAnimatedStyle]}
-      >
-        <ScrollView
-          horizontal={true}
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.selectedBubblesContent}
+      {selectedBrands.length > 0 && (
+        <Animated.View
+          entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
+            ANIMATION_DELAYS.EXTENDED
+          )}
+          style={styles.selectedBubblesContainer}
         >
-          {selectedBrands.map(renderBrandBubble)}
-        </ScrollView>
-      </Animated.View>
+          <ScrollView
+            horizontal={true}
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.selectedBubblesContent}
+          >
+            {selectedBrands.map(renderBrandBubble)}
+          </ScrollView>
+        </Animated.View>
+      )}
 
       {/* Search Container */}
       <Animated.View
@@ -878,7 +876,7 @@ const Settings = ({ navigation, onLogout }: SettingsProps) => {
 
   const renderMainButtons = () => (
     <Animated.View
-      entering={FadeInDown.duration(500)}
+      entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM)}
       style={{
         width: "100%",
         alignItems: "center",
@@ -887,12 +885,18 @@ const Settings = ({ navigation, onLogout }: SettingsProps) => {
       }}
     >
       {/* Profile Section */}
-      <Animated.View entering={FadeInDown.duration(500).delay(100)}>
+      <Animated.View
+        entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
+          ANIMATION_DELAYS.STANDARD
+        )}
+      >
         <Text style={styles.profileName}>Рейтинг стиля</Text>
       </Animated.View>
 
       <Animated.View
-        entering={FadeInDown.duration(500).delay(150)}
+        entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
+          ANIMATION_DELAYS.MEDIUM
+        )}
         style={styles.ratingContainer}
       >
         <AnimatedCircularProgress
@@ -930,7 +934,9 @@ const Settings = ({ navigation, onLogout }: SettingsProps) => {
       ) : (
         <>
           <Animated.View
-            entering={FadeInDown.duration(500).delay(200)}
+            entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
+              ANIMATION_DELAYS.LARGE
+            )}
             style={styles.profileSection}
           >
             <Text style={styles.profileName}>
@@ -950,7 +956,9 @@ const Settings = ({ navigation, onLogout }: SettingsProps) => {
 
           <Animated.View
             style={styles.backButton}
-            entering={FadeInDown.duration(500).delay(200)}
+            entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
+              ANIMATION_DELAYS.LARGE
+            )}
           >
             <TouchableOpacity onPress={() => setActiveSection(null)}>
               <BackIcon width={33} height={33} />
@@ -960,7 +968,9 @@ const Settings = ({ navigation, onLogout }: SettingsProps) => {
           {/* Logout Button - positioned symmetrically to back button */}
           <Animated.View
             style={styles.logoutButton}
-            entering={FadeInDown.duration(500).delay(200)}
+            entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
+              ANIMATION_DELAYS.LARGE
+            )}
           >
             <TouchableOpacity
               onPress={() => {
@@ -973,7 +983,9 @@ const Settings = ({ navigation, onLogout }: SettingsProps) => {
           </Animated.View>
 
           <Animated.View
-            entering={FadeInDown.duration(500).delay(250)}
+            entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
+              ANIMATION_DELAYS.EXTENDED
+            )}
             style={styles.favoriteBrandsSection}
           >
             <TouchableOpacity
@@ -985,7 +997,9 @@ const Settings = ({ navigation, onLogout }: SettingsProps) => {
           </Animated.View>
 
           <Animated.View
-            entering={FadeInDown.duration(500).delay(300)}
+            entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
+              ANIMATION_DELAYS.VERY_LARGE
+            )}
             style={styles.statsContainer}
           >
             {stats.map((stat, index) => (
@@ -999,7 +1013,9 @@ const Settings = ({ navigation, onLogout }: SettingsProps) => {
           </Animated.View>
 
           <Animated.View
-            entering={FadeInDown.duration(500).delay(350)}
+            entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
+              ANIMATION_DELAYS.VERY_LARGE + ANIMATION_DELAYS.SMALL
+            )}
             style={styles.sizeSection}
           >
             <Text style={styles.sizeSectionTitle}>Размер</Text>
@@ -1016,49 +1032,116 @@ const Settings = ({ navigation, onLogout }: SettingsProps) => {
   );
 
   // Handle item press to send it to MainPage
-  const handleItemPress = (item: api.OrderItem) => {
-    // Create a card item from the order item with real product data
-    const cardItem: CardItem = {
-      id: item.product_id || item.id, // Use original product ID for swipe tracking
-      name: item.name,
-      brand_name: item.brand_name || "Unknown Brand",
-      price: item.price,
-      images: item.images
-        ? item.images.map((img) => ({ uri: img }))
-        : item.image
-        ? [{ uri: item.image }]
-        : [],
-      isLiked: false,
-      size: item.size,
-      quantity: 1,
-      variants: [{ size: item.size, stock_quantity: 1 }],
-      description: item.description || "No description available.",
-      color: item.color || "Unknown",
-      materials: item.materials || "Unknown",
-      brand_return_policy: item.return_policy || "Unknown",
-      sku: item.sku || "Unknown",
-    };
+  const handleItemPress = async (item: api.OrderItem) => {
+    try {
+      // If we have a product_id, fetch the full product details to get all sizes
+      if (item.product_id) {
+        console.log(
+          "Settings - Fetching full product details for product_id:",
+          item.product_id
+        );
 
-    // Debug: Log what we're sending to MainPage
-    console.log("Settings - Sending item to MainPage:", {
-      id: cardItem.id,
-      brand_name: cardItem.brand_name,
-      brand_return_policy: cardItem.brand_return_policy,
-      images: cardItem.images,
-      description: cardItem.description,
-      originalOrderItemId: item.id,
-      productId: item.product_id,
-    });
+        const fullProduct = await api.getProductDetails(item.product_id);
 
-    // Navigate to home with the item
-    navigation.navigate("Home", { addCardItem: cardItem });
+        // Create a card item from the full product data
+        const cardItem: CardItem = {
+          id: fullProduct.id,
+          name: fullProduct.name,
+          brand_name: fullProduct.brand_name || "Unknown Brand",
+          price: fullProduct.price,
+          images: fullProduct.images.map((img) => ({ uri: img })),
+          isLiked: fullProduct.is_liked || false,
+          size: item.size, // Keep the ordered size as default
+          quantity: 1,
+          variants: fullProduct.variants || [], // Use all available variants/sizes
+          description: fullProduct.description || "No description available.",
+          color: fullProduct.color || "Unknown",
+          materials: fullProduct.material || "Unknown",
+          brand_return_policy: fullProduct.brand_return_policy || "Unknown",
+          sku: fullProduct.sku || "Unknown",
+        };
+
+        // Debug: Log what we're sending to MainPage
+        console.log("Settings - Sending full product to MainPage:", {
+          id: cardItem.id,
+          brand_name: cardItem.brand_name,
+          brand_return_policy: cardItem.brand_return_policy,
+          images: cardItem.images,
+          description: cardItem.description,
+          variants: cardItem.variants,
+          originalOrderItemId: item.id,
+          productId: item.product_id,
+        });
+
+        // Navigate to home with the full product data
+        navigation.navigate("Home", { addCardItem: cardItem });
+      } else {
+        // Fallback: Create a card item from the order item with limited data
+        console.log(
+          "Settings - No product_id available, using order item data only"
+        );
+
+        const cardItem: CardItem = {
+          id: item.id,
+          name: item.name,
+          brand_name: item.brand_name || "Unknown Brand",
+          price: item.price,
+          images: item.images
+            ? item.images.map((img) => ({ uri: img }))
+            : item.image
+            ? [{ uri: item.image }]
+            : [],
+          isLiked: false,
+          size: item.size,
+          quantity: 1,
+          variants: [{ size: item.size, stock_quantity: 1 }],
+          description: item.description || "No description available.",
+          color: item.color || "Unknown",
+          materials: item.materials || "Unknown",
+          brand_return_policy: item.return_policy || "Unknown",
+          sku: item.sku || "Unknown",
+        };
+
+        // Navigate to home with the limited item data
+        navigation.navigate("Home", { addCardItem: cardItem });
+      }
+    } catch (error) {
+      console.error("Settings - Error fetching product details:", error);
+
+      // Fallback: Create a card item from the order item with limited data
+      const cardItem: CardItem = {
+        id: item.product_id || item.id,
+        name: item.name,
+        brand_name: item.brand_name || "Unknown Brand",
+        price: item.price,
+        images: item.images
+          ? item.images.map((img) => ({ uri: img }))
+          : item.image
+          ? [{ uri: item.image }]
+          : [],
+        isLiked: false,
+        size: item.size,
+        quantity: 1,
+        variants: [{ size: item.size, stock_quantity: 1 }],
+        description: item.description || "No description available.",
+        color: item.color || "Unknown",
+        materials: item.materials || "Unknown",
+        brand_return_policy: item.return_policy || "Unknown",
+        sku: item.sku || "Unknown",
+      };
+
+      // Navigate to home with the fallback item data
+      navigation.navigate("Home", { addCardItem: cardItem });
+    }
   };
 
   const renderOrderDetails = () => (
     <View style={styles.contentContainer}>
       <Animated.View
         style={styles.backButton}
-        entering={FadeInDown.duration(500).delay(200)}
+        entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
+          ANIMATION_DELAYS.LARGE
+        )}
       >
         <TouchableOpacity onPress={() => setSelectedOrder(null)}>
           <BackIcon width={33} height={33} />
@@ -1066,7 +1149,9 @@ const Settings = ({ navigation, onLogout }: SettingsProps) => {
       </Animated.View>
 
       <Animated.View
-        entering={FadeInDown.duration(500).delay(200)}
+        entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
+          ANIMATION_DELAYS.LARGE
+        )}
         style={styles.orderDetailsContainer}
       >
         <ScrollView
@@ -1076,7 +1161,9 @@ const Settings = ({ navigation, onLogout }: SettingsProps) => {
           {selectedOrder?.items.map((item, index) => (
             <Animated.View
               key={item.id}
-              entering={FadeInDown.duration(500).delay(100 + index * 50)}
+              entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
+                ANIMATION_DELAYS.STANDARD + index * ANIMATION_DELAYS.SMALL
+              )}
               style={styles.cartItem}
             >
               <Pressable
@@ -1136,7 +1223,9 @@ const Settings = ({ navigation, onLogout }: SettingsProps) => {
         </ScrollView>
 
         <Animated.View
-          entering={FadeInDown.duration(500).delay(350)}
+          entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
+            ANIMATION_DELAYS.VERY_LARGE + ANIMATION_DELAYS.SMALL
+          )}
           style={styles.orderTotalContainer}
         >
           <Text style={styles.orderTotalText}>
@@ -1144,14 +1233,18 @@ const Settings = ({ navigation, onLogout }: SettingsProps) => {
           </Text>
         </Animated.View>
         <Animated.View
-          entering={FadeInDown.duration(500).delay(400)}
+          entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
+            ANIMATION_DELAYS.VERY_LARGE + ANIMATION_DELAYS.STANDARD
+          )}
           style={styles.orderStatusContainer}
         >
           <Text style={[styles.orderStatusText, { marginLeft: 20 }]}>
             Статус
           </Text>
           <Animated.View
-            entering={FadeInDown.duration(500).delay(450)}
+            entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
+              ANIMATION_DELAYS.VERY_LARGE + ANIMATION_DELAYS.EXTENDED
+            )}
             style={styles.orderStatus}
           >
             <Text style={styles.orderStatusText}>Оплачен</Text>
@@ -1170,7 +1263,9 @@ const Settings = ({ navigation, onLogout }: SettingsProps) => {
       <View style={styles.contentContainer}>
         <Animated.View
           style={styles.backButton}
-          entering={FadeInDown.duration(500).delay(200)}
+          entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
+            ANIMATION_DELAYS.LARGE
+          )}
         >
           <TouchableOpacity onPress={() => setActiveSection(null)}>
             <BackIcon width={33} height={33} />
@@ -1178,7 +1273,9 @@ const Settings = ({ navigation, onLogout }: SettingsProps) => {
         </Animated.View>
 
         <Animated.View
-          entering={FadeInDown.duration(500).delay(300)}
+          entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
+            ANIMATION_DELAYS.VERY_LARGE
+          )}
           style={styles.ordersContainer}
         >
           {isLoadingOrders ? (
@@ -1203,7 +1300,11 @@ const Settings = ({ navigation, onLogout }: SettingsProps) => {
               {orders.map((order, index) => (
                 <Animated.View
                   key={order.id}
-                  entering={FadeInDown.duration(500).delay(300 + index * 50)}
+                  entering={FadeInDown.duration(
+                    ANIMATION_DURATIONS.MEDIUM
+                  ).delay(
+                    ANIMATION_DELAYS.VERY_LARGE + index * ANIMATION_DELAYS.SMALL
+                  )}
                   style={styles.orderItem}
                 >
                   <TouchableOpacity
@@ -1230,7 +1331,9 @@ const Settings = ({ navigation, onLogout }: SettingsProps) => {
     <View style={styles.contentContainer}>
       <Animated.View
         style={styles.backButton}
-        entering={FadeInDown.duration(500).delay(200)}
+        entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
+          ANIMATION_DELAYS.LARGE
+        )}
       >
         <TouchableOpacity onPress={() => setActiveSection(null)}>
           <BackIcon width={33} height={33} />
@@ -1238,7 +1341,9 @@ const Settings = ({ navigation, onLogout }: SettingsProps) => {
       </Animated.View>
 
       <Animated.View
-        entering={FadeInDown.duration(500).delay(250)}
+        entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
+          ANIMATION_DELAYS.EXTENDED
+        )}
         style={styles.shoppingTitleSection}
       >
         <Text style={styles.shoppingTitle}>Информация о доставке</Text>
@@ -1246,14 +1351,18 @@ const Settings = ({ navigation, onLogout }: SettingsProps) => {
 
       {isLoadingShoppingInfo ? (
         <Animated.View
-          entering={FadeInDown.duration(500).delay(300)}
+          entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
+            ANIMATION_DELAYS.VERY_LARGE
+          )}
           style={styles.shoppingFormContainer}
         >
           <Text style={styles.loadingText}>Загрузка...</Text>
         </Animated.View>
       ) : shoppingInfoError ? (
         <Animated.View
-          entering={FadeInDown.duration(500).delay(300)}
+          entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
+            ANIMATION_DELAYS.VERY_LARGE
+          )}
           style={styles.shoppingFormContainer}
         >
           <Text style={styles.errorText}>{shoppingInfoError}</Text>
@@ -1264,7 +1373,9 @@ const Settings = ({ navigation, onLogout }: SettingsProps) => {
           showsVerticalScrollIndicator={false}
         >
           <Animated.View
-            entering={FadeInDown.duration(500).delay(300)}
+            entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
+              ANIMATION_DELAYS.VERY_LARGE
+            )}
             style={styles.inputContainer}
           >
             <Text style={styles.inputLabel}>Полное имя для доставки *</Text>
@@ -1280,7 +1391,9 @@ const Settings = ({ navigation, onLogout }: SettingsProps) => {
           </Animated.View>
 
           <Animated.View
-            entering={FadeInDown.duration(500).delay(350)}
+            entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
+              ANIMATION_DELAYS.VERY_LARGE + ANIMATION_DELAYS.SMALL
+            )}
             style={styles.inputContainer}
           >
             <Text style={styles.inputLabel}>Email для доставки *</Text>
@@ -1298,7 +1411,9 @@ const Settings = ({ navigation, onLogout }: SettingsProps) => {
           </Animated.View>
 
           <Animated.View
-            entering={FadeInDown.duration(500).delay(400)}
+            entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
+              ANIMATION_DELAYS.VERY_LARGE + ANIMATION_DELAYS.STANDARD
+            )}
             style={styles.inputContainer}
           >
             <Text style={styles.inputLabel}>Телефон *</Text>
@@ -1315,7 +1430,9 @@ const Settings = ({ navigation, onLogout }: SettingsProps) => {
           </Animated.View>
 
           <Animated.View
-            entering={FadeInDown.duration(500).delay(450)}
+            entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
+              ANIMATION_DELAYS.VERY_LARGE + ANIMATION_DELAYS.EXTENDED
+            )}
             style={styles.inputContainer}
           >
             <Text style={styles.inputLabel}>Город *</Text>
@@ -1331,7 +1448,9 @@ const Settings = ({ navigation, onLogout }: SettingsProps) => {
           </Animated.View>
 
           <Animated.View
-            entering={FadeInDown.duration(500).delay(500)}
+            entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
+              ANIMATION_DELAYS.VERY_LARGE + ANIMATION_DELAYS.LARGE
+            )}
             style={styles.inputContainer}
           >
             <Text style={styles.inputLabel}>Почтовый индекс</Text>
@@ -1348,7 +1467,9 @@ const Settings = ({ navigation, onLogout }: SettingsProps) => {
           </Animated.View>
 
           <Animated.View
-            entering={FadeInDown.duration(500).delay(550)}
+            entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
+              ANIMATION_DELAYS.VERY_LARGE + ANIMATION_DELAYS.EXTENDED
+            )}
             style={styles.inputContainer}
           >
             <Text style={styles.inputLabel}>Адрес доставки *</Text>
@@ -1366,7 +1487,9 @@ const Settings = ({ navigation, onLogout }: SettingsProps) => {
           </Animated.View>
 
           <Animated.View
-            entering={FadeInDown.duration(500).delay(600)}
+            entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
+              ANIMATION_DELAYS.VERY_LARGE + ANIMATION_DELAYS.VERY_LARGE
+            )}
             style={styles.saveButtonContainer}
           >
             <Pressable
@@ -1392,7 +1515,9 @@ const Settings = ({ navigation, onLogout }: SettingsProps) => {
       <View style={styles.topContent}>
         <Animated.View
           style={styles.backButtonAlt}
-          entering={FadeInDown.duration(500).delay(200)}
+          entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
+            ANIMATION_DELAYS.LARGE
+          )}
         >
           <TouchableOpacity onPress={() => setActiveSection(null)}>
             <BackIcon width={33} height={33} />
@@ -1400,8 +1525,8 @@ const Settings = ({ navigation, onLogout }: SettingsProps) => {
           <View style={styles.searchContainerAlt}>
             {showThankYou ? (
               <Animated.View
-                entering={FadeInDown.duration(300)}
-                exiting={FadeOutDown.duration(300)}
+                entering={FadeInDown.duration(ANIMATION_DURATIONS.STANDARD)}
+                exiting={FadeOutDown.duration(ANIMATION_DURATIONS.STANDARD)}
                 style={styles.thankYouContainer}
               >
                 <Text style={styles.thankYouText}>cпасибо!</Text>
@@ -1422,7 +1547,9 @@ const Settings = ({ navigation, onLogout }: SettingsProps) => {
         </Animated.View>
 
         <Animated.View
-          entering={FadeInDown.duration(500).delay(250)}
+          entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
+            ANIMATION_DELAYS.EXTENDED
+          )}
           style={{ marginTop: 20 }}
         >
           <Text style={styles.sectionTitle}>
@@ -1435,7 +1562,9 @@ const Settings = ({ navigation, onLogout }: SettingsProps) => {
       </View>
 
       <Animated.View
-        entering={FadeInDown.duration(500).delay(300)}
+        entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
+          ANIMATION_DELAYS.VERY_LARGE
+        )}
         style={styles.supportContainer}
       >
         <Text style={styles.supportText}>
@@ -1514,7 +1643,7 @@ const Settings = ({ navigation, onLogout }: SettingsProps) => {
   return (
     <View style={styles.container}>
       <Animated.View
-        entering={FadeInDown.duration(500)}
+        entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM)}
         style={styles.roundedBox}
       >
         <LinearGradient
@@ -1920,6 +2049,7 @@ const styles = StyleSheet.create({
   },
   selectedBubblesContainer: {
     width: "100%",
+    height: height * 0.1,
     backgroundColor: "#E2CCB2",
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 4 },
@@ -1928,6 +2058,9 @@ const styles = StyleSheet.create({
     borderRadius: 41,
     position: "relative",
     overflow: "hidden",
+    zIndex: 2,
+    marginTop: height * 0.05,
+    justifyContent: "center",
   },
   selectedBubblesContent: {
     marginLeft: 20,

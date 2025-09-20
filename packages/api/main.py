@@ -1620,6 +1620,38 @@ async def get_recommendations_for_friend(
         ))
     return recommendations
 
+@app.get("/api/v1/products/{product_id}", response_model=schemas.Product)
+async def get_product_details(
+    product_id: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Get details of a specific product for regular users"""
+    product = db.query(Product).filter(Product.id == product_id).first()
+    if not product:
+        raise HTTPException(status_code=404, detail="Товар не найден. Возможно, он был удален или перемещен.")
+
+    # Check if user has liked this product
+    is_liked = any(ulp.product_id == product.id for ulp in current_user.liked_products)
+
+    return schemas.Product(
+        id=product.id,
+        name=product.name,
+        description=product.description,
+        price=product.price,
+        images=product.images,
+        color=product.color,
+        material=product.material,
+        brand_id=product.brand_id,
+        category_id=product.category_id,
+        styles=[ps.style_id for ps in product.styles],
+        variants=[schemas.ProductVariantSchema(size=v.size, stock_quantity=v.stock_quantity) for v in sort_variants_by_size(product.variants)],
+        sku=product.sku,
+        brand_name=product.brand.name,
+        brand_return_policy=product.brand.return_policy,
+        is_liked=is_liked
+    )
+
 @app.get("/api/v1/products/search", response_model=List[schemas.Product])
 async def search_products(
     query: Optional[str] = None,

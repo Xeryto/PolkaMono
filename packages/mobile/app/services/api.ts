@@ -182,7 +182,17 @@ class SessionManager {
     try {
       await SecureStore.deleteItemAsync('authToken');
       await SecureStore.deleteItemAsync('refreshToken');
-      await AsyncStorage.multiRemove(['tokenExpiry', 'userProfile']);
+      await AsyncStorage.multiRemove([
+        'tokenExpiry', 
+        'userProfile',
+        'PolkaMobile_userProfile',
+        'PolkaMobile_isLoggedIn',
+        'PolkaMobile_authToken',
+        'PolkaMobile_userData',
+        '@PolkaMobile:cartItems',
+        'PolkaMobile_swipeCount',
+        'PolkaMobile_pendingSwipes'
+      ]);
       
       // Clear cart data when session is cleared
       try {
@@ -329,6 +339,7 @@ export interface Product {
   return_policy?: string; // NEW
   brand_name?: string; // NEW
   brand_return_policy?: string; // NEW
+  sku?: string; // NEW
   is_liked?: boolean; // Only for user-specific recommendations/favorites
 }
 
@@ -587,7 +598,9 @@ export const getCurrentUser = async (): Promise<UserProfile> => {
   }
   
   console.log('Fetching user profile from API');
-  const userPromise = apiRequest('/api/v1/user/profile', 'GET').then(response => {
+  const userPromise = apiRequest('/api/v1/user/profile', 'GET', undefined, true, {
+    timeout: API_CONFIG.PROD.AUTH_TIMEOUT
+  }).then(response => {
     // Update stored profile
     storeUserProfile(response);
     // Remove from pending requests
@@ -615,7 +628,9 @@ export const getProfileCompletionStatus = async (): Promise<ProfileCompletionSta
   }
   
   console.log('Fetching profile completion status from API');
-  const completionPromise = apiRequest('/api/v1/user/profile/completion-status', 'GET').then(status => {
+  const completionPromise = apiRequest('/api/v1/user/profile/completion-status', 'GET', undefined, true, {
+    timeout: API_CONFIG.PROD.AUTH_TIMEOUT
+  }).then(status => {
     // Remove from pending requests
     pendingRequests.delete(requestKey);
     return status;
@@ -639,7 +654,9 @@ export const getOAuthAccounts = async (): Promise<any[]> => {
 export const updateUserProfile = async (
   profileData: Partial<UserProfile> // Use Partial to allow partial updates
 ): Promise<UserProfile> => {
-  const response = await apiRequest('/api/v1/user/profile', 'PUT', profileData);
+  const response = await apiRequest('/api/v1/user/profile', 'PUT', profileData, true, {
+    timeout: API_CONFIG.PROD.AUTH_TIMEOUT
+  });
   
   // Update stored profile
   await storeUserProfile(response);
@@ -650,6 +667,8 @@ export const updateUserProfile = async (
 export const updateUserBrands = async (brandIds: number[]): Promise<any> => {
   const response = await apiRequest('/api/v1/user/brands', 'POST', {
     brand_ids: brandIds
+  }, true, {
+    timeout: API_CONFIG.PROD.AUTH_TIMEOUT
   });
   
   // Refresh user profile to get updated data
@@ -662,6 +681,8 @@ export const updateUserBrands = async (brandIds: number[]): Promise<any> => {
 export const updateUserStyles = async (styleIds: string[]): Promise<any> => {
   const response = await apiRequest('/api/v1/user/styles', 'POST', {
     style_ids: styleIds
+  }, true, {
+    timeout: API_CONFIG.PROD.AUTH_TIMEOUT
   });
   
   // Refresh user profile to get updated data
@@ -1012,6 +1033,10 @@ export interface Order {
 
 export const getOrders = async (): Promise<Order[]> => {
   return await apiRequest('/api/v1/orders', 'GET');
+};
+
+export const getProductDetails = async (productId: string): Promise<Product> => {
+  return await apiRequest(`/api/v1/products/${productId}`, 'GET');
 };
 
 export const getProductSearchResults = async (params: {

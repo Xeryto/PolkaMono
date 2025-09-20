@@ -42,6 +42,7 @@ import CheckIcon from "./components/svg/CheckIcon";
 import { LinearGradient } from "expo-linear-gradient";
 import * as Haptics from "expo-haptics";
 import * as api from "./services/api";
+import { apiWrapper } from "./services/apiWrapper";
 import {
   CardItem,
   FavoriteItem,
@@ -49,6 +50,11 @@ import {
   FriendItem,
   FriendRequestItem,
 } from "./types/product";
+import {
+  ANIMATION_DURATIONS,
+  ANIMATION_DELAYS,
+  ANIMATION_EASING,
+} from "./lib/animations";
 
 // Define a simpler navigation type that our custom navigation can satisfy
 interface SimpleNavigation {
@@ -135,7 +141,9 @@ const UserActionButton = memo(
           </View>
         )}
         {status === "not_friend" && (
-          <Animated.View entering={FadeInDown.duration(300)}>
+          <Animated.View
+            entering={FadeInDown.duration(ANIMATION_DURATIONS.STANDARD)}
+          >
             <TouchableOpacity
               style={[styles.addFriendButton, styles.stackedButton]}
               onPress={onAddFriend}
@@ -145,7 +153,9 @@ const UserActionButton = memo(
           </Animated.View>
         )}
         {status === "request_sent" && (
-          <Animated.View entering={FadeInDown.duration(300)}>
+          <Animated.View
+            entering={FadeInDown.duration(ANIMATION_DURATIONS.STANDARD)}
+          >
             <TouchableOpacity
               style={[
                 styles.stackedButton,
@@ -226,23 +236,23 @@ const Favorites = ({ navigation }: FavoritesProps) => {
 
       // Load friends, sent requests, and received requests in parallel
       const [friends, sent, received] = await Promise.all([
-        api.getFriends(),
-        api.getSentFriendRequests(),
-        api.getReceivedFriendRequests(),
+        apiWrapper.getFriends("FavoritesPage"),
+        apiWrapper.getSentFriendRequests("FavoritesPage"),
+        apiWrapper.getReceivedFriendRequests("FavoritesPage"),
       ]);
 
       console.log("API Response - Friends:", friends);
       console.log("API Response - Sent Requests:", sent);
       console.log("API Response - Received Requests:", received);
 
-      // Convert API friends to FriendItem format
-      const friendsList: FriendItem[] = friends.map((friend) => ({
+      // Convert API friends to FriendItem format - handle null values
+      const friendsList: FriendItem[] = (friends || []).map((friend) => ({
         ...friend,
         status: "friend" as const,
       }));
 
-      // Convert sent requests to FriendItem format
-      const sentRequestsList: FriendItem[] = sent
+      // Convert sent requests to FriendItem format - handle null values
+      const sentRequestsList: FriendItem[] = (sent || [])
         .filter((request) => request.status === "pending")
         .map((request) => ({
           id: request.recipient?.id || "",
@@ -252,8 +262,8 @@ const Favorites = ({ navigation }: FavoritesProps) => {
           requestId: request.id,
         }));
 
-      // Convert received requests to FriendItem format
-      const receivedRequestsList: FriendItem[] = received
+      // Convert received requests to FriendItem format - handle null values
+      const receivedRequestsList: FriendItem[] = (received || [])
         .filter((request) => request.status === "pending")
         .map((request) => ({
           id: request.sender?.id || "",
@@ -271,8 +281,8 @@ const Favorites = ({ navigation }: FavoritesProps) => {
       console.log("Processed Friend Items:", allFriendItems);
 
       setFriendItems(allFriendItems);
-      setSentRequests(sent);
-      setReceivedRequests(received);
+      setSentRequests(sent || []);
+      setReceivedRequests(received || []);
     } catch (error: any) {
       console.error("Error loading friends data:", error);
       // Don't show alerts for authentication errors
@@ -289,10 +299,10 @@ const Favorites = ({ navigation }: FavoritesProps) => {
     const loadSavedItems = async () => {
       setIsLoadingSaved(true);
       try {
-        const favorites = await api.getUserFavorites();
-        // Map API response to FavoriteItem[]
+        const favorites = await apiWrapper.getUserFavorites("FavoritesPage");
+        // Map API response to FavoriteItem[] - handle null values
         setSavedItems(
-          favorites.map(
+          (favorites || []).map(
             (item: api.Product, i: number): CardItem => ({
               id: item.id.toString(),
               name: item.name,
@@ -824,8 +834,10 @@ const Favorites = ({ navigation }: FavoritesProps) => {
     return (
       <View style={styles.itemWrapper}>
         <Animated.View
-          entering={FadeInDown.duration(300).delay(100 + index * 50)}
-          exiting={FadeOutDown.duration(50)}
+          entering={FadeInDown.duration(ANIMATION_DURATIONS.STANDARD).delay(
+            ANIMATION_DELAYS.STANDARD + index * ANIMATION_DELAYS.SMALL
+          )}
+          exiting={FadeOutDown.duration(ANIMATION_DURATIONS.MICRO)}
         >
           <View style={styles.itemContainer}>
             <Pressable
@@ -914,6 +926,7 @@ const Favorites = ({ navigation }: FavoritesProps) => {
     return (
       <FriendListItem
         item={item}
+        index={index}
         onAddFriend={() => sendFriendRequest(item.username)}
         onCancelRequest={() =>
           item.requestId && cancelFriendRequest(item.requestId)
@@ -1145,7 +1158,9 @@ const Favorites = ({ navigation }: FavoritesProps) => {
             </View>
           ) : item.status === "request_sent" ? (
             <View style={styles.buttonContainerStyle}>
-              <Animated.View entering={FadeInDown.duration(300)}>
+              <Animated.View
+                entering={FadeInDown.duration(ANIMATION_DURATIONS.STANDARD)}
+              >
                 <TouchableOpacity
                   style={[
                     styles.stackedButton,
@@ -1379,7 +1394,9 @@ const MainContent = ({
           styles.topBox,
           { backgroundColor: activeView === "friends" ? "#C8A688" : "#AE8F72" },
         ]}
-        entering={FadeInDown.duration(500).delay(200)}
+        entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
+          ANIMATION_DELAYS.LARGE
+        )}
         //exiting={FadeOutDown.duration(50)}
       >
         <View style={{ flex: 1, borderRadius: 41 }}>
@@ -1453,7 +1470,9 @@ const MainContent = ({
           styles.bottomBox,
           { backgroundColor: activeView === "friends" ? "#AE8F72" : "#C8A688" },
         ]}
-        entering={FadeInDown.duration(500).delay(450)}
+        entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
+          ANIMATION_DELAYS.VERY_LARGE
+        )}
         //exiting={FadeOutDown.duration(50)}
       >
         {Platform.OS === "ios" ? (
@@ -1507,43 +1526,7 @@ const BottomBoxContent = ({
       onPressIn={handleBottomBoxPressIn}
       onPressOut={handleBottomBoxPressOut}
     >
-      {activeView === "friends" ? (
-        savedItems.length === 0 ? (
-          <View style={styles.emptyStateContainer}>
-            <Text style={styles.emptyStateText}>Нет сохранённых товаров</Text>
-          </View>
-        ) : (
-          <FlatList<FavoriteItem>
-            data={savedItems.slice(0, 2)}
-            renderItem={renderSavedItem}
-            keyExtractor={(item) => item.id.toString()}
-            showsVerticalScrollIndicator={false}
-            numColumns={2}
-            columnWrapperStyle={styles.columnWrapper}
-            contentContainerStyle={styles.previewListContent}
-            scrollEnabled={false}
-            removeClippedSubviews={Platform.OS === "android"} // Android optimization
-            maxToRenderPerBatch={2} // Keep it small
-          />
-        )
-      ) : friendItems.length === 0 ? (
-        <View style={styles.emptyStateContainer}>
-          <Text style={styles.emptyStateText}>Нет друзей</Text>
-        </View>
-      ) : (
-        <FlatList<FriendItem>
-          data={friendItems.slice(0, 2)}
-          renderItem={renderFriendItem}
-          keyExtractor={(item) => item.id}
-          showsVerticalScrollIndicator={false}
-          numColumns={2}
-          columnWrapperStyle={styles.columnWrapper}
-          contentContainerStyle={styles.previewListContent}
-          scrollEnabled={false}
-          removeClippedSubviews={Platform.OS === "android"} // Android optimization
-          maxToRenderPerBatch={2} // Keep it small
-        />
-      )}
+      <View style={styles.emptyStateContainer} />
       <Text style={styles.boxTitle}>
         {activeView === "friends" ? "СОХРАНЁНКИ" : "ДРУЗЬЯ"}
       </Text>
@@ -1571,8 +1554,8 @@ const SearchContent = ({
       {/* Search Input */}
       <Animated.View
         style={styles.searchContainer}
-        entering={FadeInDown.duration(500)}
-        exiting={FadeOutDown.duration(50)}
+        entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM)}
+        exiting={FadeOutDown.duration(ANIMATION_DURATIONS.MICRO)}
       >
         <View
           style={{
@@ -1599,8 +1582,10 @@ const SearchContent = ({
       {/* Search Results */}
       <Animated.View
         style={styles.searchResultsBox}
-        entering={FadeInDown.duration(50).delay(100)}
-        exiting={FadeOutDown.duration(50)}
+        entering={FadeInDown.duration(ANIMATION_DURATIONS.MICRO).delay(
+          ANIMATION_DELAYS.STANDARD
+        )}
+        exiting={FadeOutDown.duration(ANIMATION_DURATIONS.MICRO)}
       >
         <View style={{ flex: 1 }}>
           {searchQuery.length === 0 ? (
@@ -1637,8 +1622,10 @@ const SearchContent = ({
           styles.searchModeTopBox,
           { backgroundColor: "#C8A688" },
         ]}
-        entering={FadeInDown.duration(500).delay(50)}
-        exiting={FadeOutDown.duration(50)}
+        entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
+          ANIMATION_DELAYS.SMALL
+        )}
+        exiting={FadeOutDown.duration(ANIMATION_DURATIONS.MICRO)}
       >
         <View style={styles.titleRow}>
           <Text style={styles.boxTitle}>ДРУЗЬЯ</Text>
@@ -1810,9 +1797,12 @@ const FriendProfileView = React.memo(
         if (!friend.id) return;
         try {
           setIsLoadingFriendRecs((prev) => ({ ...prev, [friend.id]: true }));
-          const recs = await api.getFriendRecommendations(friend.id);
-          // Convert to RecommendedItem[] for rendering
-          const recommendedItems = recs.map((item) => ({
+          const recs = await apiWrapper.getFriendRecommendations(
+            friend.id,
+            "FavoritesPage"
+          );
+          // Convert to RecommendedItem[] for rendering - handle null values
+          const recommendedItems = (recs || []).map((item) => ({
             id: item.id,
             name: item.name,
             brand_name: item.brand_name || `Brand ${item.brand_id}`,
@@ -1874,8 +1864,8 @@ const FriendProfileView = React.memo(
     return (
       <Animated.View
         style={styles.profileContainer}
-        entering={FadeInDown.duration(500)}
-        exiting={FadeOutDown.duration(50)}
+        entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM)}
+        exiting={FadeOutDown.duration(ANIMATION_DURATIONS.MICRO)}
       >
         {/* Header with back button */}
         <TouchableOpacity
@@ -1897,7 +1887,9 @@ const FriendProfileView = React.memo(
         </View>
 
         <Animated.View
-          entering={FadeInDown.duration(500).delay(50)}
+          entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
+            ANIMATION_DELAYS.SMALL
+          )}
           style={styles.regenerateButtonWrapper}
         >
           {/* Container for the button - this stays still */}
@@ -1954,8 +1946,10 @@ const FriendProfileView = React.memo(
 
         <Animated.View
           style={styles.roundedBox}
-          entering={FadeInDown.duration(500).delay(100)}
-          exiting={FadeOutDown.duration(50)}
+          entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
+            ANIMATION_DELAYS.STANDARD
+          )}
+          exiting={FadeOutDown.duration(ANIMATION_DURATIONS.MICRO)}
         >
           <LinearGradient
             colors={["rgba(205, 166, 122, 0.5)", "transparent"]}
@@ -1967,7 +1961,9 @@ const FriendProfileView = React.memo(
           {/* Recommendations section */}
           <Animated.View
             style={styles.recommendationsContainer}
-            entering={FadeInDown.duration(500).delay(150)}
+            entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
+              ANIMATION_DELAYS.MEDIUM
+            )}
           >
             {isRegenerating || isLoadingFriendRecs ? (
               <View style={styles.loadingContainer}>
@@ -2023,7 +2019,9 @@ const FriendRequestItemComponent: React.FC<FriendRequestItemProps> = ({
 }) => {
   return (
     <View style={styles.requestItemWrapper}>
-      <Animated.View entering={FadeInDown.duration(300)}>
+      <Animated.View
+        entering={FadeInDown.duration(ANIMATION_DURATIONS.STANDARD)}
+      >
         <View style={styles.requestItemContainer}>
           <View style={styles.requestImageContainer}>
             <Image
@@ -2718,6 +2716,7 @@ const styles = StyleSheet.create({
 // Add above Favorites component
 interface FriendListItemProps {
   item: FriendItem;
+  index: number;
   onAddFriend?: () => void;
   onCancelRequest?: () => void;
   onAcceptRequest?: () => void;
@@ -2731,6 +2730,7 @@ interface FriendListItemProps {
 const FriendListItem = memo(
   ({
     item,
+    index,
     onAddFriend,
     onCancelRequest,
     onAcceptRequest,
@@ -2744,31 +2744,38 @@ const FriendListItem = memo(
 
     return (
       <View style={styles.itemWrapper}>
-        <View style={styles.itemContainer}>
-          <Pressable style={styles.userImageContainer} onPress={onPress}>
-            <View style={styles.imageContainer}>
-              <Image
-                source={require("./assets/Vision.png")}
-                style={styles.userImage}
-              />
-            </View>
-            <View style={styles.userInfo}>
-              <Text style={styles.itemName} numberOfLines={1}>
-                @{item.username}
-              </Text>
-            </View>
-          </Pressable>
-          <UserActionButton
-            status={item.status}
-            onAddFriend={onAddFriend}
-            onCancelRequest={onCancelRequest}
-            onAcceptRequest={onAcceptRequest}
-            onRejectRequest={onRejectRequest}
-            onRemoveFriend={onRemoveFriend}
-            styles={styles}
-            width={width}
-          />
-        </View>
+        <Animated.View
+          entering={FadeInDown.duration(ANIMATION_DURATIONS.STANDARD).delay(
+            ANIMATION_DELAYS.STANDARD + index * ANIMATION_DELAYS.SMALL
+          )}
+          exiting={FadeOutDown.duration(ANIMATION_DURATIONS.MICRO)}
+        >
+          <View style={styles.itemContainer}>
+            <Pressable style={styles.userImageContainer} onPress={onPress}>
+              <View style={styles.imageContainer}>
+                <Image
+                  source={require("./assets/Vision.png")}
+                  style={styles.userImage}
+                />
+              </View>
+              <View style={styles.userInfo}>
+                <Text style={styles.itemName} numberOfLines={1}>
+                  @{item.username}
+                </Text>
+              </View>
+            </Pressable>
+            <UserActionButton
+              status={item.status}
+              onAddFriend={onAddFriend}
+              onCancelRequest={onCancelRequest}
+              onAcceptRequest={onAcceptRequest}
+              onRejectRequest={onRejectRequest}
+              onRemoveFriend={onRemoveFriend}
+              styles={styles}
+              width={width}
+            />
+          </View>
+        </Animated.View>
       </View>
     );
   }
