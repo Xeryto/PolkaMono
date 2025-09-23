@@ -44,6 +44,7 @@ import {
   NetworkTimeoutError,
   NetworkRetryError,
 } from "./app/services/networkUtils";
+import { ApiError } from "./app/services/apiHelpers";
 
 import Cart from "./app/components/svg/Cart";
 import Search from "./app/components/svg/Search";
@@ -541,13 +542,51 @@ export default function App() {
         return;
       }
 
-      // Get profile completion status
-      const completionStatus = await api.getProfileCompletionStatus();
-      setProfileCompletionStatus(completionStatus);
-      console.log(
-        "Profile completion status after login:",
-        JSON.stringify(completionStatus)
-      );
+      // Get profile completion status with error handling for international users
+      let completionStatus;
+      console.log("Attempting to get profile completion status...");
+      try {
+        completionStatus = await api.getProfileCompletionStatus();
+        setProfileCompletionStatus(completionStatus);
+        console.log(
+          "Profile completion status after login:",
+          JSON.stringify(completionStatus)
+        );
+      } catch (error) {
+        console.error(
+          "Error getting profile completion status after login:",
+          error
+        );
+        console.error(
+          "Error type:",
+          error instanceof Error ? error.constructor.name : typeof error
+        );
+        console.error(
+          "Error message:",
+          error instanceof Error ? error.message : String(error)
+        );
+        // If we can't get profile completion status, check email verification status
+        // and assume user needs to complete onboarding
+        const user = await api.getCurrentUser();
+        if (!user.is_email_verified) {
+          completionStatus = {
+            isComplete: false,
+            missingFields: [],
+            requiredScreens: [
+              "confirmation",
+            ] as api.ProfileCompletionStatus["requiredScreens"],
+          };
+        } else {
+          // If email is verified but we can't get completion status,
+          // assume profile is complete to avoid blocking user
+          completionStatus = {
+            isComplete: true,
+            missingFields: [],
+            requiredScreens: [],
+          };
+        }
+        setProfileCompletionStatus(completionStatus);
+      }
       const required = completionStatus.requiredScreens || [];
 
       if (!completionStatus.isComplete && required.length > 0) {
@@ -599,17 +638,23 @@ export default function App() {
           (error.message.includes("timeout") ||
             error.message.includes("network") ||
             error.message.includes("fetch") ||
+            error.message.includes("Failed to fetch") ||
+            error.message.includes("Network request failed") ||
             error.name === "NetworkTimeoutError" ||
-            error.name === "NetworkRetryError"));
+            error.name === "NetworkRetryError" ||
+            error.name === "TypeError"));
 
-      if (isNetworkError) {
+      // Also check if it's an API error that might be network-related
+      const isApiError = error instanceof ApiError && error.status === 0;
+
+      if (isNetworkError || isApiError) {
         console.log(
-          "Network error detected, showing error message and staying on current screen"
+          "Network/API error detected, showing error message and staying on current screen"
         );
         // Show error message to user but don't skip to main screen
         Alert.alert(
           "Проблема с подключением",
-          "Не удалось проверить статус профиля. Проверьте подключение к интернету и попробуйте еще раз.",
+          "Не удалось проверить статус профиля. Это может быть связано с медленным интернет-соединением. Попробуйте еще раз или проверьте подключение к интернету.",
           [
             {
               text: "Попробовать снова",
@@ -634,6 +679,7 @@ export default function App() {
       }
 
       // For other errors, proceed with normal login flow
+      console.log("Non-network error in login flow, proceeding to main screen");
       setComingFromSignup(false);
       dispatchNav({ type: "SET_OVERLAY", overlay: "down" });
       transitionTo("main");
@@ -675,13 +721,29 @@ export default function App() {
         return;
       }
 
-      // Get profile completion status
-      const completionStatus = await api.getProfileCompletionStatus();
-      setProfileCompletionStatus(completionStatus);
-      console.log(
-        "Profile completion status after registration:",
-        JSON.stringify(completionStatus)
-      );
+      // Get profile completion status with extended timeout for international users
+      let completionStatus;
+      try {
+        completionStatus = await api.getProfileCompletionStatus();
+        setProfileCompletionStatus(completionStatus);
+        console.log(
+          "Profile completion status after registration:",
+          JSON.stringify(completionStatus)
+        );
+      } catch (error) {
+        console.error("Error getting profile completion status:", error);
+        // If profile completion check fails, assume user needs email verification
+        // This prevents skipping essential onboarding steps
+        completionStatus = {
+          isComplete: false,
+          missingFields: [],
+          requiredScreens: [
+            "confirmation",
+          ] as api.ProfileCompletionStatus["requiredScreens"],
+        };
+        setProfileCompletionStatus(completionStatus);
+      }
+
       const required = completionStatus.requiredScreens || [];
       if (!completionStatus.isComplete && required.length > 0) {
         setComingFromSignup(true);
@@ -737,17 +799,23 @@ export default function App() {
           (error.message.includes("timeout") ||
             error.message.includes("network") ||
             error.message.includes("fetch") ||
+            error.message.includes("Failed to fetch") ||
+            error.message.includes("Network request failed") ||
             error.name === "NetworkTimeoutError" ||
-            error.name === "NetworkRetryError"));
+            error.name === "NetworkRetryError" ||
+            error.name === "TypeError"));
 
-      if (isNetworkError) {
+      // Also check if it's an API error that might be network-related
+      const isApiError = error instanceof ApiError && error.status === 0;
+
+      if (isNetworkError || isApiError) {
         console.log(
-          "Network error detected during registration, showing error message and staying on current screen"
+          "Network/API error detected during registration, showing error message and staying on current screen"
         );
         // Show error message to user but don't skip to main screen
         Alert.alert(
           "Проблема с подключением",
-          "Не удалось проверить статус профиля после регистрации. Проверьте подключение к интернету и попробуйте еще раз.",
+          "Не удалось проверить статус профиля после регистрации. Это может быть связано с медленным интернет-соединением. Попробуйте еще раз или проверьте подключение к интернету.",
           [
             {
               text: "Попробовать снова",
@@ -772,6 +840,9 @@ export default function App() {
       }
 
       // For other errors, proceed with normal registration flow
+      console.log(
+        "Non-network error in registration flow, proceeding to main screen"
+      );
       setComingFromSignup(false);
       dispatchNav({ type: "SET_OVERLAY", overlay: "down" });
       transitionTo("main");
@@ -965,9 +1036,41 @@ export default function App() {
       const user = await api.getCurrentUser();
       setUserEmail(user.email);
 
-      // Check profile completion status
-      const completionStatus = await api.getProfileCompletionStatus();
-      setProfileCompletionStatus(completionStatus);
+      // Check profile completion status with error handling
+      let completionStatus;
+      console.log(
+        "Attempting to get profile completion status after email verification..."
+      );
+      try {
+        completionStatus = await api.getProfileCompletionStatus();
+        setProfileCompletionStatus(completionStatus);
+        console.log(
+          "Profile completion status after email verification:",
+          JSON.stringify(completionStatus)
+        );
+      } catch (error) {
+        console.error(
+          "Error getting profile completion status after email verification:",
+          error
+        );
+        console.error(
+          "Error type:",
+          error instanceof Error ? error.constructor.name : typeof error
+        );
+        console.error(
+          "Error message:",
+          error instanceof Error ? error.message : String(error)
+        );
+        // If we can't get profile completion status, assume user needs to complete onboarding
+        completionStatus = {
+          isComplete: false,
+          missingFields: [],
+          requiredScreens: [
+            "confirmation",
+          ] as api.ProfileCompletionStatus["requiredScreens"],
+        };
+        setProfileCompletionStatus(completionStatus);
+      }
       const required = completionStatus.requiredScreens || [];
 
       if (!completionStatus.isComplete && required.length > 0) {
@@ -987,7 +1090,9 @@ export default function App() {
           console.log("Data preloading completed");
         }
 
-        // Keep static loading screen until we're ready to show the completion screen
+        // Dismiss loading screen and transition to completion screens
+        dispatchNav({ type: "SET_OVERLAY", overlay: "down" });
+
         if (required.includes("confirmation")) {
           transitionTo("profile_confirm");
         } else if (required.includes("brand_selection")) {
@@ -1025,17 +1130,23 @@ export default function App() {
           (error.message.includes("timeout") ||
             error.message.includes("network") ||
             error.message.includes("fetch") ||
+            error.message.includes("Failed to fetch") ||
+            error.message.includes("Network request failed") ||
             error.name === "NetworkTimeoutError" ||
-            error.name === "NetworkRetryError"));
+            error.name === "NetworkRetryError" ||
+            error.name === "TypeError"));
 
-      if (isNetworkError) {
+      // Also check if it's an API error that might be network-related
+      const isApiError = error instanceof ApiError && error.status === 0;
+
+      if (isNetworkError || isApiError) {
         console.log(
-          "Network error detected after email verification, showing error message and staying on current screen"
+          "Network/API error detected after email verification, showing error message and staying on current screen"
         );
         // Show error message to user but don't skip to main screen
         Alert.alert(
           "Проблема с подключением",
-          "Не удалось проверить статус профиля после подтверждения email. Проверьте подключение к интернету и попробуйте еще раз.",
+          "Не удалось проверить статус профиля после подтверждения email. Это может быть связано с медленным интернет-соединением. Попробуйте еще раз или проверьте подключение к интернету.",
           [
             {
               text: "Попробовать снова",

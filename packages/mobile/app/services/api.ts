@@ -207,6 +207,9 @@ class SessionManager {
       this.userProfileCache = null;
       this.userProfileCacheTime = 0;
       
+      // Clear global caches to prevent cross-user contamination
+      clearGlobalCaches();
+      
       this.sessionState = SessionState.EXPIRED;
       this.emit('session_cleared');
     } catch (error) {
@@ -514,6 +517,9 @@ export const registerUser = async (
     response.expires_at
   );
 
+  // Clear global caches for new user to prevent contamination from previous users
+  clearGlobalCaches();
+
   // Store user profile, explicitly setting is_email_verified to false for new registrations
   // This ensures the CheckYourEmailScreen is shown after signup until actual verification.
   await storeUserProfile({ ...response.user, is_email_verified: false });
@@ -538,6 +544,9 @@ export const loginUser = async (
     response.token,
     response.expires_at
   );
+
+  // Clear global caches for new user session to ensure fresh data
+  clearGlobalCaches();
 
   // Store user profile
   await storeUserProfile(response.user);
@@ -701,6 +710,17 @@ const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 
 // Request deduplication to prevent multiple identical requests
 const pendingRequests = new Map<string, Promise<any>>();
+
+// Clear global caches to prevent cross-user contamination
+export const clearGlobalCaches = () => {
+  console.log('Clearing global caches to prevent cross-user contamination');
+  brandsCache = null;
+  stylesCache = null;
+  brandsCacheTime = 0;
+  stylesCacheTime = 0;
+  // Clear pending requests to prevent stale data
+  pendingRequests.clear();
+};
 
 // NEW: Brand and Style API functions with caching and deduplication
 export const getBrands = async (): Promise<Brand[]> => {

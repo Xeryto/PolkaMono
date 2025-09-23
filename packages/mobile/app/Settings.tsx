@@ -808,22 +808,24 @@ const Settings = ({ navigation, onLogout }: SettingsProps) => {
       </Animated.View>
 
       {/* Selected brands bubbles */}
-      {selectedBrands.length > 0 && (
-        <Animated.View
-          entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
-            ANIMATION_DELAYS.EXTENDED
-          )}
-          style={styles.selectedBubblesContainer}
+      <Animated.View
+        entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
+          ANIMATION_DELAYS.EXTENDED
+        )}
+        style={styles.selectedBubblesContainer}
+      >
+        <ScrollView
+          horizontal={true}
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.selectedBubblesContent}
         >
-          <ScrollView
-            horizontal={true}
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.selectedBubblesContent}
-          >
-            {selectedBrands.map(renderBrandBubble)}
-          </ScrollView>
-        </Animated.View>
-      )}
+          {selectedBrands.length > 0 ? (
+            selectedBrands.map(renderBrandBubble)
+          ) : (
+            <Text style={styles.emptyBrandsText}>Выберите бренды</Text>
+          )}
+        </ScrollView>
+      </Animated.View>
 
       {/* Search Container */}
       <Animated.View
@@ -1571,9 +1573,9 @@ const Settings = ({ navigation, onLogout }: SettingsProps) => {
           В случае любых вопросов напишите на почту{" "}
         </Text>
         <TouchableOpacity
-          onPress={() => Linking.openURL("mailto:polka.support@inbox.ru")}
+          onPress={() => Linking.openURL("mailto:support@polkamarket.ru")}
         >
-          <Text style={styles.supportEmail}>polka.support@inbox.ru</Text>
+          <Text style={styles.supportEmail}>support@polkamarket.ru</Text>
         </TouchableOpacity>
       </Animated.View>
     </View>
@@ -2205,6 +2207,15 @@ const styles = StyleSheet.create({
     fontFamily: "IgraSans",
     fontSize: 20,
     color: "#000",
+  },
+  emptyBrandsText: {
+    fontFamily: "IgraSans",
+    fontSize: 18,
+    color: "rgba(0,0,0,0.6)",
+    fontStyle: "italic",
+    textAlign: "center",
+    alignItems: "center",
+    paddingHorizontal: 20,
   },
   emptyStateText: {
     fontFamily: "IgraSans",
