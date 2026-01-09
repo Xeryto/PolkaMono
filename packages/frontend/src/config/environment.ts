@@ -109,7 +109,11 @@ export const log = {
 export const validateConfig = (): boolean => {
   try {
     if (!ENV_CONFIG.API_BASE_URL) {
-      log.error('API_BASE_URL is not configured');
+      const errorMsg = 'API_BASE_URL is not configured. Please set VITE_API_URL environment variable during build.';
+      log.error(errorMsg);
+      if (typeof window !== 'undefined') {
+        console.error('%c' + errorMsg, 'color: red; font-size: 16px; font-weight: bold;');
+      }
       return false;
     }
     

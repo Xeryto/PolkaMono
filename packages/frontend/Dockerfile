@@ -3,6 +3,14 @@ FROM node:18-alpine as builder
 
 WORKDIR /app
 
+# Accept build arguments for environment variables
+ARG VITE_API_URL
+ARG VITE_ENVIRONMENT=production
+
+# Set environment variables for build
+ENV VITE_API_URL=$VITE_API_URL
+ENV VITE_ENVIRONMENT=$VITE_ENVIRONMENT
+
 # Copy package files
 COPY package.json yarn.lock* package-lock.json* ./
 
