@@ -1,4 +1,11 @@
-import { BarChart3, Package, ShoppingCart, LogOut, PlusSquare, User } from "lucide-react";
+import {
+  BarChart3,
+  Package,
+  ShoppingCart,
+  LogOut,
+  PlusSquare,
+  User,
+} from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
@@ -12,7 +19,7 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 
-type DashboardView = 'stats' | 'orders' | 'products' | 'add-item' | 'profile';
+type DashboardView = "stats" | "orders" | "products" | "add-item" | "profile";
 
 interface DashboardSidebarProps {
   currentView: DashboardView;
@@ -20,14 +27,17 @@ interface DashboardSidebarProps {
 }
 
 const menuItems = [
-  { id: 'stats', title: 'Статистика', icon: BarChart3 },
-  { id: 'orders', title: 'Заказы', icon: ShoppingCart },
-  { id: 'products', title: 'Товары', icon: Package },
-  { id: 'add-item', title: 'Добавить товар', icon: PlusSquare },
-  { id: 'profile', title: 'Профиль', icon: User },
+  { id: "stats", title: "Статистика", icon: BarChart3 },
+  { id: "orders", title: "Заказы", icon: ShoppingCart },
+  { id: "products", title: "Товары", icon: Package },
+  { id: "add-item", title: "Добавить товар", icon: PlusSquare },
+  { id: "profile", title: "Профиль", icon: User },
 ];
 
-export function DashboardSidebar({ currentView, onViewChange }: DashboardSidebarProps) {
+export function DashboardSidebar({
+  currentView,
+  onViewChange,
+}: DashboardSidebarProps) {
   const { state } = useSidebar();
   const collapsed = state === "collapsed";
 
@@ -39,17 +49,13 @@ export function DashboardSidebar({ currentView, onViewChange }: DashboardSidebar
     <Sidebar
       className={`${
         collapsed ? "w-14" : "w-60"
-      } bg-card border-r border-border/30`}
+      } bg-card-custom border-r border-border/30`}
       collapsible="icon"
     >
       <SidebarTrigger className="m-2 self-end" />
 
       <SidebarContent>
         <SidebarGroup>
-          <SidebarGroupLabel className="text-muted-foreground font-semibold">
-            Портал брендов
-          </SidebarGroupLabel>
-
           <SidebarGroupContent>
             <SidebarMenu>
               {menuItems.map((item) => (

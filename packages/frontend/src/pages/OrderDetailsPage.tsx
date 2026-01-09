@@ -13,6 +13,7 @@ import { OrderItemDetailsModal } from "@/components/OrderItemDetailsModal"; // N
 import { Input } from "@/components/ui/input"; // NEW Import
 import { Label } from "@/components/ui/label"; // NEW Import
 import { useToast } from "@/hooks/use-toast"; // NEW Import
+import { formatCurrency } from "@/lib/currency";
 import * as api from "@/services/api"; // Import api
 import { useAuth } from "@/context/AuthContext"; // Import useAuth
 
@@ -279,13 +280,15 @@ export function OrderDetailsPage({ order, onBack }: OrderDetailsPageProps) {
                     </p>
                   )}
                 </div>
-                <p className="font-bold text-foreground">{item.price}</p>
+                <p className="font-bold text-foreground">
+                  {formatCurrency(item.price)}
+                </p>
               </div>
             ))}
           </div>
           <div className="mt-6 pt-4 border-t border-border/30 flex justify-end">
             <p className="text-xl font-bold text-foreground">
-              Total: {order.total_amount} {order.currency}
+              Total: {formatCurrency(order.total_amount)}
             </p>
           </div>
         </CardContent>

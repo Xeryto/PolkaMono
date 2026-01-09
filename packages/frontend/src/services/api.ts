@@ -153,7 +153,6 @@ export interface OrderResponse {
   id: string;
   number: string;
   total_amount: number;
-  currency: string;
   date: string;
   status: string;
   tracking_number?: string;
@@ -347,6 +346,19 @@ export const getBrandStats = async (token: string): Promise<BrandStatsResponse> 
 
 export const updateBrandProfile = async (profileData: BrandProfileUpdateRequest, token: string): Promise<BrandResponse> => { // Add token parameter
   return await apiRequest('/api/v1/brands/profile', 'PUT', profileData, true, token);
+};
+
+// --- Brand Password Reset ---
+export const brandRequestPasswordReset = async (identifier: string): Promise<void> => {
+  await apiRequest('/api/v1/brands/auth/forgot-password', 'POST', { identifier }, false);
+};
+
+export const brandValidatePasswordResetCode = async (identifier: string, code: string): Promise<void> => {
+  await apiRequest('/api/v1/brands/auth/validate-password-reset-code', 'POST', { identifier, code }, false);
+};
+
+export const brandResetPasswordWithCode = async (identifier: string, code: string, password: string): Promise<void> => {
+  await apiRequest('/api/v1/brands/auth/reset-password-with-code', 'POST', { identifier, code, new_password: password }, false);
 };
 
 // --- User Profile (Mobile App User) ---

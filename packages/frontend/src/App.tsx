@@ -10,6 +10,8 @@ import Dashboard from "./pages/Dashboard";
 import { StatisticsPage } from "./pages/StatisticsPage";
 import NotFound from "./pages/NotFound";
 import ProtectedRoute from "./components/ProtectedRoute";
+import BrandForgotPasswordPage from "./pages/BrandForgotPasswordPage";
+import BrandResetPasswordPage from "./pages/BrandResetPasswordPage";
 
 const queryClient = new QueryClient();
 
@@ -22,6 +24,14 @@ const App = () => (
       <Routes>
         <Route path="/" element={<Landing />} />
         <Route path="/portal" element={<Portal />} />
+        <Route
+          path="/portal/forgot-password"
+          element={<BrandForgotPasswordPage />}
+        />
+        <Route
+          path="/portal/reset-password"
+          element={<BrandResetPasswordPage />}
+        />
         <Route element={<ProtectedRoute />}>
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/statistics" element={<StatisticsPage />} />

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -12,6 +12,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import * as api from "@/services/api";
 import { useAuth } from "@/context/AuthContext"; // Import useAuth
+import { formatCurrency } from "@/lib/currency";
 
 interface OrderItemDetailsModalProps {
   isOpen: boolean;
@@ -28,7 +29,9 @@ export const OrderItemDetailsModal: React.FC<OrderItemDetailsModalProps> = ({
   orderItem,
   onHonestSignUpdated,
 }) => {
-  const [honestSignInput, setHonestSignInput] = useState(orderItem.honest_sign || '');
+  const [honestSignInput, setHonestSignInput] = useState(
+    orderItem.honest_sign || ""
+  );
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
   const { token } = useAuth(); // Get token from useAuth
@@ -84,14 +87,27 @@ export const OrderItemDetailsModal: React.FC<OrderItemDetailsModalProps> = ({
         </DialogHeader>
         <div className="grid gap-4 py-4">
           {orderItem.image && (
-            <img src={orderItem.image} alt={orderItem.name} className="w-full h-48 object-cover rounded-md mb-4" />
+            <img
+              src={orderItem.image}
+              alt={orderItem.name}
+              className="w-full h-48 object-cover rounded-md mb-4"
+            />
           )}
-          <p><strong>Product:</strong> {orderItem.name}</p>
-          <p><strong>Size:</strong> {orderItem.size}</p>
-          <p><strong>Price:</strong> {orderItem.price}</p>
+          <p>
+            <strong>Product:</strong> {orderItem.name}
+          </p>
+          <p>
+            <strong>Size:</strong> {orderItem.size}
+          </p>
+          <p>
+            <strong>Price:</strong> {formatCurrency(orderItem.price)}
+          </p>
 
           <div>
-            <label htmlFor="honestSign" className="text-sm font-medium text-muted-foreground">
+            <label
+              htmlFor="honestSign"
+              className="text-sm font-medium text-muted-foreground"
+            >
               Honest Sign
             </label>
             <Input

@@ -1,17 +1,26 @@
-import { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { useState, useEffect } from "react";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { OrderDetailsPage } from '@/pages/OrderDetailsPage';
+import { OrderDetailsPage } from "@/pages/OrderDetailsPage";
 import * as api from "@/services/api";
 import { OrderResponse } from "@/services/api";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/context/AuthContext"; // Import useAuth
+import { formatCurrency } from "@/lib/currency";
 
 export function OrdersView() {
   const [orders, setOrders] = useState<OrderResponse[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [selectedOrder, setSelectedOrder] = useState<OrderResponse | null>(null);
+  const [selectedOrder, setSelectedOrder] = useState<OrderResponse | null>(
+    null
+  );
   const { toast } = useToast();
   const { token } = useAuth(); // Get token from useAuth
 
@@ -21,7 +30,8 @@ export function OrdersView() {
         setIsLoading(false);
         toast({
           title: "Ошибка",
-          description: "Токен аутентификации не найден. Пожалуйста, войдите в систему.",
+          description:
+            "Токен аутентификации не найден. Пожалуйста, войдите в систему.",
           variant: "destructive",
         });
         return;
@@ -47,25 +57,36 @@ export function OrdersView() {
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'доставлен': return 'bg-green-900/20 text-green-300 border-green-700/30';
-      case 'shipped': return 'bg-blue-900/20 text-blue-300 border-blue-700/30';
-      case 'processing': return 'bg-yellow-900/20 text-yellow-300 border-yellow-700/30';
-      default: return 'bg-gray-900/20 text-gray-300 border-gray-700/30';
+      case "доставлен":
+        return "bg-green-900/20 text-green-300 border-green-700/30";
+      case "shipped":
+        return "bg-blue-900/20 text-blue-300 border-blue-700/30";
+      case "processing":
+        return "bg-yellow-900/20 text-yellow-300 border-yellow-700/30";
+      default:
+        return "bg-gray-900/20 text-gray-300 border-gray-700/30";
     }
   };
 
   if (selectedOrder) {
-    return <OrderDetailsPage order={selectedOrder} onBack={() => setSelectedOrder(null)} />;
+    return (
+      <OrderDetailsPage
+        order={selectedOrder}
+        onBack={() => setSelectedOrder(null)}
+      />
+    );
   }
 
   return (
     <div className="space-y-6">
       <h2 className="text-2xl font-bold text-foreground">Заказы</h2>
 
-      <Card className="bg-card border-border/30 shadow-lg">
+      <Card className="bg-card-custom border-border/30 shadow-lg">
         <CardHeader>
           <CardTitle>Все заказы</CardTitle>
-          <CardDescription>Просмотр и управление заказами клиентов</CardDescription>
+          <CardDescription>
+            Просмотр и управление заказами клиентов
+          </CardDescription>
         </CardHeader>
         <CardContent>
           {isLoading ? (
@@ -75,17 +96,32 @@ export function OrdersView() {
           ) : (
             <div className="space-y-4">
               {orders.map((order) => (
-                <div key={order.id} className="flex items-center justify-between p-2 rounded-lg hover:bg-muted/50 cursor-pointer" onClick={() => setSelectedOrder(order)}>
+                <div
+                  key={order.id}
+                  className="flex items-center justify-between p-2 rounded-lg hover:bg-muted/50 cursor-pointer"
+                  onClick={() => setSelectedOrder(order)}
+                >
                   <div>
-                    <p className="font-medium text-foreground">Заказ № {order.number}</p>
+                    <p className="font-medium text-foreground">
+                      Заказ № {order.number}
+                    </p>
                     {order.tracking_number && (
-                      <p className="text-sm text-muted-foreground">Отслеживание: {order.tracking_number}</p>
+                      <p className="text-sm text-muted-foreground">
+                        Отслеживание: {order.tracking_number}
+                      </p>
                     )}
-                    <p className="text-sm text-muted-foreground">Итого: {order.total}</p>
+                    <p className="text-sm text-muted-foreground">
+                      Итого: {formatCurrency(order.total_amount)}
+                    </p>
                   </div>
                   <div className="text-right">
-                    <p className="font-bold text-foreground">{new Date(order.date).toLocaleDateString()}</p>
-                    <Badge className={getStatusColor(order.status)} variant="outline">
+                    <p className="font-bold text-foreground">
+                      {new Date(order.date).toLocaleDateString()}
+                    </p>
+                    <Badge
+                      className={getStatusColor(order.status)}
+                      variant="outline"
+                    >
                       {order.status}
                     </Badge>
                   </div>

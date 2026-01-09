@@ -13,6 +13,7 @@ import { useToast } from "@/hooks/use-toast"; // NEW
 import * as api from "@/services/api"; // NEW
 import { BrandResponse, BrandProfileUpdateRequest } from "@/services/api"; // NEW
 import { useAuth } from "@/context/AuthContext"; // Import useAuth
+import { formatCurrency } from "@/lib/currency";
 
 export function ProfileSettingsPage() {
   const [isEditing, setIsEditing] = useState(false);
@@ -28,7 +29,8 @@ export function ProfileSettingsPage() {
         setIsLoading(false);
         toast({
           title: "Error",
-          description: "Authentication token not found. Please log in.",
+          description:
+            "Токен аутентификации не найден. Пожалуйста, войдите в систему.",
           variant: "destructive",
         });
         return;
@@ -42,7 +44,7 @@ export function ProfileSettingsPage() {
         console.error("Failed to fetch brand profile:", error);
         toast({
           title: "Error",
-          description: error.message || "Failed to load brand profile.",
+          description: error.message || "Не удалось загрузить профиль.",
           variant: "destructive",
         });
       } finally {
@@ -72,7 +74,8 @@ export function ProfileSettingsPage() {
     if (!token) {
       toast({
         title: "Error",
-        description: "Authentication token not found. Please log in.",
+        description:
+          "Токен аутентификации не найден. Пожалуйста, войдите в систему.",
         variant: "destructive",
       });
       setIsLoading(false);
@@ -96,13 +99,13 @@ export function ProfileSettingsPage() {
       setIsEditing(false);
       toast({
         title: "Success",
-        description: "Brand profile updated successfully!",
+        description: "Профиль бренда успешно обновлен!",
       });
     } catch (error: any) {
       console.error("Failed to update brand profile:", error);
       toast({
         title: "Error",
-        description: error.message || "Failed to update brand profile.",
+        description: error.message || "Не удалось обновить профиль бренда.",
         variant: "destructive",
       });
     } finally {
@@ -112,23 +115,20 @@ export function ProfileSettingsPage() {
 
   return (
     <div className="space-y-6">
-      <h2 className="text-2xl font-bold text-foreground">Profile Settings</h2>
+      <h2 className="text-2xl font-bold text-foreground">Настройки</h2>
 
       <Card className="bg-card border-border/30 shadow-lg">
         <CardHeader className="flex flex-row items-center justify-between">
           <div>
-            <CardTitle>Brand Profile</CardTitle>
-            <CardDescription>
-              View and update your brand's information
-            </CardDescription>
+            <CardTitle>Профиль бренда</CardTitle>
           </div>
           {!isEditing && (
-            <Button onClick={() => setIsEditing(true)}>Edit</Button>
+            <Button onClick={() => setIsEditing(true)}>Обновить</Button>
           )}
         </CardHeader>
         <CardContent className="space-y-4">
           {isLoading ? (
-            <div>Loading profile...</div>
+            <div>Загрузка профиля...</div>
           ) : profile ? (
             isEditing ? (
               <>
@@ -137,7 +137,7 @@ export function ProfileSettingsPage() {
                     htmlFor="name"
                     className="text-sm font-medium text-muted-foreground"
                   >
-                    Brand Name
+                    Название
                   </label>
                   <Input
                     id="name"
@@ -151,7 +151,7 @@ export function ProfileSettingsPage() {
                     htmlFor="email"
                     className="text-sm font-medium text-muted-foreground"
                   >
-                    Contact Email
+                    Контактный Email
                   </label>
                   <Input
                     id="email"
@@ -225,7 +225,7 @@ export function ProfileSettingsPage() {
                     onClick={() => setIsEditing(false)}
                     disabled={isLoading}
                   >
-                    Cancel
+                    Отмена
                   </Button>
                   <Button onClick={handleSave} disabled={isLoading}>
                     {isLoading ? "Сохранение..." : "Сохранить изменения"}
@@ -236,13 +236,13 @@ export function ProfileSettingsPage() {
               <div className="space-y-4">
                 <div>
                   <p className="text-sm font-medium text-muted-foreground">
-                    Brand Name
+                    Название
                   </p>
                   <p className="text-lg">{profile.name}</p>
                 </div>
                 <div>
                   <p className="text-sm font-medium text-muted-foreground">
-                    Contact Email
+                    Контактный Email
                   </p>
                   <p className="text-lg">{profile.email}</p>
                 </div>
@@ -250,13 +250,17 @@ export function ProfileSettingsPage() {
                   <p className="text-sm font-medium text-muted-foreground">
                     Минимальная цена для бесплатной доставки
                   </p>
-                  <p className="text-lg">{profile.min_free_shipping}₽</p>
+                  <p className="text-lg">
+                    {formatCurrency(profile.min_free_shipping)}
+                  </p>
                 </div>
                 <div>
                   <p className="text-sm font-medium text-muted-foreground">
                     Цена доставки
                   </p>
-                  <p className="text-lg">{profile.shipping_price}₽</p>
+                  <p className="text-lg">
+                    {formatCurrency(profile.shipping_price)}
+                  </p>
                 </div>
                 <div>
                   <p className="text-sm font-medium text-muted-foreground">
@@ -273,7 +277,7 @@ export function ProfileSettingsPage() {
               </div>
             )
           ) : (
-            <div>No profile data available.</div>
+            <div>Нет удалось загрузить профиль.</div>
           )}
         </CardContent>
       </Card>

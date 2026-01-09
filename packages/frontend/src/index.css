@@ -40,6 +40,7 @@
     --brown-dark: 25 45% 12%;
     --brown-medium: 30 40% 18%;
     --brown-light: 35 35% 25%;
+    --card-custom: 15 25% 22%; /* #463223 converted to HSL */
     
     /* Ominous Gradients */
     --gradient-ominous: linear-gradient(135deg, hsl(var(--background)), hsl(var(--brown-dark)));

@@ -93,31 +93,26 @@ const Portal = () => {
   return (
     <div className="min-h-screen bg-gradient-ominous flex items-center justify-center p-4">
       <div className="w-full max-w-md">
-        <div className="text-center mb-8">
+        <div className="text-center mb-6">
           <img
             src="/assets/Logo.svg"
             alt="Polka Logo"
-            className="mx-auto h-20 w-20"
+            className="mx-auto h-20 w-20 mb-4"
           />
-          <h1 className="text-3xl font-bold text-foreground mb-2">
-            Портал брендов Polka
-          </h1>
+          <h1 className="text-2xl font-bold text-foreground mb-2">Polka</h1>
           <p className="text-muted-foreground">Зона ограниченного доступа</p>
         </div>
 
         <Card className="bg-card/90 backdrop-blur border-brown-light/30 shadow-ominous">
           <CardHeader>
             <CardTitle className="text-center">Безопасный доступ</CardTitle>
-            <CardDescription className="text-center">
-              Введите ваши учетные данные для доступа к порталу
-            </CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleLogin} className="space-y-4">
               <div>
                 <Input
                   type="email"
-                  placeholder="Email бренда"
+                  placeholder="Email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
@@ -147,6 +142,16 @@ const Portal = () => {
                 {isSubmitting ? "Проверка данных..." : "Доступ к порталу"}
               </Button>
             </form>
+
+            <div className="mt-4 text-center">
+              <button
+                type="button"
+                onClick={() => navigate("/portal/forgot-password")}
+                className="text-sm text-muted-foreground hover:text-foreground transition-colors underline"
+              >
+                Забыли код доступа?
+              </button>
+            </div>
           </CardContent>
         </Card>
 
