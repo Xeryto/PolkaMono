@@ -102,6 +102,12 @@ class Brand(Base):
     shipping_price = Column(Float, nullable=True)
     shipping_provider = Column(String(100), nullable=True) # NEW
     amount_withdrawn = Column(Float, nullable=False, default=0.0)
+    # Email verification and password reset fields
+    email_verification_code = Column(String(6), nullable=True)
+    email_verification_code_expires_at = Column(DateTime, nullable=True)
+    password_reset_token = Column(String, nullable=True)
+    password_reset_expires = Column(DateTime, nullable=True)
+    password_history = Column(ARRAY(String), default=list)  # Store last 5 password hashes
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
@@ -178,7 +184,6 @@ class ProductStyle(Base):
 class Product(Base):
     """Product model for recommendations"""
     __tablename__ = "products"
-    __table_args__ = {"extend_existing": True}
     
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
     name = Column(String(255), nullable=False)
@@ -190,6 +195,7 @@ class Product(Base):
     sku = Column(String(255), nullable=True) # NEW: Stock Keeping Unit
     brand_id = Column(Integer, ForeignKey("brands.id"), nullable=False)
     category_id = Column(String(50), ForeignKey("categories.id"), nullable=False)
+    purchase_count = Column(Integer, nullable=False, default=0) # Track number of times product has been purchased (denormalized for performance)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
@@ -197,6 +203,10 @@ class Product(Base):
     category = relationship("Category")
     styles = relationship("ProductStyle", back_populates="product", cascade="all, delete-orphan")
     variants = relationship("ProductVariant", back_populates="product", cascade="all, delete-orphan")
+
+    __table_args__ = (
+        Index('idx_product_purchase_count', 'purchase_count'),  # Index for efficient sorting by purchase_count
+    )
 
 class ProductVariant(Base):
     """Product variant model for sizes and inventory"""
@@ -337,6 +347,7 @@ class OrderItem(Base):
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
     order_id = Column(String, ForeignKey("orders.id"), nullable=False)
     product_variant_id = Column(String, ForeignKey("product_variants.id"), nullable=False) # Changed
+    quantity = Column(Integer, nullable=False, default=1) # Quantity of items purchased
     price = Column(Float, nullable=False)
     honest_sign = Column(String(255), unique=True, nullable=True) # NEW
 

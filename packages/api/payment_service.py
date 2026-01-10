@@ -145,19 +145,54 @@ def update_order_status(db: Session, order_id: str, status: OrderStatus):
     order = db.query(Order).filter(Order.id == order_id).first()
     if order:
         print(f"Found order {order_id}. Current status: {order.status.value}. New status: {status.value}")
+        old_status = order.status
+        
+        # Update purchase_count when order status changes to/from PAID
+        if old_status != status:
+            if status == OrderStatus.PAID and old_status != OrderStatus.PAID:
+                # Order is being marked as PAID - increment purchase_count for all products in this order
+                print(f"Incrementing purchase_count for products in paid order {order_id}")
+                purchase_count_changed = False
+                for item in order.items:
+                    variant = db.query(ProductVariant).filter(ProductVariant.id == item.product_variant_id).first()
+                    if variant:
+                        product = db.query(Product).filter(Product.id == variant.product_id).first()
+                        if product:
+                            # Use getattr to handle missing quantity field gracefully (defaults to 1)
+                            quantity = getattr(item, 'quantity', 1)
+                            product.purchase_count += quantity
+                            purchase_count_changed = True
+                            print(f"Incremented purchase_count for product {product.id} by {quantity} (new count: {product.purchase_count})")
+                # Note: Popular items cache will refresh via TTL (5 minutes)
+                # Cache invalidation on purchase count change would require avoiding circular imports
+            
+            elif old_status == OrderStatus.PAID and status != OrderStatus.PAID:
+                # Order was PAID but is now being changed to non-PAID (canceled, etc.) - decrement purchase_count
+                print(f"Decrementing purchase_count for products in order {order_id} (was PAID, now {status.value})")
+                for item in order.items:
+                    variant = db.query(ProductVariant).filter(ProductVariant.id == item.product_variant_id).first()
+                    if variant:
+                        product = db.query(Product).filter(Product.id == variant.product_id).first()
+                        if product:
+                            # Use getattr to handle missing quantity field gracefully (defaults to 1)
+                            quantity = getattr(item, 'quantity', 1)
+                            product.purchase_count = max(0, product.purchase_count - quantity)  # Don't go below 0
+                            print(f"Decremented purchase_count for product {product.id} by {quantity} (new count: {product.purchase_count})")
+                # Note: Popular items cache will refresh via TTL (5 minutes)
         
         # If order is being cancelled, restore stock quantities
-        if status == OrderStatus.CANCELED and order.status != OrderStatus.CANCELED:
+        if status == OrderStatus.CANCELED and old_status != OrderStatus.CANCELED:
             print(f"Restoring stock for cancelled order {order_id}")
             for item in order.items:
                 # Find the product variant and restore stock
                 variant = db.query(ProductVariant).filter(ProductVariant.id == item.product_variant_id).first()
                 if variant:
-                    variant.stock_quantity += item.quantity
-                    print(f"Restored {item.quantity} units to product variant {variant.id}")
+                    quantity = getattr(item, 'quantity', 1)  # Handle missing quantity field
+                    variant.stock_quantity += quantity
+                    print(f"Restored {quantity} units to product variant {variant.id}")
         
         order.status = status
-        # db.commit() # Removed commit from here
+        # db.commit() # Removed commit from here - commit is done by caller
         print(f"Order {order_id} status updated to {order.status.value}")
     else:
         print(f"Order {order_id} not found in database.")

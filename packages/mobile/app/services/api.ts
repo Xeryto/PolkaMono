@@ -718,6 +718,7 @@ export const clearGlobalCaches = () => {
   stylesCache = null;
   brandsCacheTime = 0;
   stylesCacheTime = 0;
+  clearPopularItemsCache(); // Clear popular items cache as well
   // Clear pending requests to prevent stale data
   pendingRequests.clear();
 };
@@ -1076,6 +1077,54 @@ export const getProductSearchResults = async (params: {
   if (params.offset) searchParams.append('offset', params.offset.toString());
 
   return await apiRequest(`/api/v1/products/search?${searchParams.toString()}`, 'GET');
+};
+
+// Popular items cache with TTL
+let popularItemsCache: Product[] | null = null;
+let popularItemsCacheTime: number = 0;
+const POPULAR_ITEMS_CACHE_DURATION = 5 * 60 * 1000; // 5 minutes in milliseconds
+
+// Clear popular items cache (e.g., on logout)
+export const clearPopularItemsCache = () => {
+  popularItemsCache = null;
+  popularItemsCacheTime = 0;
+  console.log('Popular items cache cleared');
+};
+
+export const getPopularItems = async (limit: number = 8): Promise<Product[]> => {
+  const now = Date.now();
+  
+  // Return cached data if it's still fresh
+  if (popularItemsCache && (now - popularItemsCacheTime) < POPULAR_ITEMS_CACHE_DURATION) {
+    console.log('Returning cached popular items');
+    return popularItemsCache;
+  }
+  
+  // Check if there's already a pending request
+  const requestKey = 'getPopularItems';
+  if (pendingRequests.has(requestKey)) {
+    console.log('Waiting for existing popular items request');
+    return pendingRequests.get(requestKey)!;
+  }
+  
+  console.log('Fetching fresh popular items from API');
+  const popularPromise = apiRequest(`/api/v1/products/popular?limit=${limit}`, 'GET', undefined, true).then(items => {
+    // Cache the result
+    popularItemsCache = items;
+    popularItemsCacheTime = now;
+    // Remove from pending requests
+    pendingRequests.delete(requestKey);
+    return items;
+  }).catch(error => {
+    // Remove from pending requests on error
+    pendingRequests.delete(requestKey);
+    throw error;
+  });
+  
+  // Store the pending request
+  pendingRequests.set(requestKey, popularPromise);
+  
+  return popularPromise;
 };
 
 // User Statistics

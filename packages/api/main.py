@@ -9,6 +9,7 @@ from sqlalchemy import func
 from datetime import datetime, timedelta
 import re
 import json
+import time
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
@@ -620,6 +621,125 @@ async def brand_login(brand_data: schemas.BrandLogin, db: Session = Depends(get_
             shipping_provider=brand.shipping_provider
         )
     )
+
+@app.post("/api/v1/brands/auth/forgot-password")
+@limiter.limit("5/minute")
+async def brand_forgot_password(request: Request, forgot_password_request: schemas.ForgotPasswordRequest, db: Session = Depends(get_db)):
+    """Send password reset code to brand email"""
+    # Determine if the identifier is an email or brand name
+    identifier = forgot_password_request.identifier.strip()
+    
+    # Check if it's an email
+    email_pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+    is_email = bool(re.match(email_pattern, identifier))
+    
+    if is_email:
+        brand = db.query(Brand).filter(Brand.email == identifier).first()
+    else:
+        # Treat as brand name
+        brand = db.query(Brand).filter(Brand.name == identifier).first()
+    
+    if not brand:
+        # Still return a success message to prevent enumeration
+        return {"message": "If a brand account with that email or name exists, a password reset code has been sent."}
+
+    # Create verification code for brand password reset
+    code = auth_service.create_verification_code(db, brand)
+    mail_service.send_email(
+        to_email=brand.email,
+        subject="Brand Password Reset Code",
+        html_content=f"Your brand password reset code is: <b>{code}</b>. It will expire in {settings.EMAIL_VERIFICATION_CODE_EXPIRE_MINUTES} minutes. Please enter this code to reset your brand password."
+    )
+
+    return {"message": "If a brand account with that email or name exists, a password reset code has been sent."}
+
+@app.post("/api/v1/brands/auth/validate-password-reset-code")
+async def brand_validate_password_reset_code(validation_request: schemas.ValidatePasswordResetCodeRequest, db: Session = Depends(get_db)):
+    """Validate password reset code for brand"""
+    identifier = validation_request.identifier.strip()
+    
+    # Check if it's an email
+    email_pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+    is_email = bool(re.match(email_pattern, identifier))
+    
+    if is_email:
+        brand = db.query(Brand).filter(Brand.email == identifier).first()
+    else:
+        # Treat as brand name
+        brand = db.query(Brand).filter(Brand.name == identifier).first()
+    
+    if not brand:
+        raise HTTPException(status_code=400, detail="Invalid brand email/name or code")
+
+    if brand.email_verification_code != validation_request.code:
+        raise HTTPException(status_code=400, detail="Invalid brand email/name or code")
+
+    if brand.email_verification_code_expires_at < datetime.utcnow():
+        raise HTTPException(status_code=400, detail="Verification code has expired")
+
+    return {"message": "Code is valid"}
+
+@app.post("/api/v1/brands/auth/reset-password-with-code")
+async def brand_reset_password_with_code(reset_password_request: schemas.ResetPasswordWithCodeRequest, db: Session = Depends(get_db)):
+    """Reset brand password using verification code"""
+    identifier = reset_password_request.identifier.strip()
+    
+    # Check if it's an email
+    email_pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+    is_email = bool(re.match(email_pattern, identifier))
+    
+    if is_email:
+        brand = db.query(Brand).filter(Brand.email == identifier).first()
+    else:
+        # Treat as brand name
+        brand = db.query(Brand).filter(Brand.name == identifier).first()
+    
+    if not brand:
+        raise HTTPException(status_code=400, detail="Invalid brand email/name or code")
+
+    if brand.email_verification_code != reset_password_request.code:
+        raise HTTPException(status_code=400, detail="Invalid brand email/name or code")
+
+    if brand.email_verification_code_expires_at < datetime.utcnow():
+        raise HTTPException(status_code=400, detail="Verification code has expired")
+
+    # Check if new password matches current password or is in password history
+    new_password_hash = auth_service.hash_password(reset_password_request.new_password)
+    
+    # Check if new password is the same as current password
+    if brand.password_hash and auth_service.verify_password(reset_password_request.new_password, brand.password_hash):
+        raise HTTPException(status_code=400, detail="You cannot reuse your current password")
+    
+    # Check if new password matches any password in history
+    if brand.password_history:
+        for historical_hash in brand.password_history:
+            if auth_service.verify_password(reset_password_request.new_password, historical_hash):
+                raise HTTPException(status_code=400, detail="You cannot reuse a previous password")
+    
+    # Store current password in history before updating
+    # Initialize password_history if it doesn't exist
+    if not brand.password_history:
+        brand.password_history = []
+    
+    # Add current password to history (if it exists)
+    if brand.password_hash:
+        brand.password_history.append(brand.password_hash)
+    
+    # Keep only last 5 passwords
+    if len(brand.password_history) > 5:
+        brand.password_history = brand.password_history[-5:]
+    
+    # Mark password_history as modified for SQLAlchemy
+    from sqlalchemy.orm.attributes import flag_modified
+    flag_modified(brand, 'password_history')
+    
+    # Reset the password
+    brand.password_hash = new_password_hash
+    brand.email_verification_code = None
+    brand.email_verification_code_expires_at = None
+    db.commit()
+
+    return {"message": "Brand password has been reset successfully."}
 
 @app.get("/api/v1/auth/oauth/providers", response_model=List[OAuthProviderResponse])
 async def get_oauth_providers():
@@ -1620,6 +1740,130 @@ async def get_recommendations_for_friend(
         ))
     return recommendations
 
+# In-memory cache for popular items with TTL
+_popular_items_cache: Optional[List[schemas.Product]] = None
+_popular_items_cache_time: Optional[float] = None
+POPULAR_ITEMS_CACHE_TTL = 5 * 60  # 5 minutes in seconds
+
+def invalidate_popular_items_cache():
+    """Invalidate the popular items cache (call when purchase counts change)"""
+    global _popular_items_cache, _popular_items_cache_time
+    _popular_items_cache = None
+    _popular_items_cache_time = None
+    print("Popular items cache invalidated")
+
+@app.get("/api/v1/products/popular", response_model=List[schemas.Product])
+async def get_popular_products(
+    limit: int = 8,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Get the most popular products (most purchased)"""
+    global _popular_items_cache, _popular_items_cache_time
+    
+    # Check if cache is valid
+    current_time = time.time()
+    if _popular_items_cache and _popular_items_cache_time:
+        cache_age = current_time - _popular_items_cache_time
+        if cache_age < POPULAR_ITEMS_CACHE_TTL:
+            print(f"Returning cached popular items (age: {cache_age:.1f}s)")
+            return _popular_items_cache
+    
+    # Cache expired or doesn't exist, fetch from database
+    print("Fetching fresh popular items from database")
+    # Query products ordered by purchase_count descending, limit to top products
+    products = db.query(Product).join(Brand).order_by(
+        Product.purchase_count.desc(),
+        Product.created_at.desc()  # Secondary sort by creation date for consistency
+    ).limit(limit).all()
+    
+    liked_product_ids = {ulp.product_id for ulp in current_user.liked_products}
+    
+    results = []
+    for product in products:
+        results.append(schemas.Product(
+            id=product.id,
+            name=product.name,
+            description=product.description,
+            price=product.price,
+            images=product.images,
+            color=product.color,
+            material=product.material,
+            brand_id=product.brand_id,
+            category_id=product.category_id,
+            styles=[ps.style_id for ps in product.styles],
+            variants=[schemas.ProductVariantSchema(size=v.size, stock_quantity=v.stock_quantity) for v in sort_variants_by_size(product.variants)],
+            sku=product.sku,
+            brand_name=product.brand.name,
+            brand_return_policy=product.brand.return_policy,
+            is_liked=product.id in liked_product_ids
+        ))
+    
+    # Update cache
+    _popular_items_cache = results
+    _popular_items_cache_time = current_time
+    
+    return results
+
+@app.get("/api/v1/products/search", response_model=List[schemas.Product])
+async def search_products(
+    query: Optional[str] = None,
+    category: Optional[str] = None,
+    brand: Optional[str] = None,
+    style: Optional[str] = None,
+    limit: int = 4,
+    offset: int = 0,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Search for products based on query and filters"""
+    products_query = db.query(Product).join(Brand)
+
+    # Apply search query
+    if query:
+        search_pattern = f"%{query}%"
+        products_query = products_query.filter(
+            (Product.name.ilike(search_pattern)) |
+            (Product.description.ilike(search_pattern))
+        )
+
+    # Apply filters
+    if category and category != "Категория":
+        products_query = products_query.filter(Product.category_id == category)
+
+    if brand and brand != "Бренд":
+        products_query = products_query.filter(Brand.name.ilike(f"%{brand}%"))
+
+    if style and style != "Стиль":
+        products_query = products_query.join(ProductStyle).join(Style).filter(Style.name.ilike(f"%{style}%"))
+
+    # Apply pagination - use distinct() to prevent duplicate products when filtering by style
+    products_query = products_query.distinct().offset(offset).limit(limit)
+
+    products = products_query.all()
+    liked_product_ids = {ulp.product_id for ulp in current_user.liked_products}
+
+    results = []
+    for product in products:
+        results.append(schemas.Product(
+            id=product.id,
+            name=product.name,
+            description=product.description,
+            price=product.price,
+            images=product.images,
+            color=product.color,
+            material=product.material,
+            brand_id=product.brand_id,
+            category_id=product.category_id,
+            styles=[ps.style_id for ps in product.styles],
+            variants=[schemas.ProductVariantSchema(size=v.size, stock_quantity=v.stock_quantity) for v in sort_variants_by_size(product.variants)],
+            sku=product.sku,
+            brand_name=product.brand.name,
+            brand_return_policy=product.brand.return_policy,
+            is_liked=product.id in liked_product_ids
+        ))
+    return results
+
 @app.get("/api/v1/products/{product_id}", response_model=schemas.Product)
 async def get_product_details(
     product_id: str,
@@ -1651,65 +1895,6 @@ async def get_product_details(
         brand_return_policy=product.brand.return_policy,
         is_liked=is_liked
     )
-
-@app.get("/api/v1/products/search", response_model=List[schemas.Product])
-async def search_products(
-    query: Optional[str] = None,
-    category: Optional[str] = None,
-    brand: Optional[str] = None,
-    style: Optional[str] = None,
-    limit: int = 4,
-    offset: int = 0,
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
-):
-    """Search for products based on query and filters"""
-    products_query = db.query(Product).join(Brand)
-
-    # Apply search query
-    if query:
-        search_pattern = f"%{query}%"
-        products_query = products_query.filter(
-            (Product.name.ilike(search_pattern)) |
-            (Product.description.ilike(search_pattern))
-        )
-
-    # Apply filters
-    if category and category != "Категория":
-        products_query = products_query.filter(Product.category_id == category)
-
-    if brand and brand != "Бренд":
-        products_query = products_query.filter(Brand.name.ilike(f"%{brand}% "))
-
-    if style and style != "Стиль":
-        products_query = products_query.join(Product.styles).join(Style).filter(Style.name.ilike(f"%{style}% "))
-
-    # Apply pagination
-    products_query = products_query.offset(offset).limit(limit)
-
-    products = products_query.all()
-    liked_product_ids = {ulp.product_id for ulp in current_user.liked_products}
-
-    results = []
-    for product in products:
-        results.append(schemas.Product(
-            id=product.id,
-            name=product.name,
-            description=product.description,
-            price=product.price,
-            images=product.images,
-            color=product.color,
-            material=product.material,
-            brand_id=product.brand_id,
-            category_id=product.category_id,
-            styles=[ps.style_id for ps in product.styles],
-            variants=[schemas.ProductVariantSchema(size=v.size, stock_quantity=v.stock_quantity) for v in sort_variants_by_size(product.variants)],
-            sku=product.sku,
-            brand_name=product.brand.name,
-            brand_return_policy=product.brand.return_policy,
-            is_liked=product.id in liked_product_ids
-        ))
-    return results
 
 # Friend System Endpoints
 @app.post("/api/v1/friends/request", response_model=MessageResponse)

@@ -73,6 +73,22 @@ export class ApiWrapper {
     );
   }
 
+  async getPopularItems(
+    limit: number = 8,
+    pageName: string = 'SearchPage'
+  ): Promise<api.Product[] | null> {
+    return this.call(
+      () => api.getPopularItems(limit),
+      {
+        pageName,
+        operation: 'getPopularItems',
+        isCritical: false, // Can work without popular items
+        hasFallback: true
+      },
+      () => this.getPopularItems(limit, pageName)
+    );
+  }
+
   async getBrands(pageName: string = 'SearchPage'): Promise<api.Brand[] | null> {
     return this.call(
       () => api.getBrands(),
@@ -224,6 +240,7 @@ export const {
   getUserRecommendations,
   getCurrentUser,
   getProductSearchResults,
+  getPopularItems,
   getBrands,
   getStyles,
   getCategories,

@@ -15,7 +15,10 @@
     "build:android:preview": "eas build --platform android --profile preview --non-interactive",
     "build:android:prod": "eas build --platform android --profile production --non-interactive",
     "build:dev:local": "eas build --platform ios --profile development --local",
-    "build:preview:local": "eas build --platform ios --profile preview --local"
+    "build:preview:local": "eas build --platform ios --profile preview --local",
+    "publish:dev": "eas update --branch development --channel development",
+    "publish:preview": "eas update --branch preview --channel preview",
+    "publish:prod": "eas update --branch production --channel production"
   },
   "jest": {
     "preset": "jest-expo"

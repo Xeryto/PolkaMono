@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import {
   View,
   Text,
@@ -12,6 +12,7 @@ import {
   TouchableOpacity,
   Keyboard,
   ScrollView,
+  ActivityIndicator,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import Animated, {
@@ -61,6 +62,9 @@ interface SelectedFilters {
   style: string;
 }
 
+// Minimum search query length before sending API request
+const MIN_SEARCH_LENGTH = 2;
+
 // Replace simulated API with real product search
 const fetchMoreSearchResults = async (
   query: string = "",
@@ -73,23 +77,52 @@ const fetchMoreSearchResults = async (
   offset: number = 0
 ): Promise<SearchItem[]> => {
   try {
+    // Trim query and check if it's blank or all spaces
+    const trimmedQuery = query.trim();
+    const hasValidQuery = trimmedQuery.length >= MIN_SEARCH_LENGTH;
+    
+    // Check if any filter is actively selected (not default)
+    const hasActiveFilters = 
+      filters.category !== "Категория" ||
+      filters.brand !== "Бренд" ||
+      filters.style !== "Стиль";
+    
+    // Don't make API call if query is too short and no active filters
+    if (!hasValidQuery && !hasActiveFilters) {
+      console.log(`Search - Skipping API call: query too short (${trimmedQuery.length} chars, need ${MIN_SEARCH_LENGTH}) and no active filters`);
+      return [];
+    }
+
     const params: any = {
       limit: count,
       offset,
     };
-    if (query) params.query = query;
+    // Only add query parameter if it meets minimum length requirement
+    if (hasValidQuery) {
+      params.query = trimmedQuery;
+    }
     if (filters.category && filters.category !== "Категория")
       params.category = filters.category;
     if (filters.brand && filters.brand !== "Бренд")
       params.brand = filters.brand;
     if (filters.style && filters.style !== "Стиль")
       params.style = filters.style;
+    
     const results = await apiWrapper.getProductSearchResults(
       params,
       "SearchPage"
     );
     if (!results) return [];
-    return results.map((item: api.Product) => ({
+    
+    // Deduplicate by product ID (defensive measure in case API returns duplicates)
+    // Use a Map to preserve order while removing duplicates (last occurrence wins)
+    const seenIds = new Map<string, api.Product>();
+    for (const item of results) {
+      seenIds.set(item.id, item);
+    }
+    const uniqueResults = Array.from(seenIds.values());
+    
+    return uniqueResults.map((item: api.Product) => ({
       id: item.id,
       name: item.name,
       brand_name: item.brand_name || `Brand ${item.brand_id}`,
@@ -143,7 +176,7 @@ const Search = ({ navigation }: SearchProps) => {
       return persistentSearchStorage.results;
     }
 
-    // Otherwise initialize with an empty array, and let fetchMoreSearchResults populate it
+    // Otherwise initialize with an empty array, will be populated with popular items on mount
     persistentSearchStorage.results = [];
     persistentSearchStorage.initialized = true;
     console.log(
@@ -159,6 +192,13 @@ const Search = ({ navigation }: SearchProps) => {
     style: [],
   });
   const [isLoadingFilters, setIsLoadingFilters] = useState(true);
+  const [isLoadingResults, setIsLoadingResults] = useState(false);
+
+  // Track previous filter values to detect filter-only changes
+  const prevFiltersRef = useRef<SelectedFilters>(selectedFilters);
+  const prevSearchQueryRef = useRef<string>(searchQuery);
+  // Track request ID to prevent stale results from overwriting newer ones
+  const requestIdRef = useRef<number>(0);
 
   useEffect(() => {
     const loadFilters = async () => {
@@ -183,6 +223,124 @@ const Search = ({ navigation }: SearchProps) => {
     };
     loadFilters();
   }, []);
+
+  // Helper function to load and map popular items - wrapped in useCallback to prevent recreation on every render
+  const loadPopularItems = useCallback(async () => {
+    console.log("Search - Loading popular items");
+    setIsLoadingResults(true);
+    try {
+      const popularItems = await apiWrapper.getPopularItems(8, "SearchPage");
+      if (popularItems && popularItems.length > 0) {
+        // Deduplicate by product ID (defensive measure)
+        const seenIds = new Map<string, api.Product>();
+        for (const item of popularItems) {
+          seenIds.set(item.id, item);
+        }
+        const uniquePopularItems = Array.from(seenIds.values());
+        
+        const mappedItems: SearchItem[] = uniquePopularItems.map((item: api.Product) => ({
+          id: item.id,
+          name: item.name,
+          brand_name: item.brand_name || `Brand ${item.brand_id}`,
+          price: item.price,
+          images:
+            item.images && item.images.length > 0
+              ? item.images.map((img) => ({ uri: img }))
+              : [require("./assets/Vision.png"), require("./assets/Vision2.png")],
+          isLiked: item.is_liked || false,
+          description: item.description || "",
+          color: item.color || "",
+          materials: item.material || "",
+          brand_return_policy: item.brand_return_policy || item.return_policy || "",
+          variants: item.variants || [],
+        }));
+        setSearchResults(mappedItems);
+        persistentSearchStorage.results = mappedItems;
+        console.log("Search - Loaded popular items:", mappedItems.length, `(deduplicated from ${popularItems.length})`);
+      } else {
+        // No popular items found, keep results empty
+        setSearchResults([]);
+        persistentSearchStorage.results = [];
+      }
+    } catch (error) {
+      console.error("Error loading popular items:", error);
+      // On error, keep results empty
+      setSearchResults([]);
+      persistentSearchStorage.results = [];
+    } finally {
+      setIsLoadingResults(false);
+    }
+  }, []); // Empty deps - function doesn't depend on any props/state
+
+  // Track previous isSearchActive to detect when exiting search mode
+  const prevIsSearchActiveRef = useRef<boolean>(isSearchActive);
+  const popularItemsLoadedRef = useRef<boolean>(false);
+  const isInitialMountRef = useRef<boolean>(true);
+  const searchQueryRef = useRef<string>(searchQuery);
+  const selectedFiltersRef = useRef<SelectedFilters>(selectedFilters);
+  const searchResultsLengthRef = useRef<number>(searchResults.length);
+  
+  // Update refs when values change (used for checking without causing re-renders)
+  useEffect(() => {
+    searchQueryRef.current = searchQuery;
+    selectedFiltersRef.current = selectedFilters;
+    searchResultsLengthRef.current = searchResults.length;
+  }, [searchQuery, selectedFilters, searchResults]);
+  
+  // Load popular items when component mounts or when exiting search mode
+  useEffect(() => {
+    // Use refs to check values without triggering re-runs on every change
+    const trimmedQuery = searchQueryRef.current.trim();
+    const hasValidQuery = trimmedQuery.length >= MIN_SEARCH_LENGTH;
+    const hasActiveFilters = 
+      selectedFiltersRef.current.category !== "Категория" ||
+      selectedFiltersRef.current.brand !== "Бренд" ||
+      selectedFiltersRef.current.style !== "Стиль";
+    
+    // Check if we're exiting search mode (was active, now not active)
+    const wasSearchActive = prevIsSearchActiveRef.current;
+    const exitingSearchMode = wasSearchActive && !isSearchActive;
+    const isInitialMount = isInitialMountRef.current;
+    
+    if (isInitialMount) {
+      isInitialMountRef.current = false;
+      prevIsSearchActiveRef.current = isSearchActive;
+    } else {
+      prevIsSearchActiveRef.current = isSearchActive;
+    }
+    
+    // Only load popular items if:
+    // 1. Search is not active
+    // 2. No active query or filters
+    if (!isSearchActive && !hasValidQuery && !hasActiveFilters) {
+      // If exiting search mode, clear search results first
+      if (exitingSearchMode) {
+        console.log("Search - Exiting search mode, clearing results and loading popular items");
+        setSearchResults([]);
+        persistentSearchStorage.results = [];
+        popularItemsLoadedRef.current = false;
+        searchResultsLengthRef.current = 0;
+      }
+      
+      // Load popular items if:
+      // - Initial mount and no results, OR
+      // - Exiting search mode (already cleared above), OR
+      // - We haven't loaded them yet
+      const shouldLoad = (isInitialMount && searchResultsLengthRef.current === 0) || exitingSearchMode || !popularItemsLoadedRef.current;
+      
+      if (shouldLoad) {
+        console.log(`Search - Loading popular items (initial: ${isInitialMount}, exiting: ${exitingSearchMode})`);
+        loadPopularItems().then(() => {
+          popularItemsLoadedRef.current = true;
+        }).catch(() => {
+          popularItemsLoadedRef.current = false; // Reset on error so it can retry
+        });
+      }
+    } else if (isSearchActive) {
+      // Reset flag when entering search mode so popular items can be reloaded when exiting
+      popularItemsLoadedRef.current = false;
+    }
+  }, [isSearchActive, loadPopularItems]); // Only depend on isSearchActive and loadPopularItems (which is memoized)
 
   const handleSearch = (text: string) => {
     setSearchQuery(text);
@@ -292,12 +450,29 @@ const Search = ({ navigation }: SearchProps) => {
   };
 
   // Update the filter function to check both name and query
-  const filteredResults =
-    searchQuery.length > 0
-      ? searchResults.filter((item) =>
-          item.name.toLowerCase().includes(searchQuery.toLowerCase())
-        )
-      : searchResults;
+  const trimmedQuery = searchQuery.trim();
+  const hasValidQuery = trimmedQuery.length >= MIN_SEARCH_LENGTH;
+  const hasActiveQuery = trimmedQuery.length > 0;
+  const hasActiveFilters = 
+    selectedFilters.category !== "Категория" ||
+    selectedFilters.brand !== "Бренд" ||
+    selectedFilters.style !== "Стиль";
+  
+  // Only filter results if query is valid (meets minimum length)
+  // If query is too short, show all existing results (or empty if no results exist)
+  const filteredResults = hasValidQuery
+    ? searchResults.filter((item) =>
+        item.name.toLowerCase().includes(trimmedQuery.toLowerCase())
+      )
+    : searchResults;
+  
+  // Check if we should show the empty state
+  // Show empty state when:
+  // 1. NOT in search mode and no results (shows popular items placeholder)
+  // 2. IN search mode with no query/filters (shows "start search" message)
+  const showEmptyState = (!hasValidQuery && !hasActiveFilters) && !isLoadingResults && filteredResults.length === 0;
+  // Check if there are no results but there was a valid query/filter (only when not loading)
+  const showNoResults = !isLoadingResults && (hasValidQuery || hasActiveFilters) && filteredResults.length === 0;
 
   // Update persistent storage whenever searchResults change
   useEffect(() => {
@@ -308,38 +483,163 @@ const Search = ({ navigation }: SearchProps) => {
     );
   }, [searchResults]);
 
+  // Track previous isSearchActive in search effect to detect mode transitions
+  const prevSearchActiveInEffectRef = useRef<boolean>(isSearchActive);
+  
   // Fetch new results when search query or filters change
   useEffect(() => {
+    // Check if we're entering search mode (was not active, now active)
+    const wasSearchActive = prevSearchActiveInEffectRef.current;
+    const enteringSearchMode = !wasSearchActive && isSearchActive;
+    
     // Only fetch if the search is active (user has clicked in the search field)
     if (isSearchActive) {
-      // Add a small delay to avoid fetching on every keystroke
+      // If we're entering search mode, clear popular items immediately to show empty search state
+      if (enteringSearchMode) {
+        console.log("Search - Entering search mode, clearing popular items and showing empty search state");
+        setSearchResults([]);
+        persistentSearchStorage.results = [];
+        setIsLoadingResults(false); // Show empty state, not loading
+        // Update refs
+        prevFiltersRef.current = selectedFilters;
+        prevSearchQueryRef.current = searchQuery;
+        // Update the search active ref AFTER clearing
+        prevSearchActiveInEffectRef.current = isSearchActive;
+        return; // Exit early - don't fetch anything yet
+      }
+      
+      // Trim and check if query is blank or all spaces
+      const trimmedQuery = searchQuery.trim();
+      const hasValidQuery = trimmedQuery.length >= MIN_SEARCH_LENGTH;
+      const hasActiveQuery = trimmedQuery.length > 0;
+      
+      // Check if any filter is actively selected (not default)
+      const hasActiveFilters = 
+        selectedFilters.category !== "Категория" ||
+        selectedFilters.brand !== "Бренд" ||
+        selectedFilters.style !== "Стиль";
+      
+      // Detect if filters changed (but search query didn't)
+      const filtersChanged = 
+        prevFiltersRef.current.category !== selectedFilters.category ||
+        prevFiltersRef.current.brand !== selectedFilters.brand ||
+        prevFiltersRef.current.style !== selectedFilters.style;
+      
+      const searchQueryChanged = prevSearchQueryRef.current !== searchQuery;
+      
+      // If filters changed, clear results immediately to prevent stacking and show loading
+      // BUT only if we have active filters, not if filters were just reset
+      if (filtersChanged && hasActiveFilters) {
+        setSearchResults([]);
+        persistentSearchStorage.results = [];
+        setIsLoadingResults(true); // Show loading spinner immediately when filters change
+        console.log("Search - Filters changed, clearing previous results and showing loading");
+      }
+      
+      // Only send query if there's a valid search term (min length) or active filters
+      if (!hasValidQuery && !hasActiveFilters) {
+        // Query too short or no active filters - clear results to show empty search state
+        // When in search mode, we always want to show the "start search" message, not popular items
+        setSearchResults([]);
+        persistentSearchStorage.results = [];
+        setIsLoadingResults(false); // Not loading since we're skipping the API call
+        // Update refs even if we skip the API call
+        prevFiltersRef.current = selectedFilters;
+        prevSearchQueryRef.current = searchQuery;
+        console.log("Search - No query or filters, showing empty search state");
+        return;
+      }
+      
+      // Use minimal debounce (50ms) if only filters changed, otherwise use 800ms for query changes
+      const debounceDelay = filtersChanged && !searchQueryChanged ? 50 : 800;
+
+      // Add a delay to avoid fetching on every keystroke (or immediate for filter changes)
       const timer = setTimeout(() => {
+        // Re-check if query is still valid after debounce delay
+        const currentTrimmedQuery = searchQuery.trim();
+        const currentHasValidQuery = currentTrimmedQuery.length >= MIN_SEARCH_LENGTH;
+        
+        // Re-check if filters changed (capture at timeout execution time)
+        const filtersChangedAtTimeout = 
+          prevFiltersRef.current.category !== selectedFilters.category ||
+          prevFiltersRef.current.brand !== selectedFilters.brand ||
+          prevFiltersRef.current.style !== selectedFilters.style;
+        
+        // Check if any filter is actively selected (not default)
+        const currentHasActiveFilters = 
+          selectedFilters.category !== "Категория" ||
+          selectedFilters.brand !== "Бренд" ||
+          selectedFilters.style !== "Стиль";
+        
+        if (!currentHasValidQuery && !currentHasActiveFilters) {
+          // Query is too short or empty - clear results and show empty search state
+          // When in search mode, we always show empty state when there's no query/filters
+          setSearchResults([]);
+          persistentSearchStorage.results = [];
+          setIsLoadingResults(false); // Not loading since we're skipping
+          // Update refs before returning
+          prevFiltersRef.current = selectedFilters;
+          prevSearchQueryRef.current = searchQuery;
+          console.log("Search - No valid query or filters after debounce, showing empty search state");
+          return;
+        }
+
+        // Increment request ID for this new request
+        const currentRequestId = ++requestIdRef.current;
+        
+        // Show loading spinner when starting a new API call
+        setIsLoadingResults(true);
+        
         console.log("Search - Query or filters changed, fetching new results");
-        fetchMoreSearchResults(searchQuery, selectedFilters, 4).then(
+        fetchMoreSearchResults(
+          currentHasValidQuery ? currentTrimmedQuery : "", // Only send query if it meets minimum length
+          selectedFilters, 
+          4
+        ).then(
           (apiResults) => {
-            setSearchResults((prevResults) => {
-              // If search query changed, replace all results
-              // If just filters changed, append to existing results
-              const wasQueryChange = searchQuery.length > 0;
-              const updatedResults = wasQueryChange
-                ? apiResults
-                : [...prevResults, ...apiResults];
-
+            // Only update results if this is still the latest request (prevents stale results from overwriting newer ones)
+            if (currentRequestId === requestIdRef.current) {
+              // Always replace results with new API results since this is a new search query/filter combination
+              setSearchResults(apiResults);
               // Update persistent storage
-              persistentSearchStorage.results = updatedResults;
+              persistentSearchStorage.results = apiResults;
+              setIsLoadingResults(false); // Hide loading spinner
               console.log(
-                "Search - Updated results with query change, total count:",
-                updatedResults.length
+                `Search - ${filtersChangedAtTimeout ? 'Filters changed' : 'Query changed'}, replaced results. Total count:`,
+                apiResults.length
               );
-
-              return updatedResults;
-            });
+              
+              // Update refs after successfully updating results
+              prevFiltersRef.current = selectedFilters;
+              prevSearchQueryRef.current = searchQuery;
+            } else {
+              console.log(`Search - Ignoring stale results (request ${currentRequestId} is not the latest ${requestIdRef.current})`);
+              // Don't update loading state for stale requests - let the latest request handle it
+            }
           }
-        );
-      }, 500); // 500ms debounce
+        ).catch((error) => {
+          // Only update state if this is still the latest request
+          if (currentRequestId === requestIdRef.current) {
+            setIsLoadingResults(false); // Hide loading spinner on error
+            prevFiltersRef.current = selectedFilters;
+            prevSearchQueryRef.current = searchQuery;
+          } else {
+            console.log(`Search - Ignoring error from stale request (request ${currentRequestId} is not the latest ${requestIdRef.current})`);
+          }
+          // Don't re-throw - let the error be handled silently for stale requests
+          // The error is already logged by the apiWrapper
+        });
+      }, debounceDelay);
 
       return () => clearTimeout(timer);
+    } else {
+      // Update refs even when search is not active
+      prevFiltersRef.current = selectedFilters;
+      prevSearchQueryRef.current = searchQuery;
     }
+    
+    // Always update the search active ref at the end (after all checks)
+    prevSearchActiveInEffectRef.current = isSearchActive;
   }, [
     searchQuery,
     selectedFilters.category,
@@ -361,10 +661,15 @@ const Search = ({ navigation }: SearchProps) => {
       style: "Стиль",
     });
 
+    // Clear search results immediately
+    setSearchResults([]);
+    persistentSearchStorage.results = [];
+
     // Dismiss the keyboard if it's open
     Keyboard.dismiss();
 
     // Exit search mode with animation
+    // The useEffect watching isSearchActive will load popular items when it becomes false
     setIsSearchActive(false);
   };
 
@@ -551,11 +856,67 @@ const Search = ({ navigation }: SearchProps) => {
           //entering={FadeInDown.duration(400).delay(300)}
           style={{ flex: 1 }}
         >
-          {filteredResults.length === 0 ? (
-            <View style={styles.noResultsContainer}>
-              <Text style={styles.noResultsText}>Результаты не найдены</Text>
-              <Text style={styles.loadingText}>Загрузка...</Text>
-            </View>
+          {showEmptyState ? (
+            <Animated.View
+              entering={FadeIn.duration(ANIMATION_DURATIONS.STANDARD)}
+              style={styles.emptyStateContainer}
+            >
+              <Animated.View
+                entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(ANIMATION_DELAYS.STANDARD)}
+                style={styles.emptyStateIcon}
+              >
+                <AntDesign name="search" size={64} color="rgba(0,0,0,0.3)" />
+              </Animated.View>
+              <Animated.Text
+                entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(ANIMATION_DELAYS.MEDIUM)}
+                style={styles.emptyStateTitle}
+              >
+                Начните поиск
+              </Animated.Text>
+              <Animated.Text
+                entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(ANIMATION_DELAYS.LARGE)}
+                style={styles.emptyStateDescription}
+              >
+                Введите название товара или используйте фильтры для поиска
+              </Animated.Text>
+            </Animated.View>
+          ) : isLoadingResults ? (
+            <Animated.View
+              entering={FadeIn.duration(ANIMATION_DURATIONS.STANDARD)}
+              style={styles.loadingContainer}
+            >
+              <ActivityIndicator size="large" color="#CDA67A" />
+              <Animated.Text
+                entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(ANIMATION_DELAYS.SMALL)}
+                style={styles.loadingText}
+              >
+                Загрузка...
+              </Animated.Text>
+            </Animated.View>
+          ) : showNoResults ? (
+            <Animated.View
+              entering={FadeIn.duration(ANIMATION_DURATIONS.STANDARD)}
+              style={styles.noResultsContainer}
+            >
+              <Animated.View
+                entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(ANIMATION_DELAYS.STANDARD)}
+                style={styles.emptyStateIcon}
+              >
+                <AntDesign name="inbox" size={64} color="rgba(0,0,0,0.3)" />
+              </Animated.View>
+              <Animated.Text
+                entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(ANIMATION_DELAYS.MEDIUM)}
+                style={styles.noResultsText}
+              >
+                Ничего не найдено
+              </Animated.Text>
+              <Animated.Text
+                entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(ANIMATION_DELAYS.LARGE)}
+                style={styles.noResultsDescription}
+              >
+                Попробуйте изменить поисковый запрос или фильтры
+              </Animated.Text>
+            </Animated.View>
           ) : (
             <FlatList
               style={[
@@ -838,25 +1199,67 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 4,
   },
-  noResultsText: {
+  emptyStateContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 40,
+  },
+  emptyStateIcon: {
+    marginBottom: 24,
+    opacity: 0.4,
+  },
+  emptyStateTitle: {
+    fontFamily: "REM",
+    fontSize: 24,
+    fontWeight: "600",
+    color: "#4A3120",
+    textAlign: "center",
+    marginBottom: 12,
+  },
+  emptyStateDescription: {
     fontFamily: "REM",
     fontSize: 16,
-    color: "white",
+    color: "rgba(74, 49, 32, 0.7)",
     textAlign: "center",
-    marginTop: 20,
+    lineHeight: 22,
+    paddingHorizontal: 20,
   },
   noResultsContainer: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    padding: 20,
+    padding: 40,
+  },
+  noResultsText: {
+    fontFamily: "REM",
+    fontSize: 24,
+    fontWeight: "600",
+    color: "#4A3120",
+    textAlign: "center",
+    marginTop: 24,
+    marginBottom: 12,
+  },
+  noResultsDescription: {
+    fontFamily: "REM",
+    fontSize: 16,
+    color: "rgba(74, 49, 32, 0.7)",
+    textAlign: "center",
+    lineHeight: 22,
+    paddingHorizontal: 20,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 40,
   },
   loadingText: {
     fontFamily: "REM",
-    fontSize: 14,
-    color: "gray",
+    fontSize: 18,
+    color: "rgba(74, 49, 32, 0.7)",
     textAlign: "center",
-    marginTop: 10,
+    marginTop: 20,
   },
   searchContainerInitial: {
     marginBottom: "5%",
