@@ -71,6 +71,8 @@ def populate_initial_data():
         streetwear_style = db.query(Style).filter(Style.id == "streetwear").first()
 
         
+        tshirts_category = db.query(Category).filter(Category.id == "tshirts").first()
+        jeans_category = db.query(Category).filter(Category.id == "jeans").first()
         dresses_category = db.query(Category).filter(Category.id == "dresses").first()
         sneakers_category = db.query(Category).filter(Category.id == "sneakers").first()
         hoodies_category = db.query(Category).filter(Category.id == "hoodies").first()
@@ -146,6 +148,473 @@ def populate_initial_data():
                 "material": "fleece",
                 "return_policy": "30-day free returns.",
                 "honest_sign": "HS-NIKESWTF"
+            },
+            # Additional Nike products (ensuring Nike brand has 16+ products)
+            {
+                "name": "Nike Dunk Low",
+                "description": "Classic basketball-inspired sneakers with retro appeal.",
+                "price": 100.00,
+                "images": [],
+                "sizes": ["XS", "S", "M", "L"],
+                "brand": nike_brand,
+                "category": sneakers_category,
+                "styles": [sporty_style, casual_style, streetwear_style],
+                "color": "White",
+                "material": "leather",
+                "return_policy": "30-day free returns.",
+                "honest_sign": "HS-NIKEDL"
+            },
+            {
+                "name": "Nike Air Force 1",
+                "description": "Iconic basketball shoes with clean design.",
+                "price": 90.00,
+                "images": [],
+                "sizes": ["S", "M", "L", "XL"],
+                "brand": nike_brand,
+                "category": sneakers_category,
+                "styles": [sporty_style, casual_style],
+                "color": "White",
+                "material": "leather",
+                "return_policy": "30-day free returns.",
+                "honest_sign": "HS-NIKEAF1"
+            },
+            {
+                "name": "Nike React Element 55",
+                "description": "Lightweight running shoes with React cushioning.",
+                "price": 130.00,
+                "images": [],
+                "sizes": ["XS", "S", "M"],
+                "brand": nike_brand,
+                "category": sneakers_category,
+                "styles": [sporty_style],
+                "color": "Black",
+                "material": "synthetic",
+                "return_policy": "30-day free returns.",
+                "honest_sign": "HS-NIKERE55"
+            },
+            {
+                "name": "Nike Dri-FIT T-Shirt",
+                "description": "Moisture-wicking athletic t-shirt for workouts.",
+                "price": 30.00,
+                "images": [],
+                "sizes": ["XS", "S", "M", "L", "XL"],
+                "brand": nike_brand,
+                "category": tshirts_category,
+                "styles": [sporty_style, casual_style],
+                "color": "Black",
+                "material": "polyester",
+                "return_policy": "30-day free returns.",
+                "honest_sign": "HS-NIKEDFT"
+            },
+            {
+                "name": "Nike Essential Hoodie",
+                "description": "Comfortable everyday hoodie with classic fit.",
+                "price": 65.00,
+                "images": [],
+                "sizes": ["S", "M", "L", "XL"],
+                "brand": nike_brand,
+                "category": hoodies_category,
+                "styles": [casual_style, streetwear_style],
+                "color": "Grey",
+                "material": "cotton",
+                "return_policy": "30-day free returns.",
+                "honest_sign": "HS-NIKEEH"
+            },
+            {
+                "name": "Nike Waffle One",
+                "description": "Heritage-inspired running shoes with modern comfort.",
+                "price": 85.00,
+                "images": [],
+                "sizes": ["S", "M", "L"],
+                "brand": nike_brand,
+                "category": sneakers_category,
+                "styles": [sporty_style, casual_style],
+                "color": "White",
+                "material": "synthetic",
+                "return_policy": "30-day free returns.",
+                "honest_sign": "HS-NIKEW1"
+            },
+            {
+                "name": "Nike Air Max 90",
+                "description": "Classic running shoes with visible Air cushioning.",
+                "price": 120.00,
+                "images": [],
+                "sizes": ["XS", "S", "M", "L", "XL"],
+                "brand": nike_brand,
+                "category": sneakers_category,
+                "styles": [sporty_style, casual_style, streetwear_style],
+                "color": "Black",
+                "material": "leather",
+                "return_policy": "30-day free returns.",
+                "honest_sign": "HS-NIKEAM90"
+            },
+            {
+                "name": "Nike Pro T-Shirt",
+                "description": "Performance t-shirt for intense training sessions.",
+                "price": 35.00,
+                "images": [],
+                "sizes": ["M", "L", "XL"],
+                "brand": nike_brand,
+                "category": tshirts_category,
+                "styles": [sporty_style],
+                "color": "White",
+                "material": "polyester",
+                "return_policy": "30-day free returns.",
+                "honest_sign": "HS-NIKEPT"
+            },
+            # Additional Adidas products
+            {
+                "name": "Adidas Samba",
+                "description": "Classic indoor soccer shoes with timeless design.",
+                "price": 80.00,
+                "images": [],
+                "sizes": ["XS", "S", "M", "L"],
+                "brand": adidas_brand,
+                "category": sneakers_category,
+                "styles": [sporty_style, casual_style],
+                "color": "White",
+                "material": "leather",
+                "return_policy": "20-day returns, customer pays shipping.",
+                "honest_sign": "HS-ADIDASS"
+            },
+            {
+                "name": "Adidas Stan Smith",
+                "description": "Iconic tennis shoes with minimalist style.",
+                "price": 75.00,
+                "images": [],
+                "sizes": ["S", "M", "L", "XL"],
+                "brand": adidas_brand,
+                "category": sneakers_category,
+                "styles": [casual_style, elegant_style],
+                "color": "White",
+                "material": "leather",
+                "return_policy": "20-day returns, customer pays shipping.",
+                "honest_sign": "HS-ADIDASSS"
+            },
+            {
+                "name": "Adidas NMD R1",
+                "description": "Modern running shoes with Boost cushioning.",
+                "price": 130.00,
+                "images": [],
+                "sizes": ["XS", "S", "M"],
+                "brand": adidas_brand,
+                "category": sneakers_category,
+                "styles": [sporty_style, streetwear_style],
+                "color": "Black",
+                "material": "synthetic",
+                "return_policy": "20-day returns, customer pays shipping.",
+                "honest_sign": "HS-ADIDASNMD"
+            },
+            {
+                "name": "Adidas Originals T-Shirt",
+                "description": "Classic three-stripe t-shirt for everyday wear.",
+                "price": 28.00,
+                "images": [],
+                "sizes": ["XS", "S", "M", "L", "XL"],
+                "brand": adidas_brand,
+                "category": tshirts_category,
+                "styles": [casual_style, sporty_style],
+                "color": "White",
+                "material": "cotton",
+                "return_policy": "20-day returns, customer pays shipping.",
+                "honest_sign": "HS-ADIDAST"
+            },
+            {
+                "name": "Adidas Trefoil Hoodie",
+                "description": "Comfortable hoodie with iconic trefoil logo.",
+                "price": 70.00,
+                "images": [],
+                "sizes": ["S", "M", "L", "XL"],
+                "brand": adidas_brand,
+                "category": hoodies_category,
+                "styles": [casual_style, streetwear_style],
+                "color": "Grey",
+                "material": "cotton",
+                "return_policy": "20-day returns, customer pays shipping.",
+                "honest_sign": "HS-ADIDASTH"
+            },
+            {
+                "name": "Adidas Gazelle",
+                "description": "Retro-inspired training shoes with suede upper.",
+                "price": 85.00,
+                "images": [],
+                "sizes": ["M", "L", "XL"],
+                "brand": adidas_brand,
+                "category": sneakers_category,
+                "styles": [casual_style, streetwear_style],
+                "color": "Blue",
+                "material": "suede",
+                "return_policy": "20-day returns, customer pays shipping.",
+                "honest_sign": "HS-ADIDASG"
+            },
+            # Additional Zara products (ensuring Zara has multiple products)
+            {
+                "name": "Zara Basic T-Shirt",
+                "description": "Essential cotton t-shirt for everyday wear.",
+                "price": 15.99,
+                "images": [],
+                "sizes": ["XS", "S", "M", "L", "XL"],
+                "brand": zara_brand,
+                "category": tshirts_category,
+                "styles": [casual_style],
+                "color": "White",
+                "material": "cotton",
+                "return_policy": "14-day exchange only.",
+                "honest_sign": "HS-ZARABT"
+            },
+            {
+                "name": "Zara Midi Dress Floral",
+                "description": "Floral print midi dress perfect for summer.",
+                "price": 49.99,
+                "images": [],
+                "sizes": ["XS", "S", "M", "L"],
+                "brand": zara_brand,
+                "category": dresses_category,
+                "styles": [elegant_style, casual_style],
+                "color": "Multi-Color",
+                "material": "cotton",
+                "return_policy": "14-day exchange only.",
+                "honest_sign": "HS-ZARAMDF"
+            },
+            {
+                "name": "Zara Maxi Dress",
+                "description": "Elegant long dress for special occasions.",
+                "price": 59.99,
+                "images": [],
+                "sizes": ["S", "M", "L", "XL"],
+                "brand": zara_brand,
+                "category": dresses_category,
+                "styles": [elegant_style],
+                "color": "Black",
+                "material": "polyester",
+                "return_policy": "14-day exchange only.",
+                "honest_sign": "HS-ZARAMD"
+            },
+            {
+                "name": "Zara Skinny Jeans",
+                "description": "Classic skinny fit jeans in dark wash.",
+                "price": 39.99,
+                "images": [],
+                "sizes": ["XS", "S", "M", "L"],
+                "brand": zara_brand,
+                "category": jeans_category,
+                "styles": [casual_style, elegant_style],
+                "color": "Blue",
+                "material": "denim",
+                "return_policy": "14-day exchange only.",
+                "honest_sign": "HS-ZARASJ"
+            },
+            {
+                "name": "Zara Casual Dress",
+                "description": "Comfortable everyday dress with relaxed fit.",
+                "price": 35.99,
+                "images": [],
+                "sizes": ["S", "M", "L", "XL"],
+                "brand": zara_brand,
+                "category": dresses_category,
+                "styles": [casual_style],
+                "color": "Beige",
+                "material": "cotton",
+                "return_policy": "14-day exchange only.",
+                "honest_sign": "HS-ZARACD"
+            },
+            {
+                "name": "Zara Striped Dress",
+                "description": "Chic striped dress with modern silhouette.",
+                "price": 44.99,
+                "images": [],
+                "sizes": ["XS", "S", "M", "L"],
+                "brand": zara_brand,
+                "category": dresses_category,
+                "styles": [casual_style, elegant_style],
+                "color": "Navy",
+                "material": "cotton",
+                "return_policy": "14-day exchange only.",
+                "honest_sign": "HS-ZARASD"
+            },
+            {
+                "name": "Zara Oversized T-Shirt",
+                "description": "Trendy oversized t-shirt for street style.",
+                "price": 19.99,
+                "images": [],
+                "sizes": ["S", "M", "L", "XL"],
+                "brand": zara_brand,
+                "category": tshirts_category,
+                "styles": [casual_style, streetwear_style],
+                "color": "Black",
+                "material": "cotton",
+                "return_policy": "14-day exchange only.",
+                "honest_sign": "HS-ZARAOT"
+            },
+            {
+                "name": "Zara Wrap Dress",
+                "description": "Flattering wrap dress for any occasion.",
+                "price": 54.99,
+                "images": [],
+                "sizes": ["S", "M", "L"],
+                "brand": zara_brand,
+                "category": dresses_category,
+                "styles": [elegant_style, casual_style],
+                "color": "Red",
+                "material": "polyester",
+                "return_policy": "14-day exchange only.",
+                "honest_sign": "HS-ZARAWD"
+            },
+            # Additional H&M products
+            {
+                "name": "H&M Basic T-Shirt",
+                "description": "Affordable essential t-shirt in multiple colors.",
+                "price": 9.99,
+                "images": [],
+                "sizes": ["XS", "S", "M", "L", "XL"],
+                "brand": hm_brand,
+                "category": tshirts_category,
+                "styles": [casual_style],
+                "color": "White",
+                "material": "cotton",
+                "return_policy": "No returns on sale items.",
+                "honest_sign": "HS-HMBT"
+            },
+            {
+                "name": "H&M Slim Jeans",
+                "description": "Slim fit jeans with stretch for comfort.",
+                "price": 24.99,
+                "images": [],
+                "sizes": ["XS", "S", "M", "L"],
+                "brand": hm_brand,
+                "category": jeans_category,
+                "styles": [casual_style],
+                "color": "Blue",
+                "material": "denim",
+                "return_policy": "No returns on sale items.",
+                "honest_sign": "HS-HMSJ"
+            },
+            {
+                "name": "H&M Summer Dress",
+                "description": "Lightweight summer dress perfect for warm weather.",
+                "price": 19.99,
+                "images": [],
+                "sizes": ["S", "M", "L", "XL"],
+                "brand": hm_brand,
+                "category": dresses_category,
+                "styles": [casual_style],
+                "color": "Yellow",
+                "material": "cotton",
+                "return_policy": "No returns on sale items.",
+                "honest_sign": "HS-HMSD"
+            },
+            {
+                "name": "H&M Cotton Hoodie",
+                "description": "Soft cotton hoodie for casual days.",
+                "price": 29.99,
+                "images": [],
+                "sizes": ["XS", "S", "M", "L", "XL"],
+                "brand": hm_brand,
+                "category": hoodies_category,
+                "styles": [casual_style, streetwear_style],
+                "color": "Navy",
+                "material": "cotton",
+                "return_policy": "No returns on sale items.",
+                "honest_sign": "HS-HMCH"
+            },
+            {
+                "name": "H&M Denim Jacket",
+                "description": "Classic denim jacket for layering.",
+                "price": 34.99,
+                "images": [],
+                "sizes": ["S", "M", "L"],
+                "brand": hm_brand,
+                "category": hoodies_category,
+                "styles": [casual_style, streetwear_style],
+                "color": "Blue",
+                "material": "denim",
+                "return_policy": "No returns on sale items.",
+                "honest_sign": "HS-HMDJ"
+            },
+            {
+                "name": "H&M Printed T-Shirt",
+                "description": "Graphic print t-shirt with modern design.",
+                "price": 12.99,
+                "images": [],
+                "sizes": ["M", "L", "XL"],
+                "brand": hm_brand,
+                "category": tshirts_category,
+                "styles": [casual_style, streetwear_style],
+                "color": "Black",
+                "material": "cotton",
+                "return_policy": "No returns on sale items.",
+                "honest_sign": "HS-HMPT"
+            },
+            {
+                "name": "H&M A-Line Dress",
+                "description": "Flattering A-line dress with elegant cut.",
+                "price": 24.99,
+                "images": [],
+                "sizes": ["XS", "S", "M", "L"],
+                "brand": hm_brand,
+                "category": dresses_category,
+                "styles": [casual_style, elegant_style],
+                "color": "Green",
+                "material": "polyester",
+                "return_policy": "No returns on sale items.",
+                "honest_sign": "HS-HMAL"
+            },
+            # More Nike products to ensure we have 16+ for Nike filter
+            {
+                "name": "Nike Court Vintage",
+                "description": "Tennis-inspired shoes with retro styling.",
+                "price": 75.00,
+                "images": [],
+                "sizes": ["XS", "S", "M", "L"],
+                "brand": nike_brand,
+                "category": sneakers_category,
+                "styles": [sporty_style, casual_style],
+                "color": "White",
+                "material": "leather",
+                "return_policy": "30-day free returns.",
+                "honest_sign": "HS-NIKECV"
+            },
+            {
+                "name": "Nike Blazer Mid",
+                "description": "Classic basketball-inspired high-top sneakers.",
+                "price": 95.00,
+                "images": [],
+                "sizes": ["S", "M", "L", "XL"],
+                "brand": nike_brand,
+                "category": sneakers_category,
+                "styles": [sporty_style, streetwear_style],
+                "color": "Black",
+                "material": "leather",
+                "return_policy": "30-day free returns.",
+                "honest_sign": "HS-NIKEBM"
+            },
+            {
+                "name": "Nike Sportswear Hoodie",
+                "description": "Classic pullover hoodie with Nike branding.",
+                "price": 75.00,
+                "images": [],
+                "sizes": ["XS", "S", "M", "L", "XL"],
+                "brand": nike_brand,
+                "category": hoodies_category,
+                "styles": [sporty_style, casual_style],
+                "color": "Navy",
+                "material": "cotton",
+                "return_policy": "30-day free returns.",
+                "honest_sign": "HS-NIKESWH"
+            },
+            {
+                "name": "Nike Classic Cortez",
+                "description": "Iconic running shoes with heritage design.",
+                "price": 70.00,
+                "images": [],
+                "sizes": ["M", "L", "XL"],
+                "brand": nike_brand,
+                "category": sneakers_category,
+                "styles": [sporty_style, casual_style],
+                "color": "Red",
+                "material": "leather",
+                "return_policy": "30-day free returns.",
+                "honest_sign": "HS-NIKECC"
             }
         ]
 
@@ -183,7 +652,7 @@ def populate_initial_data():
         
         db.commit()
         print("Products populated.")
-
+        
         # Create test user account
         test_user_password_hash = auth_service.hash_password("123abc")
         test_user_data = {
@@ -253,6 +722,7 @@ def populate_initial_data():
                     order_item1 = OrderItem(
                         order_id=order1.id,
                         product_variant_id=nike_variant_m.id,
+                        quantity=1,
                         price=150.00,
                         honest_sign="HS-NIKEAM270-M-001"
                     )
@@ -291,6 +761,7 @@ def populate_initial_data():
                     order_item2 = OrderItem(
                         order_id=order2.id,
                         product_variant_id=adidas_variant_s.id,
+                        quantity=1,
                         price=180.00,
                         honest_sign="HS-ADIDASUB22-S-002"
                     )
@@ -329,6 +800,7 @@ def populate_initial_data():
                     order_item3 = OrderItem(
                         order_id=order3.id,
                         product_variant_id=zara_variant_l.id,
+                        quantity=1,
                         price=79.99,
                         honest_sign="HS-ZARAFMD-L-003"
                     )
@@ -345,7 +817,83 @@ def populate_initial_data():
                     print("Created Order 3: Zara Flowy Midi Dress")
 
                 db.commit()
-                print("Fake orders created successfully.")
+                
+                # Add more PAID orders for various products to populate purchase_count for popular items
+                # Query additional products for orders (after initial orders are committed)
+                additional_orders_data = [
+                    {"product_name": "Nike Dunk Low", "size": "M", "price": 100.00, "order_num": "ORD-004"},
+                    {"product_name": "Nike Air Force 1", "size": "L", "price": 90.00, "order_num": "ORD-005"},
+                    {"product_name": "Nike React Element 55", "size": "S", "price": 130.00, "order_num": "ORD-006"},
+                    {"product_name": "Nike Air Max 90", "size": "M", "price": 120.00, "order_num": "ORD-007"},
+                    {"product_name": "Nike Sportswear Tech Fleece", "size": "M", "price": 110.00, "order_num": "ORD-008"},
+                    {"product_name": "Adidas Samba", "size": "L", "price": 80.00, "order_num": "ORD-009"},
+                    {"product_name": "Adidas Stan Smith", "size": "M", "price": 75.00, "order_num": "ORD-010"},
+                    {"product_name": "Adidas NMD R1", "size": "S", "price": 130.00, "order_num": "ORD-011"},
+                    {"product_name": "Zara Basic T-Shirt", "size": "L", "price": 15.99, "order_num": "ORD-012"},
+                    {"product_name": "Zara Midi Dress Floral", "size": "M", "price": 49.99, "order_num": "ORD-013"},
+                    {"product_name": "H&M Cotton Hoodie", "size": "L", "price": 29.99, "order_num": "ORD-014"},
+                    # More orders for popular items variety (duplicate purchases to increase purchase_count)
+                    {"product_name": "Nike Dunk Low", "size": "S", "price": 100.00, "order_num": "ORD-015"},  # Second purchase
+                    {"product_name": "Nike Air Force 1", "size": "M", "price": 90.00, "order_num": "ORD-016"},  # Second purchase
+                    {"product_name": "Nike Air Max 270", "size": "L", "price": 150.00, "order_num": "ORD-017"},  # Second purchase
+                    {"product_name": "Zara Flowy Midi Dress", "size": "M", "price": 79.99, "order_num": "ORD-018"},  # Second purchase
+                ]
+                
+                order_num_counter = 4
+                for order_data in additional_orders_data:
+                    product = db.query(Product).filter(Product.name == order_data["product_name"]).first()
+                    if product:
+                        variant = db.query(ProductVariant).filter(
+                            ProductVariant.product_id == product.id,
+                            ProductVariant.size == order_data["size"]
+                        ).first()
+                        
+                        if variant:
+                            # Check if order with this order_number already exists to avoid duplicates on re-run
+                            existing_order = db.query(Order).filter(Order.order_number == order_data["order_num"]).first()
+                            if not existing_order:
+                                order = Order(
+                                    order_number=order_data["order_num"],
+                                    user_id=test_user.id,
+                                    total_amount=order_data["price"],
+                                    status=OrderStatus.PAID,
+                                    tracking_number=f"TN{order_num_counter:09d}",
+                                    tracking_link=f"https://track.example.com/TN{order_num_counter:09d}",
+                                    delivery_full_name=test_user.full_name,
+                                    delivery_email=test_user.delivery_email,
+                                    delivery_phone=test_user.phone,
+                                    delivery_address=test_user.address,
+                                    delivery_city=test_user.city,
+                                    delivery_postal_code=test_user.postal_code
+                                )
+                                db.add(order)
+                                db.flush()
+                                
+                                order_item = OrderItem(
+                                    order_id=order.id,
+                                    product_variant_id=variant.id,
+                                    quantity=1,
+                                    price=order_data["price"],
+                                    honest_sign=f"HS-{product.name.upper().replace(' ', '').replace('-', '')}-{order_data['size']}-{order_num_counter:03d}"
+                                )
+                                db.add(order_item)
+                                
+                                payment = Payment(
+                                    id=str(uuid.uuid4()),
+                                    order_id=order.id,
+                                    amount=order_data["price"],
+                                    currency="RUB",
+                                    status="completed"
+                                )
+                                db.add(payment)
+                                print(f"Created Order {order_data['order_num']}: {product.name}")
+                            else:
+                                print(f"Order {order_data['order_num']} already exists, skipping")
+                    
+                    order_num_counter += 1
+
+                db.commit()
+                print("Additional orders created successfully.")
     except Exception as e:
         db.rollback()
         print(f"Error populating data: {e}")

@@ -1754,7 +1754,7 @@ def invalidate_popular_items_cache():
 
 @app.get("/api/v1/products/popular", response_model=List[schemas.Product])
 async def get_popular_products(
-    limit: int = 8,
+    limit: int = 16,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
@@ -1811,7 +1811,7 @@ async def search_products(
     category: Optional[str] = None,
     brand: Optional[str] = None,
     style: Optional[str] = None,
-    limit: int = 4,
+    limit: int = 16,
     offset: int = 0,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)

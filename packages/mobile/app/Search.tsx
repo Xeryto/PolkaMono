@@ -73,7 +73,7 @@ const fetchMoreSearchResults = async (
     brand: "Бренд",
     style: "Стиль",
   },
-  count: number = 4,
+  count: number = 16,
   offset: number = 0
 ): Promise<SearchItem[]> => {
   try {
@@ -193,12 +193,20 @@ const Search = ({ navigation }: SearchProps) => {
   });
   const [isLoadingFilters, setIsLoadingFilters] = useState(true);
   const [isLoadingResults, setIsLoadingResults] = useState(false);
+  
+  // Pagination state for search results
+  const [searchOffset, setSearchOffset] = useState<number>(0);
+  const [hasMoreResults, setHasMoreResults] = useState<boolean>(false);
+  const [isLoadingMoreResults, setIsLoadingMoreResults] = useState<boolean>(false);
+  const PAGE_SIZE = 16; // Number of results per page
 
   // Track previous filter values to detect filter-only changes
   const prevFiltersRef = useRef<SelectedFilters>(selectedFilters);
   const prevSearchQueryRef = useRef<string>(searchQuery);
   // Track request ID to prevent stale results from overwriting newer ones
   const requestIdRef = useRef<number>(0);
+  // Track if we're currently loading more to prevent multiple simultaneous calls
+  const isLoadingMoreRef = useRef<boolean>(false);
 
   useEffect(() => {
     const loadFilters = async () => {
@@ -229,7 +237,7 @@ const Search = ({ navigation }: SearchProps) => {
     console.log("Search - Loading popular items");
     setIsLoadingResults(true);
     try {
-      const popularItems = await apiWrapper.getPopularItems(8, "SearchPage");
+      const popularItems = await apiWrapper.getPopularItems(16, "SearchPage");
       if (popularItems && popularItems.length > 0) {
         // Deduplicate by product ID (defensive measure)
         const seenIds = new Map<string, api.Product>();
@@ -313,11 +321,15 @@ const Search = ({ navigation }: SearchProps) => {
     // 1. Search is not active
     // 2. No active query or filters
     if (!isSearchActive && !hasValidQuery && !hasActiveFilters) {
-      // If exiting search mode, clear search results first
+      // If exiting search mode, clear search results and reset pagination
       if (exitingSearchMode) {
-        console.log("Search - Exiting search mode, clearing results and loading popular items");
+        console.log("Search - Exiting search mode, clearing results and resetting pagination");
         setSearchResults([]);
         persistentSearchStorage.results = [];
+        setSearchOffset(0);
+        setHasMoreResults(false);
+        setIsLoadingMoreResults(false);
+        isLoadingMoreRef.current = false; // Reset ref
         popularItemsLoadedRef.current = false;
         searchResultsLengthRef.current = 0;
       }
@@ -330,6 +342,12 @@ const Search = ({ navigation }: SearchProps) => {
       
       if (shouldLoad) {
         console.log(`Search - Loading popular items (initial: ${isInitialMount}, exiting: ${exitingSearchMode})`);
+        // Reset pagination when loading popular items (popular items don't use pagination)
+        setSearchOffset(0);
+        setHasMoreResults(false);
+        setIsLoadingMoreResults(false);
+        isLoadingMoreRef.current = false;
+        
         loadPopularItems().then(() => {
           popularItemsLoadedRef.current = true;
         }).catch(() => {
@@ -499,6 +517,10 @@ const Search = ({ navigation }: SearchProps) => {
         console.log("Search - Entering search mode, clearing popular items and showing empty search state");
         setSearchResults([]);
         persistentSearchStorage.results = [];
+        setSearchOffset(0);
+        setHasMoreResults(false);
+        setIsLoadingMoreResults(false);
+        isLoadingMoreRef.current = false; // Reset ref
         setIsLoadingResults(false); // Show empty state, not loading
         // Update refs
         prevFiltersRef.current = selectedFilters;
@@ -532,8 +554,12 @@ const Search = ({ navigation }: SearchProps) => {
       if (filtersChanged && hasActiveFilters) {
         setSearchResults([]);
         persistentSearchStorage.results = [];
+        setSearchOffset(0);
+        setHasMoreResults(false);
+        setIsLoadingMoreResults(false);
+        isLoadingMoreRef.current = false; // Reset ref
         setIsLoadingResults(true); // Show loading spinner immediately when filters change
-        console.log("Search - Filters changed, clearing previous results and showing loading");
+        console.log("Search - Filters changed, clearing previous results and resetting pagination");
       }
       
       // Only send query if there's a valid search term (min length) or active filters
@@ -542,6 +568,9 @@ const Search = ({ navigation }: SearchProps) => {
         // When in search mode, we always want to show the "start search" message, not popular items
         setSearchResults([]);
         persistentSearchStorage.results = [];
+        setSearchOffset(0);
+        setHasMoreResults(false);
+        setIsLoadingMoreResults(false);
         setIsLoadingResults(false); // Not loading since we're skipping the API call
         // Update refs even if we skip the API call
         prevFiltersRef.current = selectedFilters;
@@ -587,26 +616,35 @@ const Search = ({ navigation }: SearchProps) => {
         // Increment request ID for this new request
         const currentRequestId = ++requestIdRef.current;
         
+        // Reset pagination for new search (query or filters changed)
+        setSearchOffset(0);
+        setHasMoreResults(true);
+        setIsLoadingMoreResults(false);
+        
         // Show loading spinner when starting a new API call
         setIsLoadingResults(true);
         
-        console.log("Search - Query or filters changed, fetching new results");
+        console.log("Search - Query or filters changed, fetching first page of results");
         fetchMoreSearchResults(
           currentHasValidQuery ? currentTrimmedQuery : "", // Only send query if it meets minimum length
           selectedFilters, 
-          4
+          PAGE_SIZE,
+          0 // Start from offset 0 for new search
         ).then(
           (apiResults) => {
             // Only update results if this is still the latest request (prevents stale results from overwriting newer ones)
             if (currentRequestId === requestIdRef.current) {
-              // Always replace results with new API results since this is a new search query/filter combination
+              // Replace results with new API results since this is a new search query/filter combination
               setSearchResults(apiResults);
               // Update persistent storage
               persistentSearchStorage.results = apiResults;
+              // Check if there are more results (if we got a full page, there might be more)
+              setHasMoreResults(apiResults.length >= PAGE_SIZE);
+              // Update offset for next page
+              setSearchOffset(apiResults.length);
               setIsLoadingResults(false); // Hide loading spinner
               console.log(
-                `Search - ${filtersChangedAtTimeout ? 'Filters changed' : 'Query changed'}, replaced results. Total count:`,
-                apiResults.length
+                `Search - ${filtersChangedAtTimeout ? 'Filters changed' : 'Query changed'}, loaded first page. Count: ${apiResults.length}, hasMore: ${apiResults.length >= PAGE_SIZE}`
               );
               
               // Update refs after successfully updating results
@@ -621,6 +659,8 @@ const Search = ({ navigation }: SearchProps) => {
           // Only update state if this is still the latest request
           if (currentRequestId === requestIdRef.current) {
             setIsLoadingResults(false); // Hide loading spinner on error
+            setHasMoreResults(false); // No more results on error
+            setSearchOffset(0);
             prevFiltersRef.current = selectedFilters;
             prevSearchQueryRef.current = searchQuery;
           } else {
@@ -648,6 +688,80 @@ const Search = ({ navigation }: SearchProps) => {
     isSearchActive,
   ]);
 
+  // Load more search results (append next page) - called when user scrolls to bottom
+  const loadMoreSearchResults = useCallback(async () => {
+    // Don't load if already loading, no more results, or not in search mode
+    // Use ref to prevent multiple simultaneous calls
+    if (isLoadingMoreRef.current || isLoadingMoreResults || !hasMoreResults || !isSearchActive) {
+      return;
+    }
+    
+    isLoadingMoreRef.current = true;
+
+    // Don't load if there's no valid query or filters
+    const trimmedQuery = searchQuery.trim();
+    const hasValidQuery = trimmedQuery.length >= MIN_SEARCH_LENGTH;
+    const hasActiveFilters = 
+      selectedFilters.category !== "Категория" ||
+      selectedFilters.brand !== "Бренд" ||
+      selectedFilters.style !== "Стиль";
+
+    if (!hasValidQuery && !hasActiveFilters) {
+      return;
+    }
+
+    setIsLoadingMoreResults(true);
+    const currentOffset = searchOffset; // Capture current offset
+    console.log(`Search - Loading more results, offset: ${currentOffset}`);
+
+    try {
+      const nextPageResults = await fetchMoreSearchResults(
+        hasValidQuery ? trimmedQuery : "",
+        selectedFilters,
+        PAGE_SIZE,
+        currentOffset
+      );
+
+      if (nextPageResults && nextPageResults.length > 0) {
+        // Use functional update to append results without needing searchResults in dependencies
+        setSearchResults(prevResults => {
+          // Deduplicate against existing results (defensive measure)
+          const existingIds = new Set(prevResults.map(item => item.id));
+          const newUniqueResults = nextPageResults.filter(item => !existingIds.has(item.id));
+          
+          if (newUniqueResults.length > 0) {
+            // Append new results to existing ones
+            const updatedResults = [...prevResults, ...newUniqueResults];
+            persistentSearchStorage.results = updatedResults;
+            
+            // Check if there are more results (if we got a full page, there might be more)
+            setHasMoreResults(nextPageResults.length >= PAGE_SIZE);
+            // Update offset for next page
+            setSearchOffset(prev => prev + newUniqueResults.length);
+            
+            console.log(`Search - Loaded ${newUniqueResults.length} more results (deduplicated from ${nextPageResults.length}). Total: ${updatedResults.length}, hasMore: ${nextPageResults.length >= PAGE_SIZE}`);
+            return updatedResults;
+          } else {
+            // All results were duplicates, no more unique results
+            setHasMoreResults(false);
+            console.log("Search - All next page results were duplicates, no more results");
+            return prevResults; // Return existing results unchanged
+          }
+        });
+      } else {
+        // No more results
+        setHasMoreResults(false);
+        console.log("Search - No more results available");
+      }
+    } catch (error) {
+      console.error("Search - Error loading more results:", error);
+      setHasMoreResults(false); // Stop trying on error
+    } finally {
+      setIsLoadingMoreResults(false);
+      isLoadingMoreRef.current = false; // Reset ref
+    }
+  }, [isLoadingMoreResults, hasMoreResults, isSearchActive, searchQuery, selectedFilters.category, selectedFilters.brand, selectedFilters.style, searchOffset]); // Removed searchResults from deps
+
   // Handle cancel search
   const handleCancelSearch = () => {
     // Reset search query
@@ -661,9 +775,13 @@ const Search = ({ navigation }: SearchProps) => {
       style: "Стиль",
     });
 
-    // Clear search results immediately
+    // Clear search results and reset pagination
     setSearchResults([]);
     persistentSearchStorage.results = [];
+    setSearchOffset(0);
+    setHasMoreResults(false);
+    setIsLoadingMoreResults(false);
+    isLoadingMoreRef.current = false; // Reset ref
 
     // Dismiss the keyboard if it's open
     Keyboard.dismiss();
@@ -930,6 +1048,30 @@ const Search = ({ navigation }: SearchProps) => {
               contentContainerStyle={styles.listContent}
               numColumns={2}
               columnWrapperStyle={styles.columnWrapper}
+              onEndReached={() => {
+                // Load more results when user scrolls to bottom (only in search mode with active query/filters)
+                if (isSearchActive && hasMoreResults && !isLoadingMoreResults && !isLoadingResults) {
+                  const trimmedQuery = searchQuery.trim();
+                  const hasValidQuery = trimmedQuery.length >= MIN_SEARCH_LENGTH;
+                  const hasActiveFilters = 
+                    selectedFilters.category !== "Категория" ||
+                    selectedFilters.brand !== "Бренд" ||
+                    selectedFilters.style !== "Стиль";
+                  
+                  // Only load more if there's an active search (query or filters)
+                  if (hasValidQuery || hasActiveFilters) {
+                    loadMoreSearchResults();
+                  }
+                }
+              }}
+              onEndReachedThreshold={0.5} // Trigger when user is 50% from bottom (Instagram-like behavior)
+              ListFooterComponent={
+                isLoadingMoreResults ? (
+                  <View style={styles.loadMoreContainer}>
+                    <ActivityIndicator size="small" color="#CDA67A" />
+                  </View>
+                ) : null
+              }
             />
           )}
         </Animated.View>
@@ -1260,6 +1402,11 @@ const styles = StyleSheet.create({
     color: "rgba(74, 49, 32, 0.7)",
     textAlign: "center",
     marginTop: 20,
+  },
+  loadMoreContainer: {
+    paddingVertical: 20,
+    alignItems: "center",
+    justifyContent: "center",
   },
   searchContainerInitial: {
     marginBottom: "5%",
