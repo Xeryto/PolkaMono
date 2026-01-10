@@ -44,7 +44,7 @@ interface ProductDetailsModalProps {
     category_id: string;
     styles: string[];
     variants: { size: string; stock_quantity: number }[];
-    sku?: string; // NEW
+    article_number?: string; // Article number (артикул) - auto-generated, read-only
   };
   onProductUpdated: () => void; // Callback to refresh product list
 }
@@ -70,8 +70,6 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({
   const [images, setImages] = useState<string[]>(product.images || []);
   const [imageFiles, setImageFiles] = useState<File[]>([]);
   const [imagePreviews, setImagePreviews] = useState<string[]>([]);
-  const [sku, setSku] = useState(product.sku || "");
-  console.log(product);
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
   const [selectedStyles, setSelectedStyles] = useState<string[]>([]);
@@ -108,7 +106,6 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({
       product.material ? product.material.split(", ").filter((m) => m) : []
     );
     setImages(product.images || []);
-    setSku(product.sku || "");
     setSelectedStyles(product.styles || []);
     setVariants(product.variants || []);
   }, [product]);
@@ -167,9 +164,9 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({
         material: selectedMaterials.join(", "),
         styles: selectedStyles,
         category_id: selectedCategory,
-        sku,
         variants,
         images, // Send the updated list of existing images
+        // Note: article_number is not included as it's auto-generated and read-only
       };
 
       await api.updateProduct(product.id, updatedProductData, token);
@@ -231,6 +228,20 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({
           <CardContent className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
               <div className="space-y-4">
+                <div>
+                  <Label htmlFor="article_number">Артикул</Label>
+                  <Input
+                    id="article_number"
+                    placeholder="Автоматически присвоен при создании"
+                    className="mt-1 bg-muted cursor-not-allowed"
+                    value={product.article_number || "Не присвоен"}
+                    disabled
+                    readOnly
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Артикул автоматически генерируется системой и не может быть изменен
+                  </p>
+                </div>
                 <div>
                   <Label htmlFor="name">Название товара</Label>
                   <Input
@@ -305,16 +316,6 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({
                     onValueChange={setSelectedMaterials}
                     placeholder="Выберите материалы"
                     className="mt-1"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="sku">Артикул товара (SKU)</Label>
-                  <Input
-                    id="sku"
-                    placeholder="Например, NIKE-AM270-WHI-001"
-                    className="mt-1"
-                    value={sku}
-                    disabled
                   />
                 </div>
               </div>

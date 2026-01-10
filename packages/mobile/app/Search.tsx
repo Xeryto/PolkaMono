@@ -136,6 +136,7 @@ const fetchMoreSearchResults = async (
       color: item.color || "",
       materials: item.material || "",
       brand_return_policy: item.brand_return_policy || item.return_policy || "",
+      article_number: item.article_number, // Article number for display and sharing
       variants: item.variants || [],
     }));
   } catch (error) {
@@ -260,6 +261,7 @@ const Search = ({ navigation }: SearchProps) => {
           color: item.color || "",
           materials: item.material || "",
           brand_return_policy: item.brand_return_policy || item.return_policy || "",
+          article_number: item.article_number, // Article number for display and sharing
           variants: item.variants || [],
         }));
         setSearchResults(mappedItems);
@@ -476,13 +478,9 @@ const Search = ({ navigation }: SearchProps) => {
     selectedFilters.brand !== "Бренд" ||
     selectedFilters.style !== "Стиль";
   
-  // Only filter results if query is valid (meets minimum length)
-  // If query is too short, show all existing results (or empty if no results exist)
-  const filteredResults = hasValidQuery
-    ? searchResults.filter((item) =>
-        item.name.toLowerCase().includes(trimmedQuery.toLowerCase())
-      )
-    : searchResults;
+  // The API already filters results by query (including article_number), so we don't need client-side filtering
+  // Use searchResults directly as filteredResults since the API handles all filtering
+  const filteredResults = searchResults;
   
   // Check if we should show the empty state
   // Show empty state when:
@@ -491,6 +489,13 @@ const Search = ({ navigation }: SearchProps) => {
   const showEmptyState = (!hasValidQuery && !hasActiveFilters) && !isLoadingResults && filteredResults.length === 0;
   // Check if there are no results but there was a valid query/filter (only when not loading)
   const showNoResults = !isLoadingResults && (hasValidQuery || hasActiveFilters) && filteredResults.length === 0;
+  
+  // Debug: Log display conditions when we have results but they might not be showing
+  useEffect(() => {
+    if (searchResults.length > 0 || isLoadingResults) {
+      console.log(`Search - Display state: searchResults=${searchResults.length}, filteredResults=${filteredResults.length}, isLoadingResults=${isLoadingResults}, showEmptyState=${showEmptyState}, showNoResults=${showNoResults}, isSearchActive=${isSearchActive}, query="${trimmedQuery}"`);
+    }
+  }, [searchResults.length, filteredResults.length, isLoadingResults, showEmptyState, showNoResults, isSearchActive, trimmedQuery]);
 
   // Update persistent storage whenever searchResults change
   useEffect(() => {
@@ -632,19 +637,32 @@ const Search = ({ navigation }: SearchProps) => {
           0 // Start from offset 0 for new search
         ).then(
           (apiResults) => {
+            console.log(`Search - Promise resolved with ${apiResults?.length || 0} results for query "${currentTrimmedQuery}"`);
             // Only update results if this is still the latest request (prevents stale results from overwriting newer ones)
             if (currentRequestId === requestIdRef.current) {
+              // Ensure apiResults is an array (defensive check)
+              const results = Array.isArray(apiResults) ? apiResults : [];
+              
               // Replace results with new API results since this is a new search query/filter combination
-              setSearchResults(apiResults);
+              console.log(`Search - Setting ${results.length} results. First result:`, results[0] ? { id: results[0].id, name: results[0].name, article_number: results[0].article_number } : 'none');
+              
+              // CRITICAL: Set loading to false BEFORE setting results to ensure UI updates correctly
+              setIsLoadingResults(false);
+              
+              // Now set the results
+              setSearchResults(results);
+              
               // Update persistent storage
-              persistentSearchStorage.results = apiResults;
+              persistentSearchStorage.results = results;
+              
               // Check if there are more results (if we got a full page, there might be more)
-              setHasMoreResults(apiResults.length >= PAGE_SIZE);
+              setHasMoreResults(results.length >= PAGE_SIZE);
+              
               // Update offset for next page
-              setSearchOffset(apiResults.length);
-              setIsLoadingResults(false); // Hide loading spinner
+              setSearchOffset(results.length);
+              
               console.log(
-                `Search - ${filtersChangedAtTimeout ? 'Filters changed' : 'Query changed'}, loaded first page. Count: ${apiResults.length}, hasMore: ${apiResults.length >= PAGE_SIZE}`
+                `Search - ${filtersChangedAtTimeout ? 'Filters changed' : 'Query changed'}, loaded first page. Count: ${results.length}, hasMore: ${results.length >= PAGE_SIZE}, query: "${currentTrimmedQuery}", isLoadingResults: false, will display: ${results.length > 0}`
               );
               
               // Update refs after successfully updating results
@@ -652,7 +670,8 @@ const Search = ({ navigation }: SearchProps) => {
               prevSearchQueryRef.current = searchQuery;
             } else {
               console.log(`Search - Ignoring stale results (request ${currentRequestId} is not the latest ${requestIdRef.current})`);
-              // Don't update loading state for stale requests - let the latest request handle it
+              // Still set loading to false even for stale requests to prevent UI lock
+              setIsLoadingResults(false);
             }
           }
         ).catch((error) => {
@@ -1037,6 +1056,7 @@ const Search = ({ navigation }: SearchProps) => {
             </Animated.View>
           ) : (
             <FlatList
+              key={`search-results-${filteredResults.length}-${isSearchActive}`} // Force re-render when results change
               style={[
                 styles.resultsContainer,
                 !isSearchActive && styles.resultsContainerInitial,
@@ -1048,6 +1068,7 @@ const Search = ({ navigation }: SearchProps) => {
               contentContainerStyle={styles.listContent}
               numColumns={2}
               columnWrapperStyle={styles.columnWrapper}
+              extraData={filteredResults.length} // Force re-render when data changes
               onEndReached={() => {
                 // Load more results when user scrolls to bottom (only in search mode with active query/filters)
                 if (isSearchActive && hasMoreResults && !isLoadingMoreResults && !isLoadingResults) {

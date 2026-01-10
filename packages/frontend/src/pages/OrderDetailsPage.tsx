@@ -77,21 +77,21 @@ export function OrderDetailsPage({ order, onBack }: OrderDetailsPageProps) {
     setIsModalOpen(true);
   };
 
-  const handleHonestSignUpdated = (
+  const handleSKUUpdated = (
     orderItemId: string,
-    newHonestSign: string
+    newSKU: string
   ) => {
     // NEW Handler
-    // Update the honest_sign in the local order state
+    // Update the sku in the local order state
     const updatedItems = order.items.map((item) =>
-      item.id === orderItemId ? { ...item, honest_sign: newHonestSign } : item
+      item.id === orderItemId ? { ...item, sku: newSKU } : item
     );
     // This requires the order prop to be mutable or to re-fetch the order
     // For now, we'll just update the selectedOrderItem in the modal.
     // In a real app, you'd likely re-fetch the entire order to ensure data consistency
     // or pass a setter for the order prop from the parent component.
     setSelectedOrderItem((prev) =>
-      prev ? { ...prev, honest_sign: newHonestSign } : null
+      prev ? { ...prev, sku: newSKU } : null
     );
   };
 
@@ -274,9 +274,9 @@ export function OrderDetailsPage({ order, onBack }: OrderDetailsPageProps) {
                   <p className="text-sm text-muted-foreground">
                     Size: {item.size}
                   </p>
-                  {item.honest_sign && (
+                  {item.sku && (
                     <p className="text-sm text-muted-foreground">
-                      Honest Sign: {item.honest_sign}
+                      SKU: {item.sku}
                     </p>
                   )}
                 </div>
@@ -299,7 +299,7 @@ export function OrderDetailsPage({ order, onBack }: OrderDetailsPageProps) {
           onClose={() => setIsModalOpen(false)}
           orderId={order.id}
           orderItem={selectedOrderItem}
-          onHonestSignUpdated={handleHonestSignUpdated}
+          onSKUUpdated={handleSKUUpdated}
         />
       )}{" "}
       {/* NEW Modal */}

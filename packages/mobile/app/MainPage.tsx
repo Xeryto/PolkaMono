@@ -161,6 +161,7 @@ const fetchMoreCards = async (count: number = 2): Promise<CardItem[]> => {
           brand_return_policy:
             p.brand_return_policy ||
             "No specific brand return policy provided.",
+          article_number: p.article_number, // Article number for display and sharing
         };
       });
   } catch (error: any) {
@@ -1325,6 +1326,12 @@ const MainPage = ({ navigation, route }: MainPageProps) => {
             <Text style={styles.cardBackName}>{card.name}</Text>
           </View>
           <View style={styles.expandableSectionsContainer}>
+            {card.article_number && (
+              <ExpandableSection
+                title="Артикул"
+                content={card.article_number}
+              />
+            )}
             <ExpandableSection title="Описание" content={card.description} />
             <ExpandableSection
               title="Цвет"

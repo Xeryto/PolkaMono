@@ -20,13 +20,12 @@ export interface CardItem {
   color: string;
   materials: string;
   brand_return_policy: string; // Brand's return policy (required)
-  sku?: string; // Stock keeping unit
+  article_number?: string; // Article number for user-facing identification, search, and sharing
   available_sizes?: string[]; // Available sizes
   // API-specific fields (optional for compatibility)
   brand_id?: number;
   category_id?: string;
   styles?: string[];
-  honest_sign?: string;
 }
 
 // Keep Product as alias for backward compatibility

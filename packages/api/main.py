@@ -10,6 +10,8 @@ from datetime import datetime, timedelta
 import re
 import json
 import time
+import uuid
+import random
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
@@ -1145,6 +1147,83 @@ async def create_product(
         raise HTTPException(status_code=400, detail="Brand not found")
 
 
+    # Generate unique article number for the product (Option 5: Brand + Abbreviation + Random)
+    def generate_article_number(brand_name: str, product_name: str) -> str:
+        """Generate article number: BRAND-ABBREV-RANDOM (e.g., NIKE-AM270-A3B7)"""
+        # Brand prefix: First 4-6 uppercase letters
+        brand_clean = re.sub(r'[^A-Z0-9]', '', brand_name.upper())
+        brand_prefix = brand_clean[:6]
+        
+        # Remove brand name from product name if present
+        product_clean = re.sub(r'\b' + re.escape(brand_name) + r'\b', '', product_name, flags=re.IGNORECASE).strip()
+        words = product_clean.split() if product_clean else product_name.split()
+        
+        # Abbreviation: First letter of each significant word (skip stop words)
+        stop_words = {'the', 'a', 'an', 'and', 'or', 'of', 'in', 'on', 'at', 'to', 'for', 'with'}
+        significant_words = [w for w in words[:5] if w.lower() not in stop_words]
+        
+        if significant_words:
+            # Separate words with numbers from words without
+            words_with_numbers = []
+            words_without_numbers = []
+            
+            for word in significant_words[:4]:
+                if re.search(r'\d', word):
+                    words_with_numbers.append(word)
+                else:
+                    words_without_numbers.append(word)
+            
+            abbrev_parts = []
+            
+            # Take first letter of words WITHOUT numbers (up to 3 words)
+            for word in words_without_numbers[:3]:
+                first_char = re.sub(r'[^A-Z]', '', word.upper())[0:1]
+                if first_char:
+                    abbrev_parts.append(first_char)
+            
+            # Extract numbers from words WITH numbers (preserve full number if possible)
+            if words_with_numbers:
+                for word in words_with_numbers[:2]:  # Check first 2 words with numbers
+                    number_match = re.search(r'\d+', word)
+                    if number_match:
+                        number_str = number_match.group(0)[:3]  # Max 3 digits
+                        abbrev_parts.append(number_str)
+                        break  # Only use first number found
+            
+            product_abbrev = ''.join(abbrev_parts)[:5]  # Cap at 5 characters total
+        else:
+            product_abbrev = re.sub(r'[^A-Z0-9]', '', product_name.upper())[:5]
+        
+        if len(product_abbrev) < 2:
+            product_abbrev = re.sub(r'[^A-Z0-9]', '', product_name.upper())[:5] or "PRD"
+        
+        # Random suffix: 4 characters (excludes ambiguous: 0, O, 1, I, L)
+        random_chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
+        random_suffix = ''.join(random.choices(random_chars, k=4))
+        
+        return f"{brand_prefix}-{product_abbrev}-{random_suffix}"
+    
+    # Generate unique article number (handle collisions)
+    article_number = None
+    max_attempts = 10
+    for attempt in range(max_attempts):
+        candidate_article = generate_article_number(brand.name, product_data.name)
+        existing = db.query(Product).filter(Product.article_number == candidate_article).first()
+        if not existing:
+            article_number = candidate_article
+            break
+        # On collision, modify random suffix
+        if attempt < max_attempts - 1:
+            random_chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
+            candidate_article = candidate_article[:-4] + ''.join(random.choices(random_chars, k=4))
+    
+    if not article_number:
+        # Fallback: use UUID-based (extremely unlikely to need this)
+        product_id_preview = str(uuid.uuid4())[:8].upper()
+        random_chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
+        brand_prefix = re.sub(r'[^A-Z0-9]', '', brand.name.upper())[:6]
+        article_number = f"{brand_prefix}-{product_id_preview[:4]}-{''.join(random.choices(random_chars, k=4))}"
+    
     # Create product
     product = Product(
         name=product_data.name,
@@ -1153,9 +1232,9 @@ async def create_product(
         images=product_data.images,
         color=product_data.color,
         material=product_data.material,
+        article_number=article_number,
         brand_id=product_data.brand_id,
-        category_id=product_data.category_id,
-        sku=product_data.sku # NEW
+        category_id=product_data.category_id
     )
     db.add(product)
     db.commit()
@@ -1190,11 +1269,11 @@ async def create_product(
         images=product.images,
         color=product.color,
         material=product.material,
+        article_number=product.article_number,
         brand_id=product.brand_id,
         category_id=product.category_id,
         styles=[ps.style_id for ps in product.styles],
         variants=[schemas.ProductVariantSchema(size=v.size, stock_quantity=v.stock_quantity) for v in sort_variants_by_size(product.variants)],
-        sku=product.sku,
         brand_name=brand.name,
         brand_return_policy=brand.return_policy
     )
@@ -1244,9 +1323,7 @@ async def update_product(
             product.color = value
         elif field == "material":
             product.material = value
-        elif field == "sku": # NEW
-            product.sku = value
-        elif field not in ["honest_sign"]: # Exclude honest_sign as it's only for order items
+        elif field not in ["sku"]: # Exclude sku as it's only for order items
             setattr(product, field, value)
 
     db.commit()
@@ -1260,11 +1337,11 @@ async def update_product(
         images=product.images,
         color=product.color,
         material=product.material,
+        article_number=product.article_number,
         brand_id=product.brand_id,
         category_id=product.category_id,
         styles=[ps.style_id for ps in product.styles],
         variants=[schemas.ProductVariantSchema(size=v.size, stock_quantity=v.stock_quantity) for v in sort_variants_by_size(product.variants)],
-        sku=product.sku,
         brand_name=brand.name,
         brand_return_policy=brand.return_policy
     )
@@ -1287,11 +1364,11 @@ async def get_brand_products(
             images=product.images, # Use images field
             color=product.color,
             material=product.material,
+            article_number=product.article_number,
             brand_id=product.brand_id,
             category_id=product.category_id,
             styles=[ps.style_id for ps in product.styles],
             variants=[schemas.ProductVariantSchema(size=v.size, stock_quantity=v.stock_quantity) for v in sort_variants_by_size(product.variants)],
-            sku=product.sku,
             brand_name=product.brand.name,
             brand_return_policy=product.brand.return_policy
         ))
@@ -1319,11 +1396,11 @@ async def get_brand_product_details(
         images=product.images,
         color=product.color,
         material=product.material,
+        article_number=product.article_number,
         brand_id=product.brand_id,
         category_id=product.category_id,
         styles=[ps.style_id for ps in product.styles],
         variants=[schemas.ProductVariantSchema(size=v.size, stock_quantity=v.stock_quantity) for v in sort_variants_by_size(product.variants)],
-        sku=product.sku,
         brand_name=product.brand.name,
         brand_return_policy=product.brand.return_policy
     )
@@ -1364,17 +1441,17 @@ async def update_order_tracking(
     db.commit()
     return {"message": "Tracking information updated successfully"}
 
-class UpdateOrderItemHonestSignRequest(BaseModel):
-    honest_sign: str
+class UpdateOrderItemSKURequest(BaseModel):
+    sku: str
 
-@app.put("/api/v1/brands/order-items/{order_item_id}/honest-sign", response_model=MessageResponse)
-async def update_order_item_honest_sign(
+@app.put("/api/v1/brands/order-items/{order_item_id}/sku", response_model=MessageResponse)
+async def update_order_item_sku(
     order_item_id: str,
-    honest_sign_data: UpdateOrderItemHonestSignRequest,
+    sku_data: UpdateOrderItemSKURequest,
     current_user: User = Depends(get_current_brand_user),
     db: Session = Depends(get_db)
 ):
-    """Update honest sign for a specific order item belonging to the authenticated brand user"""
+    """Update SKU for a specific order item belonging to the authenticated brand user"""
     order_item = db.query(OrderItem).filter(OrderItem.id == order_item_id).first()
     if not order_item:
         raise HTTPException(status_code=404, detail="Order item not found")
@@ -1390,12 +1467,12 @@ async def update_order_item_honest_sign(
     if not product:
         raise HTTPException(status_code=403, detail="Order item does not belong to your brand")
 
-    if order_item.honest_sign:
-        raise HTTPException(status_code=400, detail="Honest sign already assigned and cannot be changed.")
+    if order_item.sku:
+        raise HTTPException(status_code=400, detail="SKU already assigned and cannot be changed.")
 
-    order_item.honest_sign = honest_sign_data.honest_sign
+    order_item.sku = sku_data.sku
     db.commit()
-    return {"message": "Honest sign updated successfully"}
+    return {"message": "SKU updated successfully"}
 
 @app.get("/api/v1/user/profile/completion-status")
 async def get_profile_completion_status(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
@@ -1657,11 +1734,11 @@ async def get_user_favorites(
             images=product.images,
             color=product.color,
             material=product.material,
+            article_number=product.article_number,
             brand_id=product.brand_id,
             category_id=product.category_id,
             styles=[ps.style_id for ps in product.styles],
             variants=[schemas.ProductVariantSchema(size=v.size, stock_quantity=v.stock_quantity) for v in sort_variants_by_size(product.variants)],
-            sku=product.sku,
             brand_name=product.brand.name,
             brand_return_policy=product.brand.return_policy,
             is_liked=True
@@ -1691,11 +1768,11 @@ async def get_recommendations_for_user(
             images=product.images,
             color=product.color,
             material=product.material,
+            article_number=product.article_number,
             brand_id=product.brand_id,
             category_id=product.category_id,
             styles=[ps.style_id for ps in product.styles],
             variants=[schemas.ProductVariantSchema(size=v.size, stock_quantity=v.stock_quantity) for v in sort_variants_by_size(product.variants)],
-            sku=product.sku,
             brand_name=product.brand.name,
             brand_return_policy=product.brand.return_policy,
             is_liked=product.id in liked_product_ids
@@ -1729,11 +1806,11 @@ async def get_recommendations_for_friend(
             images=product.images,
             color=product.color,
             material=product.material,
+            article_number=product.article_number,
             brand_id=product.brand_id,
             category_id=product.category_id,
             styles=[ps.style_id for ps in product.styles],
             variants=[schemas.ProductVariantSchema(size=v.size, stock_quantity=v.stock_quantity) for v in sort_variants_by_size(product.variants)],
-            sku=product.sku,
             brand_name=product.brand.name,
             brand_return_policy=product.brand.return_policy,
             is_liked=product.id in liked_product_ids
@@ -1789,11 +1866,11 @@ async def get_popular_products(
             images=product.images,
             color=product.color,
             material=product.material,
+            article_number=product.article_number,
             brand_id=product.brand_id,
             category_id=product.category_id,
             styles=[ps.style_id for ps in product.styles],
             variants=[schemas.ProductVariantSchema(size=v.size, stock_quantity=v.stock_quantity) for v in sort_variants_by_size(product.variants)],
-            sku=product.sku,
             brand_name=product.brand.name,
             brand_return_policy=product.brand.return_policy,
             is_liked=product.id in liked_product_ids
@@ -1824,7 +1901,8 @@ async def search_products(
         search_pattern = f"%{query}%"
         products_query = products_query.filter(
             (Product.name.ilike(search_pattern)) |
-            (Product.description.ilike(search_pattern))
+            (Product.description.ilike(search_pattern)) |
+            (Product.article_number.ilike(search_pattern))  # Search by article number
         )
 
     # Apply filters
@@ -1853,11 +1931,11 @@ async def search_products(
             images=product.images,
             color=product.color,
             material=product.material,
+            article_number=product.article_number,
             brand_id=product.brand_id,
             category_id=product.category_id,
             styles=[ps.style_id for ps in product.styles],
             variants=[schemas.ProductVariantSchema(size=v.size, stock_quantity=v.stock_quantity) for v in sort_variants_by_size(product.variants)],
-            sku=product.sku,
             brand_name=product.brand.name,
             brand_return_policy=product.brand.return_policy,
             is_liked=product.id in liked_product_ids
@@ -1886,11 +1964,11 @@ async def get_product_details(
         images=product.images,
         color=product.color,
         material=product.material,
+        article_number=product.article_number,
         brand_id=product.brand_id,
         category_id=product.category_id,
         styles=[ps.style_id for ps in product.styles],
         variants=[schemas.ProductVariantSchema(size=v.size, stock_quantity=v.stock_quantity) for v in sort_variants_by_size(product.variants)],
-        sku=product.sku,
         brand_name=product.brand.name,
         brand_return_policy=product.brand.return_policy,
         is_liked=is_liked
@@ -2317,13 +2395,12 @@ async def get_orders(
                             estimatedTime="1-3 дня", # Placeholder
                             tracking_number=order.tracking_number
                         ),
-                        honest_sign=item.honest_sign,
+                        sku=item.sku,  # SKU from OrderItem (renamed from honest_sign)
                         # Additional product details for main page compatibility
                         brand_name=product.brand.name if product.brand else None,
                         description=product.description,
                         color=product.color,
                         materials=product.material,
-                        sku=product.sku,
                         images=product.images if product.images else [],
                         return_policy=product.brand.return_policy if product.brand else None,
                         product_id=product.id  # Original product ID for swipe tracking
@@ -2374,13 +2451,12 @@ async def get_orders(
                         estimatedTime="1-3 дня", # Placeholder
                         tracking_number=order.tracking_number # Use order's tracking number
                     ),
-                    honest_sign=item.honest_sign,
+                    sku=item.sku,  # SKU from OrderItem (renamed from honest_sign)
                     # Additional product details for main page compatibility
                     brand_name=product.brand.name if product.brand else None,
                     description=product.description,
                     color=product.color,
                     materials=product.material,
-                    sku=product.sku,
                     images=product.images if product.images else [],
                     return_policy=product.brand.return_policy if product.brand else None,
                     product_id=product.id  # Original product ID for swipe tracking

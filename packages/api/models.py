@@ -192,7 +192,7 @@ class Product(Base):
     images = Column(ARRAY(String), nullable=True) # New field for multiple image URLs
     color = Column(String(50), nullable=True) # NEW: Color
     material = Column(String(100), nullable=True) # NEW: Material
-    sku = Column(String(255), nullable=True) # NEW: Stock Keeping Unit
+    article_number = Column(String(50), nullable=True) # Article number for user-facing identification, search, and sharing (unique constraint enforced in __table_args__)
     brand_id = Column(Integer, ForeignKey("brands.id"), nullable=False)
     category_id = Column(String(50), ForeignKey("categories.id"), nullable=False)
     purchase_count = Column(Integer, nullable=False, default=0) # Track number of times product has been purchased (denormalized for performance)
@@ -206,6 +206,8 @@ class Product(Base):
 
     __table_args__ = (
         Index('idx_product_purchase_count', 'purchase_count'),  # Index for efficient sorting by purchase_count
+        Index('idx_product_article_number', 'article_number'),  # Index for efficient searching by article number
+        UniqueConstraint('article_number', name='uq_product_article_number'),  # Unique constraint for article numbers
     )
 
 class ProductVariant(Base):
@@ -349,7 +351,7 @@ class OrderItem(Base):
     product_variant_id = Column(String, ForeignKey("product_variants.id"), nullable=False) # Changed
     quantity = Column(Integer, nullable=False, default=1) # Quantity of items purchased
     price = Column(Float, nullable=False)
-    honest_sign = Column(String(255), unique=True, nullable=True) # NEW
+    sku = Column(String(255), unique=True, nullable=True) # Stock Keeping Unit - unique identifier for each ordered item instance
 
     order = relationship("Order", back_populates="items")
     product_variant = relationship("ProductVariant") # Changed relationship name

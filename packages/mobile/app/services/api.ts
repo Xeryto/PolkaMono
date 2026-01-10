@@ -332,7 +332,6 @@ export interface Product {
   description?: string;
   price: number;
   images: string[]; // Changed to string[]
-  honest_sign?: string;
   color?: string;
   material?: string;
   brand_id: number;
@@ -342,7 +341,7 @@ export interface Product {
   return_policy?: string; // NEW
   brand_name?: string; // NEW
   brand_return_policy?: string; // NEW
-  sku?: string; // NEW
+  article_number?: string; // Article number for user-facing identification, search, and sharing
   is_liked?: boolean; // Only for user-specific recommendations/favorites
 }
 
@@ -1035,7 +1034,6 @@ export interface OrderItem {
   materials?: string;
   sku?: string;
   images?: string[];
-  honest_sign?: string;
   return_policy?: string;
   product_id?: string; // Original product ID for swipe tracking
 }

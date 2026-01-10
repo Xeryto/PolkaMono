@@ -47,13 +47,12 @@ class OrderItemResponse(BaseModel):
     size: str
     image: Optional[str] = None
     delivery: Delivery
-    honest_sign: Optional[str] = None
+    sku: Optional[str] = None  # Stock Keeping Unit - renamed from honest_sign
     # Additional product details for main page compatibility
     brand_name: Optional[str] = None
     description: Optional[str] = None
     color: Optional[str] = None
     materials: Optional[str] = None
-    sku: Optional[str] = None
     images: Optional[List[str]] = None
     return_policy: Optional[str] = None  # Brand's return policy
     product_id: Optional[str] = None  # Original product ID for swipe tracking
@@ -129,9 +128,9 @@ class ProductCreateRequest(BaseModel):
     category_id: str
     styles: Optional[List[str]] = []
     variants: List[ProductVariantSchema]
-    sku: Optional[str] = None # NEW
     color: Optional[str] = None
     material: Optional[str] = None
+    article_number: Optional[str] = None  # Will be auto-generated if not provided
 
 class ProductUpdateRequest(BaseModel):
     name: Optional[str] = None
@@ -142,7 +141,6 @@ class ProductUpdateRequest(BaseModel):
     category_id: Optional[str] = None
     styles: Optional[List[str]] = None
     variants: Optional[List[ProductVariantSchema]] = None
-    sku: Optional[str] = None # NEW
     color: Optional[str] = None
     material: Optional[str] = None
 
@@ -158,7 +156,7 @@ class Product(BaseModel):
     description: Optional[str] = None
     color: Optional[str] = None
     material: Optional[str] = None
-    sku: Optional[str] = None
+    article_number: Optional[str] = None  # User-facing article number for search and sharing
     brand_name: Optional[str] = None
     brand_return_policy: Optional[str] = None
     is_liked: Optional[bool] = None

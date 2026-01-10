@@ -131,7 +131,7 @@ export interface ProductResponse {
   category_id: string;
   styles: string[];
   variants: ProductVariantSchema[];
-  sku?: string; // NEW
+  article_number?: string; // Article number (артикул) - auto-generated, read-only
   is_liked?: boolean; // Only for user-specific recommendations/favorites
 }
 
@@ -141,7 +141,7 @@ export interface OrderItemResponse {
   price: number;
   size: string;
   image?: string;
-  honest_sign?: string;
+  sku?: string;  // Stock Keeping Unit - renamed from honest_sign
   delivery: {
     cost: number;
     estimatedTime: string;
@@ -260,7 +260,6 @@ export const createProduct = async (productData: {
   description?: string;
   price: number;
   images: string[];
-  honest_sign?: string;
   color?: string;
   material?: string;
   hashtags?: string[];
@@ -269,7 +268,7 @@ export const createProduct = async (productData: {
   styles: string[];
   variants: ProductVariantSchema[];
   return_policy?: string;
-  sku?: string;
+  // Note: SKU is only on OrderItems, not Products
 }, token: string, requestOptions?: RequestOptions): Promise<ProductResponse> => { // Add token parameter
   return await apiRequest('/api/v1/brands/products', 'POST', productData, true, token, requestOptions);
 };
@@ -279,7 +278,6 @@ export const updateProduct = async (productId: string, productData: {
   description?: string;
   price?: number;
   images?: string[];
-  honest_sign?: string;
   color?: string;
   material?: string;
   hashtags?: string[];
@@ -288,7 +286,7 @@ export const updateProduct = async (productId: string, productData: {
   styles?: string[];
   variants?: ProductVariantSchema[];
   return_policy?: string;
-  sku?: string;
+  // Note: SKU is only on OrderItems, not Products
 }, token: string): Promise<ProductResponse> => { // Add token parameter
   return await apiRequest(`/api/v1/brands/products/${productId}`, 'PUT', productData, true, token);
 };
@@ -317,8 +315,8 @@ export const uploadProductImages = async (productId: string, formData: FormData,
 };
 
 // Order related
-export const updateOrderItemHonestSign = async (orderItemId: string, honestSign: string, token: string): Promise<any> => { // Add token parameter
-  return await apiRequest(`/api/v1/brands/order-items/${orderItemId}/honest-sign`, 'PUT', { honest_sign: honestSign }, true, token);
+export const updateOrderItemSKU = async (orderItemId: string, sku: string, token: string): Promise<any> => { // Add token parameter
+  return await apiRequest(`/api/v1/brands/order-items/${orderItemId}/sku`, 'PUT', { sku: sku }, true, token);
 };
 
 export const updateOrderTracking = async (orderId: string, trackingData: { tracking_number?: string; tracking_link?: string }, token: string): Promise<any> => { // Add token parameter

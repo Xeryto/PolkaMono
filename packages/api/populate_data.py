@@ -3,14 +3,102 @@ from database import SessionLocal
 from models import Brand, Style, Product, ProductStyle, Category, ProductVariant, User, Order, OrderItem, OrderStatus, Payment
 import uuid
 import re
+import random
 from auth_service import auth_service # NEW
 
-def generate_sku(product_name: str) -> str:
-    # Convert to uppercase, replace spaces with hyphens, remove non-alphanumeric
-    sku_base = re.sub(r'[^a-zA-Z0-9]', '', product_name.upper().replace(' ', '-'))
-    # Append a short unique identifier
-    unique_id = str(uuid.uuid4())[:8].replace('-', '') # Use first 8 chars of UUID
-    return f"{sku_base}-{unique_id}"
+def generate_article_number(brand_name: str, product_name: str) -> str:
+    """
+    Generate article number for a product (Option 5: Brand + Abbreviation + Random)
+    Format: BRAND-ABBREV-RANDOM (e.g., NIKE-AM270-A3B7, ZARA-FMD-X9K2)
+    Total length: ~12-18 characters (designed to be easily typeable)
+    
+    Abbreviation logic:
+    1. Remove brand name from product name if present (case-insensitive)
+    2. Extract first letter of each significant word (skip stop words)
+    3. If abbreviation is too short, take first 3-5 letters from cleaned product name
+    4. Cap abbreviation at 5 characters
+    """
+    # Brand prefix: First 4-6 uppercase letters (remove spaces, special chars)
+    brand_clean = re.sub(r'[^A-Z0-9]', '', brand_name.upper())
+    brand_prefix = brand_clean[:6]  # Max 6 chars (NIKE, ADIDAS, ZARA, etc.)
+    
+    # Product abbreviation: Remove brand name from product name if present
+    product_clean = product_name
+    # Case-insensitive removal of brand name (with word boundaries)
+    brand_pattern = r'\b' + re.escape(brand_name) + r'\b'
+    product_clean = re.sub(brand_pattern, '', product_clean, flags=re.IGNORECASE).strip()
+    
+    # If product name still starts with brand after removal, take from second word
+    words = product_clean.split()
+    if not words:
+        # Fallback: use first 4 chars of original product name
+        product_clean = re.sub(r'[^A-Z0-9]', '', product_name.upper())[:4]
+    else:
+        # Abbreviation strategy: Take first letter of first 3-4 significant words
+        # Skip common stop words
+        stop_words = {'the', 'a', 'an', 'and', 'or', 'of', 'in', 'on', 'at', 'to', 'for', 'with'}
+        significant_words = [w for w in words[:5] if w.lower() not in stop_words]
+        
+        if significant_words:
+            # Separate words with numbers from words without
+            words_with_numbers = []
+            words_without_numbers = []
+            
+            for word in significant_words[:4]:
+                if re.search(r'\d', word):
+                    words_with_numbers.append(word)
+                else:
+                    words_without_numbers.append(word)
+            
+            abbrev_parts = []
+            
+            # Take first letter of words WITHOUT numbers (up to 3 words)
+            for word in words_without_numbers[:3]:
+                first_char = re.sub(r'[^A-Z]', '', word.upper())[0:1]
+                if first_char:
+                    abbrev_parts.append(first_char)
+            
+            # Extract numbers from words WITH numbers (preserve full number if possible)
+            if words_with_numbers:
+                for word in words_with_numbers[:2]:  # Check first 2 words with numbers
+                    number_match = re.search(r'\d+', word)
+                    if number_match:
+                        number_str = number_match.group(0)[:3]  # Max 3 digits
+                        abbrev_parts.append(number_str)
+                        break  # Only use first number found
+            
+            product_abbrev = ''.join(abbrev_parts)[:5]  # Cap at 5 characters total
+            
+            # If abbreviation is too short (< 3 chars), supplement with first letters
+            if len(product_abbrev) < 3:
+                first_chars = re.sub(r'[^A-Z0-9]', '', ' '.join(significant_words[:2]).upper())[:5]
+                product_abbrev = (product_abbrev + first_chars)[:5]
+        else:
+            # Fallback: Take first 4-5 alphanumeric characters from product name
+            product_abbrev = re.sub(r'[^A-Z0-9]', '', product_clean.upper())[:5]
+    
+    # Ensure abbreviation is at least 2 characters
+    if len(product_abbrev) < 2:
+        product_abbrev = re.sub(r'[^A-Z0-9]', '', product_name.upper())[:5]
+        if len(product_abbrev) < 2:
+            product_abbrev = "PRD"  # Fallback
+    
+    # Random suffix: 4 characters (excludes ambiguous chars: 0, O, 1, I, L)
+    # Use uppercase letters and numbers only
+    random_chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'  # No 0, O, 1, I, L
+    random_suffix = ''.join(random.choices(random_chars, k=4))
+    
+    # Format: BRAND-ABBREV-RANDOM
+    article_number = f"{brand_prefix}-{product_abbrev}-{random_suffix}"
+    
+    return article_number
+
+def generate_order_item_sku(product_name: str, size: str, order_counter: int) -> str:
+    """Generate SKU for an OrderItem (specific instance of a product variant in an order)"""
+    # Convert to uppercase, replace spaces, remove non-alphanumeric
+    sku_base = re.sub(r'[^a-zA-Z0-9]', '', product_name.upper().replace(' ', '').replace('-', ''))
+    # Format: PRODUCTNAME-SIZE-ORDERCOUNTER (e.g., NIKEAIRMAX270-M-001)
+    return f"{sku_base}-{size}-{order_counter:03d}"
 
 def populate_initial_data():
     
@@ -90,8 +178,7 @@ def populate_initial_data():
                 "styles": [sporty_style, casual_style],
                 "color": "White",
                 "material": "polyester",
-                "return_policy": "30-day free returns.",
-                "honest_sign": "HS-NIKEAM270"
+                "return_policy": "30-day free returns."
             },
             {
                 "name": "Adidas Ultraboost 22",
@@ -105,7 +192,6 @@ def populate_initial_data():
                 "color": "Black",
                 "material": "polyester",
                 "return_policy": "20-day returns, customer pays shipping.",
-                "honest_sign": "HS-ADIDASUB22"
             },
             {
                 "name": "Zara Flowy Midi Dress",
@@ -119,7 +205,6 @@ def populate_initial_data():
                 "color": "Multi-Color",
                 "material": "cotton",
                 "return_policy": "14-day exchange only.",
-                "honest_sign": "HS-ZARAFMD"
             },
             {
                 "name": "H&M Oversized Hoodie",
@@ -133,7 +218,6 @@ def populate_initial_data():
                 "color": "Grey",
                 "material": "cotton",
                 "return_policy": "No returns on sale items.",
-                "honest_sign": "HS-HMOH"
             },
             {
                 "name": "Nike Sportswear Tech Fleece",
@@ -147,7 +231,6 @@ def populate_initial_data():
                 "color": "Black",
                 "material": "fleece",
                 "return_policy": "30-day free returns.",
-                "honest_sign": "HS-NIKESWTF"
             },
             # Additional Nike products (ensuring Nike brand has 16+ products)
             {
@@ -162,7 +245,6 @@ def populate_initial_data():
                 "color": "White",
                 "material": "leather",
                 "return_policy": "30-day free returns.",
-                "honest_sign": "HS-NIKEDL"
             },
             {
                 "name": "Nike Air Force 1",
@@ -176,7 +258,6 @@ def populate_initial_data():
                 "color": "White",
                 "material": "leather",
                 "return_policy": "30-day free returns.",
-                "honest_sign": "HS-NIKEAF1"
             },
             {
                 "name": "Nike React Element 55",
@@ -190,7 +271,6 @@ def populate_initial_data():
                 "color": "Black",
                 "material": "synthetic",
                 "return_policy": "30-day free returns.",
-                "honest_sign": "HS-NIKERE55"
             },
             {
                 "name": "Nike Dri-FIT T-Shirt",
@@ -204,7 +284,6 @@ def populate_initial_data():
                 "color": "Black",
                 "material": "polyester",
                 "return_policy": "30-day free returns.",
-                "honest_sign": "HS-NIKEDFT"
             },
             {
                 "name": "Nike Essential Hoodie",
@@ -218,7 +297,6 @@ def populate_initial_data():
                 "color": "Grey",
                 "material": "cotton",
                 "return_policy": "30-day free returns.",
-                "honest_sign": "HS-NIKEEH"
             },
             {
                 "name": "Nike Waffle One",
@@ -232,7 +310,6 @@ def populate_initial_data():
                 "color": "White",
                 "material": "synthetic",
                 "return_policy": "30-day free returns.",
-                "honest_sign": "HS-NIKEW1"
             },
             {
                 "name": "Nike Air Max 90",
@@ -246,7 +323,6 @@ def populate_initial_data():
                 "color": "Black",
                 "material": "leather",
                 "return_policy": "30-day free returns.",
-                "honest_sign": "HS-NIKEAM90"
             },
             {
                 "name": "Nike Pro T-Shirt",
@@ -260,7 +336,6 @@ def populate_initial_data():
                 "color": "White",
                 "material": "polyester",
                 "return_policy": "30-day free returns.",
-                "honest_sign": "HS-NIKEPT"
             },
             # Additional Adidas products
             {
@@ -275,7 +350,6 @@ def populate_initial_data():
                 "color": "White",
                 "material": "leather",
                 "return_policy": "20-day returns, customer pays shipping.",
-                "honest_sign": "HS-ADIDASS"
             },
             {
                 "name": "Adidas Stan Smith",
@@ -289,7 +363,6 @@ def populate_initial_data():
                 "color": "White",
                 "material": "leather",
                 "return_policy": "20-day returns, customer pays shipping.",
-                "honest_sign": "HS-ADIDASSS"
             },
             {
                 "name": "Adidas NMD R1",
@@ -303,7 +376,6 @@ def populate_initial_data():
                 "color": "Black",
                 "material": "synthetic",
                 "return_policy": "20-day returns, customer pays shipping.",
-                "honest_sign": "HS-ADIDASNMD"
             },
             {
                 "name": "Adidas Originals T-Shirt",
@@ -317,7 +389,6 @@ def populate_initial_data():
                 "color": "White",
                 "material": "cotton",
                 "return_policy": "20-day returns, customer pays shipping.",
-                "honest_sign": "HS-ADIDAST"
             },
             {
                 "name": "Adidas Trefoil Hoodie",
@@ -331,7 +402,6 @@ def populate_initial_data():
                 "color": "Grey",
                 "material": "cotton",
                 "return_policy": "20-day returns, customer pays shipping.",
-                "honest_sign": "HS-ADIDASTH"
             },
             {
                 "name": "Adidas Gazelle",
@@ -345,7 +415,6 @@ def populate_initial_data():
                 "color": "Blue",
                 "material": "suede",
                 "return_policy": "20-day returns, customer pays shipping.",
-                "honest_sign": "HS-ADIDASG"
             },
             # Additional Zara products (ensuring Zara has multiple products)
             {
@@ -360,7 +429,6 @@ def populate_initial_data():
                 "color": "White",
                 "material": "cotton",
                 "return_policy": "14-day exchange only.",
-                "honest_sign": "HS-ZARABT"
             },
             {
                 "name": "Zara Midi Dress Floral",
@@ -374,7 +442,6 @@ def populate_initial_data():
                 "color": "Multi-Color",
                 "material": "cotton",
                 "return_policy": "14-day exchange only.",
-                "honest_sign": "HS-ZARAMDF"
             },
             {
                 "name": "Zara Maxi Dress",
@@ -388,7 +455,6 @@ def populate_initial_data():
                 "color": "Black",
                 "material": "polyester",
                 "return_policy": "14-day exchange only.",
-                "honest_sign": "HS-ZARAMD"
             },
             {
                 "name": "Zara Skinny Jeans",
@@ -402,7 +468,6 @@ def populate_initial_data():
                 "color": "Blue",
                 "material": "denim",
                 "return_policy": "14-day exchange only.",
-                "honest_sign": "HS-ZARASJ"
             },
             {
                 "name": "Zara Casual Dress",
@@ -416,7 +481,6 @@ def populate_initial_data():
                 "color": "Beige",
                 "material": "cotton",
                 "return_policy": "14-day exchange only.",
-                "honest_sign": "HS-ZARACD"
             },
             {
                 "name": "Zara Striped Dress",
@@ -430,7 +494,6 @@ def populate_initial_data():
                 "color": "Navy",
                 "material": "cotton",
                 "return_policy": "14-day exchange only.",
-                "honest_sign": "HS-ZARASD"
             },
             {
                 "name": "Zara Oversized T-Shirt",
@@ -444,7 +507,6 @@ def populate_initial_data():
                 "color": "Black",
                 "material": "cotton",
                 "return_policy": "14-day exchange only.",
-                "honest_sign": "HS-ZARAOT"
             },
             {
                 "name": "Zara Wrap Dress",
@@ -458,7 +520,6 @@ def populate_initial_data():
                 "color": "Red",
                 "material": "polyester",
                 "return_policy": "14-day exchange only.",
-                "honest_sign": "HS-ZARAWD"
             },
             # Additional H&M products
             {
@@ -473,7 +534,6 @@ def populate_initial_data():
                 "color": "White",
                 "material": "cotton",
                 "return_policy": "No returns on sale items.",
-                "honest_sign": "HS-HMBT"
             },
             {
                 "name": "H&M Slim Jeans",
@@ -487,7 +547,6 @@ def populate_initial_data():
                 "color": "Blue",
                 "material": "denim",
                 "return_policy": "No returns on sale items.",
-                "honest_sign": "HS-HMSJ"
             },
             {
                 "name": "H&M Summer Dress",
@@ -501,7 +560,6 @@ def populate_initial_data():
                 "color": "Yellow",
                 "material": "cotton",
                 "return_policy": "No returns on sale items.",
-                "honest_sign": "HS-HMSD"
             },
             {
                 "name": "H&M Cotton Hoodie",
@@ -515,7 +573,6 @@ def populate_initial_data():
                 "color": "Navy",
                 "material": "cotton",
                 "return_policy": "No returns on sale items.",
-                "honest_sign": "HS-HMCH"
             },
             {
                 "name": "H&M Denim Jacket",
@@ -529,7 +586,6 @@ def populate_initial_data():
                 "color": "Blue",
                 "material": "denim",
                 "return_policy": "No returns on sale items.",
-                "honest_sign": "HS-HMDJ"
             },
             {
                 "name": "H&M Printed T-Shirt",
@@ -543,7 +599,6 @@ def populate_initial_data():
                 "color": "Black",
                 "material": "cotton",
                 "return_policy": "No returns on sale items.",
-                "honest_sign": "HS-HMPT"
             },
             {
                 "name": "H&M A-Line Dress",
@@ -557,7 +612,6 @@ def populate_initial_data():
                 "color": "Green",
                 "material": "polyester",
                 "return_policy": "No returns on sale items.",
-                "honest_sign": "HS-HMAL"
             },
             # More Nike products to ensure we have 16+ for Nike filter
             {
@@ -572,7 +626,6 @@ def populate_initial_data():
                 "color": "White",
                 "material": "leather",
                 "return_policy": "30-day free returns.",
-                "honest_sign": "HS-NIKECV"
             },
             {
                 "name": "Nike Blazer Mid",
@@ -586,7 +639,6 @@ def populate_initial_data():
                 "color": "Black",
                 "material": "leather",
                 "return_policy": "30-day free returns.",
-                "honest_sign": "HS-NIKEBM"
             },
             {
                 "name": "Nike Sportswear Hoodie",
@@ -600,7 +652,6 @@ def populate_initial_data():
                 "color": "Navy",
                 "material": "cotton",
                 "return_policy": "30-day free returns.",
-                "honest_sign": "HS-NIKESWH"
             },
             {
                 "name": "Nike Classic Cortez",
@@ -614,12 +665,34 @@ def populate_initial_data():
                 "color": "Red",
                 "material": "leather",
                 "return_policy": "30-day free returns.",
-                "honest_sign": "HS-NIKECC"
             }
         ]
 
         for p_data in products_data:
-            if not db.query(Product).filter(Product.name == p_data["name"]).first():
+            existing_product = db.query(Product).filter(Product.name == p_data["name"]).first()
+            if not existing_product:
+                # Create new product with article number
+                # Generate unique article number for the product (handle collisions)
+                article_number = None
+                max_attempts = 10
+                for attempt in range(max_attempts):
+                    candidate_article = generate_article_number(p_data["brand"].name, p_data["name"])
+                    existing = db.query(Product).filter(Product.article_number == candidate_article).first()
+                    if not existing:
+                        article_number = candidate_article
+                        break
+                    # On collision, regenerate with new random suffix
+                    if attempt < max_attempts - 1:
+                        # Just regenerate - the function has random component
+                        pass  # Will regenerate on next iteration
+                
+                if not article_number:
+                    # Fallback: use UUID-based (extremely unlikely with 10 attempts)
+                    product_id_preview = str(uuid.uuid4())[:8].upper()
+                    random_chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
+                    brand_prefix = re.sub(r'[^A-Z0-9]', '', p_data["brand"].name.upper())[:6]
+                    article_number = f"{brand_prefix}-{product_id_preview[:4]}-{''.join(random.choices(random_chars, k=4))}"
+                
                 product = Product(
                     id=str(uuid.uuid4()),
                     name=p_data["name"],
@@ -630,7 +703,7 @@ def populate_initial_data():
                     category_id=p_data["category"].id,
                     color=p_data["color"], # NEW
                     material=p_data["material"], # NEW
-                    sku=generate_sku(p_data["name"]), # Auto-generated SKU
+                    article_number=article_number,  # Auto-generated article number
                 )
                 db.add(product)
                 db.flush() # Flush to get product.id
@@ -646,9 +719,31 @@ def populate_initial_data():
                 for style in p_data["styles"]:
                     product_style = ProductStyle(product_id=product.id, style_id=style.id)
                     db.add(product_style)
-                print(f"Added product: {product.name}")
+                print(f"Added product: {product.name} (Article: {product.article_number})")
             else:
-                print(f"Product already exists: {p_data['name']}")
+                # Update existing product with article_number if it doesn't have one
+                if not existing_product.article_number:
+                    article_number = None
+                    max_attempts = 10
+                    for attempt in range(max_attempts):
+                        candidate_article = generate_article_number(p_data["brand"].name, p_data["name"])
+                        existing = db.query(Product).filter(Product.article_number == candidate_article).first()
+                        if not existing:
+                            article_number = candidate_article
+                            break
+                    
+                    if article_number:
+                        existing_product.article_number = article_number
+                        print(f"Generated article number for existing product: {existing_product.name} -> {article_number}")
+                    else:
+                        # Fallback
+                        product_id_preview = str(uuid.uuid4())[:8].upper()
+                        random_chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
+                        brand_prefix = re.sub(r'[^A-Z0-9]', '', p_data["brand"].name.upper())[:6]
+                        existing_product.article_number = f"{brand_prefix}-{product_id_preview[:4]}-{''.join(random.choices(random_chars, k=4))}"
+                        print(f"Generated fallback article number for existing product: {existing_product.name} -> {existing_product.article_number}")
+                else:
+                    print(f"Product already exists: {p_data['name']} (Article: {existing_product.article_number})")
         
         db.commit()
         print("Products populated.")
@@ -724,7 +819,7 @@ def populate_initial_data():
                         product_variant_id=nike_variant_m.id,
                         quantity=1,
                         price=150.00,
-                        honest_sign="HS-NIKEAM270-M-001"
+                        sku=generate_order_item_sku("Nike Air Max 270", "M", 1)
                     )
                     db.add(order_item1)
 
@@ -763,7 +858,7 @@ def populate_initial_data():
                         product_variant_id=adidas_variant_s.id,
                         quantity=1,
                         price=180.00,
-                        honest_sign="HS-ADIDASUB22-S-002"
+                        sku=generate_order_item_sku("Adidas Ultraboost 22", "S", 2)
                     )
                     db.add(order_item2)
 
@@ -802,7 +897,7 @@ def populate_initial_data():
                         product_variant_id=zara_variant_l.id,
                         quantity=1,
                         price=79.99,
-                        honest_sign="HS-ZARAFMD-L-003"
+                        sku=generate_order_item_sku("Zara Flowy Midi Dress", "L", 3)
                     )
                     db.add(order_item3)
 
@@ -874,7 +969,7 @@ def populate_initial_data():
                                     product_variant_id=variant.id,
                                     quantity=1,
                                     price=order_data["price"],
-                                    honest_sign=f"HS-{product.name.upper().replace(' ', '').replace('-', '')}-{order_data['size']}-{order_num_counter:03d}"
+                                    sku=generate_order_item_sku(product.name, order_data["size"], order_num_counter)
                                 )
                                 db.add(order_item)
                                 

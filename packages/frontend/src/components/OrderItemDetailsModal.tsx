@@ -19,7 +19,7 @@ interface OrderItemDetailsModalProps {
   onClose: () => void;
   orderId: string; // ID of the parent order
   orderItem: api.OrderItemResponse;
-  onHonestSignUpdated: (orderItemId: string, newHonestSign: string) => void;
+  onSKUUpdated: (orderItemId: string, newSKU: string) => void;
 }
 
 export const OrderItemDetailsModal: React.FC<OrderItemDetailsModalProps> = ({
@@ -27,20 +27,20 @@ export const OrderItemDetailsModal: React.FC<OrderItemDetailsModalProps> = ({
   onClose,
   orderId,
   orderItem,
-  onHonestSignUpdated,
+  onSKUUpdated,
 }) => {
-  const [honestSignInput, setHonestSignInput] = useState(
-    orderItem.honest_sign || ""
+  const [skuInput, setSKUInput] = useState(
+    orderItem.sku || ""
   );
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
   const { token } = useAuth(); // Get token from useAuth
 
-  const handleSaveHonestSign = async () => {
-    if (!honestSignInput.trim()) {
+  const handleSaveSKU = async () => {
+    if (!skuInput.trim()) {
       toast({
         title: "Error",
-        description: "Honest Sign cannot be empty.",
+        description: "SKU cannot be empty.",
         variant: "destructive",
       });
       return;
@@ -57,18 +57,18 @@ export const OrderItemDetailsModal: React.FC<OrderItemDetailsModalProps> = ({
 
     setIsSubmitting(true);
     try {
-      // Call API to update honest sign
-      await api.updateOrderItemHonestSign(orderItem.id, honestSignInput, token); // Pass token
+      // Call API to update SKU
+      await api.updateOrderItemSKU(orderItem.id, skuInput, token); // Pass token
       toast({
         title: "Success",
-        description: "Honest Sign updated successfully.",
+        description: "SKU updated successfully.",
       });
-      onHonestSignUpdated(orderItem.id, honestSignInput);
+      onSKUUpdated(orderItem.id, skuInput);
       onClose();
     } catch (error: any) {
       toast({
         title: "Error",
-        description: error.message || "Failed to update Honest Sign.",
+        description: error.message || "Failed to update SKU.",
         variant: "destructive",
       });
     } finally {
@@ -105,21 +105,21 @@ export const OrderItemDetailsModal: React.FC<OrderItemDetailsModalProps> = ({
 
           <div>
             <label
-              htmlFor="honestSign"
+              htmlFor="sku"
               className="text-sm font-medium text-muted-foreground"
             >
-              Honest Sign
+              SKU (Stock Keeping Unit)
             </label>
             <Input
-              id="honestSign"
-              value={honestSignInput}
-              onChange={(e) => setHonestSignInput(e.target.value)}
-              disabled={isSubmitting || !!orderItem.honest_sign} // Disable if submitting or already assigned
+              id="sku"
+              value={skuInput}
+              onChange={(e) => setSKUInput(e.target.value)}
+              disabled={isSubmitting || !!orderItem.sku} // Disable if submitting or already assigned
               className="mt-1"
             />
-            {orderItem.honest_sign && (
+            {orderItem.sku && (
               <p className="text-xs text-muted-foreground mt-1">
-                Honest Sign is locked once assigned.
+                SKU is locked once assigned.
               </p>
             )}
           </div>
@@ -128,9 +128,9 @@ export const OrderItemDetailsModal: React.FC<OrderItemDetailsModalProps> = ({
           <Button variant="outline" onClick={onClose}>
             Close
           </Button>
-          {!orderItem.honest_sign && ( // Only show save button if honest sign is not yet assigned
-            <Button onClick={handleSaveHonestSign} disabled={isSubmitting}>
-              {isSubmitting ? "Saving..." : "Save Honest Sign"}
+          {!orderItem.sku && ( // Only show save button if SKU is not yet assigned
+            <Button onClick={handleSaveSKU} disabled={isSubmitting}>
+              {isSubmitting ? "Saving..." : "Save SKU"}
             </Button>
           )}
         </DialogFooter>
