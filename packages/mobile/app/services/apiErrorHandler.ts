@@ -40,6 +40,7 @@ export interface ApiCallContext {
  */
 export class ApiErrorHandler {
   private static instance: ApiErrorHandler;
+  private static alertShowing = false; // Global guard to prevent multiple alerts
   
   static getInstance(): ApiErrorHandler {
     if (!ApiErrorHandler.instance) {
@@ -152,21 +153,33 @@ export class ApiErrorHandler {
       }
     }
 
-    // Show alert if needed
-    if (errorInfo.shouldShowAlert) {
+    // Show alert if needed (but not if one is already showing)
+    if (errorInfo.shouldShowAlert && !ApiErrorHandler.alertShowing) {
+      ApiErrorHandler.alertShowing = true;
       Alert.alert(
         'Ошибка',
         errorInfo.userMessage,
         [
           {
             text: 'OK',
-            style: 'default'
+            style: 'default',
+            onPress: () => {
+              ApiErrorHandler.alertShowing = false;
+            }
           },
           ...(errorInfo.isRetryable && retryFn ? [{
             text: 'Повторить',
-            onPress: () => retryFn()
+            onPress: () => {
+              ApiErrorHandler.alertShowing = false;
+              retryFn();
+            }
           }] : [])
-        ]
+        ],
+        {
+          onDismiss: () => {
+            ApiErrorHandler.alertShowing = false;
+          }
+        }
       );
     }
   }

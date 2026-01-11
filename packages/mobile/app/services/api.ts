@@ -124,6 +124,7 @@ class SessionManager {
     try {
       console.log('Storing session: token (first 10 chars)=', token.substring(0, 10), '..., expiresAt=', expiresAt, 'refreshToken (first 10 chars)=', refreshToken?.substring(0, 10));
       await SecureStore.setItemAsync('authToken', token);
+      
       await AsyncStorage.setItem('tokenExpiry', expiresAt); // Expiry can remain in AsyncStorage
       if (refreshToken) {
         await SecureStore.setItemAsync('refreshToken', refreshToken);
@@ -228,13 +229,13 @@ class SessionManager {
   // Public method to handle login required
   handleLoginRequired() {
     console.log('handleLoginRequired called. Current session state:', this.sessionState);
+    // Always set state to EXPIRED and emit event, even if already expired
+    // This ensures listeners always get notified, even if they were set up late
     if (this.sessionState !== SessionState.EXPIRED) {
-      console.log('Emitting login_required event.');
       this.sessionState = SessionState.EXPIRED;
-      this.emit('login_required');
-    } else {
-      console.log('Login already required, not re-emitting.');
     }
+    console.log('Emitting login_required event.');
+    this.emit('login_required');
   }
 
   private handleSessionExpiration() {

@@ -68,3 +68,5 @@ dist/
 build/
 *.tgz
 *.tar.gz
+
+SECURITY_ANALYSIS.md

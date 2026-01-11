@@ -129,12 +129,13 @@ const Settings = ({ navigation, onLogout }: SettingsProps) => {
   // Shopping information state
   const [shoppingInfo, setShoppingInfo] = useState({
     address: "",
-    phone: "",
+    phoneNumber: "", // Phone number without country code
     deliveryEmail: "",
     city: "",
     postalCode: "",
     fullName: "",
   });
+  const phoneCountryCode = "+7"; // Fixed to Russian country code
   const [isLoadingShoppingInfo, setIsLoadingShoppingInfo] = useState(false);
   const [shoppingInfoError, setShoppingInfoError] = useState<string | null>(
     null
@@ -430,9 +431,18 @@ const Settings = ({ navigation, onLogout }: SettingsProps) => {
       setShoppingInfoError(null);
 
       const shoppingData = await api.getShoppingInfo();
+      // Parse phone number: if it starts with +7, remove it for display
+      let phoneNumber = shoppingData.phone || "";
+      if (phoneNumber.startsWith("+7")) {
+        phoneNumber = phoneNumber.substring(2);
+      } else if (phoneNumber.startsWith("7")) {
+        phoneNumber = phoneNumber.substring(1);
+      } else if (phoneNumber.startsWith("8")) {
+        phoneNumber = phoneNumber.substring(1);
+      }
       setShoppingInfo({
         address: shoppingData.address,
-        phone: shoppingData.phone,
+        phoneNumber: phoneNumber,
         deliveryEmail: shoppingData.delivery_email,
         city: shoppingData.city,
         postalCode: shoppingData.postal_code || "",
@@ -466,8 +476,18 @@ const Settings = ({ navigation, onLogout }: SettingsProps) => {
         return;
       }
 
-      if (!shoppingInfo.phone.trim()) {
+      if (!shoppingInfo.phoneNumber.trim()) {
         Alert.alert("Ошибка", "Пожалуйста, введите ваш телефон.");
+        return;
+      }
+
+      // Validate phone number format (must be exactly 10 digits)
+      const phoneDigits = shoppingInfo.phoneNumber.replace(/\D/g, "");
+      if (phoneDigits.length !== 10) {
+        Alert.alert(
+          "Ошибка",
+          "Номер телефона должен содержать 10 цифр (без кода страны +7)."
+        );
         return;
       }
 
@@ -481,11 +501,25 @@ const Settings = ({ navigation, onLogout }: SettingsProps) => {
         return;
       }
 
+      // Validate postal code format if provided (must be exactly 6 digits)
+      if (shoppingInfo.postalCode.trim()) {
+        const postalDigits = shoppingInfo.postalCode.replace(/\D/g, "");
+        if (postalDigits.length !== 6) {
+          Alert.alert(
+            "Ошибка",
+            "Почтовый индекс должен содержать 6 цифр."
+          );
+          return;
+        }
+      }
+
       // Save shopping information using the new API
+      // Combine country code and phone number
+      const fullPhoneNumber = phoneCountryCode + phoneDigits;
       await api.updateShoppingInfo({
         full_name: shoppingInfo.fullName,
         delivery_email: shoppingInfo.deliveryEmail,
-        phone: shoppingInfo.phone,
+        phone: fullPhoneNumber,
         address: shoppingInfo.address,
         city: shoppingInfo.city,
         postal_code: shoppingInfo.postalCode,
@@ -494,7 +528,17 @@ const Settings = ({ navigation, onLogout }: SettingsProps) => {
       Alert.alert("Успешно", "Информация о доставке сохранена.");
     } catch (error: any) {
       console.error("Error saving shopping information:", error);
-      Alert.alert("Ошибка", "Не удалось сохранить информацию о доставке.");
+      // Check if it's a validation error from the backend
+      const errorMessage =
+        error?.response?.data?.detail ||
+        error?.message ||
+        "Не удалось сохранить информацию о доставке.";
+      // If it's an array of validation errors, extract the message
+      const validationError =
+        Array.isArray(errorMessage) && errorMessage[0]
+          ? errorMessage[0].msg || errorMessage[0]
+          : errorMessage;
+      Alert.alert("Ошибка", String(validationError));
     } finally {
       setIsSavingShoppingInfo(false);
     }
@@ -1410,16 +1454,37 @@ const Settings = ({ navigation, onLogout }: SettingsProps) => {
             style={styles.inputContainer}
           >
             <Text style={styles.inputLabel}>Телефон *</Text>
-            <TextInput
-              style={styles.textInput}
-              placeholder="Введите ваш телефон"
-              placeholderTextColor="rgba(0,0,0,0.5)"
-              value={shoppingInfo.phone}
-              onChangeText={(text) =>
-                setShoppingInfo((prev) => ({ ...prev, phone: text }))
-              }
-              keyboardType="phone-pad"
-            />
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+              <View
+                style={{
+                  backgroundColor: "rgba(0,0,0,0.05)",
+                  paddingHorizontal: 12,
+                  paddingVertical: 12,
+                  borderRadius: 8,
+                  borderWidth: 1,
+                  borderColor: "rgba(0,0,0,0.1)",
+                }}
+              >
+                <Text style={{ fontSize: 16, fontWeight: "500" }}>
+                  {phoneCountryCode}
+                </Text>
+              </View>
+              <TextInput
+                style={[styles.textInput, { flex: 1 }]}
+                placeholder="XXX XXX XX XX"
+                placeholderTextColor="rgba(0,0,0,0.5)"
+                value={shoppingInfo.phoneNumber}
+                onChangeText={(text) => {
+                  // Only allow digits
+                  const digitsOnly = text.replace(/\D/g, "");
+                  // Limit to 10 digits for Russian phone numbers
+                  const limited = digitsOnly.substring(0, 10);
+                  setShoppingInfo((prev) => ({ ...prev, phoneNumber: limited }));
+                }}
+                keyboardType="phone-pad"
+                maxLength={10}
+              />
+            </View>
           </Animated.View>
 
           <Animated.View
@@ -1449,13 +1514,18 @@ const Settings = ({ navigation, onLogout }: SettingsProps) => {
             <Text style={styles.inputLabel}>Почтовый индекс</Text>
             <TextInput
               style={styles.textInput}
-              placeholder="Введите почтовый индекс"
+              placeholder="XXXXXX (6 цифр)"
               placeholderTextColor="rgba(0,0,0,0.5)"
               value={shoppingInfo.postalCode}
-              onChangeText={(text) =>
-                setShoppingInfo((prev) => ({ ...prev, postalCode: text }))
-              }
+              onChangeText={(text) => {
+                // Only allow digits
+                const digitsOnly = text.replace(/\D/g, "");
+                // Limit to 6 digits for Russian postal codes
+                const limited = digitsOnly.substring(0, 6);
+                setShoppingInfo((prev) => ({ ...prev, postalCode: limited }));
+              }}
               keyboardType="numeric"
+              maxLength={6}
             />
           </Animated.View>
 

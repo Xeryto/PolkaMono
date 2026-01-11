@@ -117,6 +117,8 @@ export default function App() {
   } = useSession();
 
   // Handle session expiration and clearing
+  const alertShowingRef = useRef(false); // Use ref for atomic flag checking
+  
   useEffect(() => {
     const handleSessionExpired = async () => {
       console.log("App - Session expired, clearing cart");
@@ -137,27 +139,59 @@ export default function App() {
     };
 
     const handleTokenInvalidation = async () => {
+      // Prevent multiple alerts from showing - check and set atomically using ref
+      if (alertShowingRef.current) {
+        console.log("App - Alert already showing, skipping duplicate");
+        return;
+      }
+      
+      // Set flag immediately to prevent other simultaneous calls from showing alerts
+      alertShowingRef.current = true;
+      
+      // Check if user is on an authenticated screen (actively using the app)
+      // Only show alert if they're on an authenticated screen
+      // If they're on boot/unauthenticated, just navigate silently
+      const authenticatedPhases: AppPhase[] = [
+        "main",
+        "profile_confirm",
+        "profile_brands",
+        "profile_styles",
+        "email_verification",
+      ];
+      const isOnAuthenticatedScreen = authenticatedPhases.includes(currentPhaseRef.current);
+      
       console.log(
-        "App - Token invalid, showing alert and navigating to welcome"
+        `App - Token invalid, current phase: ${currentPhaseRef.current}, showing alert: ${isOnAuthenticatedScreen}`
       );
 
-      // Show popup alert to user
-      Alert.alert(
-        "Сессия истекла",
-        "Ваша сессия истекла. Пожалуйста, войдите в систему снова.",
-        [
-          {
-            text: "OK",
-            onPress: async () => {
-              // Clear all stored data
-              await handleSessionExpired();
+      // Clear session immediately (don't wait for user to press OK)
+      await handleSessionExpired();
 
-              // Navigate to welcome screen
-              transitionTo("unauthenticated", "up");
+      // Navigate to welcome screen immediately (don't wait for alert)
+      dispatchNav({ type: "SET_PHASE", phase: "unauthenticated" });
+      dispatchNav({ type: "SET_OVERLAY", overlay: "none" });
+
+      // Only show alert if user was actively using the app (on authenticated screen)
+      if (isOnAuthenticatedScreen) {
+        // Show popup alert to user
+        Alert.alert(
+          "Сессия истекла",
+          "Ваша сессия истекла. Пожалуйста, войдите в систему снова.",
+          [
+            {
+              text: "OK",
+              onPress: () => {
+                alertShowingRef.current = false;
+              },
             },
-          },
-        ]
-      );
+          ],
+          { onDismiss: () => { alertShowingRef.current = false; } }
+        );
+      } else {
+        console.log("App - User not on authenticated screen, navigating silently without alert");
+        // Reset flag since we're not showing an alert
+        alertShowingRef.current = false;
+      }
     };
 
     // Listen for session events
@@ -248,6 +282,12 @@ export default function App() {
     phase: "boot",
     overlay: "static",
   });
+
+  // Track current phase in a ref so we can check it in the session expiration handler
+  const currentPhaseRef = useRef<AppPhase>("boot");
+  useEffect(() => {
+    currentPhaseRef.current = navState.phase;
+  }, [navState.phase]);
 
   const transitionTo = (phase: AppPhase, overlay?: Overlay) => {
     dispatchNav({ type: "TRANSITION", phase, overlay });

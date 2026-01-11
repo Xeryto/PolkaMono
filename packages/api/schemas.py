@@ -1,6 +1,7 @@
-from pydantic import BaseModel, EmailStr, validator, model_validator
+from pydantic import BaseModel, EmailStr, validator, model_validator, Field
 from typing import List, Optional
 from datetime import datetime
+import re
 from models import Gender # Import Gender enum
 from config import settings # Import settings
 
@@ -120,29 +121,29 @@ class ProductVariantSchema(BaseModel):
         return v
 
 class ProductCreateRequest(BaseModel):
-    name: str
-    description: Optional[str] = None
+    name: str = Field(..., max_length=255)
+    description: Optional[str] = Field(None, max_length=1000)
     price: float
     images: List[str] = [] # New field for multiple image URLs
     brand_id: int
-    category_id: str
+    category_id: str = Field(..., max_length=50)
     styles: Optional[List[str]] = []
     variants: List[ProductVariantSchema]
-    color: Optional[str] = None
-    material: Optional[str] = None
-    article_number: Optional[str] = None  # Will be auto-generated if not provided
+    color: Optional[str] = Field(None, max_length=50)
+    material: Optional[str] = Field(None, max_length=100)
+    article_number: Optional[str] = Field(None, max_length=50)  # Will be auto-generated if not provided
 
 class ProductUpdateRequest(BaseModel):
-    name: Optional[str] = None
-    description: Optional[str] = None
+    name: Optional[str] = Field(None, max_length=255)
+    description: Optional[str] = Field(None, max_length=1000)
     price: Optional[float] = None
     images: Optional[List[str]] = None # New field for multiple image URLs
     brand_id: Optional[int] = None
-    category_id: Optional[str] = None
+    category_id: Optional[str] = Field(None, max_length=50)
     styles: Optional[List[str]] = None
     variants: Optional[List[ProductVariantSchema]] = None
-    color: Optional[str] = None
-    material: Optional[str] = None
+    color: Optional[str] = Field(None, max_length=50)
+    material: Optional[str] = Field(None, max_length=100)
 
 class Product(BaseModel):
     id: Optional[str]
@@ -165,18 +166,57 @@ class Product(BaseModel):
         from_attributes = True
 
 class UserProfileUpdateRequest(BaseModel):
-    username: Optional[str] = None
+    username: Optional[str] = Field(None, max_length=50)
     email: Optional[EmailStr] = None
     gender: Optional[str] = None
-    selected_size: Optional[str] = None
-    avatar_url: Optional[str] = None
+    selected_size: Optional[str] = Field(None, max_length=10)
+    avatar_url: Optional[str] = Field(None, max_length=500)
     # Shopping information fields
-    full_name: Optional[str] = None
-    delivery_email: Optional[EmailStr] = None
-    phone: Optional[str] = None
-    address: Optional[str] = None
-    city: Optional[str] = None
-    postal_code: Optional[str] = None
+    full_name: Optional[str] = Field(None, max_length=255)
+    delivery_email: Optional[EmailStr] = Field(None, max_length=255)
+    phone: Optional[str] = Field(None, max_length=20)
+    address: Optional[str] = None  # Text field, no explicit length limit
+    city: Optional[str] = Field(None, max_length=100)
+    postal_code: Optional[str] = Field(None, max_length=20)
+    
+    @validator('phone')
+    def validate_phone(cls, v):
+        if v is None:
+            return v
+        # Russian phone format: +7 followed by 10 digits (total 12 characters with +)
+        # Accept formats: +7XXXXXXXXXX or 7XXXXXXXXXX (we'll normalize to +7)
+        v = v.strip()
+        if not v:
+            return v
+        # Remove spaces, dashes, parentheses
+        cleaned = re.sub(r'[\s\-\(\)]', '', v)
+        # If starts with 8, replace with +7
+        if cleaned.startswith('8'):
+            cleaned = '+7' + cleaned[1:]
+        # If starts with 7 but not +7, add +
+        elif cleaned.startswith('7') and not cleaned.startswith('+7'):
+            cleaned = '+' + cleaned
+        # If doesn't start with +7, add it
+        elif not cleaned.startswith('+7'):
+            cleaned = '+7' + cleaned
+        # Validate format: +7 followed by exactly 10 digits
+        if not re.match(r'^\+7\d{10}$', cleaned):
+            raise ValueError('Phone number must be a valid Russian phone number (+7 followed by 10 digits)')
+        return cleaned
+    
+    @validator('postal_code')
+    def validate_postal_code(cls, v):
+        if v is None:
+            return v
+        # Russian postal codes are 6 digits
+        v = v.strip()
+        if not v:
+            return v
+        # Remove spaces and dashes
+        cleaned = re.sub(r'[\s\-]', '', v)
+        if not re.match(r'^\d{6}$', cleaned):
+            raise ValueError('Postal code must be 6 digits (Russian format)')
+        return cleaned
 
 class StyleResponse(BaseModel):
     id: str
