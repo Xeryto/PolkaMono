@@ -510,15 +510,42 @@ const MainPage = ({ navigation, route }: MainPageProps) => {
   // Pan responder for header area when card is flipped
   const headerPanResponder = useRef(
     PanResponder.create({
-      onMoveShouldSetPanResponder: (_, gestureState) => {
+      onStartShouldSetPanResponder: () => false, // Don't capture on start
+      onMoveShouldSetPanResponder: (evt, gestureState) => {
         const flipped = isFlippedRef.current;
         const animating = isAnimatingRef.current;
         const refreshing = isRefreshingRef.current;
 
-        // Only work when flipped and not animating/refreshing
-        return (
-          flipped && !animating && !refreshing && Math.abs(gestureState.dy) > 5
-        );
+        // Don't capture if not flipped, animating, or refreshing
+        if (!flipped || animating || refreshing) {
+          return false;
+        }
+
+        // Check if touch is in the cancel button area - if so, don't capture
+        // Cancel button is positioned absolutely at right: 25, top: 25
+        // cardBackContainer has padding: 20, so button is at:
+        // - X: from right edge of card (88% width, centered) minus 20px padding minus 25px = cardRight - 45
+        // - Y: from top edge plus 20px padding plus 25px = 45
+        const { pageX, pageY } = evt.nativeEvent;
+        const windowWidth = Dimensions.get('window').width;
+        const cardWidth = windowWidth * 0.88; // Card width is 88% of screen
+        const cardLeft = windowWidth * 0.06; // Card is centered (6% margin on each side)
+        const cardRight = cardLeft + cardWidth;
+        
+        const cancelButtonRight = cardRight - 45; // cardRight - padding(20) - right(25)
+        const cancelButtonLeft = cancelButtonRight - 25; // Button width is 25
+        const cancelButtonTop = 45; // padding(20) + top(25)
+        const cancelButtonBottom = cancelButtonTop + 25; // Button height is 25
+        
+        // Check if touch is in cancel button area (add padding for easier tapping)
+        const touchPadding = 15;
+        if (pageX >= (cancelButtonLeft - touchPadding) && pageX <= (cancelButtonRight + touchPadding) &&
+            pageY >= (cancelButtonTop - touchPadding) && pageY <= (cancelButtonBottom + touchPadding)) {
+          return false; // Don't capture - let the button handle it
+        }
+
+        // Only capture if movement is significant
+        return Math.abs(gestureState.dy) > 5;
       },
       onPanResponderMove: (_, gestureState) => {
         // Only allow upward movement (negative dy values)
@@ -2034,6 +2061,8 @@ const styles = StyleSheet.create({
     position: "absolute",
     right: 25,
     top: 25,
+    zIndex: 1000, // Ensure button is above other elements including pan handlers
+    elevation: 10, // For Android
   },
   cardBackHeader: {
     flexDirection: "row",
