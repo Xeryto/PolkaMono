@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import {
   View,
   Text,
@@ -11,8 +11,10 @@ import {
   ScrollView,
   ActivityIndicator,
   Alert,
+  Pressable,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
+import * as Clipboard from "expo-clipboard";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import BackIcon from "../components/svg/BackIcon";
 import * as api from "../services/api";
@@ -37,6 +39,8 @@ const VerificationCodeScreen: React.FC<VerificationCodeScreenProps> = ({
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [resendLoading, setResendLoading] = useState(false);
+  const [resendCooldown, setResendCooldown] = useState(60); // 60 seconds countdown
+  const inputRef = useRef<TextInput>(null);
 
   const handleVerifyPress = async () => {
     if (!code || code.length !== 6) {
@@ -58,10 +62,12 @@ const VerificationCodeScreen: React.FC<VerificationCodeScreenProps> = ({
   };
 
   const handleResendCode = async () => {
+    if (resendCooldown > 0) return; // Prevent resend during cooldown
     setResendLoading(true);
     setError("");
     try {
       await api.requestVerificationEmail(); // This function should now trigger sending a code
+      setResendCooldown(60); // Start the 60-second cooldown
       Alert.alert(
         "Код отправлен повторно",
         "Новый код подтверждения был отправлен на ваш email."
@@ -72,6 +78,33 @@ const VerificationCodeScreen: React.FC<VerificationCodeScreenProps> = ({
       Alert.alert("Ошибка", `Не удалось отправить код повторно: ${message}`);
     }
     setResendLoading(false);
+  };
+
+  // Countdown timer effect
+  useEffect(() => {
+    if (resendCooldown > 0) {
+      const timer = setTimeout(() => {
+        setResendCooldown((prev) => prev - 1);
+      }, 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [resendCooldown]);
+
+  const handleLongPress = async () => {
+    try {
+      const clipboardText = await Clipboard.getStringAsync();
+      // Extract only numbers from clipboard text
+      const numbersOnly = clipboardText.replace(/\D/g, "");
+      if (numbersOnly.length > 0) {
+        // Limit to 6 digits
+        const codeToSet = numbersOnly.slice(0, 6);
+        setCode(codeToSet);
+        inputRef.current?.focus();
+      }
+    } catch (err) {
+      // Silently fail if clipboard access fails
+      console.warn("Failed to access clipboard:", err);
+    }
   };
 
   return (
@@ -114,34 +147,42 @@ const VerificationCodeScreen: React.FC<VerificationCodeScreenProps> = ({
                 </View>
               ) : null}
 
-              <Animated.View
-                style={styles.codeContainer}
-                entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
-                  ANIMATION_DELAYS.STANDARD
-                )}
-              >
-                {[0, 1, 2, 3, 4, 5].map((index) => (
-                  <View
-                    key={index}
-                    style={[
-                      styles.codeSlot,
-                      code[index] && styles.codeSlotFilled,
-                      index === code.length && styles.codeSlotActive,
-                    ]}
+              <View style={styles.codeContainerWrapper}>
+                <Pressable
+                  style={styles.codePressable}
+                  onLongPress={handleLongPress}
+                  onPress={() => inputRef.current?.focus()}
+                >
+                  <Animated.View
+                    style={styles.codeContainer}
+                    entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
+                      ANIMATION_DELAYS.STANDARD
+                    )}
                   >
-                    <Text style={styles.codeText}>{code[index] || ""}</Text>
-                  </View>
-                ))}
-              </Animated.View>
-
-              <TextInput
-                style={styles.hiddenInput}
-                value={code}
-                onChangeText={setCode}
-                keyboardType="number-pad"
-                maxLength={6}
-                autoFocus
-              />
+                    {[0, 1, 2, 3, 4, 5].map((index) => (
+                      <View
+                        key={index}
+                        style={[
+                          styles.codeSlot,
+                          code[index] && styles.codeSlotFilled,
+                          index === code.length && styles.codeSlotActive,
+                        ]}
+                      >
+                        <Text style={styles.codeText}>{code[index] || ""}</Text>
+                      </View>
+                    ))}
+                  </Animated.View>
+                </Pressable>
+                <TextInput
+                  ref={inputRef}
+                  style={styles.hiddenInput}
+                  value={code}
+                  onChangeText={setCode}
+                  keyboardType="number-pad"
+                  maxLength={6}
+                  autoFocus
+                />
+              </View>
 
               <TouchableOpacity
                 style={[
@@ -161,13 +202,17 @@ const VerificationCodeScreen: React.FC<VerificationCodeScreenProps> = ({
               <TouchableOpacity
                 style={[
                   styles.resendButton,
-                  resendLoading && styles.buttonDisabled,
+                  (resendLoading || resendCooldown > 0) && styles.resendButtonDisabled,
                 ]}
                 onPress={handleResendCode}
-                disabled={resendLoading}
+                disabled={resendLoading || resendCooldown > 0}
               >
                 {resendLoading ? (
                   <ActivityIndicator color="#4A3120" />
+                ) : resendCooldown > 0 ? (
+                  <Text style={[styles.resendButtonText, styles.resendButtonTextDisabled]}>
+                    Повторить через {resendCooldown}с
+                  </Text>
                 ) : (
                   <Text style={styles.resendButtonText}>
                     Отправить код повторно
@@ -219,10 +264,17 @@ const styles = StyleSheet.create({
     textAlign: "center",
     marginBottom: 20,
   },
+  codeContainerWrapper: {
+    width: "100%",
+    marginBottom: 20,
+    position: "relative",
+  },
+  codePressable: {
+    width: "100%",
+  },
   codeContainer: {
     flexDirection: "row",
     justifyContent: "space-between",
-    marginBottom: 20,
     paddingHorizontal: 20,
   },
   codeSlot: {
@@ -256,9 +308,10 @@ const styles = StyleSheet.create({
   },
   hiddenInput: {
     position: "absolute",
+    left: -9999,
     opacity: 0,
-    height: 0,
-    width: 0,
+    width: 1,
+    height: 1,
   },
   verifyButton: {
     backgroundColor: "#4A3120",
@@ -282,8 +335,13 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#4A3120",
   },
+  resendButtonDisabled: {
+    opacity: 0.5,
+    borderColor: "#9E9E9E",
+  },
   buttonText: { fontFamily: "IgraSans", fontSize: 20, color: "#F2ECE7" },
   resendButtonText: { fontFamily: "IgraSans", fontSize: 20, color: "#4A3120" },
+  resendButtonTextDisabled: { color: "#9E9E9E" },
   buttonDisabled: { opacity: 0.7 },
   errorContainer: {
     backgroundColor: "rgba(255, 100, 100, 0.2)",

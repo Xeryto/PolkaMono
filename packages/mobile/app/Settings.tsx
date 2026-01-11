@@ -72,10 +72,15 @@ const CartItemImage = ({ item }: { item: api.OrderItem }) => {
     width: 0,
     height: 0,
   });
+  const [imageError, setImageError] = useState(false);
 
   const onImageLoad = (event: any) => {
     const { width, height } = event.nativeEvent.source;
     setImageDimensions({ width, height });
+  };
+
+  const onImageError = () => {
+    setImageError(true);
   };
 
   const aspectRatio =
@@ -83,13 +88,19 @@ const CartItemImage = ({ item }: { item: api.OrderItem }) => {
       ? imageDimensions.width / imageDimensions.height
       : 1; // Default to 1 if image dimensions are not loaded yet
 
+  const imageSource =
+    !item.image || imageError
+      ? require("./assets/Vision.png")
+      : { uri: item.image };
+
   return (
     <View style={styles.container}>
       <Image
-        source={{ uri: item.image }}
+        source={imageSource}
         style={[styles.itemImage, { aspectRatio }]} // Set aspect ratio dynamically
         resizeMode="contain" // Ensure the image fits within the container while maintaining aspect ratio
         onLoad={onImageLoad} // Get image dimensions when the image loads
+        onError={onImageError} // Handle image loading errors
       />
     </View>
   );
@@ -505,10 +516,7 @@ const Settings = ({ navigation, onLogout }: SettingsProps) => {
       if (shoppingInfo.postalCode.trim()) {
         const postalDigits = shoppingInfo.postalCode.replace(/\D/g, "");
         if (postalDigits.length !== 6) {
-          Alert.alert(
-            "Ошибка",
-            "Почтовый индекс должен содержать 6 цифр."
-          );
+          Alert.alert("Ошибка", "Почтовый индекс должен содержать 6 цифр.");
           return;
         }
       }
@@ -1454,7 +1462,9 @@ const Settings = ({ navigation, onLogout }: SettingsProps) => {
             style={styles.inputContainer}
           >
             <Text style={styles.inputLabel}>Телефон *</Text>
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+            <View
+              style={{ flexDirection: "row", alignItems: "center", gap: 8 }}
+            >
               <View
                 style={{
                   backgroundColor: "rgba(0,0,0,0.05)",
@@ -1479,7 +1489,10 @@ const Settings = ({ navigation, onLogout }: SettingsProps) => {
                   const digitsOnly = text.replace(/\D/g, "");
                   // Limit to 10 digits for Russian phone numbers
                   const limited = digitsOnly.substring(0, 10);
-                  setShoppingInfo((prev) => ({ ...prev, phoneNumber: limited }));
+                  setShoppingInfo((prev) => ({
+                    ...prev,
+                    phoneNumber: limited,
+                  }));
                 }}
                 keyboardType="phone-pad"
                 maxLength={10}

@@ -319,12 +319,12 @@ const MainPage = ({ navigation, route }: MainPageProps) => {
   const isAnimatingRef = useRef(false);
   const isRefreshingRef = useRef(false);
   const [showSizeSelection, setShowSizeSelection] = useState(false);
-  
+
   // Update refs when state changes
   useEffect(() => {
     isAnimatingRef.current = isAnimating;
   }, [isAnimating]);
-  
+
   useEffect(() => {
     isRefreshingRef.current = isRefreshing;
   }, [isRefreshing]);
@@ -339,11 +339,11 @@ const MainPage = ({ navigation, route }: MainPageProps) => {
   // Flip card state
   const [isFlipped, setIsFlipped] = useState(false);
   const flipAnimation = useRef(new RNAnimated.Value(0)).current;
-  
+
   // Scroll position tracking for card back
   const scrollViewRef = useRef<ScrollView>(null);
   const isFlippedRef = useRef(false);
-  
+
   // Update ref when state changes
   useEffect(() => {
     isFlippedRef.current = isFlipped;
@@ -514,13 +514,10 @@ const MainPage = ({ navigation, route }: MainPageProps) => {
         const flipped = isFlippedRef.current;
         const animating = isAnimatingRef.current;
         const refreshing = isRefreshingRef.current;
-        
+
         // Only work when flipped and not animating/refreshing
         return (
-          flipped &&
-          !animating &&
-          !refreshing &&
-          Math.abs(gestureState.dy) > 5
+          flipped && !animating && !refreshing && Math.abs(gestureState.dy) > 5
         );
       },
       onPanResponderMove: (_, gestureState) => {
@@ -532,7 +529,7 @@ const MainPage = ({ navigation, route }: MainPageProps) => {
       onPanResponderRelease: (_, gestureState) => {
         const animating = isAnimatingRef.current;
         const refreshing = isRefreshingRef.current;
-        
+
         if (animating || refreshing) {
           RNAnimated.spring(pan, {
             toValue: { x: 0, y: 0 },
@@ -576,16 +573,12 @@ const MainPage = ({ navigation, route }: MainPageProps) => {
         const flipped = isFlippedRef.current;
         const animating = isAnimatingRef.current;
         const refreshing = isRefreshingRef.current;
-        
+
         // Disable when flipped - header pan responder handles header area
         if (flipped) return false;
-        
+
         // Only allow swiping when not flipped (original behavior)
-        return (
-          !animating &&
-          !refreshing &&
-          Math.abs(gestureState.dy) > 5
-        );
+        return !animating && !refreshing && Math.abs(gestureState.dy) > 5;
       },
       onPanResponderMove: (_, gestureState) => {
         // Only allow upward movement (negative dy values)
@@ -598,7 +591,7 @@ const MainPage = ({ navigation, route }: MainPageProps) => {
         // Use refs to get current values
         const animating = isAnimatingRef.current;
         const refreshing = isRefreshingRef.current;
-        
+
         // If already animating or refreshing, just reset position
         if (animating || refreshing) {
           RNAnimated.spring(pan, {
@@ -1383,7 +1376,10 @@ const MainPage = ({ navigation, route }: MainPageProps) => {
           <Pressable style={[styles.removeButton]} onPress={handleFlip}>
             <Cancel width={27} height={27} />
           </Pressable>
-          <View style={styles.cardBackHeader} {...headerPanResponder.panHandlers}>
+          <View
+            style={styles.cardBackHeader}
+            {...headerPanResponder.panHandlers}
+          >
             <Image
               source={card.images[0]}
               style={styles.cardBackImage}
