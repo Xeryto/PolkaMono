@@ -11,6 +11,7 @@ import {
   PanResponder,
   Easing,
   Alert,
+  ScrollView,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import * as Haptics from "expo-haptics";
@@ -32,6 +33,7 @@ import { apiWrapper } from "./services/apiWrapper";
 import fallbackImage from "./assets/Vision.png"; // Use as fallback for missing images
 import vision2Image from "./assets/Vision2.png";
 import { CardItem, CartItem } from "./types/product";
+import { mapProductToCardItem } from "./lib/productMapper";
 import {
   translateColorToRussian,
   translateMaterialToRussian,
@@ -131,7 +133,7 @@ const fetchMoreCards = async (count: number = 2): Promise<CardItem[]> => {
       return []; // Return an empty array to prevent further errors
     }
 
-    // Map RecommendationProduct to CardItem and slice to count
+    // Map RecommendationProduct to CardItem using utility function for consistency
     return products
       .slice(0, count)
       .map((p: api.Product, i: number): CardItem => {
@@ -140,29 +142,10 @@ const fetchMoreCards = async (count: number = 2): Promise<CardItem[]> => {
           name: p.name,
           brand_name: p.brand_name,
           brand_return_policy: p.brand_return_policy,
+          article_number: p.article_number,
           idType: typeof p.id,
         });
-        return {
-          id: p.id ? p.id.toString() : `fallback-${i}`,
-          name: p.name,
-          brand_name: p.brand_name || "Unknown Brand", // Use brand_name from API
-          price: p.price,
-          images:
-            p.images && p.images.length > 0
-              ? p.images.map((img) => ({ uri: img }))
-              : [fallbackImage, vision2Image], // Use images from product
-          isLiked: p.is_liked === true,
-          variants: p.variants || [], // Use API data for variants
-          description:
-            p.description ||
-            `This is a detailed description for ${p.name}. It is crafted with the highest quality materials and designed to be both stylish and comfortable.`,
-          color: p.color || "Various",
-          materials: p.material || "95% Cotton, 5% Spandex",
-          brand_return_policy:
-            p.brand_return_policy ||
-            "No specific brand return policy provided.",
-          article_number: p.article_number, // Article number for display and sharing
-        };
+        return mapProductToCardItem(p, i);
       });
   } catch (error: any) {
     if (
@@ -333,7 +316,18 @@ const MainPage = ({ navigation, route }: MainPageProps) => {
 
   const [currentCardIndex, setCurrentCardIndex] = useState(0);
   const [isAnimating, setIsAnimating] = useState(false);
+  const isAnimatingRef = useRef(false);
+  const isRefreshingRef = useRef(false);
   const [showSizeSelection, setShowSizeSelection] = useState(false);
+  
+  // Update refs when state changes
+  useEffect(() => {
+    isAnimatingRef.current = isAnimating;
+  }, [isAnimating]);
+  
+  useEffect(() => {
+    isRefreshingRef.current = isRefreshing;
+  }, [isRefreshing]);
   const [selectedSize, setSelectedSize] = useState<string | null>(null);
   const [userSelectedSize, setUserSelectedSize] = useState<string | null>(null);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
@@ -345,6 +339,15 @@ const MainPage = ({ navigation, route }: MainPageProps) => {
   // Flip card state
   const [isFlipped, setIsFlipped] = useState(false);
   const flipAnimation = useRef(new RNAnimated.Value(0)).current;
+  
+  // Scroll position tracking for card back
+  const scrollViewRef = useRef<ScrollView>(null);
+  const isFlippedRef = useRef(false);
+  
+  // Update ref when state changes
+  useEffect(() => {
+    isFlippedRef.current = isFlipped;
+  }, [isFlipped]);
 
   const handleFlip = useCallback(() => {
     console.log("handleFlip called");
@@ -504,15 +507,83 @@ const MainPage = ({ navigation, route }: MainPageProps) => {
     }
   };
 
+  // Pan responder for header area when card is flipped
+  const headerPanResponder = useRef(
+    PanResponder.create({
+      onMoveShouldSetPanResponder: (_, gestureState) => {
+        const flipped = isFlippedRef.current;
+        const animating = isAnimatingRef.current;
+        const refreshing = isRefreshingRef.current;
+        
+        // Only work when flipped and not animating/refreshing
+        return (
+          flipped &&
+          !animating &&
+          !refreshing &&
+          Math.abs(gestureState.dy) > 5
+        );
+      },
+      onPanResponderMove: (_, gestureState) => {
+        // Only allow upward movement (negative dy values)
+        if (gestureState.dy <= 0) {
+          pan.setValue({ x: 0, y: gestureState.dy });
+        }
+      },
+      onPanResponderRelease: (_, gestureState) => {
+        const animating = isAnimatingRef.current;
+        const refreshing = isRefreshingRef.current;
+        
+        if (animating || refreshing) {
+          RNAnimated.spring(pan, {
+            toValue: { x: 0, y: 0 },
+            friction: 5,
+            useNativeDriver: false,
+          }).start();
+          return;
+        }
+
+        if (gestureState.dy < -SWIPE_THRESHOLD) {
+          setCards((currentCards) => {
+            const currentCard = currentCards[currentCardIndex];
+            if (currentCard) {
+              swipeCard("up", currentCard);
+            }
+            return currentCards;
+          });
+        } else {
+          RNAnimated.spring(pan, {
+            toValue: { x: 0, y: 0 },
+            friction: 5,
+            useNativeDriver: false,
+          }).start();
+        }
+      },
+      onPanResponderTerminate: () => {
+        RNAnimated.spring(pan, {
+          toValue: { x: 0, y: 0 },
+          friction: 5,
+          useNativeDriver: false,
+        }).start();
+      },
+    })
+  ).current;
+
   // Enhance the panResponder to be even more robust
   const panResponder = useRef(
     PanResponder.create({
       onMoveShouldSetPanResponder: (_, gestureState) => {
-        // Only allow swiping if not already in an animation, not refreshing, and not flipped
+        // Use refs to get current values
+        const flipped = isFlippedRef.current;
+        const animating = isAnimatingRef.current;
+        const refreshing = isRefreshingRef.current;
+        
+        // Disable when flipped - header pan responder handles header area
+        if (flipped) return false;
+        
+        // Only allow swiping when not flipped (original behavior)
         return (
-          !isAnimating &&
-          !isRefreshing &&
-          !isFlipped &&
+          !animating &&
+          !refreshing &&
           Math.abs(gestureState.dy) > 5
         );
       },
@@ -524,8 +595,12 @@ const MainPage = ({ navigation, route }: MainPageProps) => {
         }
       },
       onPanResponderRelease: (_, gestureState) => {
+        // Use refs to get current values
+        const animating = isAnimatingRef.current;
+        const refreshing = isRefreshingRef.current;
+        
         // If already animating or refreshing, just reset position
-        if (isAnimating || isRefreshing) {
+        if (animating || refreshing) {
           RNAnimated.spring(pan, {
             toValue: { x: 0, y: 0 },
             friction: 5,
@@ -1007,20 +1082,11 @@ const MainPage = ({ navigation, route }: MainPageProps) => {
     }
 
     // Add the current card with selected size to cart
+    // Spread the current card to preserve all fields including article_number
     const cartItem: CartItem = {
-      id: currentCard.id,
-      name: currentCard.name,
-      brand_name: currentCard.brand_name,
-      price: currentCard.price,
-      images: currentCard.images, // Use images array
+      ...currentCard, // Spread all fields to preserve article_number and other optional fields
       size: size,
       quantity: 1,
-      isLiked: currentCard.isLiked,
-      brand_return_policy: currentCard.brand_return_policy,
-      description: currentCard.description,
-      color: currentCard.color,
-      materials: currentCard.materials,
-      variants: currentCard.variants,
       delivery: { cost: 0, estimatedTime: "" }, // Add dummy delivery info for now, Cart.tsx will update it
     };
 
@@ -1317,7 +1383,7 @@ const MainPage = ({ navigation, route }: MainPageProps) => {
           <Pressable style={[styles.removeButton]} onPress={handleFlip}>
             <Cancel width={27} height={27} />
           </Pressable>
-          <View style={styles.cardBackHeader}>
+          <View style={styles.cardBackHeader} {...headerPanResponder.panHandlers}>
             <Image
               source={card.images[0]}
               style={styles.cardBackImage}
@@ -1325,7 +1391,13 @@ const MainPage = ({ navigation, route }: MainPageProps) => {
             />
             <Text style={styles.cardBackName}>{card.name}</Text>
           </View>
-          <View style={styles.expandableSectionsContainer}>
+          <ScrollView
+            ref={scrollViewRef}
+            style={styles.expandableSectionsContainer}
+            contentContainerStyle={styles.expandableSectionsContent}
+            showsVerticalScrollIndicator={false}
+            bounces={true}
+          >
             {card.article_number && (
               <ExpandableSection
                 title="Артикул"
@@ -1345,12 +1417,12 @@ const MainPage = ({ navigation, route }: MainPageProps) => {
               title="Политика возврата"
               content={card.brand_return_policy || "No return policy available"}
             />
-          </View>
+          </ScrollView>
         </View>
       );
     },
     [handleFlip]
-  ); // Added handleFlip
+  );
 
   // Adjust the renderCard function to add safeguards
   const renderCard = useCallback(
@@ -1991,6 +2063,9 @@ const styles = StyleSheet.create({
   expandableSectionsContainer: {
     width: "100%",
     flex: 1,
+  },
+  expandableSectionsContent: {
+    paddingBottom: 20,
   },
   expandableContainer: {
     marginBottom: 10,

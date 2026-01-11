@@ -55,6 +55,7 @@ import {
   ANIMATION_DELAYS,
   ANIMATION_EASING,
 } from "./lib/animations";
+import { mapProductToCardItem } from "./lib/productMapper";
 
 // Define a simpler navigation type that our custom navigation can satisfy
 interface SimpleNavigation {
@@ -301,31 +302,10 @@ const Favorites = ({ navigation }: FavoritesProps) => {
       try {
         const favorites = await apiWrapper.getUserFavorites("FavoritesPage");
         // Map API response to FavoriteItem[] - handle null values
+        // Use utility function to ensure consistent mapping with article_number preservation
         setSavedItems(
           (favorites || []).map(
-            (item: api.Product, i: number): CardItem => ({
-              id: item.id.toString(),
-              name: item.name,
-              brand_name: item.brand_name || `Brand ${item.brand_id}`,
-              price: item.price,
-              images:
-                item.images && item.images.length > 0
-                  ? item.images.map((img) => ({ uri: img }))
-                  : [
-                      require("./assets/Vision.png"),
-                      require("./assets/Vision2.png"),
-                    ],
-              isLiked: item.is_liked,
-              available_sizes: item.variants
-                ? item.variants.map((v) => v.size)
-                : [],
-              description: item.description || "",
-              color: item.color || "",
-              materials: item.material || "",
-              brand_return_policy:
-                item.brand_return_policy || item.return_policy || "",
-              variants: item.variants || [],
-            })
+            (item: api.Product, i: number): CardItem => mapProductToCardItem(item, i)
           )
         );
       } catch (error: any) {
@@ -554,21 +534,10 @@ const Favorites = ({ navigation }: FavoritesProps) => {
     const delay = Platform.OS === "ios" ? 50 : 0;
     setTimeout(() => {
       if (fromFavorites && params && screen === "Home") {
-        // Convert the saved item to a card item format and pass it
+        // Spread the entire item to preserve all fields including article_number
         const navigationParams = {
           addCardItem: {
-            id: params.id,
-            name: params.name,
-            brand_name: params.brand_name,
-            price: params.price,
-            images: params.images, // This should be an array
-            isLiked: params.isLiked, // Pass the isLiked property, which may be undefined
-            description: params.description,
-            color: params.color,
-            materials: params.materials,
-            brand_return_policy:
-              params.brand_return_policy || params.returnPolicy,
-            variants: params.variants,
+            ...params, // Spread all fields to preserve article_number and other optional fields
           } as CardItem,
         };
         console.log("NAVIGATING TO HOME WITH PARAMS:", navigationParams);
@@ -1801,30 +1770,10 @@ const FriendProfileView = React.memo(
             friend.id,
             "FavoritesPage"
           );
-          // Convert to RecommendedItem[] for rendering - handle null values
-          const recommendedItems = (recs || []).map((item) => ({
-            id: item.id,
-            name: item.name,
-            brand_name: item.brand_name || `Brand ${item.brand_id}`,
-            price: item.price,
-            images:
-              item.images && item.images.length > 0
-                ? item.images.map((img) => ({ uri: img }))
-                : [
-                    require("./assets/Vision.png"),
-                    require("./assets/Vision2.png"),
-                  ],
-            isLiked: item.is_liked,
-            available_sizes: item.variants
-              ? item.variants.map((v) => v.size)
-              : [],
-            description: item.description || "",
-            color: item.color || "",
-            materials: item.material || "",
-            brand_return_policy:
-              item.brand_return_policy || item.return_policy || "",
-            variants: item.variants || [],
-          }));
+          // Use utility function to ensure consistent mapping with article_number preservation
+          const recommendedItems = (recs || []).map((item: api.Product, index: number) => 
+            mapProductToCardItem(item, index)
+          );
           setCustomRecommendations(
             (prev: { [key: string]: RecommendedItem[] }) => ({
               ...prev,

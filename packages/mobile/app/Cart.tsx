@@ -192,6 +192,7 @@ const Cart = ({ navigation }: CartProps) => {
           materials: item.materials,
           color: item.color,
           variants: item.variants,
+          article_number: item.article_number, // Preserve article_number when loading from storage
         };
         try {
           const delivery = getItemDeliveryInfo(newItem.id, newItem.quantity!);
@@ -269,22 +270,10 @@ const Cart = ({ navigation }: CartProps) => {
   };
 
   const handleItemPress = (item: CartItem) => {
-    const cardItem: Product = {
-      id: item.id,
-      name: item.name,
-      brand_name: item.brand_name,
-      price: item.price,
-      images: item.images,
-      isLiked: item.isLiked,
-      size: item.size,
-      quantity: item.quantity,
-      description: item.description,
-      color: item.color,
-      materials: item.materials,
-      brand_return_policy: item.brand_return_policy,
-      variants: item.variants,
-    };
-    navigation.navigate("Home", { addCardItem: cardItem });
+    // Spread the entire item to preserve all fields including article_number
+    // CartItem extends CardItem, so we can safely spread it (delivery and cartItemId will be ignored by MainPage)
+    const { delivery, cartItemId, ...cardItem } = item; // Exclude CartItem-specific fields
+    navigation.navigate("Home", { addCardItem: cardItem as Product });
   };
 
   const calculateRawTotal = () =>

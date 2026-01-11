@@ -32,6 +32,7 @@ import {
   ANIMATION_DELAYS,
   ANIMATION_EASING,
 } from "./lib/animations";
+import { mapProductToCardItem } from "./lib/productMapper";
 
 // Create animated text component using proper method for this version
 const AnimatedText = Animated.createAnimatedComponent(Text);
@@ -122,23 +123,8 @@ const fetchMoreSearchResults = async (
     }
     const uniqueResults = Array.from(seenIds.values());
     
-    return uniqueResults.map((item: api.Product) => ({
-      id: item.id,
-      name: item.name,
-      brand_name: item.brand_name || `Brand ${item.brand_id}`,
-      price: item.price,
-      images:
-        item.images && item.images.length > 0
-          ? item.images.map((img) => ({ uri: img }))
-          : [require("./assets/Vision.png"), require("./assets/Vision2.png")],
-      isLiked: item.is_liked || false,
-      description: item.description || "",
-      color: item.color || "",
-      materials: item.material || "",
-      brand_return_policy: item.brand_return_policy || item.return_policy || "",
-      article_number: item.article_number, // Article number for display and sharing
-      variants: item.variants || [],
-    }));
+    // Use utility function to ensure consistent mapping with article_number preservation
+    return uniqueResults.map((item: api.Product, index: number) => mapProductToCardItem(item, index));
   } catch (error) {
     console.error("Error fetching product search results:", error);
     return [];
@@ -247,23 +233,10 @@ const Search = ({ navigation }: SearchProps) => {
         }
         const uniquePopularItems = Array.from(seenIds.values());
         
-        const mappedItems: SearchItem[] = uniquePopularItems.map((item: api.Product) => ({
-          id: item.id,
-          name: item.name,
-          brand_name: item.brand_name || `Brand ${item.brand_id}`,
-          price: item.price,
-          images:
-            item.images && item.images.length > 0
-              ? item.images.map((img) => ({ uri: img }))
-              : [require("./assets/Vision.png"), require("./assets/Vision2.png")],
-          isLiked: item.is_liked || false,
-          description: item.description || "",
-          color: item.color || "",
-          materials: item.material || "",
-          brand_return_policy: item.brand_return_policy || item.return_policy || "",
-          article_number: item.article_number, // Article number for display and sharing
-          variants: item.variants || [],
-        }));
+        // Use utility function to ensure consistent mapping with article_number preservation
+        const mappedItems: SearchItem[] = uniquePopularItems.map((item: api.Product, index: number) => 
+          mapProductToCardItem(item, index)
+        );
         setSearchResults(mappedItems);
         persistentSearchStorage.results = mappedItems;
         console.log("Search - Loaded popular items:", mappedItems.length, `(deduplicated from ${popularItems.length})`);
@@ -405,20 +378,11 @@ const Search = ({ navigation }: SearchProps) => {
   const handleItemPress = (item: SearchItem, index: number) => {
     // Create params to pass the selected item to MainPage first
     // This ensures we have the item data before removing it
+    // Spread the entire item to preserve all fields including article_number
     const params = {
       addCardItem: {
-        id: item.id,
-        name: item.name,
-        brand_name: item.brand_name,
-        price: item.price,
-        images: item.images, // This should be an array
-        isLiked: item.isLiked,
-        description: item.description,
-        color: item.color,
-        materials: item.materials,
-        brand_return_policy: item.brand_return_policy,
-        variants: item.variants,
-      },
+        ...item, // Spread all fields to preserve article_number and other optional fields
+      } as CardItem,
     };
 
     console.log("Search - Navigating to Home with item:", params);
@@ -649,6 +613,9 @@ const Search = ({ navigation }: SearchProps) => {
               // CRITICAL: Set loading to false BEFORE setting results to ensure UI updates correctly
               setIsLoadingResults(false);
               
+              // Reset initial count ref for new search (new items will all be animated)
+              initialResultsCountRef.current = 0;
+              
               // Now set the results
               setSearchResults(results);
               
@@ -810,29 +777,48 @@ const Search = ({ navigation }: SearchProps) => {
     setIsSearchActive(false);
   };
 
-  const renderItem = ({ item, index }: { item: SearchItem; index: number }) => (
-    <Animated.View
-      entering={FadeInDown.duration(ANIMATION_DURATIONS.STANDARD).delay(
-        ANIMATION_DELAYS.STANDARD + index * ANIMATION_DELAYS.SMALL
-      )}
-      style={styles.searchItem}
-    >
-      <Pressable
-        style={styles.imageContainer}
-        onPress={() => handleItemPress(item, index)}
+  // Track the initial result count to only animate newly added items
+  const initialResultsCountRef = useRef<number>(0);
+  
+  useEffect(() => {
+    // Update initial count when search results are first loaded or reset
+    if (searchResults.length > 0 && initialResultsCountRef.current === 0) {
+      initialResultsCountRef.current = searchResults.length;
+    } else if (searchResults.length === 0) {
+      // Reset when results are cleared
+      initialResultsCountRef.current = 0;
+    }
+  }, [searchResults.length]);
+  
+  // Memoize renderItem to prevent unnecessary re-renders
+  const renderItem = useCallback(({ item, index }: { item: SearchItem; index: number }) => {
+    // Only animate items that are newly added (beyond initial count)
+    const isNewItem = index >= initialResultsCountRef.current;
+    
+    return (
+      <Animated.View
+        entering={isNewItem ? FadeInDown.duration(ANIMATION_DURATIONS.STANDARD).delay(
+          ANIMATION_DELAYS.STANDARD + (index - initialResultsCountRef.current) * ANIMATION_DELAYS.SMALL
+        ) : undefined}
+        style={styles.searchItem}
       >
-        <Image source={item.images[0]} style={styles.itemImage} />
-        <View style={styles.itemInfo}>
-          <Text style={styles.itemName} numberOfLines={1}>
-            {item.name}
-          </Text>
-        </View>
-        <View style={styles.priceContainer}>
-          <Text style={styles.itemPrice}>{`${item.price.toFixed(2)} ₽`}</Text>
-        </View>
-      </Pressable>
-    </Animated.View>
-  );
+        <Pressable
+          style={styles.imageContainer}
+          onPress={() => handleItemPress(item, index)}
+        >
+          <Image source={item.images[0]} style={styles.itemImage} />
+          <View style={styles.itemInfo}>
+            <Text style={styles.itemName} numberOfLines={1}>
+              {item.name}
+            </Text>
+          </View>
+          <View style={styles.priceContainer}>
+            <Text style={styles.itemPrice}>{`${item.price.toFixed(2)} ₽`}</Text>
+          </View>
+        </Pressable>
+      </Animated.View>
+    );
+  }, [handleItemPress]);
 
   return (
     <Animated.View
@@ -1056,7 +1042,7 @@ const Search = ({ navigation }: SearchProps) => {
             </Animated.View>
           ) : (
             <FlatList
-              key={`search-results-${filteredResults.length}-${isSearchActive}`} // Force re-render when results change
+              key={`search-results-${isSearchActive}`} // Only change key when search mode changes, not when items are added
               style={[
                 styles.resultsContainer,
                 !isSearchActive && styles.resultsContainerInitial,
@@ -1068,7 +1054,14 @@ const Search = ({ navigation }: SearchProps) => {
               contentContainerStyle={styles.listContent}
               numColumns={2}
               columnWrapperStyle={styles.columnWrapper}
-              extraData={filteredResults.length} // Force re-render when data changes
+              removeClippedSubviews={false} // Prevent items from being removed from view hierarchy
+              maintainVisibleContentPosition={
+                filteredResults.length > 0
+                  ? {
+                      minIndexForVisible: 0, // Maintain scroll position when items are prepended (not our case, but good practice)
+                    }
+                  : undefined
+              }
               onEndReached={() => {
                 // Load more results when user scrolls to bottom (only in search mode with active query/filters)
                 if (isSearchActive && hasMoreResults && !isLoadingMoreResults && !isLoadingResults) {

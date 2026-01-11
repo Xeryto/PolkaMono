@@ -45,6 +45,7 @@ import {
   getFadeOutDownAnimation,
 } from "./lib/animations";
 import { CardItem } from "./types/product";
+import { mapProductToCardItem } from "./lib/productMapper";
 
 const { width, height } = Dimensions.get("window");
 
@@ -1045,22 +1046,11 @@ const Settings = ({ navigation, onLogout }: SettingsProps) => {
 
         const fullProduct = await api.getProductDetails(item.product_id);
 
-        // Create a card item from the full product data
+        // Use utility function to ensure consistent mapping with article_number preservation
         const cardItem: CardItem = {
-          id: fullProduct.id,
-          name: fullProduct.name,
-          brand_name: fullProduct.brand_name || "Unknown Brand",
-          price: fullProduct.price,
-          images: fullProduct.images.map((img) => ({ uri: img })),
-          isLiked: fullProduct.is_liked || false,
+          ...mapProductToCardItem(fullProduct),
           size: item.size, // Keep the ordered size as default
           quantity: 1,
-          variants: fullProduct.variants || [], // Use all available variants/sizes
-          description: fullProduct.description || "No description available.",
-          color: fullProduct.color || "Unknown",
-          materials: fullProduct.material || "Unknown",
-          brand_return_policy: fullProduct.brand_return_policy || "Unknown",
-          sku: fullProduct.sku || "Unknown",
         };
 
         // Debug: Log what we're sending to MainPage
@@ -1083,6 +1073,7 @@ const Settings = ({ navigation, onLogout }: SettingsProps) => {
           "Settings - No product_id available, using order item data only"
         );
 
+        // Create a card item from order item (fallback when product_id is not available)
         const cardItem: CardItem = {
           id: item.id,
           name: item.name,
@@ -1101,7 +1092,7 @@ const Settings = ({ navigation, onLogout }: SettingsProps) => {
           color: item.color || "Unknown",
           materials: item.materials || "Unknown",
           brand_return_policy: item.return_policy || "Unknown",
-          sku: item.sku || "Unknown",
+          // Note: article_number not available from OrderItem, would need to fetch full product
         };
 
         // Navigate to home with the limited item data
@@ -1110,7 +1101,7 @@ const Settings = ({ navigation, onLogout }: SettingsProps) => {
     } catch (error) {
       console.error("Settings - Error fetching product details:", error);
 
-      // Fallback: Create a card item from the order item with limited data
+      // Fallback: Create a card item from the order item with limited data (error case)
       const cardItem: CardItem = {
         id: item.product_id || item.id,
         name: item.name,
@@ -1129,7 +1120,7 @@ const Settings = ({ navigation, onLogout }: SettingsProps) => {
         color: item.color || "Unknown",
         materials: item.materials || "Unknown",
         brand_return_policy: item.return_policy || "Unknown",
-        sku: item.sku || "Unknown",
+        // Note: article_number not available from OrderItem, would need to fetch full product
       };
 
       // Navigate to home with the fallback item data
