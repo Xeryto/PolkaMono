@@ -7,12 +7,12 @@ import {
   TouchableOpacity,
   KeyboardAvoidingView,
   Platform,
-  SafeAreaView,
   ScrollView,
   ActivityIndicator,
   Alert,
   Pressable,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 import * as Clipboard from "expo-clipboard";
 import Animated, { FadeInDown } from "react-native-reanimated";

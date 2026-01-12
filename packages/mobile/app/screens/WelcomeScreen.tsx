@@ -6,11 +6,11 @@ import {
 	Pressable, 
 	Dimensions,
 	Platform,
-	SafeAreaView,
 	Animated as RNAnimated,
 	Easing,
 	TouchableOpacity
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
 import Logo from '../components/svg/Logo';

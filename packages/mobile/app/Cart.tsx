@@ -6,13 +6,13 @@ import {
   ScrollView,
   Image,
   Pressable,
-  SafeAreaView,
   Dimensions,
   Easing,
   Animated as RNAnimated,
   TouchableOpacity,
   Linking,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 import Animated, { FadeIn, FadeInDown } from "react-native-reanimated";
 import * as WebBrowser from "expo-web-browser";

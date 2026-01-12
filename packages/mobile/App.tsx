@@ -3,7 +3,6 @@ import * as Font from "expo-font";
 import {
   StatusBar,
   Pressable,
-  SafeAreaView,
   StyleSheet,
   Text,
   View,
@@ -15,6 +14,7 @@ import {
   Modal,
   Button,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 import MainPage from "./app/MainPage";
 import CartPage from "./app/Cart";

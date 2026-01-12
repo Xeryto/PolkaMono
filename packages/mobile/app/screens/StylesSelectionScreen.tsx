@@ -5,7 +5,6 @@ import {
   StyleSheet,
   TouchableOpacity,
   Platform,
-  SafeAreaView,
   FlatList,
   ImageBackground,
   Dimensions,
@@ -15,6 +14,7 @@ import {
   NativeScrollEvent,
   Alert,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 import Animated, { FadeIn, FadeInDown, FadeOut } from "react-native-reanimated";
 import Logo from "../components/svg/Logo";
