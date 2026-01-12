@@ -33,6 +33,7 @@ import Animated, {
   FadeOut,
   runOnJS,
 } from "react-native-reanimated";
+import { AntDesign } from "@expo/vector-icons";
 import PlusSvg from "./components/svg/PlusSvg";
 import BackIcon from "./components/svg/BackIcon";
 import Tick from "./assets/Tick";
@@ -1451,8 +1452,8 @@ const MainContent = ({
           {activeView === "friends" && (
             <>
               {friendItems.length === 0 ? (
-                <View style={styles.emptyStateContainer}>
-                  <Text style={styles.emptyStateText}>
+                <View style={styles.mainEmptyStateContainer}>
+                  <Text style={styles.mainEmptyStateText}>
                     пора добавить первого друга
                   </Text>
                 </View>
@@ -1477,8 +1478,8 @@ const MainContent = ({
 
           {activeView === "saved" &&
             (savedItems.length === 0 ? (
-              <View style={styles.emptyStateContainer}>
-                <Text style={styles.emptyStateText}>пока тут пусто</Text>
+              <View style={styles.mainEmptyStateContainer}>
+                <Text style={styles.mainEmptyStateText}>пока тут пусто</Text>
               </View>
             ) : (
               <FlatList<FavoriteItem>
@@ -1642,19 +1643,79 @@ const SearchContent = ({
         <View style={{ flex: 1 }}>
           {!hasValidQuery ? (
             trimmedQuery.length === 0 ? (
-              <Text style={styles.noResultsText}>Начните искать</Text>
+              <Animated.View
+                entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(ANIMATION_DELAYS.STANDARD)}
+                style={styles.emptyStateContainer}
+              >
+                <Animated.View
+                  entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(ANIMATION_DELAYS.STANDARD)}
+                  style={styles.emptyStateIcon}
+                >
+                  <AntDesign name="search" size={64} color="rgba(0,0,0,0.3)" />
+                </Animated.View>
+                <Animated.Text
+                  entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(ANIMATION_DELAYS.MEDIUM)}
+                  style={styles.emptyStateTitle}
+                >
+                  Начните поиск
+                </Animated.Text>
+                <Animated.Text
+                  entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(ANIMATION_DELAYS.LARGE)}
+                  style={styles.emptyStateDescription}
+                >
+                  Введите имя пользователя для поиска друзей
+                </Animated.Text>
+              </Animated.View>
             ) : (
-              <Text style={styles.noResultsText}>
-                Введите минимум {minSearchLength} символа для поиска
-              </Text>
+              <Animated.View
+                entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(ANIMATION_DELAYS.STANDARD)}
+                style={styles.emptyStateContainer}
+              >
+                <Animated.Text
+                  entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(ANIMATION_DELAYS.MEDIUM)}
+                  style={styles.emptyStateDescription}
+                >
+                  Введите минимум {minSearchLength} символа для поиска
+                </Animated.Text>
+              </Animated.View>
             )
           ) : isSearching ? (
-            <View style={styles.loadingContainer}>
-              <ActivityIndicator size="small" color="#CDA67A" />
-              <Text style={styles.loadingText}>Поиск...</Text>
-            </View>
+            <Animated.View
+              entering={FadeIn.duration(ANIMATION_DURATIONS.STANDARD)}
+              style={styles.loadingContainer}
+            >
+              <ActivityIndicator size="large" color="#CDA67A" />
+              <Animated.Text
+                entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(ANIMATION_DELAYS.SMALL)}
+                style={styles.loadingText}
+              >
+                Поиск...
+              </Animated.Text>
+            </Animated.View>
           ) : filteredFriends.length === 0 ? (
-            <Text style={styles.noResultsText}>Пользователи не найдены</Text>
+            <Animated.View
+              entering={FadeIn.duration(ANIMATION_DURATIONS.STANDARD)}
+              style={styles.noResultsContainer}
+            >
+              <Animated.View
+                entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(ANIMATION_DELAYS.STANDARD)}
+                style={styles.emptyStateIcon}
+              >
+                <AntDesign name="inbox" size={64} color="rgba(0,0,0,0.3)" />
+              </Animated.View>
+              <Animated.Text
+                entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(ANIMATION_DELAYS.MEDIUM)}
+                style={styles.noResultsText}
+              >
+                Пользователи не найдены
+              </Animated.Text>
+              <Animated.Text
+                entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(ANIMATION_DELAYS.LARGE)}
+                style={styles.noResultsDescription}
+              >
+                Попробуйте изменить поисковый запрос
+              </Animated.Text>
+            </Animated.View>
           ) : (
             <FlatList<FriendItem>
               style={styles.flatList}
@@ -2116,11 +2177,14 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
+    padding: 40,
   },
   loadingText: {
     fontFamily: "REM",
     fontSize: 18,
-    color: "#4A3120",
+    color: "rgba(74, 49, 32, 0.7)",
+    textAlign: "center",
+    marginTop: 20,
   },
   topBox: {
     position: "absolute",
@@ -2358,12 +2422,54 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 6,
   },
-  noResultsText: {
+  emptyStateContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 40,
+  },
+  emptyStateIcon: {
+    marginBottom: 24,
+    opacity: 0.4,
+  },
+  emptyStateTitle: {
     fontFamily: "REM",
-    fontSize: 16,
+    fontSize: 24,
+    fontWeight: "600",
     color: "#4A3120",
     textAlign: "center",
-    marginTop: 20,
+    marginBottom: 12,
+  },
+  emptyStateDescription: {
+    fontFamily: "REM",
+    fontSize: 16,
+    color: "rgba(74, 49, 32, 0.7)",
+    textAlign: "center",
+    lineHeight: 22,
+    paddingHorizontal: 20,
+  },
+  noResultsContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 40,
+  },
+  noResultsText: {
+    fontFamily: "REM",
+    fontSize: 24,
+    fontWeight: "600",
+    color: "#4A3120",
+    textAlign: "center",
+    marginTop: 24,
+    marginBottom: 12,
+  },
+  noResultsDescription: {
+    fontFamily: "REM",
+    fontSize: 16,
+    color: "rgba(74, 49, 32, 0.7)",
+    textAlign: "center",
+    lineHeight: 22,
+    paddingHorizontal: 20,
   },
   itemWrapper: {
     width: (width * 0.88 - 40) / 2,
@@ -2739,12 +2845,12 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
-  emptyStateContainer: {
+  mainEmptyStateContainer: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
   },
-  emptyStateText: {
+  mainEmptyStateText: {
     fontFamily: "IgraSans",
     fontSize: 32,
     color: "#fff",

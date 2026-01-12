@@ -154,9 +154,9 @@ const PasswordResetVerificationScreen: React.FC<
                 >
                   <Animated.View
                     style={styles.codeContainer}
-                    entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
-                      ANIMATION_DELAYS.STANDARD
-                    )}
+                    entering={FadeInDown.duration(
+                      ANIMATION_DURATIONS.MEDIUM
+                    ).delay(ANIMATION_DELAYS.STANDARD)}
                   >
                     {[0, 1, 2, 3, 4, 5].map((index) => (
                       <View
@@ -201,7 +201,8 @@ const PasswordResetVerificationScreen: React.FC<
               <TouchableOpacity
                 style={[
                   styles.resendButton,
-                  (resendLoading || resendCooldown > 0) && styles.resendButtonDisabled,
+                  (resendLoading || resendCooldown > 0) &&
+                    styles.resendButtonDisabled,
                 ]}
                 onPress={handleResendCode}
                 disabled={resendLoading || resendCooldown > 0}
@@ -209,8 +210,13 @@ const PasswordResetVerificationScreen: React.FC<
                 {resendLoading ? (
                   <ActivityIndicator color="#4A3120" />
                 ) : resendCooldown > 0 ? (
-                  <Text style={[styles.resendButtonText, styles.resendButtonTextDisabled]}>
-                    Повторить через {resendCooldown}с
+                  <Text
+                    style={[
+                      styles.resendButtonText,
+                      styles.resendButtonTextDisabled,
+                    ]}
+                  >
+                    Новый код через {resendCooldown}с
                   </Text>
                 ) : (
                   <Text style={styles.resendButtonText}>

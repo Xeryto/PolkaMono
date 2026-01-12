@@ -69,7 +69,7 @@ const LOADING_CARD_ID = "__loading_card__";
 // Helper function to create a loading card
 const createLoadingCard = (): CardItem => ({
   id: LOADING_CARD_ID,
-  name: "Loading...",
+  name: "Загрузка...",
   brand_name: "Загрузка...",
   price: 0,
   images: [fallbackImage],
@@ -1571,7 +1571,7 @@ const MainPage = ({ navigation, route }: MainPageProps) => {
             />
             <ExpandableSection
               title="Политика возврата"
-              content={card.brand_return_policy || "No return policy available"}
+              content={card.brand_return_policy || "Политика возврата не указана"}
             />
           </ScrollView>
         </View>
@@ -1867,7 +1867,7 @@ const MainPage = ({ navigation, route }: MainPageProps) => {
               {cards.length > 0 ? (
                 <>
                   <Text style={styles.brandName} numberOfLines={1}>
-                    {cards[currentCardIndex]?.brand_name || "No Brand"}
+                    {cards[currentCardIndex]?.brand_name || "Бренд не указан"}
                   </Text>
                   <Text style={styles.price}>
                     {`${cards[currentCardIndex]?.price.toFixed(2) || "0.00"} ₽`}
@@ -1876,9 +1876,9 @@ const MainPage = ({ navigation, route }: MainPageProps) => {
               ) : (
                 <>
                   <Text style={styles.name} numberOfLines={1}>
-                    Loading...
+                    Загрузка...
                   </Text>
-                  <Text style={styles.price}>Please wait</Text>
+                  <Text style={styles.price}>Пожалуйста, подождите</Text>
                 </>
               )}
             </RNAnimated.View>
@@ -2002,11 +2002,11 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: "rgba(255, 255, 255, 0.5)",
+    backgroundColor: "rgba(74, 49, 32, 0.5)",
     marginHorizontal: 4,
   },
   imageDotActive: {
-    backgroundColor: "rgba(255, 255, 255, 0.9)",
+    backgroundColor: "#4A3120",
   },
   dotsButton: {
     position: "absolute",
@@ -2163,12 +2163,12 @@ const styles = StyleSheet.create({
   noCardsText: {
     fontSize: 24,
     fontWeight: "bold",
-    color: "white",
+    color: "#333",
     marginBottom: 10,
   },
   noCardsSubtext: {
     fontSize: 16,
-    color: "white",
+    color: "#666",
   },
   longPressOverlay: {
     width: 50,
