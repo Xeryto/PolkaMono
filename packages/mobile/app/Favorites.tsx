@@ -19,6 +19,7 @@ import {
   FlexStyle,
   Alert,
   ImageStyle, // Added ImageStyle
+  ActivityIndicator,
 } from "react-native";
 import Animated, {
   FadeIn,
@@ -429,37 +430,98 @@ const Favorites = ({ navigation }: FavoritesProps) => {
     });
   };
 
-  // Handle search text change
-  const handleSearch = async (text: string) => {
+  // Debounce timer ref for search
+  const searchDebounceTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const searchRequestIdRef = useRef<number>(0);
+
+  // Minimum search query length before sending API request
+  const MIN_FRIEND_SEARCH_LENGTH = 2;
+  const SEARCH_DEBOUNCE_DELAY = 800; // Wait 800ms after user stops typing
+
+  // Handle search text change with debouncing and input validation
+  const handleSearch = (text: string) => {
+    // Update search query immediately for UI responsiveness
     setSearchQuery(text);
 
-    if (text.length >= 2) {
-      setIsSearching(true);
-      try {
-        // Use real API to search for users
-        const searchResults = await api.searchUsers(text);
-
-        // Convert search results to FriendItem format with real friend_status
-        const searchUsersList: FriendItem[] = searchResults.map((user) => ({
-          id: user.id,
-          username: user.username,
-          email: user.email,
-          avatar_url: user.avatar_url,
-          status: user.friend_status || "not_friend",
-        }));
-
-        setSearchResults(searchUsersList);
-      } catch (error) {
-        console.error("Error searching users:", error);
-        setSearchResults([]);
-        Alert.alert("Ошибка", "Не удалось выполнить поиск пользователей");
-      } finally {
-        setIsSearching(false);
-      }
-    } else {
-      setSearchResults([]);
+    // Clear previous debounce timer
+    if (searchDebounceTimerRef.current) {
+      clearTimeout(searchDebounceTimerRef.current);
+      searchDebounceTimerRef.current = null;
     }
+
+    // Trim the input to handle whitespace-only inputs
+    const trimmedText = text.trim();
+
+    // Handle empty or whitespace-only inputs
+    if (!trimmedText || trimmedText.length === 0) {
+      setSearchResults([]);
+      setIsSearching(false);
+      return;
+    }
+
+    // If query is too short, clear results and don't search
+    if (trimmedText.length < MIN_FRIEND_SEARCH_LENGTH) {
+      setSearchResults([]);
+      setIsSearching(false);
+      return;
+    }
+
+    // For valid queries, show loading state immediately during debounce period
+    // This prevents the "nothing found" flash before loading spinner appears
+    setIsSearching(true);
+    setSearchResults([]); // Clear previous results while debouncing
+
+    // Debounce the API call - only search after user stops typing
+    searchDebounceTimerRef.current = setTimeout(async () => {
+      // Increment request ID to prevent stale results
+      const currentRequestId = ++searchRequestIdRef.current;
+
+      try {
+        // Use real API to search for users with trimmed query
+        const searchResults = await api.searchUsers(trimmedText);
+
+        // Only update if this is still the latest request
+        if (currentRequestId === searchRequestIdRef.current) {
+          // Convert search results to FriendItem format with real friend_status
+          const searchUsersList: FriendItem[] = searchResults.map((user) => ({
+            id: user.id,
+            username: user.username,
+            email: user.email,
+            avatar_url: user.avatar_url,
+            status: user.friend_status || "not_friend",
+          }));
+
+          setSearchResults(searchUsersList);
+        } else {
+          console.log(`Favorites - Ignoring stale search results (request ${currentRequestId} is not the latest ${searchRequestIdRef.current})`);
+        }
+      } catch (error) {
+        // Only update if this is still the latest request
+        if (currentRequestId === searchRequestIdRef.current) {
+          console.error("Error searching users:", error);
+          setSearchResults([]);
+          // Don't show alert for every error - only for unexpected ones
+          if (error && typeof error === 'object' && 'status' in error && error.status !== 401) {
+            Alert.alert("Ошибка", "Не удалось выполнить поиск пользователей");
+          }
+        }
+      } finally {
+        // Only update loading state if this is still the latest request
+        if (currentRequestId === searchRequestIdRef.current) {
+          setIsSearching(false);
+        }
+      }
+    }, SEARCH_DEBOUNCE_DELAY);
   };
+
+  // Cleanup debounce timer on unmount
+  useEffect(() => {
+    return () => {
+      if (searchDebounceTimerRef.current) {
+        clearTimeout(searchDebounceTimerRef.current);
+      }
+    };
+  }, []);
 
   // Toggle search mode
   const toggleSearch = () => {
@@ -467,6 +529,12 @@ const Favorites = ({ navigation }: FavoritesProps) => {
     if (!isSearchActive) {
       setSearchQuery("");
       setSearchResults([]); // Clear search results when exiting search
+      // Clear any pending debounce timer
+      if (searchDebounceTimerRef.current) {
+        clearTimeout(searchDebounceTimerRef.current);
+        searchDebounceTimerRef.current = null;
+      }
+      setIsSearching(false);
     }
   };
 
@@ -758,7 +826,10 @@ const Favorites = ({ navigation }: FavoritesProps) => {
   ]);
 
   // 2. Update filteredFriends to only use search results from API
-  const filteredFriends = searchQuery.length >= 2 ? searchResults : [];
+  // Only show results if query is valid (trimmed length >= 2)
+  const trimmedQuery = searchQuery.trim();
+  const hasValidQuery = trimmedQuery.length >= MIN_FRIEND_SEARCH_LENGTH;
+  const filteredFriends = hasValidQuery ? searchResults : [];
 
   // Render a saved item
   const renderSavedItem: ListRenderItem<CardItem> = ({
@@ -1262,6 +1333,10 @@ const Favorites = ({ navigation }: FavoritesProps) => {
               setShowConfirmDialog={setSearchShowConfirmDialog}
               setPendingRemoval={setSearchPendingRemoval}
               removeFriend={removeFriend}
+              hasValidQuery={hasValidQuery}
+              trimmedQuery={trimmedQuery}
+              isSearching={isSearching}
+              minSearchLength={MIN_FRIEND_SEARCH_LENGTH}
             />
           </Animated.View>
 
@@ -1338,6 +1413,10 @@ interface SearchContentProps {
   setShowConfirmDialog: (show: boolean) => void;
   setPendingRemoval: (friend: FriendItem | null) => void;
   removeFriend: (friendId: string) => void;
+  hasValidQuery: boolean;
+  trimmedQuery: string;
+  isSearching: boolean;
+  minSearchLength: number;
 }
 
 // Extracted component for main content to reduce render complexity
@@ -1517,6 +1596,10 @@ const SearchContent = ({
   setShowConfirmDialog,
   setPendingRemoval,
   removeFriend,
+  hasValidQuery,
+  trimmedQuery,
+  isSearching,
+  minSearchLength,
 }: SearchContentProps) => {
   return (
     <>
@@ -1557,12 +1640,19 @@ const SearchContent = ({
         exiting={FadeOutDown.duration(ANIMATION_DURATIONS.MICRO)}
       >
         <View style={{ flex: 1 }}>
-          {searchQuery.length === 0 ? (
-            <Text style={styles.noResultsText}>Начните искать</Text>
-          ) : searchQuery.length < 2 ? (
-            <Text style={styles.noResultsText}>
-              Введите минимум 2 символа для поиска
-            </Text>
+          {!hasValidQuery ? (
+            trimmedQuery.length === 0 ? (
+              <Text style={styles.noResultsText}>Начните искать</Text>
+            ) : (
+              <Text style={styles.noResultsText}>
+                Введите минимум {minSearchLength} символа для поиска
+              </Text>
+            )
+          ) : isSearching ? (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="small" color="#CDA67A" />
+              <Text style={styles.loadingText}>Поиск...</Text>
+            </View>
           ) : filteredFriends.length === 0 ? (
             <Text style={styles.noResultsText}>Пользователи не найдены</Text>
           ) : (

@@ -548,6 +548,15 @@ const Search = ({ navigation }: SearchProps) => {
         return;
       }
       
+      // For valid queries/filters, show loading state immediately during debounce period
+      // This prevents the "nothing found" flash before loading spinner appears
+      setIsLoadingResults(true);
+      // Clear previous results while debouncing to avoid showing stale results
+      if (searchQueryChanged) {
+        setSearchResults([]);
+        persistentSearchStorage.results = [];
+      }
+      
       // Use minimal debounce (50ms) if only filters changed, otherwise use 800ms for query changes
       const debounceDelay = filtersChanged && !searchQueryChanged ? 50 : 800;
 
@@ -590,8 +599,7 @@ const Search = ({ navigation }: SearchProps) => {
         setHasMoreResults(true);
         setIsLoadingMoreResults(false);
         
-        // Show loading spinner when starting a new API call
-        setIsLoadingResults(true);
+        // Loading state is already set above, no need to set it again here
         
         console.log("Search - Query or filters changed, fetching first page of results");
         fetchMoreSearchResults(

@@ -1,4 +1,4 @@
-import React, { useCallback, useRef, useState, useEffect } from "react";
+import React, { useCallback, useRef, useState, useEffect, useMemo } from "react";
 import {
   View,
   StyleSheet,
@@ -12,6 +12,8 @@ import {
   Easing,
   Alert,
   ScrollView,
+  NativeSyntheticEvent,
+  NativeScrollEvent,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import * as Haptics from "expo-haptics";
@@ -60,6 +62,24 @@ interface MainPageProps {
 
 // Add a constant for the minimum number of cards to maintain
 const MIN_CARDS_THRESHOLD = 3;
+
+// Loading card ID constant
+const LOADING_CARD_ID = "__loading_card__";
+
+// Helper function to create a loading card
+const createLoadingCard = (): CardItem => ({
+  id: LOADING_CARD_ID,
+  name: "Loading...",
+  brand_name: "Загрузка...",
+  price: 0,
+  images: [fallbackImage],
+  isLiked: false,
+  description: "",
+  color: "",
+  materials: "",
+  brand_return_policy: "",
+  available_sizes: [],
+});
 
 // Global cards storage that persists even when component unmounts
 // This ensures the card collection remains intact when navigating between screens
@@ -342,6 +362,9 @@ const MainPage = ({ navigation, route }: MainPageProps) => {
 
   // Scroll position tracking for card back
   const scrollViewRef = useRef<ScrollView>(null);
+  const imageScrollViewRef = useRef<ScrollView>(null);
+  const imageCarouselWidthRef = useRef(0);
+  const [imageCarouselWidth, setImageCarouselWidth] = useState(0);
   const isFlippedRef = useRef(false);
 
   // Update ref when state changes
@@ -490,22 +513,71 @@ const MainPage = ({ navigation, route }: MainPageProps) => {
     }
   }, [currentCardIndex]);
 
-  const handleImagePress = (card: CardItem, x: number) => {
-    const imageWidth = screenWidth * 0.75; // Assuming imageHolder width is 75%
-    const clickThreshold = imageWidth / 2;
-
-    if (x < clickThreshold) {
-      // Clicked on the left side, go to previous image
-      setCurrentImageIndex((prevIndex) =>
-        prevIndex === 0 ? card.images.length - 1 : prevIndex - 1
-      );
-    } else {
-      // Clicked on the right side, go to next image
-      setCurrentImageIndex((prevIndex) =>
-        prevIndex === card.images.length - 1 ? 0 : prevIndex + 1
-      );
+  // Reset image index when card changes
+  useEffect(() => {
+    setCurrentImageIndex(0);
+    if (imageScrollViewRef.current && imageCarouselWidth > 0) {
+      // Small delay to ensure ScrollView is laid out
+      setTimeout(() => {
+        imageScrollViewRef.current?.scrollTo({
+          x: 0,
+          animated: false,
+        });
+      }, 0);
     }
-  };
+  }, [currentCardIndex, imageCarouselWidth]);
+
+  // Ref to store cards for pan responder access
+  const cardsRef = useRef<CardItem[]>([]);
+  const currentCardIndexRef = useRef(0);
+  
+  // Update refs when state changes
+  useEffect(() => {
+    cardsRef.current = cards;
+  }, [cards]);
+  
+  useEffect(() => {
+    currentCardIndexRef.current = currentCardIndex;
+  }, [currentCardIndex]);
+
+  // Ref to track current image index to avoid unnecessary state updates
+  const currentImageIndexRef = useRef(0);
+  
+  useEffect(() => {
+    currentImageIndexRef.current = currentImageIndex;
+  }, [currentImageIndex]);
+
+  // Handle image carousel scroll events - only update index when scrolling stops
+  const handleImageScroll = useCallback((event: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const flipped = isFlippedRef.current;
+    if (flipped || !imageCarouselWidthRef.current) {
+      return;
+    }
+    
+    const contentOffsetX = event.nativeEvent.contentOffset.x;
+    const currentIndex = Math.round(contentOffsetX / imageCarouselWidthRef.current);
+    
+    if (currentIndex >= 0) {
+      const currentCards = cardsRef.current;
+      const cardIndex = currentCardIndexRef.current;
+      const currentCard = currentCards[cardIndex];
+      
+      // Only update if index changed and is valid
+      if (currentCard && currentIndex < currentCard.images.length && currentIndex !== currentImageIndexRef.current) {
+        setCurrentImageIndex(currentIndex);
+      }
+    }
+  }, []);
+
+  // Scroll to specific image index
+  const scrollToImageIndex = useCallback((index: number) => {
+    if (imageScrollViewRef.current && imageCarouselWidthRef.current) {
+      imageScrollViewRef.current.scrollTo({
+        x: index * imageCarouselWidthRef.current,
+        animated: true,
+      });
+    }
+  }, []);
 
   // Pan responder for header area when card is flipped
   const headerPanResponder = useRef(
@@ -832,8 +904,14 @@ const MainPage = ({ navigation, route }: MainPageProps) => {
     );
     console.log("MainPage - Card passed to function:", cardToSwipe);
 
-    // Only block swipe if there is truly only one card left
-    if (cards.length === 1) {
+    // Prevent swiping loading cards
+    if (currentCard?.id === LOADING_CARD_ID) {
+      return;
+    }
+
+    // Only block swipe if there is truly only one real card left (excluding loading card)
+    const realCards = cards.filter((c) => c.id !== LOADING_CARD_ID);
+    if (realCards.length === 1) {
       console.log(
         "MainPage - Preventing swipe of last card until more are loaded"
       );
@@ -862,12 +940,14 @@ const MainPage = ({ navigation, route }: MainPageProps) => {
     }
 
     setIsAnimating(true);
+    // Provide haptic feedback on swipe
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     // Set a timeout that will reset animation state if something goes wrong
     const animationSafetyTimeout = setTimeout(() => {
       console.log("MainPage - Animation safety timeout triggered");
       setIsAnimating(false);
       pan.setValue({ x: 0, y: 0 });
-    }, 2000); // 2 seconds is enough time for the animation to complete
+    }, 300); // 300ms safety timeout (animation is 100ms)
     // Animate card moving off screen
     RNAnimated.timing(pan, {
       toValue: {
@@ -880,6 +960,9 @@ const MainPage = ({ navigation, route }: MainPageProps) => {
     }).start(() => {
       // Clear the safety timeout since animation completed
       clearTimeout(animationSafetyTimeout);
+      // Allow new swipes immediately after the swipe animation completes
+      // The spring animation below is just for cleanup and shouldn't block
+      setIsAnimating(false);
       // Remove the current card from the array
       setCards((prevCards) => {
         console.log(
@@ -933,20 +1016,31 @@ const MainPage = ({ navigation, route }: MainPageProps) => {
             ? Math.max(0, newCards.length - 1)
             : currentCardIndex;
         setTimeout(() => setCurrentCardIndex(newIndex), 0);
-        // Check if we need to fetch more cards - start fetching earlier when getting low
-        if (newCards.length < MIN_CARDS_THRESHOLD) {
+        // Add loading card if running low on cards
+        const cardsWithoutLoading = newCards.filter((c) => c.id !== LOADING_CARD_ID);
+        if (cardsWithoutLoading.length < MIN_CARDS_THRESHOLD) {
+          // Add loading card if not already present
+          const hasLoadingCard = newCards.some((c) => c.id === LOADING_CARD_ID);
+          if (!hasLoadingCard) {
+            newCards.push(createLoadingCard());
+          }
+          // Trigger fetch in background
           console.log("MainPage - Low on cards, fetching more from API");
-          fetchMoreCards(MIN_CARDS_THRESHOLD - newCards.length + 1).then(
+          fetchMoreCards(MIN_CARDS_THRESHOLD - cardsWithoutLoading.length + 1).then(
             (apiCards) => {
-              setCards((latestCards) => {
-                const updatedCards = [...latestCards, ...apiCards];
-                console.log(
-                  "MainPage - Added new cards, total count:",
-                  updatedCards.length
-                );
-                persistentCardStorage.cards = updatedCards;
-                return updatedCards;
-              });
+              if (apiCards.length > 0) {
+                setCards((latestCards) => {
+                  // Remove loading cards and add new ones
+                  const filteredCards = latestCards.filter((c) => c.id !== LOADING_CARD_ID);
+                  const updatedCards = [...filteredCards, ...apiCards];
+                  console.log(
+                    "MainPage - Added new cards, total count:",
+                    updatedCards.length
+                  );
+                  persistentCardStorage.cards = updatedCards;
+                  return updatedCards;
+                });
+              }
             }
           );
         } else {
@@ -966,14 +1060,8 @@ const MainPage = ({ navigation, route }: MainPageProps) => {
         friction: 6,
         tension: 40,
         useNativeDriver: false,
-      }).start(() => {
-        requestAnimationFrame(() => {
-          setIsAnimating(false);
-          // // Unconditionally reset flip state for the next card
-          // flipAnimation.setValue(0); // Ensure animation value is 0
-          // setIsFlipped(false);      // Ensure state is false
-        });
-      });
+      }).start();
+      // Note: setIsAnimating(false) is now called earlier, right after the swipe animation completes
     });
 
     fadeOutIn();
@@ -1155,7 +1243,18 @@ const MainPage = ({ navigation, route }: MainPageProps) => {
   // Render function for the front of the card
   const renderFrontOfCard = useCallback(
     (card: CardItem, index: number) => {
+      // Handle loading card
+      if (card.id === LOADING_CARD_ID) {
+        return (
+          <View style={[styles.whiteBox, styles.noCardsContainer]}>
+            <Text style={styles.noCardsText}>Загрузка новых карточек...</Text>
+            <Text style={styles.noCardsSubtext}>Пожалуйста, подождите</Text>
+          </View>
+        );
+      }
+
       const isLiked = card.isLiked === true;
+      
       return (
         <>
           <View style={styles.imageHolder}>
@@ -1167,20 +1266,51 @@ const MainPage = ({ navigation, route }: MainPageProps) => {
                   outputRange: ["90%", "100%"],
                 }),
               }}
-            >
-              <Pressable
-                style={styles.imagePressable}
-                onPress={(event) =>
-                  handleImagePress(card, event.nativeEvent.locationX)
+              onLayout={(event) => {
+                const { width } = event.nativeEvent.layout;
+                if (width > 0 && width !== imageCarouselWidthRef.current) {
+                  imageCarouselWidthRef.current = width;
+                  setImageCarouselWidth(width);
                 }
-              >
-                <Image
-                  key={card.id + "-" + currentImageIndex} // Add key to prevent image flickering
-                  source={card.images[currentImageIndex]}
-                  style={styles.image}
-                  resizeMode="contain"
-                />
-              </Pressable>
+              }}
+            >
+              {card.images.length > 1 ? (
+                <ScrollView
+                  ref={imageScrollViewRef}
+                  horizontal
+                  pagingEnabled
+                  showsHorizontalScrollIndicator={false}
+                  decelerationRate="fast"
+                  onMomentumScrollEnd={handleImageScroll}
+                  style={styles.imageCarousel}
+                >
+                  {card.images.map((imageSource, imgIndex) => {
+                    // Use the measured width from state, or fallback to calculated width
+                    const containerWidth = imageCarouselWidth || screenWidth * 0.75;
+                    return (
+                      <View 
+                        key={`${card.id}-image-${imgIndex}`} 
+                        style={[styles.imageContainer, { width: containerWidth }]}
+                      >
+                        <Image
+                          source={imageSource}
+                          style={styles.image}
+                          resizeMode="contain"
+                        />
+                      </View>
+                    );
+                  })}
+                </ScrollView>
+              ) : (
+                <View style={styles.imagePressable}>
+                  <Image
+                    key={card.id + "-" + currentImageIndex}
+                    source={card.images[0]}
+                    style={styles.image}
+                    resizeMode="contain"
+                  />
+                </View>
+              )}
             </RNAnimated.View>
             <Pressable style={styles.dotsButton} onPress={handleFlip}>
               <More width={23} height={33} />
@@ -1197,7 +1327,7 @@ const MainPage = ({ navigation, route }: MainPageProps) => {
                     styles.imageDot,
                     dotIndex === currentImageIndex && styles.imageDotActive,
                   ]}
-                  onPress={() => setCurrentImageIndex(dotIndex)}
+                  onPress={() => scrollToImageIndex(dotIndex)}
                 />
               ))}
             </View>
@@ -1378,7 +1508,10 @@ const MainPage = ({ navigation, route }: MainPageProps) => {
       sizesTranslateX,
       imageHeightPercent,
       handleFlip, // Added handleFlip
-      handleImagePress,
+      scrollToImageIndex,
+      handleImageScroll,
+      screenWidth,
+      imageCarouselWidth,
       handleCartPressIn,
       handleCartPressOut,
       handleSeenPressIn,
@@ -1391,13 +1524,13 @@ const MainPage = ({ navigation, route }: MainPageProps) => {
       handleSizeSelect,
       handleCancelSizeSelection,
       cards, // Added cards to ensure card data is up-to-date
+      imageScrollViewRef,
     ]
   );
 
   // Render function for the back of the card
   const renderBackOfCard = useCallback(
     (card: CardItem) => {
-      console.log("renderBackOfCard - card:", card);
       return (
         <View style={styles.cardBackContainer}>
           <Pressable style={[styles.removeButton]} onPress={handleFlip}>
@@ -1452,17 +1585,8 @@ const MainPage = ({ navigation, route }: MainPageProps) => {
     (card: CardItem, index: number) => {
       // Safety check - if card is undefined, don't render
       if (!card) {
-        console.log("MainPage - Card is undefined, cannot render");
         return renderEmptyState();
       }
-
-      console.log(
-        `renderCard - Rendering card ${
-          card.id
-        } at index ${index}, isFlipped: ${isFlipped}, imagesCount: ${
-          Array.isArray(card.images) ? card.images.length : 0
-        }`
-      );
 
       const frontAnimatedStyle = {
         transform: [
@@ -1653,17 +1777,20 @@ const MainPage = ({ navigation, route }: MainPageProps) => {
   useEffect(() => {
     let fetchTimer: NodeJS.Timeout;
 
-    if (cards.length < MIN_CARDS_THRESHOLD && !isRefreshing) {
+    const cardsWithoutLoading = cards.filter((c) => c.id !== LOADING_CARD_ID);
+    if (cardsWithoutLoading.length < MIN_CARDS_THRESHOLD && !isRefreshing) {
       fetchTimer = setTimeout(() => {
-        fetchMoreCards(MIN_CARDS_THRESHOLD - cards.length + 1)
+        fetchMoreCards(MIN_CARDS_THRESHOLD - cardsWithoutLoading.length + 1)
           .then((apiCards) => {
             if (apiCards.length > 0) {
               setCards((prevCards) => {
-                if (prevCards.length >= MIN_CARDS_THRESHOLD) {
+                // Remove loading cards and add new ones
+                const filteredCards = prevCards.filter((c) => c.id !== LOADING_CARD_ID);
+                if (filteredCards.length >= MIN_CARDS_THRESHOLD) {
                   return prevCards;
                 }
 
-                const updatedCards = [...prevCards, ...apiCards];
+                const updatedCards = [...filteredCards, ...apiCards];
                 persistentCardStorage.cards = updatedCards;
                 setIsAnimating(false);
                 pan.setValue({ x: 0, y: 0 });
@@ -1728,9 +1855,7 @@ const MainPage = ({ navigation, route }: MainPageProps) => {
           />
 
           {/* Always show something, even during transitions */}
-          {isAnimating && cards.length === 0
-            ? renderEmptyState()
-            : cards.length > 0
+          {cards.length > 0
             ? renderCard(cards[currentCardIndex], currentCardIndex)
             : renderEmptyState()}
 
@@ -1852,6 +1977,15 @@ const styles = StyleSheet.create({
   },
   imagePressable: {
     width: "100%",
+    height: "100%",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  imageCarousel: {
+    width: "100%",
+    height: "100%",
+  },
+  imageContainer: {
     height: "100%",
     justifyContent: "center",
     alignItems: "center",
