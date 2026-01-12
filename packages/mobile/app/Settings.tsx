@@ -30,6 +30,7 @@ import Animated, {
 } from "react-native-reanimated";
 import BackIcon from "./components/svg/BackIcon";
 import LogOut from "./components/svg/LogOut";
+import PenIcon from "./components/svg/PenIcon";
 import * as Haptics from "expo-haptics";
 import Tick from "./assets/Tick";
 import { Canvas, RoundedRect, Shadow } from "@shopify/react-native-skia";
@@ -46,6 +47,7 @@ import {
 } from "./lib/animations";
 import { CardItem } from "./types/product";
 import { mapProductToCardItem } from "./lib/productMapper";
+import AvatarEditScreen from "./screens/AvatarEditScreen";
 
 const { width, height } = Dimensions.get("window");
 
@@ -117,6 +119,7 @@ const Settings = ({ navigation, onLogout }: SettingsProps) => {
   const [selectedBrands, setSelectedBrands] = useState<string[]>([]);
   const [popularBrands, setPopularBrands] = useState<string[]>([]);
   const [showBrandSearch, setShowBrandSearch] = useState(false);
+  const [showAvatarEdit, setShowAvatarEdit] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState<api.Order | null>(null);
   const [supportMessage, setSupportMessage] = useState("");
   const [showThankYou, setShowThankYou] = useState(false);
@@ -986,6 +989,17 @@ const Settings = ({ navigation, onLogout }: SettingsProps) => {
     <View style={styles.contentContainer}>
       {showBrandSearch ? (
         renderBrandSearch()
+      ) : showAvatarEdit ? (
+        <AvatarEditScreen
+          onBack={() => setShowAvatarEdit(false)}
+          currentAvatar={userProfile?.avatar_url}
+          onSave={(avatarUri: string) => {
+            // Handle avatar save
+            setShowAvatarEdit(false);
+            // Reload profile to show new avatar
+            loadUserProfile();
+          }}
+        />
       ) : (
         <>
           <Animated.View
@@ -1001,11 +1015,21 @@ const Settings = ({ navigation, onLogout }: SettingsProps) => {
                 ? userProfile.username
                 : "Пользователь"}
             </Text>
-            <View style={styles.profileImageContainer}>
-              <Image
-                source={require("./assets/Vision.png")}
-                style={styles.profileImage}
-              />
+            <View style={styles.profileImageWrapper}>
+              <View style={styles.profileImageContainer}>
+                <Image
+                  source={require("./assets/Vision.png")}
+                  style={styles.profileImage}
+                />
+              </View>
+              <TouchableOpacity
+                style={styles.penIconButton}
+                onPress={() => setShowAvatarEdit(true)}
+              >
+                <View style={styles.penIconCircle}>
+                  <PenIcon width={12} height={12} />
+                </View>
+              </TouchableOpacity>
             </View>
           </Animated.View>
 
@@ -1802,6 +1826,11 @@ const styles = StyleSheet.create({
     gap: 10,
     marginTop: 5,
   },
+  profileImageWrapper: {
+    alignItems: "center",
+    justifyContent: "center",
+    position: "relative",
+  },
   profileImageContainer: {
     width: width * 0.25,
     height: width * 0.25,
@@ -1814,6 +1843,22 @@ const styles = StyleSheet.create({
     width: "100%",
     height: "100%",
     resizeMode: "contain",
+  },
+  penIconButton: {
+    position: "absolute",
+    bottom: -20,
+    right: -15,
+    zIndex: 10,
+  },
+  penIconCircle: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: "transparent",
+    borderWidth: 2,
+    borderColor: "rgba(205, 166, 122, 0.4)",
+    justifyContent: "center",
+    alignItems: "center",
   },
   profileName: {
     fontFamily: "IgraSans",
