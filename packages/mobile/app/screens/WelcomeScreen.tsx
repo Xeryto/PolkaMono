@@ -174,7 +174,7 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onLogin, onRegister, onFo
 			start={{ x: 0, y: 0.2 }}
 			end={{ x: 1, y: 0.8 }}
 		>
-			<SafeAreaView style={styles.safeArea}>
+			<SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
 				{isReady && (
 					<View style={styles.whiteBox}>
 						<Animated.View 
@@ -256,7 +256,6 @@ const styles = StyleSheet.create({
 	},
 	safeArea: {
 		flex: 1,
-		paddingTop: Platform.OS === 'android' ? 30 : 0,
 		alignItems: 'center',
 		justifyContent: 'center',
 	},

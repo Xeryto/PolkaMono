@@ -37,6 +37,77 @@ import { mapProductToCardItem } from "./lib/productMapper";
 // Create animated text component using proper method for this version
 const AnimatedText = Animated.createAnimatedComponent(Text);
 
+const { width, height } = Dimensions.get("window");
+
+// Price tag component with dynamic sizing using the article's approach
+const PriceTag = ({ price }: { price: number }) => {
+  const [textWidth, setTextWidth] = useState(0);
+  const [textHeight, setTextHeight] = useState(0);
+  const [isMeasured, setIsMeasured] = useState(false);
+
+  const handleTextLayout = (event: any) => {
+    const { width, height } = event.nativeEvent.layout;
+    if (
+      width > 0 &&
+      height > 0 &&
+      (!isMeasured || width !== textWidth || height !== textHeight)
+    ) {
+      setTextWidth(width);
+      setTextHeight(height);
+      setIsMeasured(true);
+    }
+  };
+
+  const TEXT_LENGTH = isMeasured ? textWidth : 70;
+  const TEXT_HEIGHT = isMeasured ? textHeight : 22;
+  const OFFSET = isMeasured ? TEXT_LENGTH / 2 - TEXT_HEIGHT / 2 : 0;
+
+  const translateX = isMeasured ? TEXT_LENGTH * 0.3 : 200;
+  const translateY = isMeasured ? TEXT_HEIGHT * 2.35 : 0;
+
+  return (
+    <View
+      style={[
+        styles.priceContainer,
+        {
+          position: "absolute",
+          right: 0,
+          top: 0,
+          width: isMeasured ? TEXT_HEIGHT : 200,
+          height: isMeasured ? TEXT_LENGTH : 100,
+          transform: [{ translateX: translateX }, { translateY: translateY }],
+          overflow: "visible",
+        },
+      ]}
+    >
+      {!isMeasured && (
+        <Text onLayout={handleTextLayout} style={styles.itemPrice}>
+          {`${price.toFixed(2)} ₽`}
+        </Text>
+      )}
+      {isMeasured && (
+        <Text
+          style={[
+            styles.itemPrice,
+            {
+              width: TEXT_LENGTH,
+              height: TEXT_HEIGHT,
+              overflow: "visible",
+              transform: [
+                { rotate: "90deg" },
+                { translateX: -OFFSET },
+                { translateY: OFFSET },
+              ],
+            },
+          ]}
+        >
+          {`${price.toFixed(2)} ₽`}
+        </Text>
+      )}
+    </View>
+  );
+};
+
 // Define a simpler navigation type that our custom navigation can satisfy
 interface SimpleNavigation {
   navigate: (screen: string, params?: any) => void;
@@ -918,14 +989,10 @@ const Search = ({ navigation }: SearchProps) => {
             <Image source={item.images[0]} style={styles.itemImage} />
             <View style={styles.itemInfo}>
               <Text style={styles.itemName} numberOfLines={1}>
-                {item.name}
+                {item.brand_name}
               </Text>
             </View>
-            <View style={styles.priceContainer}>
-              <Text style={styles.itemPrice}>{`${item.price.toFixed(
-                2
-              )} ₽`}</Text>
-            </View>
+            <PriceTag price={item.price} />
           </Pressable>
         </Animated.View>
       );
@@ -1413,7 +1480,7 @@ const styles = StyleSheet.create({
   },
   resultsContainer: {
     flex: 1,
-    padding: 11,
+    padding: 21, // 1.5:1 ratio with inner spacing (14 * 1.5)
     borderRadius: 41,
   },
   resultsContainerInitial: {
@@ -1427,11 +1494,11 @@ const styles = StyleSheet.create({
   },
   columnWrapper: {
     justifyContent: "space-between",
-    paddingHorizontal: 5,
+    paddingHorizontal: 0, // Match recommendations: outer padding handles spacing
   },
   searchItem: {
-    width: "47%",
-    marginBottom: 17,
+    width: (width * 0.88 - 42 - 14) / 2, // Container width (88%) - list padding (42 = 21*2) - gap (14, 1.5:1 ratio)
+    marginBottom: 14, // 1.5:1 ratio with outer padding
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.25,
@@ -1470,11 +1537,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
   },
   priceContainer: {
-    position: "absolute",
-    right: -20,
-    top: "50%",
-    transform: [{ translateY: -20 }, { rotate: "90deg" }],
-    //backgroundColor: 'rgba(242, 236, 231, 0.8)',
+    // Position and dimensions are set dynamically in PriceTag component
+    // No absolute positioning - uses flexbox alignment and transforms
+    alignItems: "center",
+    justifyContent: "center",
     borderRadius: 10,
     shadowColor: "#000",
     shadowOffset: { width: 4, height: 0 },

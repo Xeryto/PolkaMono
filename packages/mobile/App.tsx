@@ -14,7 +14,7 @@ import {
   Modal,
   Button,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 import MainPage from "./app/MainPage";
 import CartPage from "./app/Cart";
@@ -50,7 +50,7 @@ import Cart from "./app/components/svg/Cart";
 import Search from "./app/components/svg/Search";
 import Logo from "./app/components/svg/Logo";
 import Heart from "./app/components/svg/Heart";
-import Settings from "./app/components/svg/Settings";
+import Me from "./app/components/svg/Me";
 
 // Extend global namespace for cart storage
 declare global {
@@ -1414,8 +1414,9 @@ export default function App() {
 
   // User interface based on phase; overlays rendered on top
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
-      {navState.phase === "boot" && <SimpleAuthLoadingScreen />}
+    <SafeAreaProvider>
+      <GestureHandlerRootView style={{ flex: 1 }}>
+        {navState.phase === "boot" && <SimpleAuthLoadingScreen />}
 
       {navState.phase === "unauthenticated" && (
         <WelcomeScreen
@@ -1498,7 +1499,7 @@ export default function App() {
           start={{ x: 0, y: 0.2 }}
           end={{ x: 1, y: 0.8 }}
         >
-          <SafeAreaView style={styles.container}>
+          <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
             <Animated.View
               style={[
                 styles.screenContainer,
@@ -1561,7 +1562,7 @@ export default function App() {
                 onPress={() => handleNavPress("Settings")}
                 isActive={currentScreen === "Settings"}
               >
-                <Settings width={30.25} height={30.25} />
+                <Me width={30.25} height={30.25} />
               </NavButton>
             </View>
           </SafeAreaView>
@@ -1575,14 +1576,14 @@ export default function App() {
       {navState.overlay === "down" && (
         <LoadingScreen onFinish={handleLoadingFinish} />
       )}
-    </GestureHandlerRootView>
+      </GestureHandlerRootView>
+    </SafeAreaProvider>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    paddingTop: Platform.OS === "android" ? StatusBar.currentHeight : 0,
     backgroundColor: "transparent",
   },
   gradient: {

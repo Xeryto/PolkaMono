@@ -92,6 +92,75 @@ const ANIMATION_CONFIG = {
 // Disable complex animations on Android for better performance
 const USE_ANIMATIONS = Platform.OS === "ios";
 
+// Price tag component with dynamic sizing using the article's approach
+const PriceTag = ({ price }: { price: number }) => {
+  const [textWidth, setTextWidth] = useState(0);
+  const [textHeight, setTextHeight] = useState(0);
+  const [isMeasured, setIsMeasured] = useState(false);
+
+  const handleTextLayout = (event: any) => {
+    const { width, height } = event.nativeEvent.layout;
+    if (
+      width > 0 &&
+      height > 0 &&
+      (!isMeasured || width !== textWidth || height !== textHeight)
+    ) {
+      setTextWidth(width);
+      setTextHeight(height);
+      setIsMeasured(true);
+    }
+  };
+
+  const TEXT_LENGTH = isMeasured ? textWidth : 70;
+  const TEXT_HEIGHT = isMeasured ? textHeight : 22;
+  const OFFSET = isMeasured ? TEXT_LENGTH / 2 - TEXT_HEIGHT / 2 : 0;
+
+  const translateX = isMeasured ? TEXT_LENGTH * 0.3 : 200;
+  const translateY = isMeasured ? TEXT_HEIGHT * 2.35 : 0;
+
+  return (
+    <View
+      style={[
+        styles.productPriceContainer,
+        {
+          position: "absolute",
+          right: 0,
+          top: 0,
+          width: isMeasured ? TEXT_HEIGHT : 200,
+          height: isMeasured ? TEXT_LENGTH : 100,
+          transform: [{ translateX: translateX }, { translateY: translateY }],
+          overflow: "visible",
+        },
+      ]}
+    >
+      {!isMeasured && (
+        <Text onLayout={handleTextLayout} style={styles.productItemPrice}>
+          {`${price.toFixed(2)} ₽`}
+        </Text>
+      )}
+      {isMeasured && (
+        <Text
+          style={[
+            styles.productItemPrice,
+            {
+              width: TEXT_LENGTH,
+              height: TEXT_HEIGHT,
+              overflow: "visible",
+              transform: [
+                { rotate: "90deg" },
+                { translateX: -OFFSET },
+                { translateY: OFFSET },
+              ],
+            },
+          ]}
+        >
+          {`${price.toFixed(2)} ₽`}
+        </Text>
+      )}
+    </View>
+  );
+};
+
 // UserActionButton: renders the correct action button for a user status
 const UserActionButton = memo(
   ({
@@ -307,7 +376,8 @@ const Favorites = ({ navigation }: FavoritesProps) => {
         // Use utility function to ensure consistent mapping with article_number preservation
         setSavedItems(
           (favorites || []).map(
-            (item: api.Product, i: number): CardItem => mapProductToCardItem(item, i)
+            (item: api.Product, i: number): CardItem =>
+              mapProductToCardItem(item, i)
           )
         );
       } catch (error: any) {
@@ -494,7 +564,9 @@ const Favorites = ({ navigation }: FavoritesProps) => {
 
           setSearchResults(searchUsersList);
         } else {
-          console.log(`Favorites - Ignoring stale search results (request ${currentRequestId} is not the latest ${searchRequestIdRef.current})`);
+          console.log(
+            `Favorites - Ignoring stale search results (request ${currentRequestId} is not the latest ${searchRequestIdRef.current})`
+          );
         }
       } catch (error) {
         // Only update if this is still the latest request
@@ -502,7 +574,12 @@ const Favorites = ({ navigation }: FavoritesProps) => {
           console.error("Error searching users:", error);
           setSearchResults([]);
           // Don't show alert for every error - only for unexpected ones
-          if (error && typeof error === 'object' && 'status' in error && error.status !== 401) {
+          if (
+            error &&
+            typeof error === "object" &&
+            "status" in error &&
+            error.status !== 401
+          ) {
             Alert.alert("Ошибка", "Не удалось выполнить поиск пользователей");
           }
         }
@@ -841,72 +918,53 @@ const Favorites = ({ navigation }: FavoritesProps) => {
     // Simple static rendering for Android
     if (!USE_ANIMATIONS) {
       return (
-        <View style={styles.itemWrapper}>
-          <View style={styles.itemContainer}>
-            <Pressable
-              style={styles.itemImageContainer}
-              onPress={() => {
-                console.log(`Saved item pressed: ${item.name}`);
-                // Navigate with saved item
-                handleNavigate("Home", item, true);
-              }}
-            >
-              <Image
-                source={item.images[0]}
-                style={styles.itemImage as ImageStyle}
-              />
-              <View style={styles.itemInfo}>
-                <Text style={styles.itemName} numberOfLines={1}>
-                  {item.brand_name}
-                </Text>
-              </View>
-              <View style={styles.priceContainer}>
-                <Text style={styles.itemPrice}>{`${item.price.toFixed(
-                  2
-                )} ₽`}</Text>
-              </View>
-            </Pressable>
-          </View>
-        </View>
+        <Animated.View style={styles.productItem}>
+          <Pressable
+            style={styles.productImageContainer}
+            onPress={() => {
+              console.log(`Saved item pressed: ${item.brand_name}`);
+              // Navigate with saved item
+              handleNavigate("Home", item, true);
+            }}
+          >
+            <Image source={item.images[0]} style={styles.productItemImage} />
+            <View style={styles.productItemInfo}>
+              <Text style={styles.productItemName} numberOfLines={1}>
+                {item.brand_name}
+              </Text>
+            </View>
+            <PriceTag price={item.price} />
+          </Pressable>
+        </Animated.View>
       );
     }
 
     // More complex animations for iOS
     return (
-      <View style={styles.itemWrapper}>
-        <Animated.View
-          entering={FadeInDown.duration(ANIMATION_DURATIONS.STANDARD).delay(
-            ANIMATION_DELAYS.STANDARD + index * ANIMATION_DELAYS.SMALL
-          )}
-          exiting={FadeOutDown.duration(ANIMATION_DURATIONS.MICRO)}
+      <Animated.View
+        entering={FadeInDown.duration(ANIMATION_DURATIONS.STANDARD).delay(
+          ANIMATION_DELAYS.STANDARD + index * ANIMATION_DELAYS.SMALL
+        )}
+        exiting={FadeOutDown.duration(ANIMATION_DURATIONS.MICRO)}
+        style={styles.productItem}
+      >
+        <Pressable
+          style={styles.productImageContainer}
+          onPress={() => {
+            console.log(`Saved item pressed: ${item.name}`);
+            // Navigate with saved item
+            handleNavigate("Home", item, true);
+          }}
         >
-          <View style={styles.itemContainer}>
-            <Pressable
-              style={styles.itemImageContainer}
-              onPress={() => {
-                console.log(`Saved item pressed: ${item.name}`);
-                // Navigate with saved item
-                handleNavigate("Home", item, true);
-              }}
-            >
-              <Image
-                source={item.images[0]}
-                style={styles.itemImage as ImageStyle}
-              />
-              <View style={styles.itemInfo}>
-                <Text style={styles.itemName} numberOfLines={1}>
-                  {item.brand_name}
-                </Text>
-              </View>
-              <View style={styles.priceContainer}>
-                <Text style={styles.itemPrice}>{`${item.price.toFixed(
-                  2
-                )} ₽`}</Text>
-              </View>
-            </Pressable>
+          <Image source={item.images[0]} style={styles.productItemImage} />
+          <View style={styles.productItemInfo}>
+            <Text style={styles.productItemName} numberOfLines={1}>
+              {item.brand_name}
+            </Text>
           </View>
-        </Animated.View>
-      </View>
+          <PriceTag price={item.price} />
+        </Pressable>
+      </Animated.View>
     );
   };
 
@@ -996,12 +1054,12 @@ const Favorites = ({ navigation }: FavoritesProps) => {
     // Simple static rendering for Android
     if (!USE_ANIMATIONS) {
       return (
-        <View style={[styles.itemWrapper, { width: (width * 0.88 - 45) / 2 }]}>
+        <View style={styles.recommendationItemWrapper}>
           <View style={styles.itemContainer}>
             <Pressable
               style={styles.itemImageContainer}
               onPress={() => {
-                console.log(`Recommended item pressed: ${item.name}`);
+                console.log(`Recommended item pressed: ${item.brand_name}`);
 
                 // Use the isLiked property from the item directly
                 handleNavigate(
@@ -1020,11 +1078,7 @@ const Favorites = ({ navigation }: FavoritesProps) => {
                   {item.brand_name}
                 </Text>
               </View>
-              <View style={styles.priceContainer}>
-                <Text style={styles.itemPrice}>{`${item.price.toFixed(
-                  2
-                )} ₽`}</Text>
-              </View>
+              <PriceTag price={item.price} />
             </Pressable>
           </View>
         </View>
@@ -1033,7 +1087,7 @@ const Favorites = ({ navigation }: FavoritesProps) => {
 
     // More complex animations for iOS
     return (
-      <View style={[styles.itemWrapper, { width: (width * 0.88 - 45) / 2 }]}>
+      <View style={styles.recommendationItemWrapper}>
         <View style={styles.itemContainer}>
           <Pressable
             style={styles.itemImageContainer}
@@ -1049,11 +1103,7 @@ const Favorites = ({ navigation }: FavoritesProps) => {
                 {item.brand_name}
               </Text>
             </View>
-            <View style={styles.priceContainer}>
-              <Text style={styles.itemPrice}>{`${item.price.toFixed(
-                2
-              )} ₽`}</Text>
-            </View>
+            <PriceTag price={item.price} />
           </Pressable>
         </View>
       </View>
@@ -1644,23 +1694,31 @@ const SearchContent = ({
           {!hasValidQuery ? (
             trimmedQuery.length === 0 ? (
               <Animated.View
-                entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(ANIMATION_DELAYS.STANDARD)}
+                entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
+                  ANIMATION_DELAYS.STANDARD
+                )}
                 style={styles.emptyStateContainer}
               >
                 <Animated.View
-                  entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(ANIMATION_DELAYS.STANDARD)}
+                  entering={FadeInDown.duration(
+                    ANIMATION_DURATIONS.MEDIUM
+                  ).delay(ANIMATION_DELAYS.STANDARD)}
                   style={styles.emptyStateIcon}
                 >
                   <AntDesign name="search" size={64} color="rgba(0,0,0,0.3)" />
                 </Animated.View>
                 <Animated.Text
-                  entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(ANIMATION_DELAYS.MEDIUM)}
+                  entering={FadeInDown.duration(
+                    ANIMATION_DURATIONS.MEDIUM
+                  ).delay(ANIMATION_DELAYS.MEDIUM)}
                   style={styles.emptyStateTitle}
                 >
                   Начните поиск
                 </Animated.Text>
                 <Animated.Text
-                  entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(ANIMATION_DELAYS.LARGE)}
+                  entering={FadeInDown.duration(
+                    ANIMATION_DURATIONS.MEDIUM
+                  ).delay(ANIMATION_DELAYS.LARGE)}
                   style={styles.emptyStateDescription}
                 >
                   Введите имя пользователя для поиска друзей
@@ -1668,11 +1726,15 @@ const SearchContent = ({
               </Animated.View>
             ) : (
               <Animated.View
-                entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(ANIMATION_DELAYS.STANDARD)}
+                entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
+                  ANIMATION_DELAYS.STANDARD
+                )}
                 style={styles.emptyStateContainer}
               >
                 <Animated.Text
-                  entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(ANIMATION_DELAYS.MEDIUM)}
+                  entering={FadeInDown.duration(
+                    ANIMATION_DURATIONS.MEDIUM
+                  ).delay(ANIMATION_DELAYS.MEDIUM)}
                   style={styles.emptyStateDescription}
                 >
                   Введите минимум {minSearchLength} символа для поиска
@@ -1686,7 +1748,9 @@ const SearchContent = ({
             >
               <ActivityIndicator size="large" color="#CDA67A" />
               <Animated.Text
-                entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(ANIMATION_DELAYS.SMALL)}
+                entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
+                  ANIMATION_DELAYS.SMALL
+                )}
                 style={styles.loadingText}
               >
                 Поиск...
@@ -1698,19 +1762,25 @@ const SearchContent = ({
               style={styles.noResultsContainer}
             >
               <Animated.View
-                entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(ANIMATION_DELAYS.STANDARD)}
+                entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
+                  ANIMATION_DELAYS.STANDARD
+                )}
                 style={styles.emptyStateIcon}
               >
                 <AntDesign name="inbox" size={64} color="rgba(0,0,0,0.3)" />
               </Animated.View>
               <Animated.Text
-                entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(ANIMATION_DELAYS.MEDIUM)}
+                entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
+                  ANIMATION_DELAYS.MEDIUM
+                )}
                 style={styles.noResultsText}
               >
                 Пользователи не найдены
               </Animated.Text>
               <Animated.Text
-                entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(ANIMATION_DELAYS.LARGE)}
+                entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
+                  ANIMATION_DELAYS.LARGE
+                )}
                 style={styles.noResultsDescription}
               >
                 Попробуйте изменить поисковый запрос
@@ -1922,8 +1992,9 @@ const FriendProfileView = React.memo(
             "FavoritesPage"
           );
           // Use utility function to ensure consistent mapping with article_number preservation
-          const recommendedItems = (recs || []).map((item: api.Product, index: number) => 
-            mapProductToCardItem(item, index)
+          const recommendedItems = (recs || []).map(
+            (item: api.Product, index: number) =>
+              mapProductToCardItem(item, index)
           );
           setCustomRecommendations(
             (prev: { [key: string]: RecommendedItem[] }) => ({
@@ -2081,7 +2152,7 @@ const FriendProfileView = React.memo(
                 keyExtractor={(item) => item.id.toString()}
                 showsVerticalScrollIndicator={false}
                 numColumns={2}
-                columnWrapperStyle={styles.columnWrapper}
+                columnWrapperStyle={styles.recommendationsColumnWrapper}
                 contentContainerStyle={styles.listContent}
                 removeClippedSubviews={Platform.OS === "android"}
                 initialNumToRender={4}
@@ -2204,7 +2275,7 @@ const styles = StyleSheet.create({
   flatList: {
     width: "100%",
     height: "100%",
-    padding: 15,
+    padding: 21, // 1.5:1 ratio with inner spacing (14 * 1.5)
     borderRadius: 41,
   },
   searchModeTopBox: {
@@ -2244,8 +2315,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    paddingHorizontal: 15,
-    paddingBottom: 15,
+    padding: 15,
   },
   boxTitle: {
     fontFamily: "IgraSans",
@@ -2267,11 +2337,12 @@ const styles = StyleSheet.create({
   },
   columnWrapper: {
     justifyContent: "space-between",
+    paddingHorizontal: 0, // Match recommendations: outer padding handles spacing
   },
   itemContainer: {
     height: (width * 0.88 - 45) / 2,
     width: "100%", // Calculate width for two columns with spacing
-    marginBottom: 15,
+    marginBottom: 14, // Account for shadows (10px base + 4px shadow radius)
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.25,
@@ -2366,6 +2437,61 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
   },
   itemPrice: {
+    fontFamily: "REM",
+    fontSize: 14,
+    color: "#4A3120",
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  // Product item styles matching Search.tsx
+  productItem: {
+    width: (width * 0.88 - 42 - 14) / 2, // Container width - list padding (42 = 21*2) - gap (14, 1.5:1 ratio)
+    marginBottom: 14, // 1.5:1 ratio with outer padding
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 4,
+    backgroundColor: "#EDE7E2",
+    borderRadius: 40,
+  },
+  productImageContainer: {
+    overflow: "hidden",
+    aspectRatio: 1,
+    position: "relative",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  productItemImage: {
+    width: "73%",
+    height: "73%",
+    resizeMode: "contain",
+  },
+  productItemInfo: {
+    bottom: -5,
+    alignItems: "center",
+    borderRadius: 20,
+    padding: 6,
+  },
+  productItemName: {
+    fontFamily: "IgraSans",
+    fontSize: 13,
+    color: "#4A3120",
+    textAlign: "center",
+    paddingHorizontal: 10,
+  },
+  productPriceContainer: {
+    // Position and dimensions are set dynamically in PriceTag component
+    // No absolute positioning - uses flexbox alignment and transforms
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 10,
+    shadowColor: "#000",
+    shadowOffset: { width: 4, height: 0 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+  },
+  productItemPrice: {
     fontFamily: "REM",
     fontSize: 14,
     color: "#4A3120",
@@ -2472,8 +2598,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
   },
   itemWrapper: {
-    width: (width * 0.88 - 40) / 2,
-    //marginBottom: 15,
+    width: (width * 0.88 - 42 - 14) / 2, // Container width - list padding (42 = 21*2) - gap (14, 1.5:1 ratio)
+    marginBottom: 14, // 1.5:1 ratio with outer padding
   },
   searchItemWrapper: {
     width: "47%",
@@ -2583,8 +2709,16 @@ const styles = StyleSheet.create({
   recommendationsList: {
     flex: 1,
     borderRadius: 41,
-    padding: 15,
+    padding: 21, // 1.5:1 ratio with inner spacing (14 * 1.5)
     //paddingTop: 17.5,
+  },
+  recommendationsColumnWrapper: {
+    justifyContent: "space-between",
+    paddingHorizontal: 0,
+    marginBottom: 0,
+  },
+  recommendationItemWrapper: {
+    width: (width * 0.88 - 42 - 14) / 2, // Container width - list padding (42 = 21*2) - gap (14, 1.5:1 ratio)
   },
   regenerateButtonWrapper: {
     shadowColor: "#000",
