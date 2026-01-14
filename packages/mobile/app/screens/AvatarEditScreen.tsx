@@ -15,14 +15,15 @@ import Animated, { FadeInDown } from "react-native-reanimated";
 import * as ImagePicker from "expo-image-picker";
 import * as ImageManipulator from "expo-image-manipulator";
 import BackIcon from "../components/svg/BackIcon";
+import Me from "../components/svg/Me";
 import { ANIMATION_DURATIONS, ANIMATION_DELAYS } from "../lib/animations";
 import * as Haptics from "expo-haptics";
 
 const { width, height } = Dimensions.get("window");
 
 // Constants for styles
-const CROP_SIZE = width * 0.6;
-const IMAGE_DISPLAY_SIZE = width * 0.7;
+const CROP_SIZE = width * 0.75;
+const IMAGE_DISPLAY_SIZE = width * 0.85;
 
 interface AvatarEditScreenProps {
   onBack: () => void;
@@ -115,7 +116,7 @@ const AvatarEditScreen: React.FC<AvatarEditScreenProps> = ({
           const touch2 = evt.nativeEvent.touches[1];
           const distance = Math.sqrt(
             Math.pow(touch2.pageX - touch1.pageX, 2) +
-            Math.pow(touch2.pageY - touch1.pageY, 2)
+              Math.pow(touch2.pageY - touch1.pageY, 2)
           );
           lastPinchDistance.current = distance;
         }
@@ -129,20 +130,29 @@ const AvatarEditScreen: React.FC<AvatarEditScreenProps> = ({
           const touch2 = touches[1];
           const distance = Math.sqrt(
             Math.pow(touch2.pageX - touch1.pageX, 2) +
-            Math.pow(touch2.pageY - touch1.pageY, 2)
+              Math.pow(touch2.pageY - touch1.pageY, 2)
           );
 
           if (lastPinchDistance.current !== null) {
             const scaleChange = distance / lastPinchDistance.current;
-            const newScale = Math.max(1, Math.min(3, pinchStartScale.current * scaleChange));
+            const newScale = Math.max(
+              1,
+              Math.min(3, pinchStartScale.current * scaleChange)
+            );
 
             // Constrain translation for new scale
             const constraints = getConstraints(newScale);
             const currentX = lastTranslate.current.x;
             const currentY = lastTranslate.current.y;
 
-            const constrainedX = Math.max(-constraints.maxX, Math.min(constraints.maxX, currentX));
-            const constrainedY = Math.max(-constraints.maxY, Math.min(constraints.maxY, currentY));
+            const constrainedX = Math.max(
+              -constraints.maxX,
+              Math.min(constraints.maxX, currentX)
+            );
+            const constrainedY = Math.max(
+              -constraints.maxY,
+              Math.min(constraints.maxY, currentY)
+            );
 
             scale.setValue(newScale);
             translateX.setValue(constrainedX);
@@ -164,8 +174,14 @@ const AvatarEditScreen: React.FC<AvatarEditScreenProps> = ({
             let newY = lastTranslate.current.y + gestureState.dy;
 
             // Constrain movement to keep image within crop bounds
-            newX = Math.max(-constraints.maxX, Math.min(constraints.maxX, newX));
-            newY = Math.max(-constraints.maxY, Math.min(constraints.maxY, newY));
+            newX = Math.max(
+              -constraints.maxX,
+              Math.min(constraints.maxX, newX)
+            );
+            newY = Math.max(
+              -constraints.maxY,
+              Math.min(constraints.maxY, newY)
+            );
 
             translateX.setValue(newX);
             translateY.setValue(newY);
@@ -279,29 +295,31 @@ const AvatarEditScreen: React.FC<AvatarEditScreenProps> = ({
         )}
         style={styles.content}
       >
-        <View style={styles.imageContainer}>
-          <View style={styles.cropArea}>
-            {selectedImage ? (
-              <RNAnimated.View
-                style={[
-                  styles.imageWrapper,
-                  {
-                    transform: [{ translateX }, { translateY }, { scale }],
-                  },
-                ]}
-                {...panResponder.panHandlers}
-              >
-                <Image
-                  source={{ uri: selectedImage }}
-                  style={styles.previewImage}
-                  resizeMode="cover"
-                />
-              </RNAnimated.View>
-            ) : (
-              <View style={styles.placeholder}>
-                <Text style={styles.placeholderText}>Выберите фото</Text>
-              </View>
-            )}
+        <View style={styles.imageContainerWrapper}>
+          <View style={styles.imageContainer}>
+            <View style={styles.cropArea}>
+              {selectedImage ? (
+                <RNAnimated.View
+                  style={[
+                    styles.imageWrapper,
+                    {
+                      transform: [{ translateX }, { translateY }, { scale }],
+                    },
+                  ]}
+                  {...panResponder.panHandlers}
+                >
+                  <Image
+                    source={{ uri: selectedImage }}
+                    style={styles.previewImage}
+                    resizeMode="cover"
+                  />
+                </RNAnimated.View>
+              ) : (
+                <View style={styles.placeholder}>
+                  <Me width={"80%"} height={"80%"} />
+                </View>
+              )}
+            </View>
           </View>
         </View>
 
@@ -311,18 +329,23 @@ const AvatarEditScreen: React.FC<AvatarEditScreenProps> = ({
           </Text>
         </TouchableOpacity>
 
-        <TouchableOpacity
-          style={[
-            styles.confirmButton,
-            (!selectedImage || isLoading) && styles.confirmButtonDisabled,
-          ]}
-          onPress={handleConfirm}
-          disabled={!selectedImage || isLoading}
-        >
-          <Text style={styles.confirmButtonText}>
-            {isLoading ? "Сохранение..." : "Подтвердить"}
-          </Text>
-        </TouchableOpacity>
+        <View style={styles.buttonContainer}>
+          <TouchableOpacity
+            style={styles.confirmButton}
+            onPress={handleConfirm}
+            disabled={!selectedImage || isLoading}
+          >
+            <Text
+              style={[
+                styles.confirmButtonText,
+                (!selectedImage || isLoading) &&
+                  styles.confirmButtonDisabledText,
+              ]}
+            >
+              {isLoading ? "Сохранение..." : "Подтвердить"}
+            </Text>
+          </TouchableOpacity>
+        </View>
       </Animated.View>
     </View>
   );
@@ -346,8 +369,7 @@ const styles = StyleSheet.create({
     width: "100%",
     alignItems: "center",
     flex: 1,
-    justifyContent: "flex-start",
-    paddingTop: height * 0.08,
+    justifyContent: "space-between",
   },
   title: {
     fontFamily: "IgraSans",
@@ -356,13 +378,17 @@ const styles = StyleSheet.create({
     marginBottom: height * 0.05,
     textAlign: "center",
   },
+  imageContainerWrapper: {
+    width: "87%",
+    justifyContent: "center",
+    alignItems: "center",
+  },
   imageContainer: {
     width: CROP_SIZE,
     height: CROP_SIZE,
     borderRadius: CROP_SIZE / 2,
     overflow: "hidden",
     backgroundColor: "#E2CCB2",
-    marginBottom: height * 0.04,
     justifyContent: "center",
     alignItems: "center",
     ...Platform.select({
@@ -402,17 +428,13 @@ const styles = StyleSheet.create({
     alignItems: "center",
     backgroundColor: "#E2CCB2",
   },
-  placeholderText: {
-    fontFamily: "IgraSans",
-    fontSize: 18,
-    color: "rgba(0,0,0,0.5)",
-  },
   pickImageButton: {
     backgroundColor: "#E2CCB2",
     borderRadius: 41,
     paddingHorizontal: 32,
-    paddingVertical: 16,
-    marginBottom: height * 0.03,
+    paddingVertical: 24,
+    width: "81%",
+    alignItems: "center",
     ...Platform.select({
       ios: {
         shadowColor: "#000",
@@ -430,14 +452,16 @@ const styles = StyleSheet.create({
     fontSize: 20,
     color: "#000",
   },
+  buttonContainer: {
+    width: "100%",
+    alignItems: "flex-end",
+  },
   confirmButton: {
-    backgroundColor: "#9E9E9E",
-    borderRadius: 12,
-    paddingHorizontal: 32,
-    paddingVertical: 16,
-    position: "absolute",
-    bottom: height * 0.03,
-    right: width * 0.05,
+    backgroundColor: "#E0D6CC",
+    borderRadius: 41,
+    paddingVertical: 12.5,
+    paddingHorizontal: 25,
+    alignItems: "center",
     ...Platform.select({
       ios: {
         shadowColor: "#000",
@@ -447,18 +471,18 @@ const styles = StyleSheet.create({
       },
       android: {
         elevation: 6,
+        overflow: "hidden",
       },
     }),
   },
-  confirmButtonDisabled: {
-    backgroundColor: "#CCCCCC",
-    opacity: 0.6,
-  },
   confirmButtonText: {
     fontFamily: "IgraSans",
-    fontSize: 18,
-    color: "#FFF",
-    fontWeight: "bold",
+    fontSize: 20,
+    color: "#000",
+  },
+  confirmButtonDisabledText: {
+    color: "#000",
+    opacity: 0.37,
   },
 });
 

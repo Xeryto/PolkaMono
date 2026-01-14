@@ -1037,7 +1037,10 @@ const Favorites = ({ navigation }: FavoritesProps) => {
           setMainShowConfirmDialog(true);
         }}
         onPress={() => {
-          handleFriendSelect(item);
+          // Only allow viewing profile if user is an accepted friend
+          if (item.status === "friend") {
+            handleFriendSelect(item);
+          }
         }}
         styles={styles}
         width={width}
@@ -1197,9 +1200,13 @@ const Favorites = ({ navigation }: FavoritesProps) => {
           <Pressable
             style={styles.userImageContainer}
             onPress={() => {
-              console.log(`Friend item pressed: ${item.username}`);
-              handleFriendSelect(item);
+              // Only allow viewing profile if user is an accepted friend
+              if (item.status === "friend") {
+                console.log(`Friend item pressed: ${item.username}`);
+                handleFriendSelect(item);
+              }
             }}
+            disabled={item.status !== "friend"}
           >
             <View style={styles.imageContainer}>
               <Image
@@ -1881,6 +1888,14 @@ const FriendProfileView = React.memo(
       outputRange: ["0deg", "720deg"],
     });
 
+    // Check if user is actually a friend - kick them out if not
+    useEffect(() => {
+      if (friend.status !== "friend") {
+        console.log("User is not a friend, redirecting back");
+        onBack();
+      }
+    }, [friend.status, onBack]);
+
     // Load friend's public profile when component mounts
     useEffect(() => {
       const loadFriendProfile = async () => {
@@ -1899,10 +1914,10 @@ const FriendProfileView = React.memo(
         }
       };
 
-      if (friend.id) {
+      if (friend.id && friend.status === "friend") {
         loadFriendProfile();
       }
-    }, [friend.id]);
+    }, [friend.id, friend.status]);
 
     // Handle regenerate button press with spinning border animation
     const handleRegeneratePress = () => {
@@ -3030,7 +3045,11 @@ const FriendListItem = memo(
           exiting={FadeOutDown.duration(ANIMATION_DURATIONS.MICRO)}
         >
           <View style={styles.itemContainer}>
-            <Pressable style={styles.userImageContainer} onPress={onPress}>
+            <Pressable 
+              style={styles.userImageContainer} 
+              onPress={onPress}
+              disabled={item.status !== "friend"}
+            >
               <View style={styles.imageContainer}>
                 <Image
                   source={require("./assets/Vision.png")}
