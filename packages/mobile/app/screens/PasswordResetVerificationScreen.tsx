@@ -132,7 +132,7 @@ const PasswordResetVerificationScreen: React.FC<
                 onPress={onBack}
                 activeOpacity={0.7}
               >
-                <BackIcon width={33} height={33} />
+                <BackIcon width={22} height={22} />
               </TouchableOpacity>
               <Text style={styles.title}>Подтвердите код</Text>
               <Text style={styles.subtitle}>

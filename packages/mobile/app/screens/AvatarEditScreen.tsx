@@ -285,7 +285,7 @@ const AvatarEditScreen: React.FC<AvatarEditScreenProps> = ({
         )}
       >
         <TouchableOpacity onPress={onBack}>
-          <BackIcon width={33} height={33} />
+          <BackIcon width={22} height={22} />
         </TouchableOpacity>
       </Animated.View>
 

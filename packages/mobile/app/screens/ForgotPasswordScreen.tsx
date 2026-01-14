@@ -94,7 +94,7 @@ const ForgotPasswordScreen: React.FC<ForgotPasswordScreenProps> = ({
                 onPress={onBack}
                 activeOpacity={0.7}
               >
-                <BackIcon width={33} height={33} />
+                <BackIcon width={22} height={22} />
               </TouchableOpacity>
 
               <View style={styles.logoContainer}>

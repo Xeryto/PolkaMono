@@ -252,7 +252,7 @@ const BrandSearchScreen: React.FC<BrandSearchScreenProps> = ({
             onPress={onBack}
             activeOpacity={0.7}
           >
-            <BackIcon width={33} height={33} />
+            <BackIcon width={22} height={22} />
           </TouchableOpacity>
           <View style={styles.formContainerShadow}>
             <Animated.View style={styles.formContainer}>

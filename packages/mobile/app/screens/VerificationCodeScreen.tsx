@@ -133,7 +133,7 @@ const VerificationCodeScreen: React.FC<VerificationCodeScreenProps> = ({
                 onPress={onBack}
                 activeOpacity={0.7}
               >
-                <BackIcon width={33} height={33} />
+                <BackIcon width={22} height={22} />
               </TouchableOpacity>
               <Text style={styles.title}>Подтвердите почту</Text>
               <Text style={styles.subtitle}>
@@ -155,9 +155,9 @@ const VerificationCodeScreen: React.FC<VerificationCodeScreenProps> = ({
                 >
                   <Animated.View
                     style={styles.codeContainer}
-                    entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
-                      ANIMATION_DELAYS.STANDARD
-                    )}
+                    entering={FadeInDown.duration(
+                      ANIMATION_DURATIONS.MEDIUM
+                    ).delay(ANIMATION_DELAYS.STANDARD)}
                   >
                     {[0, 1, 2, 3, 4, 5].map((index) => (
                       <View
@@ -202,7 +202,8 @@ const VerificationCodeScreen: React.FC<VerificationCodeScreenProps> = ({
               <TouchableOpacity
                 style={[
                   styles.resendButton,
-                  (resendLoading || resendCooldown > 0) && styles.resendButtonDisabled,
+                  (resendLoading || resendCooldown > 0) &&
+                    styles.resendButtonDisabled,
                 ]}
                 onPress={handleResendCode}
                 disabled={resendLoading || resendCooldown > 0}
@@ -210,7 +211,12 @@ const VerificationCodeScreen: React.FC<VerificationCodeScreenProps> = ({
                 {resendLoading ? (
                   <ActivityIndicator color="#4A3120" />
                 ) : resendCooldown > 0 ? (
-                  <Text style={[styles.resendButtonText, styles.resendButtonTextDisabled]}>
+                  <Text
+                    style={[
+                      styles.resendButtonText,
+                      styles.resendButtonTextDisabled,
+                    ]}
+                  >
                     Повторить через {resendCooldown}с
                   </Text>
                 ) : (

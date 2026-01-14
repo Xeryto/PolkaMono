@@ -2059,7 +2059,7 @@ const FriendProfileView = React.memo(
           onPress={onBack}
           activeOpacity={0.7}
         >
-          <BackIcon width={33} height={33} />
+          <BackIcon width={22} height={22} />
         </TouchableOpacity>
 
         {/* Profile info */}
@@ -3045,8 +3045,8 @@ const FriendListItem = memo(
           exiting={FadeOutDown.duration(ANIMATION_DURATIONS.MICRO)}
         >
           <View style={styles.itemContainer}>
-            <Pressable 
-              style={styles.userImageContainer} 
+            <Pressable
+              style={styles.userImageContainer}
               onPress={onPress}
               disabled={item.status !== "friend"}
             >

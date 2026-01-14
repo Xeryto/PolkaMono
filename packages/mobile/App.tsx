@@ -21,6 +21,7 @@ import CartPage from "./app/Cart";
 import SearchPage from "./app/Search";
 import FavoritesPage from "./app/Favorites";
 import SettingsPage from "./app/Settings";
+import WallPage from "./app/Wall";
 import LoadingScreen from "./app/LoadingScreen";
 import AuthLoadingScreen from "./app/AuthLoadingScreen";
 import SimpleAuthLoadingScreen from "./app/SimpleAuthLoadingScreen";
@@ -75,7 +76,13 @@ declare global {
 }
 
 // Define types for improved navigation
-type ScreenName = "Home" | "Cart" | "Search" | "Favorites" | "Settings";
+type ScreenName =
+  | "Home"
+  | "Cart"
+  | "Search"
+  | "Favorites"
+  | "Wall"
+  | "Settings";
 type NavigationListener = () => void;
 
 interface SimpleNavigation {
@@ -367,6 +374,7 @@ export default function App() {
     Cart: {},
     Search: {},
     Favorites: {},
+    Wall: {},
     Settings: {},
   });
 
@@ -1418,164 +1426,166 @@ export default function App() {
       <GestureHandlerRootView style={{ flex: 1 }}>
         {navState.phase === "boot" && <SimpleAuthLoadingScreen />}
 
-      {navState.phase === "unauthenticated" && (
-        <WelcomeScreen
-          onLogin={handleLogin}
-          onRegister={handleRegister}
-          onForgotPassword={() => transitionTo("forgot_password")}
-        />
-      )}
+        {navState.phase === "unauthenticated" && (
+          <WelcomeScreen
+            onLogin={handleLogin}
+            onRegister={handleRegister}
+            onForgotPassword={() => transitionTo("forgot_password")}
+          />
+        )}
 
-      {navState.phase === "email_verification" && (
-        <VerificationCodeScreen
-          email={userEmail}
-          onVerificationSuccess={handleEmailVerificationSuccess}
-          onBack={() => {
-            logout();
-          }}
-        />
-      )}
+        {navState.phase === "email_verification" && (
+          <VerificationCodeScreen
+            email={userEmail}
+            onVerificationSuccess={handleEmailVerificationSuccess}
+            onBack={() => {
+              logout();
+            }}
+          />
+        )}
 
-      {navState.phase === "forgot_password" && (
-        <ForgotPasswordScreen
-          onBack={() => transitionTo("unauthenticated")}
-          onSuccess={(usernameOrEmail: string) =>
-            handleForgotPassword(usernameOrEmail)
-          }
-        />
-      )}
+        {navState.phase === "forgot_password" && (
+          <ForgotPasswordScreen
+            onBack={() => transitionTo("unauthenticated")}
+            onSuccess={(usernameOrEmail: string) =>
+              handleForgotPassword(usernameOrEmail)
+            }
+          />
+        )}
 
-      {navState.phase === "password_reset_verification" && (
-        <PasswordResetVerificationScreen
-          email={forgotPasswordEmail}
-          onVerificationSuccess={handlePasswordResetVerificationSuccess}
-          onBack={() => transitionTo("forgot_password")}
-        />
-      )}
+        {navState.phase === "password_reset_verification" && (
+          <PasswordResetVerificationScreen
+            email={forgotPasswordEmail}
+            onVerificationSuccess={handlePasswordResetVerificationSuccess}
+            onBack={() => transitionTo("forgot_password")}
+          />
+        )}
 
-      {navState.phase === "password_reset" && (
-        <ResetPasswordScreen
-          onBack={() => transitionTo("password_reset_verification")}
-          onSuccess={handlePasswordResetSuccess}
-          identifier={forgotPasswordEmail}
-          code={passwordResetCode}
-        />
-      )}
+        {navState.phase === "password_reset" && (
+          <ResetPasswordScreen
+            onBack={() => transitionTo("password_reset_verification")}
+            onSuccess={handlePasswordResetSuccess}
+            identifier={forgotPasswordEmail}
+            code={passwordResetCode}
+          />
+        )}
 
-      {navState.phase === "profile_confirm" && (
-        <ConfirmationScreen
-          onComplete={handleConfirmationComplete}
-          onBack={() => {
-            logout();
-          }}
-        />
-      )}
+        {navState.phase === "profile_confirm" && (
+          <ConfirmationScreen
+            onComplete={handleConfirmationComplete}
+            onBack={() => {
+              logout();
+            }}
+          />
+        )}
 
-      {navState.phase === "profile_brands" && (
-        <BrandSearchScreen
-          initialBrands={selectedBrands}
-          onComplete={handleBrandSearchComplete}
-          onBack={() => {
-            transitionTo("profile_confirm");
-          }}
-        />
-      )}
+        {navState.phase === "profile_brands" && (
+          <BrandSearchScreen
+            initialBrands={selectedBrands}
+            onComplete={handleBrandSearchComplete}
+            onBack={() => {
+              transitionTo("profile_confirm");
+            }}
+          />
+        )}
 
-      {navState.phase === "profile_styles" && (
-        <StylesSelectionScreen
-          gender={gender!}
-          onComplete={handleStylesSelectionComplete}
-          onBack={() => {
-            transitionTo("profile_brands");
-          }}
-        />
-      )}
+        {navState.phase === "profile_styles" && (
+          <StylesSelectionScreen
+            gender={gender!}
+            onComplete={handleStylesSelectionComplete}
+            onBack={() => {
+              transitionTo("profile_brands");
+            }}
+          />
+        )}
 
-      {navState.phase === "main" && (
-        <LinearGradient
-          colors={["#FAE9CF", "#CCA479", "#CDA67A", "#6A462F"]}
-          locations={[0, 0.34, 0.5, 0.87]}
-          style={styles.gradient}
-          start={{ x: 0, y: 0.2 }}
-          end={{ x: 1, y: 0.8 }}
-        >
-          <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
-            <Animated.View
-              style={[
-                styles.screenContainer,
-                comingFromSignup
-                  ? { opacity: 1, transform: [{ translateY: 0 }] }
-                  : {
-                      opacity: fadeAnim,
-                      transform: [{ translateY: slideAnim }],
-                    },
-              ]}
-            >
-              {currentScreen === "Home" && (
-                <MainPage
-                  navigation={navigation}
-                  route={{ params: screenParams.Home }}
-                />
-              )}
-              {currentScreen === "Cart" && <CartPage navigation={navigation} />}
-              {currentScreen === "Search" && (
-                <SearchPage navigation={navigation} />
-              )}
-              {currentScreen === "Favorites" && (
-                <FavoritesPage navigation={navigation} />
-              )}
-              {currentScreen === "Settings" && (
-                <SettingsPage navigation={navigation} onLogout={handleLogout} />
-              )}
-            </Animated.View>
-
-            <View style={styles.navbar}>
-              <NavButton
-                onPress={() => handleNavPress("Cart")}
-                isActive={currentScreen === "Cart"}
+        {navState.phase === "main" && (
+          <LinearGradient
+            colors={["#FAE9CF", "#CCA479", "#CDA67A", "#6A462F"]}
+            locations={[0, 0.34, 0.5, 0.87]}
+            style={styles.gradient}
+            start={{ x: 0, y: 0.2 }}
+            end={{ x: 1, y: 0.8 }}
+          >
+            <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
+              <Animated.View
+                style={[
+                  styles.screenContainer,
+                  comingFromSignup
+                    ? { opacity: 1, transform: [{ translateY: 0 }] }
+                    : {
+                        opacity: fadeAnim,
+                        transform: [{ translateY: slideAnim }],
+                      },
+                ]}
               >
-                <Cart width={32.75} height={32} />
-              </NavButton>
+                {currentScreen === "Home" && (
+                  <MainPage
+                    navigation={navigation}
+                    route={{ params: screenParams.Home }}
+                  />
+                )}
+                {currentScreen === "Cart" && (
+                  <CartPage navigation={navigation} />
+                )}
+                {currentScreen === "Search" && (
+                  <SearchPage navigation={navigation} />
+                )}
+                {currentScreen === "Favorites" && (
+                  <FavoritesPage navigation={navigation} />
+                )}
+                {currentScreen === "Wall" && (
+                  <WallPage navigation={navigation} onLogout={handleLogout} />
+                )}
+              </Animated.View>
 
-              <NavButton
-                onPress={() => handleNavPress("Search")}
-                isActive={currentScreen === "Search"}
-              >
-                <Search width={24.75} height={24.75} />
-              </NavButton>
+              <View style={styles.navbar}>
+                <NavButton
+                  onPress={() => handleNavPress("Cart")}
+                  isActive={currentScreen === "Cart"}
+                >
+                  <Cart width={32.75} height={32} />
+                </NavButton>
 
-              <NavButton
-                onPress={() => handleNavPress("Home")}
-                isActive={currentScreen === "Home"}
-              >
-                <Logo width={21} height={28} />
-              </NavButton>
+                <NavButton
+                  onPress={() => handleNavPress("Search")}
+                  isActive={currentScreen === "Search"}
+                >
+                  <Search width={24.75} height={24.75} />
+                </NavButton>
 
-              <NavButton
-                onPress={() => handleNavPress("Favorites")}
-                isActive={currentScreen === "Favorites"}
-              >
-                <Heart width={28.74} height={25.07} />
-              </NavButton>
+                <NavButton
+                  onPress={() => handleNavPress("Home")}
+                  isActive={currentScreen === "Home"}
+                >
+                  <Logo width={21} height={28} />
+                </NavButton>
 
-              <NavButton
-                onPress={() => handleNavPress("Settings")}
-                isActive={currentScreen === "Settings"}
-              >
-                <Me width={30.25} height={30.25} />
-              </NavButton>
-            </View>
-          </SafeAreaView>
-        </LinearGradient>
-      )}
+                <NavButton
+                  onPress={() => handleNavPress("Favorites")}
+                  isActive={currentScreen === "Favorites"}
+                >
+                  <Heart width={28.74} height={25.07} />
+                </NavButton>
 
-      {navState.overlay === "static" && <SimpleAuthLoadingScreen />}
-      {navState.overlay === "up" && (
-        <AuthLoadingScreen onFinish={handleAuthLoadingFinish} />
-      )}
-      {navState.overlay === "down" && (
-        <LoadingScreen onFinish={handleLoadingFinish} />
-      )}
+                <NavButton
+                  onPress={() => handleNavPress("Wall")}
+                  isActive={currentScreen === "Wall"}
+                >
+                  <Me width={30.25} height={30.25} />
+                </NavButton>
+              </View>
+            </SafeAreaView>
+          </LinearGradient>
+        )}
+
+        {navState.overlay === "static" && <SimpleAuthLoadingScreen />}
+        {navState.overlay === "up" && (
+          <AuthLoadingScreen onFinish={handleAuthLoadingFinish} />
+        )}
+        {navState.overlay === "down" && (
+          <LoadingScreen onFinish={handleLoadingFinish} />
+        )}
       </GestureHandlerRootView>
     </SafeAreaProvider>
   );

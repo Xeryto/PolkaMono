@@ -1,4 +1,5 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useCallback } from "react";
+import { ActivityIndicator } from "react-native";
 import {
   View,
   Text,
@@ -9,31 +10,30 @@ import {
   Dimensions,
   TouchableOpacity,
   Animated as RNAnimated,
-  Easing,
   TextInput,
   FlatList,
   Keyboard,
   Platform,
   Linking,
   Alert,
+  NativeSyntheticEvent,
+  NativeScrollEvent,
+  Switch,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import Animated, {
   FadeIn,
   FadeInDown,
   FadeOutDown,
-  useAnimatedStyle,
-  withTiming,
-  useSharedValue,
   withSequence,
   FadeOut,
 } from "react-native-reanimated";
 import BackIcon from "./components/svg/BackIcon";
 import LogOut from "./components/svg/LogOut";
 import PenIcon from "./components/svg/PenIcon";
+import Scroll from "./components/svg/Scroll";
 import * as Haptics from "expo-haptics";
 import Tick from "./assets/Tick";
-import { Canvas, RoundedRect, Shadow } from "@shopify/react-native-skia";
 import { AnimatedCircularProgress } from "react-native-circular-progress";
 import * as api from "./services/api";
 import { apiWrapper } from "./services/apiWrapper";
@@ -45,8 +45,6 @@ import {
   getFadeInDownAnimation,
   getFadeOutDownAnimation,
 } from "./lib/animations";
-import { CardItem } from "./types/product";
-import { mapProductToCardItem } from "./lib/productMapper";
 import AvatarEditScreen from "./screens/AvatarEditScreen";
 
 const { width, height } = Dimensions.get("window");
@@ -55,11 +53,21 @@ const { width, height } = Dimensions.get("window");
 interface SimpleNavigation {
   navigate: (screen: string, params?: any) => void;
   goBack: () => void;
+  setBottomText?: (text: string) => void;
 }
 
 interface SettingsProps {
   navigation: SimpleNavigation;
   onLogout?: () => void;
+  embedded?: boolean; // If true, render only content without outer container
+  initialSection?:
+    | "payment"
+    | "support"
+    | "shopping"
+    | "my_info"
+    | "notifications"
+    | "documents"
+    | null; // Initial section to show when embedded
 }
 
 // Using unified CardItem from types/product.d.ts
@@ -69,50 +77,30 @@ interface StatItem {
   value: string;
 }
 
-const CartItemImage = ({ item }: { item: api.OrderItem }) => {
-  const [imageDimensions, setImageDimensions] = useState({
-    width: 0,
-    height: 0,
-  });
-  const [imageError, setImageError] = useState(false);
-
-  const onImageLoad = (event: any) => {
-    const { width, height } = event.nativeEvent.source;
-    setImageDimensions({ width, height });
-  };
-
-  const onImageError = () => {
-    setImageError(true);
-  };
-
-  const aspectRatio =
-    imageDimensions.width && imageDimensions.height
-      ? imageDimensions.width / imageDimensions.height
-      : 1; // Default to 1 if image dimensions are not loaded yet
-
-  const imageSource =
-    !item.image || imageError
-      ? require("./assets/Vision.png")
-      : { uri: item.image };
-
-  return (
-    <View style={styles.container}>
-      <Image
-        source={imageSource}
-        style={[styles.itemImage, { aspectRatio }]} // Set aspect ratio dynamically
-        resizeMode="contain" // Ensure the image fits within the container while maintaining aspect ratio
-        onLoad={onImageLoad} // Get image dimensions when the image loads
-        onError={onImageError} // Handle image loading errors
-      />
-    </View>
-  );
-};
-
-const Settings = ({ navigation, onLogout }: SettingsProps) => {
+const Settings = ({
+  navigation,
+  onLogout,
+  embedded = false,
+  initialSection = null,
+}: SettingsProps) => {
   const [selectedSize, setSelectedSize] = useState("M");
   const [activeSection, setActiveSection] = useState<
-    "wall" | "orders" | "payment" | "support" | "shopping" | null
-  >(null);
+    | "payment"
+    | "support"
+    | "shopping"
+    | "my_info"
+    | "notifications"
+    | "documents"
+    | "delete_account"
+    | null
+  >(initialSection || null);
+
+  // Update activeSection when initialSection prop changes
+  useEffect(() => {
+    if (initialSection !== null && initialSection !== activeSection) {
+      setActiveSection(initialSection);
+    }
+  }, [initialSection]);
   const [showSizeSelection, setShowSizeSelection] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [isSearchActive, setIsSearchActive] = useState(false);
@@ -120,13 +108,10 @@ const Settings = ({ navigation, onLogout }: SettingsProps) => {
   const [popularBrands, setPopularBrands] = useState<string[]>([]);
   const [showBrandSearch, setShowBrandSearch] = useState(false);
   const [showAvatarEdit, setShowAvatarEdit] = useState(false);
-  const [selectedOrder, setSelectedOrder] = useState<api.Order | null>(null);
   const [supportMessage, setSupportMessage] = useState("");
   const [showThankYou, setShowThankYou] = useState(false);
   const [isSending, setIsSending] = useState(false);
-  const [orders, setOrders] = useState<api.Order[]>([]);
-  const [isLoadingOrders, setIsLoadingOrders] = useState(false);
-  const [orderError, setOrderError] = useState<string | null>(null);
+  const [showScrollHint, setShowScrollHint] = useState(true);
 
   // NEW: User profile state
   const [userProfile, setUserProfile] = useState<api.UserProfile | null>(null);
@@ -155,6 +140,30 @@ const Settings = ({ navigation, onLogout }: SettingsProps) => {
     null
   );
   const [isSavingShoppingInfo, setIsSavingShoppingInfo] = useState(false);
+
+  // My Info state
+  const [myInfo, setMyInfo] = useState({
+    firstName: "",
+    lastName: "",
+    username: "",
+    email: "",
+  });
+  const [originalUsername, setOriginalUsername] = useState(""); // Store original username to check if changed
+  const [isLoadingMyInfo, setIsLoadingMyInfo] = useState(false);
+  const [isSavingMyInfo, setIsSavingMyInfo] = useState(false);
+  const [myInfoError, setMyInfoError] = useState<string | null>(null);
+  const [isCheckingUsername, setIsCheckingUsername] = useState(false);
+  const [usernameAvailable, setUsernameAvailable] = useState<boolean | null>(
+    null
+  );
+  const [usernameError, setUsernameError] = useState("");
+
+  // Debounce timer for username checking
+  const usernameTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Notifications state
+  const [orderNotifications, setOrderNotifications] = useState(true);
+  const [marketingNotifications, setMarketingNotifications] = useState(true);
 
   // Cache duration: 5 minutes
   const STATS_CACHE_DURATION = 5 * 60 * 1000;
@@ -209,47 +218,47 @@ const Settings = ({ navigation, onLogout }: SettingsProps) => {
     loadSwipeCount();
   }, []);
 
+  const getBottomText = useCallback(() => {
+    switch (activeSection) {
+      case "shopping":
+        return "ДОСТАВКА";
+      case "payment":
+        return "ОПЛАТА";
+      case "support":
+        return "ПОДДЕРЖКА";
+      case "my_info":
+        return "МОИ ДАННЫЕ";
+      case "notifications":
+        return "УВЕДОМЛЕНИЯ";
+      case "documents":
+        return "ДОКУМЕНТЫ";
+      case "delete_account":
+        return "УДАЛЕНИЕ АККАУНТА";
+      default:
+        return "НАСТРОЙКИ";
+    }
+  }, [activeSection]);
+
   useEffect(() => {
     if (activeSection === "shopping") {
       loadShoppingInfo();
     }
-  }, [activeSection]);
-
-  useEffect(() => {
-    if (activeSection === "orders") {
-      loadOrders();
-      // Also load shopping info to display in order details
-      loadShoppingInfo();
+    if (activeSection === "my_info") {
+      loadMyInfo();
     }
   }, [activeSection]);
 
-  // Refresh stats when returning to the wall section (in case user made purchases or likes)
+  // Update bottom text in parent when embedded
   useEffect(() => {
-    if (activeSection === "wall" && userStats) {
-      // Only refresh if stats are older than 1 minute to avoid excessive API calls
-      const now = Date.now();
-      if (now - statsLastLoaded > 60 * 1000) {
-        loadUserStats(true);
+    if (embedded && navigation?.setBottomText) {
+      try {
+        const bottomText = getBottomText();
+        navigation.setBottomText(bottomText);
+      } catch (error) {
+        console.error("Error updating bottom text:", error);
       }
-
-      // Always refresh swipe count from session storage for real-time updates
-      loadSwipeCount();
     }
-  }, [activeSection]);
-
-  const loadOrders = async () => {
-    try {
-      setIsLoadingOrders(true);
-      setOrderError(null);
-      const fetchedOrders = await api.getOrders();
-      setOrders(fetchedOrders);
-    } catch (error) {
-      console.error("Error loading orders:", error);
-      setOrderError("Не удалось загрузить заказы.");
-    } finally {
-      setIsLoadingOrders(false);
-    }
-  };
+  }, [activeSection, embedded, navigation, getBottomText]);
 
   const loadUserProfile = async () => {
     try {
@@ -471,6 +480,143 @@ const Settings = ({ navigation, onLogout }: SettingsProps) => {
   };
 
   // Save shopping information
+  const loadMyInfo = async () => {
+    try {
+      setIsLoadingMyInfo(true);
+      setMyInfoError(null);
+      const profile = await apiWrapper.getCurrentUser("SettingsPage");
+      if (profile) {
+        // Split full_name into first and last name
+        const nameParts = (profile.full_name || "").trim().split(" ");
+        const firstName = nameParts[0] || "";
+        const lastName = nameParts.slice(1).join(" ") || "";
+        const username = profile.username || "";
+
+        setMyInfo({
+          firstName,
+          lastName,
+          username,
+          email: profile.email || "",
+        });
+        setOriginalUsername(username); // Store original username
+        setUsernameAvailable(null); // Reset availability check
+        setUsernameError("");
+      }
+    } catch (error: any) {
+      console.error("Error loading my info:", error);
+      setMyInfoError("Не удалось загрузить данные.");
+    } finally {
+      setIsLoadingMyInfo(false);
+    }
+  };
+
+  // Debounced username validation
+  const debouncedCheckUsername = (username: string) => {
+    if (usernameTimeoutRef.current) {
+      clearTimeout(usernameTimeoutRef.current);
+    }
+
+    usernameTimeoutRef.current = setTimeout(async () => {
+      // If username hasn't changed, don't check
+      if (username.trim() === originalUsername.trim()) {
+        setUsernameAvailable(true);
+        setUsernameError("");
+        return;
+      }
+
+      if (username.trim() && username.trim().length >= 3) {
+        setIsCheckingUsername(true);
+        setUsernameError("");
+        try {
+          const available = await api.checkUsernameAvailability(
+            username.trim()
+          );
+          setUsernameAvailable(available);
+          if (!available) {
+            setUsernameError("Этот ник уже занят");
+          } else {
+            setUsernameError("");
+          }
+        } catch (error) {
+          console.error("Error checking username:", error);
+          setUsernameAvailable(null);
+        } finally {
+          setIsCheckingUsername(false);
+        }
+      } else {
+        setUsernameAvailable(null);
+        if (username.trim().length > 0 && username.trim().length < 3) {
+          setUsernameError("Ник должен быть не менее 3 символов");
+        } else {
+          setUsernameError("");
+        }
+      }
+    }, 500); // 500ms delay
+  };
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (usernameTimeoutRef.current) {
+        clearTimeout(usernameTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  const saveMyInfo = async () => {
+    // Validate username
+    const illegalCharRegex = /[^a-zA-Z0-9#$-_!]/;
+    if (!myInfo.username.trim()) {
+      setUsernameError("Ник обязателен");
+      return;
+    } else if (myInfo.username.trim().length < 3) {
+      setUsernameError("Ник должен быть не менее 3 символов");
+      return;
+    } else if (myInfo.username.includes(" ")) {
+      setUsernameError("Ник не должен содержать пробелов");
+      return;
+    } else if (illegalCharRegex.test(myInfo.username)) {
+      setUsernameError("Ник содержит недопустимые символы");
+      return;
+    } else if (usernameAvailable === false) {
+      setUsernameError("Этот ник уже занят");
+      return;
+    } else if (
+      usernameAvailable === null &&
+      isCheckingUsername &&
+      myInfo.username.trim() !== originalUsername.trim()
+    ) {
+      setUsernameError("Проверяем доступность ника...");
+      return;
+    }
+
+    try {
+      setIsSavingMyInfo(true);
+      setMyInfoError(null);
+
+      // Combine first and last name into full_name
+      const fullName =
+        `${myInfo.firstName.trim()} ${myInfo.lastName.trim()}`.trim();
+
+      await api.updateUserProfile({
+        full_name: fullName,
+        username: myInfo.username.trim(),
+      });
+
+      // Reload profile to get updated data
+      await loadUserProfile();
+
+      // Go back to main settings
+      setActiveSection(null);
+    } catch (error: any) {
+      console.error("Error saving my info:", error);
+      setMyInfoError("Не удалось сохранить данные.");
+      Alert.alert("Ошибка", "Не удалось сохранить данные. Попробуйте позже.");
+    } finally {
+      setIsSavingMyInfo(false);
+    }
+  };
+
   const saveShoppingInfo = async () => {
     try {
       setIsSavingShoppingInfo(true);
@@ -859,7 +1005,7 @@ const Settings = ({ navigation, onLogout }: SettingsProps) => {
         )}
       >
         <TouchableOpacity onPress={() => setShowBrandSearch(false)}>
-          <BackIcon width={33} height={33} />
+          <BackIcon width={22} height={22} />
         </TouchableOpacity>
       </Animated.View>
 
@@ -914,7 +1060,13 @@ const Settings = ({ navigation, onLogout }: SettingsProps) => {
 
   const renderMainButton = (
     title: string,
-    section: "wall" | "orders" | "payment" | "support" | "shopping",
+    section:
+      | "payment"
+      | "support"
+      | "shopping"
+      | "my_info"
+      | "notifications"
+      | "documents",
     delay: number
   ) => (
     <Animated.View
@@ -932,467 +1084,129 @@ const Settings = ({ navigation, onLogout }: SettingsProps) => {
     </Animated.View>
   );
 
-  const renderMainButtons = () => (
-    <Animated.View
-      entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM)}
-      style={{
-        width: "100%",
-        alignItems: "center",
-        justifyContent: "space-between",
-        height: "100%",
-      }}
-    >
-      {/* Profile Section */}
-      <Animated.View
-        entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
-          ANIMATION_DELAYS.STANDARD
-        )}
-      >
-        <Text style={styles.profileName}>Рейтинг стиля</Text>
-      </Animated.View>
-
-      <Animated.View
-        entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
-          ANIMATION_DELAYS.MEDIUM
-        )}
-        style={styles.ratingContainer}
-      >
-        <AnimatedCircularProgress
-          size={height * 0.125}
-          width={10}
-          fill={67}
-          tintColor="#B59679"
-          backgroundColor="#32261B"
-          rotation={225}
-          arcSweepAngle={270}
-          lineCap="round"
-          padding={10}
-          delay={200}
-        >
-          {() => <Text style={styles.ratingText}>67</Text>}
-        </AnimatedCircularProgress>
-      </Animated.View>
-      <View style={styles.ratingContainer}></View>
-      <Animated.View
-        //entering={FadeInDown.duration(500)}
-        style={styles.mainButtonsOverlay}
-      >
-        {renderMainButton("Стена", "wall", 50)}
-        {renderMainButton("Заказы", "orders", 100)}
-        {renderMainButton("Доставка", "shopping", 150)}
-        {renderMainButton("Поддержка", "support", 200)}
-      </Animated.View>
-    </Animated.View>
-  );
-
-  const renderWallContent = () => (
-    <View style={styles.contentContainer}>
-      {showBrandSearch ? (
-        renderBrandSearch()
-      ) : showAvatarEdit ? (
-        <AvatarEditScreen
-          onBack={() => setShowAvatarEdit(false)}
-          currentAvatar={userProfile?.avatar_url}
-          onSave={(avatarUri: string) => {
-            // Handle avatar save
-            setShowAvatarEdit(false);
-            // Reload profile to show new avatar
-            loadUserProfile();
-          }}
-        />
-      ) : (
-        <>
-          <Animated.View
-            entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
-              ANIMATION_DELAYS.LARGE
-            )}
-            style={styles.profileSection}
-          >
-            <Text style={styles.profileName}>
-              {isLoadingProfile
-                ? "Загрузка..."
-                : userProfile
-                ? userProfile.username
-                : "Пользователь"}
-            </Text>
-            <View style={styles.profileImageWrapper}>
-              <View style={styles.profileImageContainer}>
-                <Image
-                  source={require("./assets/Vision.png")}
-                  style={styles.profileImage}
-                />
-              </View>
-              <TouchableOpacity
-                style={styles.penIconButton}
-                onPress={() => setShowAvatarEdit(true)}
-              >
-                <View style={styles.penIconCircle}>
-                  <PenIcon width={12} height={12} />
-                </View>
-              </TouchableOpacity>
-            </View>
-          </Animated.View>
-
-          <Animated.View
-            style={styles.backButton}
-            entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
-              ANIMATION_DELAYS.LARGE
-            )}
-          >
-            <TouchableOpacity onPress={() => setActiveSection(null)}>
-              <BackIcon width={33} height={33} />
-            </TouchableOpacity>
-          </Animated.View>
-
-          {/* Logout Button - positioned symmetrically to back button */}
-          <Animated.View
-            style={styles.logoutButton}
-            entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
-              ANIMATION_DELAYS.LARGE
-            )}
-          >
-            <TouchableOpacity
-              onPress={() => {
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                handleLogout();
-              }}
-            >
-              <LogOut width={26} height={26} />
-            </TouchableOpacity>
-          </Animated.View>
-
-          <Animated.View
-            entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
-              ANIMATION_DELAYS.EXTENDED
-            )}
-            style={styles.favoriteBrandsSection}
-          >
-            <TouchableOpacity
-              style={styles.favoriteBrandsButton}
-              onPress={() => setShowBrandSearch(true)}
-            >
-              <Text style={styles.favoriteBrandsText}>Любимые бренды</Text>
-            </TouchableOpacity>
-          </Animated.View>
-
-          <Animated.View
-            entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
-              ANIMATION_DELAYS.VERY_LARGE
-            )}
-            style={styles.statsContainer}
-          >
-            {stats.map((stat, index) => (
-              <View key={index} style={styles.statItem}>
-                <Text style={styles.statLabel}>{stat.label}</Text>
-                <View style={styles.valueWrapper}>
-                  <Text style={styles.statValue}>{stat.value}</Text>
-                </View>
-              </View>
-            ))}
-          </Animated.View>
-
-          <Animated.View
-            entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
-              ANIMATION_DELAYS.VERY_LARGE + ANIMATION_DELAYS.SMALL
-            )}
-            style={styles.sizeSection}
-          >
-            <Text style={styles.sizeSectionTitle}>Размер</Text>
-            <Pressable
-              style={styles.sizeSelectionWrapper}
-              onPress={handleSizePress}
-            >
-              {renderSizeSelection()}
-            </Pressable>
-          </Animated.View>
-        </>
-      )}
-    </View>
-  );
-
-  // Handle item press to send it to MainPage
-  const handleItemPress = async (item: api.OrderItem) => {
-    try {
-      // If we have a product_id, fetch the full product details to get all sizes
-      if (item.product_id) {
-        console.log(
-          "Settings - Fetching full product details for product_id:",
-          item.product_id
-        );
-
-        const fullProduct = await api.getProductDetails(item.product_id);
-
-        // Use utility function to ensure consistent mapping with article_number preservation
-        const cardItem: CardItem = {
-          ...mapProductToCardItem(fullProduct),
-          size: item.size, // Keep the ordered size as default
-          quantity: 1,
-        };
-
-        // Debug: Log what we're sending to MainPage
-        console.log("Settings - Sending full product to MainPage:", {
-          id: cardItem.id,
-          brand_name: cardItem.brand_name,
-          brand_return_policy: cardItem.brand_return_policy,
-          images: cardItem.images,
-          description: cardItem.description,
-          variants: cardItem.variants,
-          originalOrderItemId: item.id,
-          productId: item.product_id,
-        });
-
-        // Navigate to home with the full product data
-        navigation.navigate("Home", { addCardItem: cardItem });
-      } else {
-        // Fallback: Create a card item from the order item with limited data
-        console.log(
-          "Settings - No product_id available, using order item data only"
-        );
-
-        // Create a card item from order item (fallback when product_id is not available)
-        const cardItem: CardItem = {
-          id: item.id,
-          name: item.name,
-          brand_name: item.brand_name || "Unknown Brand",
-          price: item.price,
-          images: item.images
-            ? item.images.map((img) => ({ uri: img }))
-            : item.image
-            ? [{ uri: item.image }]
-            : [],
-          isLiked: false,
-          size: item.size,
-          quantity: 1,
-          variants: [{ size: item.size, stock_quantity: 1 }],
-          description: item.description || "No description available.",
-          color: item.color || "Unknown",
-          materials: item.materials || "Unknown",
-          brand_return_policy: item.return_policy || "Unknown",
-          // Note: article_number not available from OrderItem, would need to fetch full product
-        };
-
-        // Navigate to home with the limited item data
-        navigation.navigate("Home", { addCardItem: cardItem });
-      }
-    } catch (error) {
-      console.error("Settings - Error fetching product details:", error);
-
-      // Fallback: Create a card item from the order item with limited data (error case)
-      const cardItem: CardItem = {
-        id: item.product_id || item.id,
-        name: item.name,
-        brand_name: item.brand_name || "Unknown Brand",
-        price: item.price,
-        images: item.images
-          ? item.images.map((img) => ({ uri: img }))
-          : item.image
-          ? [{ uri: item.image }]
-          : [],
-        isLiked: false,
-        size: item.size,
-        quantity: 1,
-        variants: [{ size: item.size, stock_quantity: 1 }],
-        description: item.description || "No description available.",
-        color: item.color || "Unknown",
-        materials: item.materials || "Unknown",
-        brand_return_policy: item.return_policy || "Unknown",
-        // Note: article_number not available from OrderItem, would need to fetch full product
-      };
-
-      // Navigate to home with the fallback item data
-      navigation.navigate("Home", { addCardItem: cardItem });
+  const handleMainScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+    if (event.nativeEvent.contentOffset.y > 5 && showScrollHint) {
+      setShowScrollHint(false);
     }
   };
 
-  const renderOrderDetails = () => (
-    <View style={styles.contentContainer}>
-      <Animated.View
-        style={styles.backButton}
-        entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
-          ANIMATION_DELAYS.LARGE
-        )}
-      >
-        <TouchableOpacity onPress={() => setSelectedOrder(null)}>
-          <BackIcon width={33} height={33} />
-        </TouchableOpacity>
-      </Animated.View>
-
-      <Animated.View
-        entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
-          ANIMATION_DELAYS.LARGE
-        )}
-        style={styles.orderDetailsContainer}
-      >
-        <ScrollView
-          style={styles.orderItemsList}
-          showsVerticalScrollIndicator={false}
-        >
-          {selectedOrder?.items.map((item, index) => (
-            <Animated.View
-              key={item.id}
-              entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
-                ANIMATION_DELAYS.STANDARD + index * ANIMATION_DELAYS.SMALL
-              )}
-              style={styles.cartItem}
-            >
-              <Pressable
-                style={styles.itemPressable}
-                onPress={() => handleItemPress(item)}
-              >
-                <View style={styles.itemContent}>
-                  <View style={styles.imageContainer}>
-                    <CartItemImage item={item} />
-                  </View>
-                  <View style={styles.itemDetails}>
-                    <Text
-                      style={styles.itemName}
-                      numberOfLines={1}
-                      ellipsizeMode="tail"
-                    >
-                      {item.name}
-                    </Text>
-                    <Text style={styles.itemPrice}>{`${item.price.toFixed(
-                      2
-                    )} ₽`}</Text>
-                    <Text style={styles.itemSize}>{item.size}</Text>
-                  </View>
-                </View>
-
-                <View style={styles.rightContainer}>
-                  <View style={styles.circle}>
-                    <Canvas
-                      style={{
-                        width: 41,
-                        height: 41,
-                        backgroundColor: "transparent",
-                      }}
-                    >
-                      <RoundedRect
-                        x={0}
-                        y={0}
-                        width={41}
-                        height={41}
-                        r={20.5}
-                        color="white"
-                      >
-                        <Shadow
-                          dx={0}
-                          dy={4}
-                          blur={4}
-                          color="rgba(0,0,0,0.5)"
-                          inner
-                        />
-                      </RoundedRect>
-                    </Canvas>
-                  </View>
-                </View>
-              </Pressable>
-            </Animated.View>
-          ))}
-        </ScrollView>
-
-        <Animated.View
-          entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
-            ANIMATION_DELAYS.VERY_LARGE + ANIMATION_DELAYS.SMALL
-          )}
-          style={styles.orderTotalContainer}
-        >
-          <Text style={styles.orderTotalText}>
-            ИТОГО {selectedOrder?.total_amount.toFixed(2)} ₽
-          </Text>
-        </Animated.View>
-        <Animated.View
-          entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
-            ANIMATION_DELAYS.VERY_LARGE + ANIMATION_DELAYS.STANDARD
-          )}
-          style={styles.orderStatusContainer}
-        >
-          <Text style={[styles.orderStatusText, { marginLeft: 20 }]}>
-            Статус
-          </Text>
-          <Animated.View
-            entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
-              ANIMATION_DELAYS.VERY_LARGE + ANIMATION_DELAYS.EXTENDED
-            )}
-            style={styles.orderStatus}
-          >
-            <Text style={styles.orderStatusText}>Оплачен</Text>
-          </Animated.View>
-        </Animated.View>
-      </Animated.View>
-    </View>
-  );
-
-  const renderOrdersContent = () => {
-    if (selectedOrder) {
-      return renderOrderDetails();
-    }
+  const renderMainButtons = () => {
+    const menuItems = [
+      { title: "Мои данные", section: "my_info" as const, delay: 50 },
+      { title: "Адрес доставки", section: "shopping" as const, delay: 100 },
+      { title: "Поддержка", section: "support" as const, delay: 150 },
+      { title: "Уведомления", section: "notifications" as const, delay: 200 },
+      { title: "Документы", section: "documents" as const, delay: 250 },
+    ];
 
     return (
-      <View style={styles.contentContainer}>
+      <Animated.View
+        entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM)}
+        style={{
+          width: "100%",
+          alignItems: "center",
+          justifyContent: "space-between",
+          height: "100%",
+        }}
+      >
+        {/* Back Button */}
         <Animated.View
           style={styles.backButton}
           entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
             ANIMATION_DELAYS.LARGE
           )}
         >
-          <TouchableOpacity onPress={() => setActiveSection(null)}>
-            <BackIcon width={33} height={33} />
+          <TouchableOpacity
+            onPress={() => {
+              if (embedded) {
+                navigation.goBack();
+              } else {
+                navigation.navigate("Wall");
+              }
+            }}
+          >
+            <BackIcon width={22} height={22} />
           </TouchableOpacity>
+        </Animated.View>
+
+        {/* Profile Section */}
+        {/* <Animated.View
+          entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
+            ANIMATION_DELAYS.STANDARD
+          )}
+        >
+          <Text style={styles.profileName}>Рейтинг стиля</Text>
         </Animated.View>
 
         <Animated.View
           entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
-            ANIMATION_DELAYS.VERY_LARGE
+            ANIMATION_DELAYS.MEDIUM
           )}
-          style={styles.ordersContainer}
+          style={styles.ratingContainer}
         >
-          {isLoadingOrders ? (
-            <Text style={styles.emptyStateText}>Загрузка заказов...</Text>
-          ) : orderError ? (
-            <Text style={styles.emptyStateText}>{orderError}</Text>
-          ) : orders.length === 0 ? (
-            <>
-              <Text style={styles.emptyStateText}>У вас пока нет заказов</Text>
-              <Pressable
-                style={styles.startShoppingButton}
-                onPress={() => navigation.navigate("Home")}
-              >
-                <Text style={styles.startShoppingText}>Начать покупки</Text>
-              </Pressable>
-            </>
-          ) : (
-            <ScrollView
-              style={styles.ordersList}
-              showsVerticalScrollIndicator={false}
-            >
-              {orders.map((order, index) => (
-                <Animated.View
-                  key={order.id}
-                  entering={FadeInDown.duration(
-                    ANIMATION_DURATIONS.MEDIUM
-                  ).delay(
-                    ANIMATION_DELAYS.VERY_LARGE + index * ANIMATION_DELAYS.SMALL
-                  )}
-                  style={styles.orderItem}
-                >
-                  <TouchableOpacity
-                    style={styles.orderBubble}
-                    onPress={() => setSelectedOrder(order)}
-                  >
-                    <Text style={styles.orderNumber}>
-                      Заказ №{order.number}
-                    </Text>
-                  </TouchableOpacity>
-                  <Text style={styles.orderSummary}>
-                    Итого: {order.total_amount.toFixed(2)} ₽
-                  </Text>
-                </Animated.View>
-              ))}
-            </ScrollView>
-          )}
+          <AnimatedCircularProgress
+            size={height * 0.125}
+            width={10}
+            fill={67}
+            tintColor="#B59679"
+            backgroundColor="#32261B"
+            rotation={225}
+            arcSweepAngle={270}
+            lineCap="round"
+            padding={10}
+            delay={200}
+          >
+            {() => <Text style={styles.ratingText}>67</Text>}
+          </AnimatedCircularProgress>
         </Animated.View>
-      </View>
+        <View style={styles.ratingContainer}></View> do not remove this section */}
+
+        {/* Scrollable Menu */}
+        <View style={styles.scrollableMenuContainer}>
+          {showScrollHint && (
+            <Animated.View
+              entering={FadeIn.duration(ANIMATION_DURATIONS.MEDIUM)}
+              exiting={FadeOut.duration(ANIMATION_DURATIONS.STANDARD)}
+              style={styles.scrollHintContainer}
+            >
+              <Text style={styles.scrollHintText}>Листай</Text>
+              <Scroll width={26} height={26} />
+            </Animated.View>
+          )}
+
+          <ScrollView
+            style={styles.scrollableMenu}
+            showsVerticalScrollIndicator={false}
+            onScroll={handleMainScroll}
+            scrollEventThrottle={16}
+          >
+            {menuItems.map((item) => (
+              <View key={item.section}>
+                {renderMainButton(item.title, item.section, item.delay)}
+              </View>
+            ))}
+
+            {/* Delete Account Button */}
+            <Animated.View
+              entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
+                ANIMATION_DELAYS.MEDIUM + 300
+              )}
+              style={styles.mainButtonContainer}
+            >
+              <Pressable
+                style={styles.deleteAccountButton}
+                onPress={() => {
+                  setActiveSection("delete_account");
+                }}
+              >
+                <Text style={styles.deleteAccountButtonText}>
+                  Удалить аккаунт
+                </Text>
+              </Pressable>
+            </Animated.View>
+          </ScrollView>
+        </View>
+      </Animated.View>
     );
   };
 
@@ -1405,7 +1219,7 @@ const Settings = ({ navigation, onLogout }: SettingsProps) => {
         )}
       >
         <TouchableOpacity onPress={() => setActiveSection(null)}>
-          <BackIcon width={33} height={33} />
+          <BackIcon width={22} height={22} />
         </TouchableOpacity>
       </Animated.View>
 
@@ -1620,7 +1434,7 @@ const Settings = ({ navigation, onLogout }: SettingsProps) => {
           )}
         >
           <TouchableOpacity onPress={() => setActiveSection(null)}>
-            <BackIcon width={33} height={33} />
+            <BackIcon width={22} height={22} />
           </TouchableOpacity>
           <View style={styles.searchContainerAlt}>
             {showThankYou ? (
@@ -1679,66 +1493,392 @@ const Settings = ({ navigation, onLogout }: SettingsProps) => {
     </View>
   );
 
+  const renderMyInfoContent = () => (
+    <View style={styles.contentContainer}>
+      <Animated.View
+        style={styles.backButton}
+        entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
+          ANIMATION_DELAYS.LARGE
+        )}
+      >
+        <TouchableOpacity onPress={() => setActiveSection(null)}>
+          <BackIcon width={22} height={22} />
+        </TouchableOpacity>
+      </Animated.View>
+
+      <Animated.View
+        entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
+          ANIMATION_DELAYS.EXTENDED
+        )}
+        style={styles.shoppingTitleSection}
+      >
+        <Text style={styles.shoppingTitle}>Мои данные</Text>
+      </Animated.View>
+
+      {isLoadingMyInfo ? (
+        <Animated.View
+          entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
+            ANIMATION_DELAYS.VERY_LARGE
+          )}
+          style={styles.shoppingFormContainer}
+        >
+          <Text style={styles.loadingText}>Загрузка...</Text>
+        </Animated.View>
+      ) : myInfoError ? (
+        <Animated.View
+          entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
+            ANIMATION_DELAYS.VERY_LARGE
+          )}
+          style={styles.shoppingFormContainer}
+        >
+          <Text style={styles.errorText}>{myInfoError}</Text>
+        </Animated.View>
+      ) : (
+        <ScrollView
+          style={styles.shoppingForm}
+          showsVerticalScrollIndicator={false}
+        >
+          <Animated.View
+            entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
+              ANIMATION_DELAYS.VERY_LARGE
+            )}
+            style={styles.inputContainer}
+          >
+            <Text style={styles.inputLabel}>Имя *</Text>
+            <TextInput
+              style={styles.textInput}
+              placeholder="Введите ваше имя"
+              placeholderTextColor="rgba(0,0,0,0.5)"
+              value={myInfo.firstName}
+              onChangeText={(text) =>
+                setMyInfo((prev) => ({ ...prev, firstName: text }))
+              }
+            />
+          </Animated.View>
+
+          <Animated.View
+            entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
+              ANIMATION_DELAYS.VERY_LARGE + ANIMATION_DELAYS.SMALL
+            )}
+            style={styles.inputContainer}
+          >
+            <Text style={styles.inputLabel}>Фамилия</Text>
+            <TextInput
+              style={styles.textInput}
+              placeholder="Введите вашу фамилию"
+              placeholderTextColor="rgba(0,0,0,0.5)"
+              value={myInfo.lastName}
+              onChangeText={(text) =>
+                setMyInfo((prev) => ({ ...prev, lastName: text }))
+              }
+            />
+          </Animated.View>
+
+          <Animated.View
+            entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
+              ANIMATION_DELAYS.VERY_LARGE + ANIMATION_DELAYS.STANDARD
+            )}
+            style={styles.inputContainer}
+          >
+            <Text style={styles.inputLabel}>Никнейм *</Text>
+            <View style={styles.usernameInputWrapper}>
+              <TextInput
+                style={[
+                  styles.textInput,
+                  usernameError ? styles.inputError : null,
+                  usernameAvailable === true &&
+                  !isCheckingUsername &&
+                  myInfo.username.trim() !== originalUsername.trim()
+                    ? styles.inputSuccess
+                    : null,
+                  isCheckingUsername ? styles.inputChecking : null,
+                ]}
+                placeholder="Введите никнейм"
+                placeholderTextColor="rgba(0,0,0,0.5)"
+                autoCapitalize="none"
+                value={myInfo.username}
+                onChangeText={(text) => {
+                  setMyInfo((prev) => ({ ...prev, username: text }));
+                  debouncedCheckUsername(text);
+                }}
+              />
+              {isCheckingUsername && (
+                <ActivityIndicator
+                  size="small"
+                  color="#FFA500"
+                  style={styles.statusIndicator}
+                />
+              )}
+              {usernameAvailable === true &&
+                !isCheckingUsername &&
+                myInfo.username.trim() !== originalUsername.trim() && (
+                  <Text style={[styles.statusText, styles.statusTextSuccess]}>
+                    ✓
+                  </Text>
+                )}
+              {usernameAvailable === false && !isCheckingUsername && (
+                <Text style={[styles.statusText, styles.statusTextError]}>
+                  ✗
+                </Text>
+              )}
+            </View>
+            {usernameError ? (
+              <Text style={styles.usernameErrorText}>{usernameError}</Text>
+            ) : null}
+          </Animated.View>
+
+          <Animated.View
+            entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
+              ANIMATION_DELAYS.VERY_LARGE + ANIMATION_DELAYS.EXTENDED
+            )}
+            style={styles.inputContainer}
+          >
+            <Text style={styles.inputLabel}>Email</Text>
+            <TextInput
+              style={[styles.textInput, styles.disabledInput]}
+              placeholder="Email"
+              placeholderTextColor="rgba(0,0,0,0.5)"
+              value={myInfo.email}
+              editable={false}
+            />
+          </Animated.View>
+
+          <Animated.View
+            entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
+              ANIMATION_DELAYS.VERY_LARGE + ANIMATION_DELAYS.VERY_LARGE
+            )}
+            style={styles.saveButtonContainer}
+          >
+            <TouchableOpacity
+              style={[
+                styles.confirmButton,
+                isSavingMyInfo && styles.confirmButtonDisabled,
+              ]}
+              onPress={saveMyInfo}
+              disabled={isSavingMyInfo}
+            >
+              <Text
+                style={[
+                  styles.confirmButtonText,
+                  isSavingMyInfo && styles.confirmButtonDisabledText,
+                ]}
+              >
+                {isSavingMyInfo ? "Сохранение..." : "Подтвердить"}
+              </Text>
+            </TouchableOpacity>
+          </Animated.View>
+        </ScrollView>
+      )}
+    </View>
+  );
+
+  // Handle switch toggle with haptic feedback
+  const handleOrderNotificationsChange = (value: boolean) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setOrderNotifications(value);
+  };
+
+  const handleMarketingNotificationsChange = (value: boolean) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setMarketingNotifications(value);
+  };
+
+  const renderNotificationsContent = () => (
+    <View style={styles.contentContainer}>
+      <Animated.View
+        style={styles.backButton}
+        entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
+          ANIMATION_DELAYS.LARGE
+        )}
+      >
+        <TouchableOpacity onPress={() => setActiveSection(null)}>
+          <BackIcon width={22} height={22} />
+        </TouchableOpacity>
+      </Animated.View>
+
+      <Animated.View
+        entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
+          ANIMATION_DELAYS.EXTENDED
+        )}
+        style={styles.shoppingTitleSection}
+      >
+        <Text style={styles.shoppingTitle}>Уведомления</Text>
+      </Animated.View>
+
+      <View style={styles.notificationsContainer}>
+        <Animated.View
+          entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
+            ANIMATION_DELAYS.VERY_LARGE
+          )}
+          style={styles.notificationItemContainer}
+        >
+          <View style={styles.notificationItem}>
+            <Text style={styles.notificationItemText}>
+              Уведомления о заказах
+            </Text>
+            <View style={styles.switchContainer}>
+              <Switch
+                value={orderNotifications}
+                onValueChange={handleOrderNotificationsChange}
+                trackColor={{ false: "#D0C0B0", true: "#CDA67A" }}
+                thumbColor="#FFF"
+                ios_backgroundColor="#D0C0B0"
+              />
+            </View>
+          </View>
+        </Animated.View>
+
+        <Animated.View
+          entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
+            ANIMATION_DELAYS.VERY_LARGE + ANIMATION_DELAYS.SMALL
+          )}
+          style={styles.notificationItemContainer}
+        >
+          <View style={styles.notificationItem}>
+            <Text style={styles.notificationItemText}>
+              Маркетинговые уведомления
+            </Text>
+            <View style={styles.switchContainer}>
+              <Switch
+                value={marketingNotifications}
+                onValueChange={handleMarketingNotificationsChange}
+                trackColor={{ false: "#D0C0B0", true: "#CDA67A" }}
+                thumbColor="#FFF"
+                ios_backgroundColor="#D0C0B0"
+              />
+            </View>
+          </View>
+        </Animated.View>
+      </View>
+    </View>
+  );
+
+  const renderDeleteAccountContent = () => (
+    <View style={styles.contentContainer}>
+      <Animated.View
+        style={styles.backButton}
+        entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
+          ANIMATION_DELAYS.LARGE
+        )}
+      >
+        <TouchableOpacity onPress={() => setActiveSection(null)}>
+          <BackIcon width={22} height={22} />
+        </TouchableOpacity>
+      </Animated.View>
+
+      <View style={styles.deleteAccountScreenContainer}>
+        <Animated.View
+          entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
+            ANIMATION_DELAYS.EXTENDED
+          )}
+          style={styles.deleteAccountQuestionContainer}
+        >
+          <View style={styles.deleteAccountQuestion}>
+            <Text style={styles.deleteAccountQuestionText}>
+              Уверены, что хотите удалить аккаунт?
+            </Text>
+          </View>
+        </Animated.View>
+
+        <View style={styles.deleteAccountButtonsContainer}>
+          <Animated.View
+            entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
+              ANIMATION_DELAYS.VERY_LARGE
+            )}
+            style={styles.deleteAccountYesButtonContainer}
+          >
+            <Pressable
+              style={styles.deleteAccountYesButton}
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                // TODO: Implement account deletion
+                Alert.alert(
+                  "Уведомление",
+                  "Функция удаления аккаунта будет доступна в ближайшее время."
+                );
+              }}
+            >
+              <Text style={styles.deleteAccountYesButtonText}>Да</Text>
+            </Pressable>
+          </Animated.View>
+
+          <Animated.View
+            entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
+              ANIMATION_DELAYS.VERY_LARGE + ANIMATION_DELAYS.SMALL
+            )}
+            style={styles.deleteAccountNoButtonContainer}
+          >
+            <Pressable
+              style={styles.deleteAccountNoButton}
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                setActiveSection(null);
+              }}
+            >
+              <Text style={styles.deleteAccountNoButtonText}>Нет</Text>
+            </Pressable>
+          </Animated.View>
+        </View>
+
+        <Animated.View
+          entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
+            ANIMATION_DELAYS.VERY_LARGE + ANIMATION_DELAYS.MEDIUM
+          )}
+          style={styles.deleteAccountWarningContainer}
+        >
+          <Text style={styles.deleteAccountWarningText}>
+            Это действия нельзя обратить. Персональные данные удалятся
+          </Text>
+        </Animated.View>
+      </View>
+    </View>
+  );
+
   const renderContent = () => {
     switch (activeSection) {
-      case "wall":
-        return renderWallContent();
-      case "orders":
-        return renderOrdersContent();
       case "shopping":
         return renderShoppingContent();
       case "support":
         return renderSupportContent();
+      case "my_info":
+        return renderMyInfoContent();
+      case "notifications":
+        return renderNotificationsContent();
+      case "delete_account":
+        return renderDeleteAccountContent();
+      case "payment":
+      case "documents":
+        // TODO: Implement these sections
+        return (
+          <View style={styles.contentContainer}>
+            <Animated.View
+              style={styles.backButton}
+              entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
+                ANIMATION_DELAYS.LARGE
+              )}
+            >
+              <TouchableOpacity onPress={() => setActiveSection(null)}>
+                <BackIcon width={22} height={22} />
+              </TouchableOpacity>
+            </Animated.View>
+            <View style={styles.placeholderContainer}>
+              <Text style={styles.placeholderText}>
+                {activeSection === "payment" && "Оплата"}
+                {activeSection === "documents" && "Документы"}
+              </Text>
+              <Text style={styles.placeholderSubtext}>Раздел в разработке</Text>
+            </View>
+          </View>
+        );
       default:
         return renderMainButtons();
     }
   };
 
-  const getBottomText = () => {
-    if (selectedOrder) {
-      return `ЗАКАЗ №${selectedOrder.number}`;
-    }
-
-    switch (activeSection) {
-      case "wall":
-        return "СТЕНА";
-      case "orders":
-        return "ЗАКАЗЫ";
-      case "shopping":
-        return "ДОСТАВКА";
-      case "payment":
-        return "ОПЛАТА";
-      case "support":
-        return "ПОДДЕРЖКА";
-      default:
-        return "НАСТРОЙКИ";
-    }
-  };
-
-  const handleLogout = () => {
-    Alert.alert(
-      "Выход",
-      "Вы уверены, что хотите выйти из аккаунта?",
-      [
-        {
-          text: "Отмена",
-          style: "cancel",
-        },
-        {
-          text: "Выйти",
-          style: "destructive",
-          onPress: () => {
-            // Handle logout
-            console.log("User logged out");
-            if (onLogout) {
-              onLogout();
-            }
-          },
-        },
-      ],
-      { cancelable: true }
-    );
-  };
+  // If embedded, render only content without outer container
+  if (embedded) {
+    return <View style={styles.embeddedContainer}>{renderContent()}</View>;
+  }
 
   return (
     <View style={styles.container}>
@@ -1772,6 +1912,10 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
+  },
+  embeddedContainer: {
+    width: "100%",
+    height: "100%",
   },
   roundedBox: {
     width: "88%",
@@ -1814,8 +1958,8 @@ const styles = StyleSheet.create({
   },
   text: {
     fontFamily: "Igra Sans",
-    fontSize: 38,
-    color: "#FFF",
+    fontSize: 34,
+    color: "#000",
     textAlign: "left",
   },
   profileSection: {
@@ -1871,6 +2015,37 @@ const styles = StyleSheet.create({
     marginBottom: -15,
     //paddingVertical: 20,
   },
+  scrollableMenuContainer: {
+    flex: 1,
+    position: "relative",
+    width: "100%",
+    marginTop: 33 + 15,
+  },
+  scrollHintContainer: {
+    position: "absolute",
+    bottom: -5,
+    right: 0,
+    alignItems: "flex-end",
+    zIndex: 10,
+    paddingVertical: 8,
+    flexDirection: "row",
+  },
+  scrollHintText: {
+    fontFamily: "IgraSans",
+    fontSize: 14,
+    lineHeight: 26,
+    color: "#000",
+    flexDirection: "row",
+    alignItems: "center",
+    marginRight: 8,
+  },
+  scrollableMenu: {
+    width: width * 0.88,
+    left: -height * 0.025,
+    paddingHorizontal: height * 0.025,
+    marginBottom: -height * 0.025,
+    borderRadius: 41,
+  },
   mainButtonContainer: {
     marginBottom: 15,
   },
@@ -1888,10 +2063,176 @@ const styles = StyleSheet.create({
     elevation: 6,
     height: height * 0.1,
   },
+  notificationsContainer: {
+    width: "100%",
+    alignContent: "flex-start",
+    flex: 1,
+  },
+  notificationItemContainer: {
+    marginBottom: 15,
+  },
+  notificationItem: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    backgroundColor: "#E2CCB2",
+    borderRadius: 41,
+    padding: 20,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 6,
+    height: height * 0.1,
+  },
+  notificationItemText: {
+    fontFamily: "IgraSans",
+    fontSize: 20,
+    color: "#000",
+    flex: 1,
+  },
+  switchContainer: {
+    justifyContent: "center",
+    alignItems: "center",
+  },
   mainButtonText: {
     fontFamily: "IgraSans",
     fontSize: 20,
     color: "#000",
+  },
+  deleteAccountButton: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    backgroundColor: "#E2B4B3",
+    borderRadius: 41,
+    padding: 20,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 6,
+    height: height * 0.1,
+  },
+  deleteAccountButtonText: {
+    fontFamily: "IgraSans",
+    fontSize: 20,
+    color: "#000",
+  },
+  deleteAccountScreenContainer: {
+    width: "100%",
+    height: "100%",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  deleteAccountQuestionContainer: {
+    width: "100%",
+    marginBottom: 40,
+  },
+  deleteAccountQuestion: {
+    width: "100%",
+    backgroundColor: "#E2CCB2",
+    borderRadius: 41,
+    paddingHorizontal: 20,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 6,
+    height: height * 0.1,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  deleteAccountQuestionText: {
+    textAlign: "center",
+    fontFamily: "IgraSans",
+    fontSize: 20,
+    color: "#000",
+    lineHeight: 39,
+  },
+  deleteAccountButtonsContainer: {
+    width: "100%",
+    flexDirection: "row",
+    justifyContent: "space-between",
+    gap: 15,
+    marginBottom: 40,
+  },
+  deleteAccountYesButtonContainer: {
+    flex: 1,
+    marginRight: 7.5,
+  },
+  deleteAccountNoButtonContainer: {
+    flex: 1,
+    marginLeft: 7.5,
+  },
+  deleteAccountYesButton: {
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#E2B4B3",
+    borderRadius: 41,
+    padding: 20,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 6,
+    height: height * 0.1,
+  },
+  deleteAccountYesButtonText: {
+    fontFamily: "IgraSans",
+    fontSize: 20,
+    color: "#000",
+  },
+  deleteAccountNoButton: {
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#E2CCB2",
+    borderRadius: 41,
+    padding: 20,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 6,
+    height: height * 0.1,
+  },
+  deleteAccountNoButtonText: {
+    fontFamily: "IgraSans",
+    fontSize: 20,
+    color: "#000",
+  },
+  deleteAccountWarningContainer: {
+    position: "absolute",
+    bottom: 20,
+    width: "75%",
+    alignItems: "center",
+  },
+  deleteAccountWarningText: {
+    fontFamily: "IgraSans",
+    fontSize: 10,
+    color: "#000",
+    textAlign: "center",
+  },
+  placeholderContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: 20,
+  },
+  placeholderText: {
+    fontFamily: "IgraSans",
+    fontSize: 24,
+    color: "#000",
+    textAlign: "center",
+    marginBottom: 10,
+  },
+  placeholderSubtext: {
+    fontFamily: "IgraSans",
+    fontSize: 18,
+    color: "#666",
+    textAlign: "center",
   },
   contentContainer: {
     width: "100%",
@@ -2336,169 +2677,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingHorizontal: 20,
   },
-  emptyStateText: {
-    fontFamily: "IgraSans",
-    fontSize: 16,
-    color: "#6A462F",
-    marginBottom: 20,
-  },
-  startShoppingButton: {
-    backgroundColor: "#CDA67A",
-    borderRadius: 15,
-    padding: 15,
-    minWidth: 200,
-    alignItems: "center",
-  },
-  startShoppingText: {
-    fontFamily: "IgraSans",
-    fontSize: 16,
-    color: "white",
-  },
-  orderDetailsContainer: {
-    width: "100%",
-    paddingTop: height * 0.05,
-    alignItems: "center",
-    height: "100%",
-    justifyContent: "space-between",
-  },
-  orderDetailsTitle: {
-    fontFamily: "IgraSans",
-    fontSize: 20,
-    color: "#000",
-    marginBottom: 20,
-  },
-  orderItemsList: {
-    width: width * 0.88,
-    paddingHorizontal: 20,
-    borderRadius: 41,
-    height: "60%",
-  },
-  cartItem: {
-    backgroundColor: "#E2CCB2",
-    borderRadius: 41,
-    marginBottom: 15,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 6,
-    flex: 1,
-  },
-  itemPressable: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    justifyContent: "space-between",
-    paddingTop: 20,
-    paddingLeft: 25,
-    paddingRight: 20,
-    paddingBottom: 15,
-  },
-  itemContent: {
-    flexDirection: "row",
-    width: "80%",
-    alignItems: "flex-start",
-  },
-  imageContainer: {
-    width: "30%",
-    height: "100%",
-    alignSelf: "flex-start",
-    marginRight: 15,
-    justifyContent: "flex-start",
-  },
-  itemImage: {
-    width: "100%",
-    height: "100%",
-    justifyContent: "flex-start",
-    position: "absolute",
-    top: 0,
-    left: 0,
-  },
-  itemDetails: {
-    flex: 1,
-    justifyContent: "flex-start",
-  },
-  itemName: {
-    fontFamily: "IgraSans",
-    fontSize: 38,
-    color: "#000",
-    marginBottom: 0,
-  },
-  itemPrice: {
-    fontFamily: "REM",
-    fontSize: 16,
-    color: "#000",
-    marginBottom: 5,
-  },
-  itemSize: {
-    fontFamily: "IgraSans",
-    fontSize: 16,
-    color: "#000",
-    marginBottom: 20,
-  },
-  deliveryInfoChangeable: {
-    position: "absolute",
-    marginLeft: width * 0.22,
-    bottom: 0,
-  },
-  deliveryText: {
-    fontFamily: "IgraSans",
-    fontSize: 14,
-    color: "#000",
-    marginBottom: 5,
-  },
-  rightContainer: {
-    justifyContent: "center",
-    alignItems: "center",
-    height: "100%",
-    width: "20%",
-  },
-  circle: {
-    position: "absolute",
-    top: "30%",
-    bottom: "30%",
-    right: 0,
-  },
-  orderTotalContainer: {
-    justifyContent: "center",
-    alignItems: "center",
-    width: "100%",
-    flex: 1,
-  },
-  orderTotalText: {
-    fontFamily: "IgraSans",
-    fontSize: 34,
-    color: "#000",
-  },
-  orderStatusContainer: {
-    height: height * 0.1,
-    width: "100%",
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    backgroundColor: "#E2CCB2",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    borderRadius: 41,
-  },
-  orderStatus: {
-    height: "100%",
-    paddingHorizontal: 25,
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: "#DCBF9D",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    borderRadius: 41,
-  },
-  orderStatusText: {
-    fontFamily: "IgraSans",
-    fontSize: 20,
-    color: "#000",
-  },
   ratingContainer: {
     justifyContent: "center",
     alignItems: "center",
@@ -2580,6 +2758,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 12,
+    paddingRight: 40, // Make room for status indicator
     fontFamily: "IgraSans",
     fontSize: 16,
     color: "#000",
@@ -2597,13 +2776,87 @@ const styles = StyleSheet.create({
       },
     }),
   },
+  usernameInputWrapper: {
+    position: "relative",
+  },
+  inputError: {
+    borderColor: "rgba(255, 100, 100, 0.7)",
+  },
+  inputSuccess: {
+    borderColor: "rgba(0, 170, 0, 0.7)",
+  },
+  inputChecking: {
+    borderColor: "rgba(255, 165, 0, 0.7)",
+  },
+  statusIndicator: {
+    position: "absolute",
+    right: 15,
+    top: "50%",
+    transform: [{ translateY: -10 }],
+  },
+  statusText: {
+    fontFamily: "IgraSans",
+    fontSize: 16,
+    position: "absolute",
+    right: 15,
+    top: "50%",
+    transform: [{ translateY: -8 }],
+  },
+  statusTextSuccess: {
+    color: "#00AA00",
+  },
+  statusTextError: {
+    color: "#FF0000",
+  },
+  usernameErrorText: {
+    fontFamily: "REM",
+    fontSize: 12,
+    color: "#FF6464",
+    marginTop: 4,
+    marginLeft: 4,
+  },
   textArea: {
     height: 80,
     textAlignVertical: "top",
   },
+  disabledInput: {
+    backgroundColor: "#D0C0B0",
+    opacity: 0.6,
+  },
   saveButtonContainer: {
     marginTop: 20,
     marginBottom: 30,
+    alignItems: "flex-end",
+  },
+  confirmButton: {
+    backgroundColor: "#E0D6CC",
+    borderRadius: 41,
+    paddingVertical: 12.5,
+    paddingHorizontal: 25,
+    alignItems: "center",
+    ...Platform.select({
+      ios: {
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.25,
+        shadowRadius: 4,
+      },
+      android: {
+        elevation: 6,
+        overflow: "hidden",
+      },
+    }),
+  },
+  confirmButtonText: {
+    fontFamily: "IgraSans",
+    fontSize: 20,
+    color: "#000",
+  },
+  confirmButtonDisabled: {
+    opacity: 0.6,
+  },
+  confirmButtonDisabledText: {
+    opacity: 0.37,
   },
   saveButton: {
     backgroundColor: "#CDA67A",

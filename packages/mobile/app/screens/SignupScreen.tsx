@@ -300,7 +300,7 @@ const SignupScreen: React.FC<SignupScreenProps> = ({ onSignup, onBack }) => {
       start={{ x: 0, y: 0.2 }}
       end={{ x: 1, y: 0.8 }}
     >
-      <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
+      <SafeAreaView style={styles.safeArea} edges={["top", "bottom"]}>
         <KeyboardAvoidingView
           behavior={Platform.OS === "ios" ? "padding" : "height"}
           style={styles.keyboardView}
@@ -318,7 +318,7 @@ const SignupScreen: React.FC<SignupScreenProps> = ({ onSignup, onBack }) => {
                 onPress={onBack}
                 activeOpacity={0.7}
               >
-                <BackIcon width={33} height={33} />
+                <BackIcon width={22} height={22} />
               </TouchableOpacity>
 
               <View style={styles.logoContainer}>

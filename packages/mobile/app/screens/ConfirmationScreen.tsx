@@ -87,7 +87,7 @@ const ConfirmationScreen: React.FC<ConfirmationScreenProps> = ({
             onPress={onBack}
             activeOpacity={0.7}
           >
-            <BackIcon width={33} height={33} />
+            <BackIcon width={22} height={22} />
           </TouchableOpacity>
           <Animated.View style={styles.formContainerShadow}>
             {/* Separate nested Animated.Views for different animation properties */}
