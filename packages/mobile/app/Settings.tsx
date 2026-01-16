@@ -19,6 +19,8 @@ import {
   NativeSyntheticEvent,
   NativeScrollEvent,
   Switch,
+  LayoutAnimation,
+  UIManager,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import Animated, {
@@ -27,6 +29,10 @@ import Animated, {
   FadeOutDown,
   withSequence,
   FadeOut,
+  useSharedValue,
+  useAnimatedStyle,
+  withTiming,
+  Easing as ReanimatedEasing,
 } from "react-native-reanimated";
 import BackIcon from "./components/svg/BackIcon";
 import LogOut from "./components/svg/LogOut";
@@ -48,6 +54,27 @@ import {
 import AvatarEditScreen from "./screens/AvatarEditScreen";
 
 const { width, height } = Dimensions.get("window");
+
+// Helper function to calculate translateX based on label width
+// Defined outside component since it doesn't depend on component state
+// Marked as worklet for react-native-reanimated
+const calculateTranslateX = (labelPos: number, labelWidth: number) => {
+  "worklet";
+  const ovalWidth = width * 0.88;
+  const leftPadding = 20;
+  const rightPadding = 20;
+  // Ensure labelWidth is valid
+  const validLabelWidth = Math.max(labelWidth || 30, 30);
+  // Calculate translation: move from left position to right position
+  // We want the label to be positioned on the right but not too close to the edge
+  // Leave extra space on the right for better visual balance
+  const extraRightSpacing = 40; // Extra space from the right edge
+  const rightEdgePosition = ovalWidth - rightPadding - extraRightSpacing;
+  const rightStartPosition = rightEdgePosition - validLabelWidth;
+  const translationDistance = rightStartPosition - leftPadding;
+  // Apply the labelPos (0 to 1) to the translation distance
+  return labelPos * Math.max(0, translationDistance);
+};
 
 // Define a simpler navigation type that our custom navigation can satisfy
 interface SimpleNavigation {
@@ -75,6 +102,14 @@ interface SettingsProps {
 interface StatItem {
   label: string;
   value: string;
+}
+
+// Enable LayoutAnimation on Android
+if (
+  Platform.OS === "android" &&
+  UIManager.setLayoutAnimationEnabledExperimental
+) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
 }
 
 const Settings = ({
@@ -143,6 +178,7 @@ const Settings = ({
 
   // My Info state
   const [myInfo, setMyInfo] = useState({
+    gender: "" as "male" | "female" | "",
     firstName: "",
     lastName: "",
     username: "",
@@ -157,6 +193,100 @@ const Settings = ({
     null
   );
   const [usernameError, setUsernameError] = useState("");
+
+  // Focus state for floating labels
+  const [focusedField, setFocusedField] = useState<string | null>(null);
+
+  // Animated values for label positions (0 = left, 1 = right)
+  const firstNameLabelPos = useSharedValue(0);
+  const lastNameLabelPos = useSharedValue(0);
+  const usernameLabelPos = useSharedValue(0);
+  const emailLabelPos = useSharedValue(0);
+
+  // Shared values for label widths (will be measured)
+  const firstNameLabelWidth = useSharedValue(0);
+  const lastNameLabelWidth = useSharedValue(0);
+  const usernameLabelWidth = useSharedValue(0);
+  const emailLabelWidth = useSharedValue(0);
+
+  // Update label positions based on focus/text state
+  useEffect(() => {
+    const shouldMoveRight = focusedField === "firstName" || !!myInfo.firstName;
+    firstNameLabelPos.value = withTiming(shouldMoveRight ? 1 : 0, {
+      duration: 300,
+      easing: ReanimatedEasing.out(ReanimatedEasing.ease),
+    });
+  }, [focusedField, myInfo.firstName]);
+
+  useEffect(() => {
+    const shouldMoveRight = focusedField === "lastName" || !!myInfo.lastName;
+    lastNameLabelPos.value = withTiming(shouldMoveRight ? 1 : 0, {
+      duration: 300,
+      easing: ReanimatedEasing.out(ReanimatedEasing.ease),
+    });
+  }, [focusedField, myInfo.lastName]);
+
+  useEffect(() => {
+    const shouldMoveRight = focusedField === "username" || !!myInfo.username;
+    usernameLabelPos.value = withTiming(shouldMoveRight ? 1 : 0, {
+      duration: 300,
+      easing: ReanimatedEasing.out(ReanimatedEasing.ease),
+    });
+  }, [focusedField, myInfo.username]);
+
+  useEffect(() => {
+    const shouldMoveRight = focusedField === "email" || !!myInfo.email;
+    emailLabelPos.value = withTiming(shouldMoveRight ? 1 : 0, {
+      duration: 300,
+      easing: ReanimatedEasing.out(ReanimatedEasing.ease),
+    });
+  }, [focusedField, myInfo.email]);
+
+  // Create animated styles at component level (hooks must be at top level)
+  const firstNameAnimatedStyle = useAnimatedStyle(() => {
+    const translateX = calculateTranslateX(
+      firstNameLabelPos.value,
+      firstNameLabelWidth.value || 30 // Fallback width for "Имя"
+    );
+    return {
+      transform: [{ translateX }],
+    };
+  });
+
+  const lastNameAnimatedStyle = useAnimatedStyle(() => {
+    const translateX = calculateTranslateX(
+      lastNameLabelPos.value,
+      lastNameLabelWidth.value || 60 // Fallback width for "Фамилия"
+    );
+    return {
+      transform: [{ translateX }],
+    };
+  });
+
+  const usernameAnimatedStyle = useAnimatedStyle(() => {
+    const translateX = calculateTranslateX(
+      usernameLabelPos.value,
+      usernameLabelWidth.value || 70 // Fallback width for "Никнейм"
+    );
+    return {
+      transform: [{ translateX }],
+    };
+  });
+
+  const emailAnimatedStyle = useAnimatedStyle(() => {
+    const translateX = calculateTranslateX(
+      emailLabelPos.value,
+      emailLabelWidth.value || 50 // Fallback width for "Email"
+    );
+    return {
+      transform: [{ translateX }],
+    };
+  });
+
+  // Helper function to set focused field
+  const setFocusedFieldWithAnimation = (field: string | null) => {
+    setFocusedField(field);
+  };
 
   // Debounce timer for username checking
   const usernameTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -491,8 +621,10 @@ const Settings = ({
         const firstName = nameParts[0] || "";
         const lastName = nameParts.slice(1).join(" ") || "";
         const username = profile.username || "";
+        const gender = profile.gender || "";
 
         setMyInfo({
+          gender: gender as "male" | "female" | "",
           firstName,
           lastName,
           username,
@@ -564,6 +696,22 @@ const Settings = ({
   }, []);
 
   const saveMyInfo = async () => {
+    // Validate required fields
+    if (!myInfo.firstName.trim()) {
+      Alert.alert("Ошибка", "Пожалуйста, введите ваше имя.");
+      return;
+    }
+
+    if (!myInfo.lastName.trim()) {
+      Alert.alert("Ошибка", "Пожалуйста, введите вашу фамилию.");
+      return;
+    }
+
+    if (!myInfo.gender) {
+      Alert.alert("Ошибка", "Пожалуйста, выберите пол.");
+      return;
+    }
+
     // Validate username
     const illegalCharRegex = /[^a-zA-Z0-9#$-_!]/;
     if (!myInfo.username.trim()) {
@@ -601,6 +749,7 @@ const Settings = ({
       await api.updateUserProfile({
         full_name: fullName,
         username: myInfo.username.trim(),
+        gender: myInfo.gender || undefined,
       });
 
       // Reload profile to get updated data
@@ -1493,184 +1642,366 @@ const Settings = ({
     </View>
   );
 
-  const renderMyInfoContent = () => (
-    <View style={styles.contentContainer}>
-      <Animated.View
-        style={styles.backButton}
-        entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
-          ANIMATION_DELAYS.LARGE
-        )}
-      >
-        <TouchableOpacity onPress={() => setActiveSection(null)}>
-          <BackIcon width={22} height={22} />
-        </TouchableOpacity>
-      </Animated.View>
+  const renderMyInfoContent = () => {
+    // Define form items for FlatList
+    const formItems = [
+      { type: "gender", key: "gender" },
+      { type: "firstName", key: "firstName" },
+      { type: "lastName", key: "lastName" },
+      { type: "username", key: "username" },
+      { type: "email", key: "email" },
+    ];
 
-      <Animated.View
-        entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
-          ANIMATION_DELAYS.EXTENDED
-        )}
-        style={styles.shoppingTitleSection}
-      >
-        <Text style={styles.shoppingTitle}>Мои данные</Text>
-      </Animated.View>
+    const renderFormItem = ({
+      item,
+    }: {
+      item: { type: string; key: string };
+    }) => {
+      switch (item.type) {
+        case "gender":
+          return (
+            <Animated.View
+              entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
+                ANIMATION_DELAYS.VERY_LARGE
+              )}
+              style={styles.myInfoInputContainer}
+            >
+              <View style={styles.myInfoOvalInputGender}>
+                <View style={styles.genderTextContainer}>
+                  <Text style={styles.myInfoOvalInputText}>Пол</Text>
+                </View>
+                <View style={styles.genderCirclesContainer}>
+                  <TouchableOpacity
+                    style={[
+                      styles.genderCircle,
+                      myInfo.gender === "male" && styles.genderCircleSelected,
+                    ]}
+                    onPress={() => {
+                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                      setMyInfo((prev) => ({ ...prev, gender: "male" }));
+                    }}
+                  >
+                    <Text style={[styles.genderCircleText]}>М</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[
+                      styles.genderCircle,
+                      myInfo.gender === "female" && styles.genderCircleSelected,
+                      { marginLeft: 5 },
+                    ]}
+                    onPress={() => {
+                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                      setMyInfo((prev) => ({ ...prev, gender: "female" }));
+                    }}
+                  >
+                    <Text style={[styles.genderCircleText]}>Ж</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </Animated.View>
+          );
+        case "firstName":
+          return (
+            <Animated.View
+              entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
+                ANIMATION_DELAYS.VERY_LARGE + ANIMATION_DELAYS.SMALL
+              )}
+              style={styles.myInfoInputContainer}
+            >
+              <View style={styles.myInfoOvalInput}>
+                <Animated.View
+                  style={[
+                    styles.floatingLabelContainer,
+                    firstNameAnimatedStyle,
+                  ]}
+                >
+                  <Text
+                    style={styles.floatingLabel}
+                    onLayout={(event) => {
+                      const { width } = event.nativeEvent.layout;
+                      if (width > 0) {
+                        firstNameLabelWidth.value = width;
+                      }
+                    }}
+                  >
+                    Имя
+                  </Text>
+                </Animated.View>
+                <TextInput
+                  style={[
+                    styles.myInfoOvalTextInput,
+                    !myInfo.firstName && focusedField !== "firstName"
+                      ? styles.myInfoOvalTextInputEmpty
+                      : null,
+                    (focusedField === "firstName" || myInfo.firstName) &&
+                      styles.myInfoOvalTextInputWithLabel,
+                  ]}
+                  value={myInfo.firstName}
+                  onFocus={() => setFocusedFieldWithAnimation("firstName")}
+                  onBlur={() => setFocusedFieldWithAnimation(null)}
+                  onChangeText={(text) => {
+                    setMyInfo((prev) => ({ ...prev, firstName: text }));
+                  }}
+                  multiline
+                  numberOfLines={2}
+                />
+              </View>
+            </Animated.View>
+          );
+        case "lastName":
+          return (
+            <Animated.View
+              entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
+                ANIMATION_DELAYS.VERY_LARGE + ANIMATION_DELAYS.STANDARD
+              )}
+              style={styles.myInfoInputContainer}
+            >
+              <View style={styles.myInfoOvalInput}>
+                <Animated.View
+                  style={[styles.floatingLabelContainer, lastNameAnimatedStyle]}
+                >
+                  <Text
+                    style={styles.floatingLabel}
+                    onLayout={(event) => {
+                      const { width } = event.nativeEvent.layout;
+                      if (width > 0) {
+                        lastNameLabelWidth.value = width;
+                      }
+                    }}
+                  >
+                    Фамилия
+                  </Text>
+                </Animated.View>
+                <TextInput
+                  style={[
+                    styles.myInfoOvalTextInput,
+                    !myInfo.lastName && focusedField !== "lastName"
+                      ? styles.myInfoOvalTextInputEmpty
+                      : null,
+                    (focusedField === "lastName" || myInfo.lastName) &&
+                      styles.myInfoOvalTextInputWithLabel,
+                  ]}
+                  value={myInfo.lastName}
+                  onFocus={() => setFocusedFieldWithAnimation("lastName")}
+                  onBlur={() => setFocusedFieldWithAnimation(null)}
+                  onChangeText={(text) => {
+                    setMyInfo((prev) => ({ ...prev, lastName: text }));
+                  }}
+                  multiline
+                  numberOfLines={2}
+                />
+              </View>
+            </Animated.View>
+          );
+        case "username":
+          return (
+            <Animated.View
+              entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
+                ANIMATION_DELAYS.VERY_LARGE + ANIMATION_DELAYS.EXTENDED
+              )}
+              style={styles.myInfoInputContainer}
+            >
+              <View style={styles.usernameInputWrapper}>
+                <View
+                  style={[
+                    styles.myInfoOvalInput,
+                    usernameError ? styles.inputError : null,
+                    usernameAvailable === true &&
+                    !isCheckingUsername &&
+                    myInfo.username.trim() !== originalUsername.trim()
+                      ? styles.inputSuccess
+                      : null,
+                    isCheckingUsername ? styles.inputChecking : null,
+                  ]}
+                >
+                  <Animated.View
+                    style={[
+                      styles.floatingLabelContainer,
+                      usernameAnimatedStyle,
+                    ]}
+                  >
+                    <Text
+                      style={styles.floatingLabel}
+                      onLayout={(event) => {
+                        const { width } = event.nativeEvent.layout;
+                        if (width > 0) {
+                          usernameLabelWidth.value = width;
+                        }
+                      }}
+                    >
+                      Никнейм
+                    </Text>
+                  </Animated.View>
+                  <TextInput
+                    style={[
+                      styles.myInfoOvalTextInput,
+                      !myInfo.username && focusedField !== "username"
+                        ? styles.myInfoOvalTextInputEmpty
+                        : null,
+                      (focusedField === "username" || myInfo.username) &&
+                        styles.myInfoOvalTextInputWithLabel,
+                    ]}
+                    autoCapitalize="none"
+                    value={myInfo.username}
+                    onFocus={() => setFocusedFieldWithAnimation("username")}
+                    onBlur={() => setFocusedFieldWithAnimation(null)}
+                    onChangeText={(text) => {
+                      setMyInfo((prev) => ({ ...prev, username: text }));
+                      debouncedCheckUsername(text);
+                    }}
+                    multiline
+                    numberOfLines={2}
+                  />
+                  {isCheckingUsername && (
+                    <ActivityIndicator
+                      size="small"
+                      color="#FFA500"
+                      style={styles.myInfoStatusIndicator}
+                    />
+                  )}
+                  {usernameAvailable === true &&
+                    !isCheckingUsername &&
+                    myInfo.username.trim() !== originalUsername.trim() && (
+                      <Text
+                        style={[
+                          styles.myInfoStatusText,
+                          styles.statusTextSuccess,
+                        ]}
+                      >
+                        ✓
+                      </Text>
+                    )}
+                  {usernameAvailable === false && !isCheckingUsername && (
+                    <Text
+                      style={[styles.myInfoStatusText, styles.statusTextError]}
+                    >
+                      ✗
+                    </Text>
+                  )}
+                </View>
+              </View>
+              {usernameError ? (
+                <Text style={styles.usernameErrorText}>{usernameError}</Text>
+              ) : null}
+            </Animated.View>
+          );
+        case "email":
+          return (
+            <Animated.View
+              entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
+                ANIMATION_DELAYS.VERY_LARGE + ANIMATION_DELAYS.VERY_LARGE
+              )}
+              style={styles.myInfoInputContainer}
+            >
+              <View style={[styles.myInfoOvalInput, styles.disabledOvalInput]}>
+                <Animated.View
+                  style={[styles.floatingLabelContainer, emailAnimatedStyle]}
+                >
+                  <Text
+                    style={styles.floatingLabel}
+                    onLayout={(event) => {
+                      const { width } = event.nativeEvent.layout;
+                      if (width > 0) {
+                        emailLabelWidth.value = width;
+                      }
+                    }}
+                  >
+                    Email
+                  </Text>
+                </Animated.View>
+                <TextInput
+                  style={[
+                    styles.myInfoOvalTextInput,
+                    (focusedField === "email" || myInfo.email) &&
+                      styles.myInfoOvalTextInputWithLabel,
+                  ]}
+                  value={myInfo.email}
+                  editable={false}
+                  multiline
+                  numberOfLines={2}
+                />
+              </View>
+            </Animated.View>
+          );
+        default:
+          return null;
+      }
+    };
 
-      {isLoadingMyInfo ? (
+    return (
+      <View style={styles.contentContainer}>
+        <Animated.View
+          style={styles.backButton}
+          entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
+            ANIMATION_DELAYS.LARGE
+          )}
+        >
+          <TouchableOpacity onPress={() => setActiveSection(null)}>
+            <BackIcon width={22} height={22} />
+          </TouchableOpacity>
+        </Animated.View>
+
         <Animated.View
           entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
-            ANIMATION_DELAYS.VERY_LARGE
+            ANIMATION_DELAYS.EXTENDED
           )}
-          style={styles.shoppingFormContainer}
+          style={styles.shoppingTitleSection}
         >
-          <Text style={styles.loadingText}>Загрузка...</Text>
+          <Text style={styles.shoppingTitle}>Мои данные</Text>
         </Animated.View>
-      ) : myInfoError ? (
-        <Animated.View
-          entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
-            ANIMATION_DELAYS.VERY_LARGE
-          )}
-          style={styles.shoppingFormContainer}
-        >
-          <Text style={styles.errorText}>{myInfoError}</Text>
-        </Animated.View>
-      ) : (
-        <ScrollView
-          style={styles.shoppingForm}
-          showsVerticalScrollIndicator={false}
-        >
+
+        {isLoadingMyInfo ? (
           <Animated.View
             entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
               ANIMATION_DELAYS.VERY_LARGE
             )}
-            style={styles.inputContainer}
+            style={styles.shoppingFormContainer}
           >
-            <Text style={styles.inputLabel}>Имя *</Text>
-            <TextInput
-              style={styles.textInput}
-              placeholder="Введите ваше имя"
-              placeholderTextColor="rgba(0,0,0,0.5)"
-              value={myInfo.firstName}
-              onChangeText={(text) =>
-                setMyInfo((prev) => ({ ...prev, firstName: text }))
-              }
-            />
+            <Text style={styles.loadingText}>Загрузка...</Text>
           </Animated.View>
-
+        ) : myInfoError ? (
           <Animated.View
             entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
-              ANIMATION_DELAYS.VERY_LARGE + ANIMATION_DELAYS.SMALL
+              ANIMATION_DELAYS.VERY_LARGE
             )}
-            style={styles.inputContainer}
+            style={styles.shoppingFormContainer}
           >
-            <Text style={styles.inputLabel}>Фамилия</Text>
-            <TextInput
-              style={styles.textInput}
-              placeholder="Введите вашу фамилию"
-              placeholderTextColor="rgba(0,0,0,0.5)"
-              value={myInfo.lastName}
-              onChangeText={(text) =>
-                setMyInfo((prev) => ({ ...prev, lastName: text }))
-              }
-            />
+            <Text style={styles.errorText}>{myInfoError}</Text>
           </Animated.View>
-
-          <Animated.View
-            entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
-              ANIMATION_DELAYS.VERY_LARGE + ANIMATION_DELAYS.STANDARD
-            )}
-            style={styles.inputContainer}
-          >
-            <Text style={styles.inputLabel}>Никнейм *</Text>
-            <View style={styles.usernameInputWrapper}>
-              <TextInput
+        ) : (
+          <View style={styles.myInfoScrollContainer}>
+            <FlatList
+              data={formItems}
+              renderItem={renderFormItem}
+              keyExtractor={(item) => item.key}
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={styles.myInfoFlatListContent}
+              style={styles.myInfoFlatList}
+            />
+            <View style={styles.myInfoConfirmButtonContainer}>
+              <TouchableOpacity
                 style={[
-                  styles.textInput,
-                  usernameError ? styles.inputError : null,
-                  usernameAvailable === true &&
-                  !isCheckingUsername &&
-                  myInfo.username.trim() !== originalUsername.trim()
-                    ? styles.inputSuccess
-                    : null,
-                  isCheckingUsername ? styles.inputChecking : null,
+                  styles.confirmButton,
+                  isSavingMyInfo && styles.confirmButtonDisabled,
                 ]}
-                placeholder="Введите никнейм"
-                placeholderTextColor="rgba(0,0,0,0.5)"
-                autoCapitalize="none"
-                value={myInfo.username}
-                onChangeText={(text) => {
-                  setMyInfo((prev) => ({ ...prev, username: text }));
-                  debouncedCheckUsername(text);
-                }}
-              />
-              {isCheckingUsername && (
-                <ActivityIndicator
-                  size="small"
-                  color="#FFA500"
-                  style={styles.statusIndicator}
-                />
-              )}
-              {usernameAvailable === true &&
-                !isCheckingUsername &&
-                myInfo.username.trim() !== originalUsername.trim() && (
-                  <Text style={[styles.statusText, styles.statusTextSuccess]}>
-                    ✓
-                  </Text>
-                )}
-              {usernameAvailable === false && !isCheckingUsername && (
-                <Text style={[styles.statusText, styles.statusTextError]}>
-                  ✗
-                </Text>
-              )}
-            </View>
-            {usernameError ? (
-              <Text style={styles.usernameErrorText}>{usernameError}</Text>
-            ) : null}
-          </Animated.View>
-
-          <Animated.View
-            entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
-              ANIMATION_DELAYS.VERY_LARGE + ANIMATION_DELAYS.EXTENDED
-            )}
-            style={styles.inputContainer}
-          >
-            <Text style={styles.inputLabel}>Email</Text>
-            <TextInput
-              style={[styles.textInput, styles.disabledInput]}
-              placeholder="Email"
-              placeholderTextColor="rgba(0,0,0,0.5)"
-              value={myInfo.email}
-              editable={false}
-            />
-          </Animated.View>
-
-          <Animated.View
-            entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
-              ANIMATION_DELAYS.VERY_LARGE + ANIMATION_DELAYS.VERY_LARGE
-            )}
-            style={styles.saveButtonContainer}
-          >
-            <TouchableOpacity
-              style={[
-                styles.confirmButton,
-                isSavingMyInfo && styles.confirmButtonDisabled,
-              ]}
-              onPress={saveMyInfo}
-              disabled={isSavingMyInfo}
-            >
-              <Text
-                style={[
-                  styles.confirmButtonText,
-                  isSavingMyInfo && styles.confirmButtonDisabledText,
-                ]}
+                onPress={saveMyInfo}
+                disabled={isSavingMyInfo}
               >
-                {isSavingMyInfo ? "Сохранение..." : "Подтвердить"}
-              </Text>
-            </TouchableOpacity>
-          </Animated.View>
-        </ScrollView>
-      )}
-    </View>
-  );
+                <Text
+                  style={[
+                    styles.confirmButtonText,
+                    isSavingMyInfo && styles.confirmButtonDisabledText,
+                  ]}
+                >
+                  {isSavingMyInfo ? "Сохранение..." : "Подтвердить"}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
+      </View>
+    );
+  };
 
   // Handle switch toggle with haptic feedback
   const handleOrderNotificationsChange = (value: boolean) => {
@@ -2023,7 +2354,7 @@ const styles = StyleSheet.create({
   },
   scrollHintContainer: {
     position: "absolute",
-    bottom: -5,
+    bottom: -height * 0.025 - 14 + 5,
     right: 0,
     alignItems: "flex-end",
     zIndex: 10,
@@ -2205,7 +2536,7 @@ const styles = StyleSheet.create({
   },
   deleteAccountWarningContainer: {
     position: "absolute",
-    bottom: 20,
+    bottom: 0,
     width: "75%",
     alignItems: "center",
   },
@@ -2214,6 +2545,7 @@ const styles = StyleSheet.create({
     fontSize: 10,
     color: "#000",
     textAlign: "center",
+    lineHeight: 17,
   },
   placeholderContainer: {
     flex: 1,
@@ -2937,6 +3269,176 @@ const styles = StyleSheet.create({
   },
   shoppingInfoLabel: {
     fontWeight: "bold",
+  },
+  // My Info section styles with oval inputs
+  myInfoScrollContainer: {
+    flex: 1,
+    width: "100%",
+    position: "relative",
+    paddingBottom: 80, // Space for the confirmation button at the bottom
+  },
+  myInfoFlatList: {
+    width: width * 0.88,
+    left: -height * 0.025,
+    paddingHorizontal: height * 0.025,
+    marginBottom: -height * 0.025,
+    borderRadius: 41,
+  },
+  myInfoFlatListContent: {
+    paddingBottom: 20,
+  },
+  myInfoInputContainer: {
+    marginBottom: 20,
+  },
+  myInfoInputLabel: {
+    fontFamily: "IgraSans",
+    fontSize: 18,
+    color: "#000",
+    marginBottom: 8,
+    textAlign: "center",
+  },
+  myInfoOvalInput: {
+    backgroundColor: "#E2CCB2",
+    borderRadius: 41,
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    minHeight: height * 0.1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 6,
+    position: "relative",
+  },
+  myInfoOvalInputGender: {
+    backgroundColor: "#E2CCB2",
+    borderRadius: 41,
+    paddingLeft: 20,
+    paddingRight: 0,
+    paddingVertical: 0,
+    height: height * 0.1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 6,
+  },
+  genderTextContainer: {
+    flex: 1,
+    flexDirection: "row",
+    justifyContent: "flex-start",
+    alignItems: "center",
+    gap: 8,
+  },
+  myInfoOvalInputText: {
+    fontFamily: "IgraSans",
+    fontSize: 16,
+    color: "#000",
+    flex: 1,
+  },
+  genderValueText: {
+    fontFamily: "IgraSans",
+    fontSize: 16,
+    color: "#000",
+  },
+  myInfoOvalTextInput: {
+    flex: 1,
+    fontFamily: "IgraSans",
+    fontSize: 16,
+    color: "#000",
+    padding: 0,
+    margin: 0,
+    zIndex: 1,
+    minWidth: 0,
+    textAlignVertical: "center",
+  },
+  myInfoOvalTextInputEmpty: {
+    color: "transparent",
+  },
+  myInfoOvalTextInputWithLabel: {
+    paddingRight: 100, // Space for label on the right
+    marginRight: 0,
+    textAlignVertical: "top",
+    maxHeight: height * 0.1 - 24, // Allow for two lines within the oval
+  },
+  floatingLabelContainer: {
+    position: "absolute",
+    left: 20,
+    top: 0,
+    bottom: 0,
+    justifyContent: "center",
+    zIndex: 0,
+    pointerEvents: "none",
+  },
+  floatingLabelContainerRight: {
+    left: "auto",
+    right: 20,
+  },
+  floatingLabel: {
+    fontFamily: "IgraSans",
+    fontSize: 16,
+    color: "rgba(0,0,0,0.5)",
+  },
+  floatingLabelRight: {
+    color: "rgba(0,0,0,0.5)",
+  },
+  disabledOvalInput: {
+    backgroundColor: "#D0C0B0",
+    opacity: 0.6,
+  },
+  genderCirclesContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    height: "100%",
+  },
+  genderCircle: {
+    width: height * 0.1, // Account for 2px border on each side
+    height: height * 0.1,
+    borderRadius: (height * 0.1) / 2,
+    backgroundColor: "#D8B68F",
+    justifyContent: "center",
+    alignItems: "center",
+    opacity: 0.6,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 6,
+  },
+  genderCircleSelected: {
+    backgroundColor: "#AD7E49",
+  },
+  genderCircleText: {
+    fontFamily: "IgraSans",
+    fontSize: 17,
+    color: "#000",
+    fontWeight: "bold",
+  },
+  myInfoStatusIndicator: {
+    position: "absolute",
+    right: 20,
+    top: "50%",
+    transform: [{ translateY: -10 }],
+  },
+  myInfoStatusText: {
+    fontFamily: "IgraSans",
+    fontSize: 16,
+    position: "absolute",
+    right: 20,
+    top: "50%",
+    transform: [{ translateY: -8 }],
+  },
+  myInfoConfirmButtonContainer: {
+    position: "absolute",
+    bottom: 0,
+    right: 0,
+    zIndex: 10,
   },
 });
 

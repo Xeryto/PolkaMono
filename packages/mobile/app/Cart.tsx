@@ -577,6 +577,7 @@ const Cart = ({ navigation }: CartProps) => {
                   entering={FadeInDown.duration(
                     ANIMATION_DURATIONS.MEDIUM
                   ).delay(ANIMATION_DELAYS.EXTENDED)}
+                  style={{ width: "100%" }}
                 >
                   <TouchableOpacity
                     style={[
