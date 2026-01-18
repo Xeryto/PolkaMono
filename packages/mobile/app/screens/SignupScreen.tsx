@@ -167,34 +167,34 @@ const SignupScreen: React.FC<SignupScreenProps> = ({ onSignup, onBack }) => {
       newErrors.username = "ник обязателен";
       valid = false;
     } else if (username.trim().length < 3) {
-      newErrors.username = "Ник должен быть не менее 3 символов";
+      newErrors.username = "ник должен быть не менее 3 символов";
       valid = false;
     } else if (username.includes(" ")) {
       newErrors.username = "ник не должен содержать пробелов";
       valid = false;
     } else if (illegalCharRegex.test(username)) {
-      newErrors.username = "Ник содержит недопустимые символы";
+      newErrors.username = "ник содержит недопустимые символы";
       valid = false;
     } else if (usernameAvailable === false) {
       newErrors.username = "этот ник уже занят";
       valid = false;
     } else if (usernameAvailable === null && isCheckingUsername) {
-      newErrors.username = "Проверяем доступность ника...";
+      newErrors.username = "проверяем доступность ника...";
       valid = false;
     }
 
     // Validate email
     if (!email.trim()) {
-      newErrors.email = "Email обязателен";
+      newErrors.email = "email обязателен";
       valid = false;
     } else if (!/\S+@\S+\.\S+/.test(email)) {
-      newErrors.email = "Email некорректен";
+      newErrors.email = "email некорректен";
       valid = false;
     } else if (email.includes(" ")) {
-      newErrors.email = "Email не должен содержать пробелов";
+      newErrors.email = "email не должен содержать пробелов";
       valid = false;
     } else if (illegalCharRegex.test(email)) {
-      newErrors.email = "Email содержит недопустимые символы";
+      newErrors.email = "email содержит недопустимые символы";
       valid = false;
     } else if (emailAvailable === false) {
       newErrors.email = "этот email уже используется";
@@ -212,13 +212,13 @@ const SignupScreen: React.FC<SignupScreenProps> = ({ onSignup, onBack }) => {
       newErrors.password = "пароль должен быть не менее 6 символов";
       valid = false;
     } else if (!passwordRegex.test(password)) {
-      newErrors.password = "Пароль должен содержать буквы и цифры";
+      newErrors.password = "пароль должен содержать буквы и цифры";
       valid = false;
     } else if (password.includes(" ")) {
       newErrors.password = "пароль не должен содержать пробелов";
       valid = false;
     } else if (illegalCharRegex.test(password)) {
-      newErrors.password = "Пароль содержит недопустимые символы";
+      newErrors.password = "пароль содержит недопустимые символы";
       valid = false;
     }
 
@@ -248,7 +248,7 @@ const SignupScreen: React.FC<SignupScreenProps> = ({ onSignup, onBack }) => {
     } catch (error) {
       setIsLoading(false);
 
-      let errorMessage = "Ошибка регистрации. Попробуйте позже.";
+      let errorMessage = "ошибка регистрации. попробуйте позже.";
       let fieldErrors = { ...errors };
 
       if (error instanceof Error) {
@@ -259,7 +259,7 @@ const SignupScreen: React.FC<SignupScreenProps> = ({ onSignup, onBack }) => {
           message.includes("email уже существует") ||
           message.includes("email уже используется")
         ) {
-          fieldErrors.email = "Этот email уже используется";
+          fieldErrors.email = "этот email уже используется";
           setEmailAvailable(false);
         } else if (
           message.includes("имя пользователя уже занято") ||
@@ -268,11 +268,11 @@ const SignupScreen: React.FC<SignupScreenProps> = ({ onSignup, onBack }) => {
           fieldErrors.username = "этот ник уже занят";
           setUsernameAvailable(false);
         } else if (
-          message.includes("Пользователь с таким email уже существует")
+          message.includes("пользователь с таким email уже существует")
         ) {
-          fieldErrors.email = "Этот email уже используется";
+          fieldErrors.email = "этот email уже используется";
           setEmailAvailable(false);
-        } else if (message.includes("Имя пользователя уже занято")) {
+        } else if (message.includes("имя пользователя уже занято")) {
           fieldErrors.username = "этот ник уже занят";
           setUsernameAvailable(false);
         } else {
@@ -345,7 +345,7 @@ const SignupScreen: React.FC<SignupScreenProps> = ({ onSignup, onBack }) => {
                       usernameAvailable === true ? styles.inputSuccess : null,
                       isCheckingUsername ? styles.inputChecking : null,
                     ]}
-                    placeholder="Ник"
+                    placeholder="ник"
                     placeholderTextColor="rgba(0, 0, 0, 1)"
                     autoCapitalize="none"
                     value={username}
@@ -391,7 +391,7 @@ const SignupScreen: React.FC<SignupScreenProps> = ({ onSignup, onBack }) => {
                       emailAvailable === true ? styles.inputSuccess : null,
                       isCheckingEmail ? styles.inputChecking : null,
                     ]}
-                    placeholder="Email"
+                    placeholder="email"
                     placeholderTextColor="rgba(0, 0, 0, 1)"
                     autoCapitalize="none"
                     autoComplete="email"
@@ -461,7 +461,7 @@ const SignupScreen: React.FC<SignupScreenProps> = ({ onSignup, onBack }) => {
                       styles.input,
                       errors.confirmPassword ? styles.inputError : null,
                     ]}
-                    placeholder="Повторите пароль"
+                    placeholder="повторите пароль"
                     placeholderTextColor="rgba(0, 0, 0, 1)"
                     secureTextEntry
                     value={confirmPassword}
@@ -533,7 +533,7 @@ const SignupScreen: React.FC<SignupScreenProps> = ({ onSignup, onBack }) => {
                         )
                       }
                     >
-                      политикой конфиденциальности
+                      Политикой конфиденциальности
                     </Text>
                   </Text>
 

@@ -276,9 +276,6 @@ export interface UserProfile {
   id: string;
   username: string;
   email: string;
-  gender?: 'male' | 'female';
-  selected_size?: string;
-  avatar_url?: string;
   is_active: boolean;
   is_email_verified: boolean;
   is_brand: boolean;
@@ -286,15 +283,28 @@ export interface UserProfile {
   updated_at: string;
   favorite_brands?: Brand[];
   favorite_styles?: Style[];
-  // Shopping information fields (will be added to backend)
-  phone?: string;
-  street?: string;
-  house_number?: string;
-  apartment_number?: string;
-  city?: string;
-  postal_code?: string;
-  full_name?: string;
-  delivery_email?: string;
+  profile?: {
+    full_name?: string;
+    gender?: 'male' | 'female';
+    selected_size?: string;
+    avatar_url?: string;
+  };
+  shipping_info?: {
+    delivery_email?: string;
+    phone?: string;
+    street?: string;
+    house_number?: string;
+    apartment_number?: string;
+    city?: string;
+    postal_code?: string;
+  };
+  preferences?: {
+    size_privacy?: 'nobody' | 'friends' | 'everyone';
+    recommendations_privacy?: 'nobody' | 'friends' | 'everyone';
+    likes_privacy?: 'nobody' | 'friends' | 'everyone';
+    order_notifications?: boolean;
+    marketing_notifications?: boolean;
+  };
 }
 
 export interface AuthResponse {
@@ -662,8 +672,9 @@ export const getOAuthAccounts = async (): Promise<any[]> => {
 };
 
 // NEW: User preference update functions
+// Update user core (username/email only)
 export const updateUserProfile = async (
-  profileData: Partial<UserProfile> // Use Partial to allow partial updates
+  profileData: { username?: string; email?: string }
 ): Promise<UserProfile> => {
   const response = await apiRequest('/api/v1/user/profile', 'PUT', profileData, true, {
     timeout: API_CONFIG.AUTH_TIMEOUT
@@ -671,6 +682,51 @@ export const updateUserProfile = async (
   
   // Update stored profile
   await storeUserProfile(response);
+  
+  return response;
+};
+
+// Update user profile data (name, gender, size, avatar)
+export interface ProfileData {
+  full_name?: string;
+  gender?: 'male' | 'female';
+  selected_size?: string;
+  avatar_url?: string;
+}
+
+export const updateUserProfileData = async (
+  profileData: ProfileData
+): Promise<ProfileData> => {
+  const response = await apiRequest('/api/v1/user/profile/data', 'PUT', profileData, true, {
+    timeout: API_CONFIG.AUTH_TIMEOUT
+  });
+  
+  // Reload full profile to update cache
+  const fullProfile = await getCurrentUser();
+  await storeUserProfile(fullProfile);
+  
+  return response;
+};
+
+// Update user preferences (privacy and notifications)
+export interface UserPreferences {
+  size_privacy?: 'nobody' | 'friends' | 'everyone';
+  recommendations_privacy?: 'nobody' | 'friends' | 'everyone';
+  likes_privacy?: 'nobody' | 'friends' | 'everyone';
+  order_notifications?: boolean;
+  marketing_notifications?: boolean;
+}
+
+export const updateUserPreferences = async (
+  preferences: UserPreferences
+): Promise<UserPreferences> => {
+  const response = await apiRequest('/api/v1/user/preferences', 'PUT', preferences, true, {
+    timeout: API_CONFIG.AUTH_TIMEOUT
+  });
+  
+  // Reload full profile to update cache
+  const fullProfile = await getCurrentUser();
+  await storeUserProfile(fullProfile);
   
   return response;
 };
@@ -1154,36 +1210,46 @@ export interface ShoppingInfo {
 
 // Shopping Information API functions
 export const getShoppingInfo = async (): Promise<ShoppingInfo> => {
-  // For now, we'll get this from the user profile
-  // In the future, this could be a separate endpoint
   const profile = await getCurrentUser();
+  const shipping = profile.shipping_info || {};
   return {
-    full_name: profile.full_name || '', // Don't fallback to username
-    delivery_email: profile.delivery_email || profile.email, // Fallback to account email if no delivery email set
-    phone: profile.phone || '',
-    street: profile.street || '',
-    house_number: profile.house_number || '',
-    apartment_number: profile.apartment_number || '',
-    city: profile.city || '',
-    postal_code: profile.postal_code || '',
+    full_name: profile.profile?.full_name || '', // Don't fallback to username
+    delivery_email: shipping.delivery_email || profile.email, // Fallback to account email if no delivery email set
+    phone: shipping.phone || '',
+    street: shipping.street || '',
+    house_number: shipping.house_number || '',
+    apartment_number: shipping.apartment_number || '',
+    city: shipping.city || '',
+    postal_code: shipping.postal_code || '',
   };
 };
 
-export const updateShoppingInfo = async (shoppingInfo: ShoppingInfo): Promise<ShoppingInfo> => {
-  // For now, we'll update the user profile with the shopping information
-  // In the future, this could be a separate endpoint
-  await updateUserProfile({
-    delivery_email: shoppingInfo.delivery_email,
-    full_name: shoppingInfo.full_name,
-    phone: shoppingInfo.phone,
-    street: shoppingInfo.street,
-    house_number: shoppingInfo.house_number,
-    apartment_number: shoppingInfo.apartment_number,
-    city: shoppingInfo.city,
-    postal_code: shoppingInfo.postal_code,
+export const updateShoppingInfo = async (shippingInfo: {
+  delivery_email: string;
+  phone: string;
+  street?: string;
+  house_number?: string;
+  apartment_number?: string;
+  city?: string;
+  postal_code?: string;
+}): Promise<any> => {
+  const response = await apiRequest('/api/v1/user/shipping', 'PUT', {
+    delivery_email: shippingInfo.delivery_email,
+    phone: shippingInfo.phone,
+    street: shippingInfo.street,
+    house_number: shippingInfo.house_number,
+    apartment_number: shippingInfo.apartment_number,
+    city: shippingInfo.city,
+    postal_code: shippingInfo.postal_code,
+  }, true, {
+    timeout: API_CONFIG.AUTH_TIMEOUT
   });
   
-  return shoppingInfo;
+  // Reload full profile to update cache
+  const fullProfile = await getCurrentUser();
+  await storeUserProfile(fullProfile);
+  
+  return response;
 };
 
 // Swipe Tracking

@@ -573,7 +573,27 @@ const Settings = ({
     if (activeSection === "my_info") {
       loadMyInfo();
     }
+    if (activeSection === "privacy" || activeSection === "notifications") {
+      loadPreferences();
+    }
   }, [activeSection]);
+
+  // Load user preferences
+  const loadPreferences = async () => {
+    try {
+      const profile = await apiWrapper.getCurrentUser("SettingsPage");
+      const prefs = profile?.preferences;
+      if (prefs) {
+        setSizePrivacy(prefs.size_privacy || "friends");
+        setRecommendationsPrivacy(prefs.recommendations_privacy || "friends");
+        setLikesPrivacy(prefs.likes_privacy || "friends");
+        setOrderNotifications(prefs.order_notifications ?? true);
+        setMarketingNotifications(prefs.marketing_notifications ?? true);
+      }
+    } catch (error) {
+      console.error("Error loading preferences:", error);
+    }
+  };
 
   // Update bottom text in parent when embedded
   useEffect(() => {
@@ -599,9 +619,9 @@ const Settings = ({
           profile.favorite_brands
         );
 
-        // Set selected size from profile
-        if (profile.selected_size) {
-          setSelectedSize(profile.selected_size);
+        // Set selected size from profile object
+        if (profile.profile?.selected_size) {
+          setSelectedSize(profile.profile.selected_size);
         }
 
         // Set selected brands from profile
@@ -721,13 +741,16 @@ const Settings = ({
       if (userProfile) {
         setUserProfile({
           ...userProfile,
-          selected_size: size,
+          profile: {
+            ...userProfile.profile,
+            selected_size: size,
+          },
         });
       }
 
       // Perform API call in background
       try {
-        await api.updateUserProfile({ selected_size: size });
+        await api.updateUserProfileData({ selected_size: size });
         console.log("User size updated successfully");
       } catch (apiError: any) {
         console.error("API error updating user size:", apiError);
@@ -819,12 +842,13 @@ const Settings = ({
       setMyInfoError(null);
       const profile = await apiWrapper.getCurrentUser("SettingsPage");
       if (profile) {
-        // Split full_name into first and last name
-        const nameParts = (profile.full_name || "").trim().split(" ");
+        // Split full_name into first and last name from profile object
+        const profileData = profile.profile || {};
+        const nameParts = (profileData.full_name || "").trim().split(" ");
         const firstName = nameParts[0] || "";
         const lastName = nameParts.slice(1).join(" ") || "";
         const username = profile.username || "";
-        const gender = profile.gender || "";
+        const gender = profileData.gender || "";
 
         setMyInfo({
           gender: gender as "male" | "female" | "",
@@ -1009,9 +1033,15 @@ const Settings = ({
       const fullName =
         `${myInfo.firstName.trim()} ${myInfo.lastName.trim()}`.trim();
 
+      // Update username/email (core user data)
       await api.updateUserProfile({
-        full_name: fullName,
         username: myInfo.username.trim(),
+        email: myInfo.email || undefined,
+      });
+
+      // Update profile data (name, gender, size, avatar)
+      await api.updateUserProfileData({
+        full_name: fullName,
         gender: myInfo.gender || undefined,
       });
 
@@ -1034,6 +1064,41 @@ const Settings = ({
       setIsSavingShoppingInfo(true);
       setShoppingInfoError(null);
 
+      // On the first screen (main), only validate phone and email
+      if (deliveryScreenView === "main") {
+        if (!shoppingInfo.deliveryEmail.trim()) {
+          Alert.alert("ошибка", "пожалуйста, введите email для доставки.");
+          return;
+        }
+
+        if (!shoppingInfo.phoneNumber.trim()) {
+          Alert.alert("Ошибка", "Пожалуйста, введите ваш телефон.");
+          return;
+        }
+
+        // Validate phone number format (must be exactly 10 digits)
+        const phoneDigits = shoppingInfo.phoneNumber.replace(/\D/g, "");
+        if (phoneDigits.length !== 10) {
+          Alert.alert(
+            "Ошибка",
+            "номер телефона должен содержать 10 цифр (без кода страны +7)."
+          );
+          return;
+        }
+
+        // Save only phone and email on the first screen
+        const fullPhoneNumber = phoneCountryCode + phoneDigits;
+        // Use updateShoppingInfo with only phone and email (city is optional)
+        await api.updateShoppingInfo({
+          delivery_email: shoppingInfo.deliveryEmail,
+          phone: fullPhoneNumber,
+        });
+
+        Alert.alert("успешно", "контактные данные сохранены.");
+        return;
+      }
+
+      // On the address screen, validate all fields including address details
       // Validate required fields
       if (!shoppingInfo.fullName.trim()) {
         Alert.alert(
@@ -1084,11 +1149,19 @@ const Settings = ({
         }
       }
 
-      // Save shopping information using the new API with separate address fields
-      // Combine country code and phone number
+      // Save shopping information using the new API
+      // Update profile for full_name, and shipping_info for delivery details
       const fullPhoneNumber = phoneCountryCode + phoneDigits;
+
+      // Update profile if full_name changed
+      if (shoppingInfo.fullName.trim()) {
+        await api.updateUserProfileData({
+          full_name: shoppingInfo.fullName.trim(),
+        });
+      }
+
+      // Update shipping info
       await api.updateShoppingInfo({
-        full_name: shoppingInfo.fullName,
         delivery_email: shoppingInfo.deliveryEmail,
         phone: fullPhoneNumber,
         street: shoppingInfo.street.trim(),
@@ -2733,14 +2806,30 @@ const Settings = ({
   };
 
   // Handle switch toggle with haptic feedback
-  const handleOrderNotificationsChange = (value: boolean) => {
+  const handleOrderNotificationsChange = async (value: boolean) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setOrderNotifications(value);
+    // Save to API
+    try {
+      await api.updateUserPreferences({ order_notifications: value });
+    } catch (error) {
+      console.error("Error saving notification preference:", error);
+      // Rollback on error
+      setOrderNotifications(!value);
+    }
   };
 
-  const handleMarketingNotificationsChange = (value: boolean) => {
+  const handleMarketingNotificationsChange = async (value: boolean) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setMarketingNotifications(value);
+    // Save to API
+    try {
+      await api.updateUserPreferences({ marketing_notifications: value });
+    } catch (error) {
+      console.error("Error saving notification preference:", error);
+      // Rollback on error
+      setMarketingNotifications(!value);
+    }
   };
 
   const renderPrivacyContent = () => {
@@ -2806,11 +2895,28 @@ const Settings = ({
             </View>
             <TouchableOpacity
               style={styles.privacyOptionOval}
-              onPress={() => {
+              onPress={async () => {
                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                 const currentIndex = privacyOptions.indexOf(item.value);
                 const nextIndex = (currentIndex + 1) % privacyOptions.length;
-                item.onChange(privacyOptions[nextIndex]);
+                const newValue = privacyOptions[nextIndex];
+                item.onChange(newValue);
+                // Save to API
+                try {
+                  const updateData: any = {};
+                  if (item.id === "size") {
+                    updateData.size_privacy = newValue;
+                  } else if (item.id === "recommendations") {
+                    updateData.recommendations_privacy = newValue;
+                  } else if (item.id === "likes") {
+                    updateData.likes_privacy = newValue;
+                  }
+                  await api.updateUserPreferences(updateData);
+                } catch (error) {
+                  console.error("Error saving privacy preference:", error);
+                  // Rollback on error
+                  item.onChange(item.value);
+                }
               }}
             >
               <Text style={styles.privacyOptionText}>

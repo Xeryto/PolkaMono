@@ -496,7 +496,7 @@ export default function App() {
   const getUserGender = async (): Promise<"male" | "female"> => {
     try {
       const user = await api.getCurrentUser();
-      return user.gender || "male";
+      return user.profile?.gender || "male";
     } catch (error) {
       const authErrorHandled = await handleAuthError(error, "getUserGender");
       if (authErrorHandled) {
@@ -956,7 +956,7 @@ export default function App() {
 
     try {
       // Update the user's profile with the selected gender
-      await api.updateUserProfile({ gender: choice });
+      await api.updateUserProfileData({ gender: choice });
 
       // Check next requirements and transition
       const completionStatus = await api.getProfileCompletionStatus();

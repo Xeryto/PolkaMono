@@ -1,6 +1,6 @@
 from sqlalchemy.orm import Session
 from database import SessionLocal
-from models import Brand, Style, Product, ProductStyle, Category, ProductVariant, User, Order, OrderItem, OrderStatus, Payment
+from models import Brand, Style, Product, ProductStyle, Category, ProductVariant, User, Order, OrderItem, OrderStatus, Payment, UserProfile, UserShippingInfo, UserPreferences, Gender, PrivacyOption
 import uuid
 import re
 import random
@@ -748,18 +748,12 @@ def populate_initial_data():
         db.commit()
         print("Products populated.")
         
-        # Create test user account
+        # Create test user account with domain-specific data
         test_user_password_hash = auth_service.hash_password("123abc")
         test_user_data = {
             "username": "test",
             "email": "test@example.com",
             "password_hash": test_user_password_hash,
-            "full_name": "Test User",
-            "delivery_email": "test@example.com",
-            "phone": "+1234567890",
-            "address": "123 Test Street",
-            "city": "Test City",
-            "postal_code": "12345",
             "is_email_verified": True
         }
         
@@ -767,8 +761,44 @@ def populate_initial_data():
         if not test_user:
             test_user = User(**test_user_data)
             db.add(test_user)
+            db.flush()  # Flush to get user.id
+            
+            # Create profile
+            test_profile = UserProfile(
+                user_id=test_user.id,
+                full_name="Test User",
+                gender=Gender.MALE,
+                selected_size="M",
+                avatar_url=None
+            )
+            db.add(test_profile)
+            
+            # Create shipping info
+            test_shipping = UserShippingInfo(
+                user_id=test_user.id,
+                delivery_email="test@example.com",
+                phone="+1234567890",
+                street="123 Test Street",
+                house_number="1",
+                apartment_number=None,
+                city="Test City",
+                postal_code="12345"
+            )
+            db.add(test_shipping)
+            
+            # Create preferences
+            test_preferences = UserPreferences(
+                user_id=test_user.id,
+                size_privacy=PrivacyOption.FRIENDS,
+                recommendations_privacy=PrivacyOption.FRIENDS,
+                likes_privacy=PrivacyOption.FRIENDS,
+                order_notifications=True,
+                marketing_notifications=True
+            )
+            db.add(test_preferences)
+            
             db.commit()
-            print("Test user created.")
+            print("Test user created with domain-specific data.")
         else:
             print("Test user already exists.")
 
@@ -794,6 +824,20 @@ def populate_initial_data():
                     ProductVariant.size == "L"
                 ).first()
 
+                # Get user profile and shipping info for orders
+                test_profile = db.query(UserProfile).filter(UserProfile.user_id == test_user.id).first()
+                test_shipping = db.query(UserShippingInfo).filter(UserShippingInfo.user_id == test_user.id).first()
+                
+                # Build delivery address string from shipping info
+                delivery_address_parts = []
+                if test_shipping and test_shipping.street:
+                    delivery_address_parts.append(test_shipping.street)
+                if test_shipping and test_shipping.house_number:
+                    delivery_address_parts.append(f"д. {test_shipping.house_number}")
+                if test_shipping and test_shipping.apartment_number:
+                    delivery_address_parts.append(f"кв. {test_shipping.apartment_number}")
+                delivery_address = ", ".join(delivery_address_parts) if delivery_address_parts else None
+                
                 # Create Order 1: Nike sneakers
                 if nike_variant_m:
                     order1 = Order(
@@ -804,12 +848,12 @@ def populate_initial_data():
                         tracking_number="TN123456789",
                         tracking_link="https://track.example.com/TN123456789",
                         # Store delivery information at order creation time
-                        delivery_full_name=test_user.full_name,
-                        delivery_email=test_user.delivery_email,
-                        delivery_phone=test_user.phone,
-                        delivery_address=test_user.address,
-                        delivery_city=test_user.city,
-                        delivery_postal_code=test_user.postal_code
+                        delivery_full_name=test_profile.full_name if test_profile else None,
+                        delivery_email=test_shipping.delivery_email if test_shipping else None,
+                        delivery_phone=test_shipping.phone if test_shipping else None,
+                        delivery_address=delivery_address,
+                        delivery_city=test_shipping.city if test_shipping else None,
+                        delivery_postal_code=test_shipping.postal_code if test_shipping else None
                     )
                     db.add(order1)
                     db.flush()
@@ -843,12 +887,12 @@ def populate_initial_data():
                         tracking_number=None,
                         tracking_link=None,
                         # Store delivery information at order creation time
-                        delivery_full_name=test_user.full_name,
-                        delivery_email=test_user.delivery_email,
-                        delivery_phone=test_user.phone,
-                        delivery_address=test_user.address,
-                        delivery_city=test_user.city,
-                        delivery_postal_code=test_user.postal_code
+                        delivery_full_name=test_profile.full_name if test_profile else None,
+                        delivery_email=test_shipping.delivery_email if test_shipping else None,
+                        delivery_phone=test_shipping.phone if test_shipping else None,
+                        delivery_address=delivery_address,
+                        delivery_city=test_shipping.city if test_shipping else None,
+                        delivery_postal_code=test_shipping.postal_code if test_shipping else None
                     )
                     db.add(order2)
                     db.flush()
@@ -882,12 +926,12 @@ def populate_initial_data():
                         tracking_number="TN987654321",
                         tracking_link="https://track.example.com/TN987654321",
                         # Store delivery information at order creation time
-                        delivery_full_name=test_user.full_name,
-                        delivery_email=test_user.delivery_email,
-                        delivery_phone=test_user.phone,
-                        delivery_address=test_user.address,
-                        delivery_city=test_user.city,
-                        delivery_postal_code=test_user.postal_code
+                        delivery_full_name=test_profile.full_name if test_profile else None,
+                        delivery_email=test_shipping.delivery_email if test_shipping else None,
+                        delivery_phone=test_shipping.phone if test_shipping else None,
+                        delivery_address=delivery_address,
+                        delivery_city=test_shipping.city if test_shipping else None,
+                        delivery_postal_code=test_shipping.postal_code if test_shipping else None
                     )
                     db.add(order3)
                     db.flush()
@@ -954,12 +998,12 @@ def populate_initial_data():
                                     status=OrderStatus.PAID,
                                     tracking_number=f"TN{order_num_counter:09d}",
                                     tracking_link=f"https://track.example.com/TN{order_num_counter:09d}",
-                                    delivery_full_name=test_user.full_name,
-                                    delivery_email=test_user.delivery_email,
-                                    delivery_phone=test_user.phone,
-                                    delivery_address=test_user.address,
-                                    delivery_city=test_user.city,
-                                    delivery_postal_code=test_user.postal_code
+                                    delivery_full_name=test_profile.full_name if test_profile else None,
+                                    delivery_email=test_shipping.delivery_email if test_shipping else None,
+                                    delivery_phone=test_shipping.phone if test_shipping else None,
+                                    delivery_address=delivery_address,
+                                    delivery_city=test_shipping.city if test_shipping else None,
+                                    delivery_postal_code=test_shipping.postal_code if test_shipping else None
                                 )
                                 db.add(order)
                                 db.flush()

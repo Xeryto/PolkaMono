@@ -2,7 +2,7 @@ from pydantic import BaseModel, EmailStr, validator, model_validator, Field
 from typing import List, Optional
 from datetime import datetime
 import re
-from models import Gender # Import Gender enum
+from models import Gender, PrivacyOption # Import enums
 from config import settings # Import settings
 
 class Amount(BaseModel):
@@ -165,14 +165,29 @@ class Product(BaseModel):
     class Config:
         from_attributes = True
 
+# User core update (username/email only)
 class UserProfileUpdateRequest(BaseModel):
     username: Optional[str] = Field(None, max_length=50)
     email: Optional[EmailStr] = None
+
+# Profile data schemas
+class ProfileUpdateRequest(BaseModel):
+    full_name: Optional[str] = Field(None, max_length=255)
     gender: Optional[str] = None
     selected_size: Optional[str] = Field(None, max_length=10)
     avatar_url: Optional[str] = Field(None, max_length=500)
-    # Shopping information fields
-    full_name: Optional[str] = Field(None, max_length=255)
+
+class ProfileResponse(BaseModel):
+    full_name: Optional[str] = None
+    gender: Optional[str] = None
+    selected_size: Optional[str] = None
+    avatar_url: Optional[str] = None
+    
+    class Config:
+        from_attributes = True
+
+# Shipping info schemas
+class ShippingInfoUpdateRequest(BaseModel):
     delivery_email: Optional[EmailStr] = Field(None, max_length=255)
     phone: Optional[str] = Field(None, max_length=20)
     street: Optional[str] = Field(None, max_length=255)
@@ -220,6 +235,36 @@ class UserProfileUpdateRequest(BaseModel):
             raise ValueError('Postal code must be 6 digits (Russian format)')
         return cleaned
 
+class ShippingInfoResponse(BaseModel):
+    delivery_email: Optional[str] = None
+    phone: Optional[str] = None
+    street: Optional[str] = None
+    house_number: Optional[str] = None
+    apartment_number: Optional[str] = None
+    city: Optional[str] = None
+    postal_code: Optional[str] = None
+    
+    class Config:
+        from_attributes = True
+
+# Preferences schemas
+class PreferencesUpdateRequest(BaseModel):
+    size_privacy: Optional[str] = None
+    recommendations_privacy: Optional[str] = None
+    likes_privacy: Optional[str] = None
+    order_notifications: Optional[bool] = None
+    marketing_notifications: Optional[bool] = None
+
+class PreferencesResponse(BaseModel):
+    size_privacy: Optional[str] = None
+    recommendations_privacy: Optional[str] = None
+    likes_privacy: Optional[str] = None
+    order_notifications: bool = True
+    marketing_notifications: bool = True
+    
+    class Config:
+        from_attributes = True
+
 class StyleResponse(BaseModel):
     id: str
     name: str
@@ -242,25 +287,17 @@ class UserProfileResponse(BaseModel):
     id: str
     username: str
     email: EmailStr
-    gender: Optional[str] = None
-    selected_size: Optional[str] = None
-    avatar_url: Optional[str] = None
     is_active: bool
     is_email_verified: bool
     is_brand: bool = False
-    # Shopping information fields
-    full_name: Optional[str] = None
-    delivery_email: Optional[str] = None
-    phone: Optional[str] = None
-    street: Optional[str] = None
-    house_number: Optional[str] = None
-    apartment_number: Optional[str] = None
-    city: Optional[str] = None
-    postal_code: Optional[str] = None
     created_at: datetime
     updated_at: datetime
     favorite_brands: Optional[List[UserBrandResponse]] = []
     favorite_styles: Optional[List[StyleResponse]] = []
+    # Domain-specific data
+    profile: Optional[ProfileResponse] = None
+    shipping_info: Optional[ShippingInfoResponse] = None
+    preferences: Optional[PreferencesResponse] = None
 
     class Config:
         from_attributes = True

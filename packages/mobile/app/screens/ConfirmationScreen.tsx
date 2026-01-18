@@ -53,7 +53,7 @@ const ConfirmationScreen: React.FC<ConfirmationScreenProps> = ({
     setSelectedOption(option);
     setIsSubmitting(true);
     try {
-      await api.updateUserProfile({ gender: option });
+      await api.updateUserProfileData({ gender: option });
       onComplete(option);
     } catch (error) {
       Alert.alert("ошибка", "не удалось сохранить пол. попробуйте еще раз.");

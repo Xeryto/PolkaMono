@@ -399,10 +399,10 @@ const MainPage = ({ navigation, route }: MainPageProps) => {
       try {
         const userProfile = await apiWrapper.getCurrentUser("MainPage");
         if (userProfile) {
-          setUserSelectedSize(userProfile.selected_size || null);
+          setUserSelectedSize(userProfile.profile?.selected_size || null);
           console.log(
             "MainPage - User selected size:",
-            userProfile.selected_size
+            userProfile.profile?.selected_size
           );
         }
 

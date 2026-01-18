@@ -15,6 +15,11 @@ class Gender(str, Enum):
     MALE = "male"
     FEMALE = "female"
 
+class PrivacyOption(str, Enum):
+    NOBODY = "nobody"
+    FRIENDS = "friends"
+    EVERYONE = "everyone"
+
 class FriendRequestStatus(str, Enum):
     PENDING = "pending"
     ACCEPTED = "accepted"
@@ -30,9 +35,6 @@ class User(Base):
     username = Column(String(50), unique=True, nullable=False, index=True)
     email = Column(String(255), unique=True, nullable=False, index=True)
     password_hash = Column(String(255), nullable=True)  # Nullable for OAuth users
-    gender = Column(SQLEnum(Gender), nullable=True)  # NEW: Gender field
-    selected_size = Column(String(10), nullable=True)  # NEW: User's preferred size
-    avatar_url = Column(String(500), nullable=True)
     is_active = Column(Boolean, default=True)
     is_email_verified = Column(Boolean, default=False)
     email_verification_code = Column(String(6), nullable=True)
@@ -40,15 +42,6 @@ class User(Base):
     password_reset_token = Column(String, nullable=True)
     password_reset_expires = Column(DateTime, nullable=True)
     password_history = Column(ARRAY(String), default=list)  # Store last 5 password hashes
-    # Shopping information fields
-    full_name = Column(String(255), nullable=True)  # Full name for delivery
-    delivery_email = Column(String(255), nullable=True)  # Email for delivery notifications
-    phone = Column(String(20), nullable=True)  # Phone number for delivery
-    street = Column(String(255), nullable=True)  # Street name
-    house_number = Column(String(50), nullable=True)  # House number
-    apartment_number = Column(String(50), nullable=True)  # Apartment number
-    city = Column(String(100), nullable=True)  # City for delivery
-    postal_code = Column(String(20), nullable=True)  # Postal code
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
@@ -62,6 +55,68 @@ class User(Base):
     received_friend_requests = relationship("FriendRequest", foreign_keys="FriendRequest.recipient_id", back_populates="recipient", cascade="all, delete-orphan")
     friendships = relationship("Friendship", foreign_keys="Friendship.user_id", back_populates="user", cascade="all, delete-orphan")
     friends = relationship("Friendship", foreign_keys="Friendship.friend_id", back_populates="friend", cascade="all, delete-orphan")
+    
+    # Domain-specific relationships
+    profile = relationship("UserProfile", back_populates="user", uselist=False, cascade="all, delete-orphan")
+    shipping_info = relationship("UserShippingInfo", back_populates="user", uselist=False, cascade="all, delete-orphan")
+    preferences = relationship("UserPreferences", back_populates="user", uselist=False, cascade="all, delete-orphan")
+
+class UserProfile(Base):
+    """User profile information (separated from core user table)"""
+    __tablename__ = "user_profiles"
+    __table_args__ = {"extend_existing": True}
+    
+    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    user_id = Column(String, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, unique=True, index=True)
+    full_name = Column(String(255), nullable=True)
+    gender = Column(SQLEnum(Gender), nullable=True)
+    selected_size = Column(String(10), nullable=True)
+    avatar_url = Column(String(500), nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # Relationships
+    user = relationship("User", back_populates="profile")
+
+class UserShippingInfo(Base):
+    """User shipping/delivery information (separated from core user table)"""
+    __tablename__ = "user_shipping_info"
+    __table_args__ = {"extend_existing": True}
+    
+    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    user_id = Column(String, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, unique=True, index=True)
+    delivery_email = Column(String(255), nullable=True)
+    phone = Column(String(20), nullable=True)
+    street = Column(String(255), nullable=True)
+    house_number = Column(String(50), nullable=True)
+    apartment_number = Column(String(50), nullable=True)
+    city = Column(String(100), nullable=True)
+    postal_code = Column(String(20), nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # Relationships
+    user = relationship("User", back_populates="shipping_info")
+
+class UserPreferences(Base):
+    """User privacy and notification preferences (separated from core user table)"""
+    __tablename__ = "user_preferences"
+    __table_args__ = {"extend_existing": True}
+    
+    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    user_id = Column(String, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, unique=True, index=True)
+    # Privacy settings
+    size_privacy = Column(SQLEnum(PrivacyOption), nullable=True, default=PrivacyOption.FRIENDS)
+    recommendations_privacy = Column(SQLEnum(PrivacyOption), nullable=True, default=PrivacyOption.FRIENDS)
+    likes_privacy = Column(SQLEnum(PrivacyOption), nullable=True, default=PrivacyOption.FRIENDS)
+    # Notification settings
+    order_notifications = Column(Boolean, default=True, nullable=False)
+    marketing_notifications = Column(Boolean, default=True, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # Relationships
+    user = relationship("User", back_populates="preferences")
 
 class OAuthAccount(Base):
     """OAuth account model for social login"""

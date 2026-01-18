@@ -234,9 +234,9 @@ const Wall = ({ navigation, onLogout }: WallProps) => {
       if (profile) {
         setUserProfile(profile);
 
-        // Set selected size from profile
-        if (profile.selected_size) {
-          setSelectedSize(profile.selected_size);
+        // Set selected size from profile object
+        if (profile.profile?.selected_size) {
+          setSelectedSize(profile.profile.selected_size);
         }
 
         // Set selected brands from profile
@@ -304,12 +304,15 @@ const Wall = ({ navigation, onLogout }: WallProps) => {
       if (userProfile) {
         setUserProfile({
           ...userProfile,
-          selected_size: size,
+          profile: {
+            ...userProfile.profile,
+            selected_size: size,
+          },
         });
       }
 
       try {
-        await api.updateUserProfile({ selected_size: size });
+        await api.updateUserProfileData({ selected_size: size });
         console.log("User size updated successfully");
       } catch (apiError: any) {
         console.error("API error updating user size:", apiError);
@@ -1056,7 +1059,7 @@ const Wall = ({ navigation, onLogout }: WallProps) => {
       return (
         <AvatarEditScreen
           onBack={() => setShowAvatarEdit(false)}
-          currentAvatar={userProfile?.avatar_url}
+          currentAvatar={userProfile?.profile?.avatar_url}
           onSave={(avatarUri: string) => {
             setShowAvatarEdit(false);
             loadUserProfile();

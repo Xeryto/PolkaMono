@@ -3,7 +3,7 @@ Authentication service for user operations and OAuth integration
 """
 from typing import Optional, Dict, Any
 from sqlalchemy.orm import Session
-from models import User, OAuthAccount
+from models import User, OAuthAccount, UserProfile, Gender
 from oauth_service import oauth_service
 from config import settings
 import bcrypt
@@ -57,18 +57,27 @@ class AuthService:
         avatar_url: Optional[str] = None,
         is_email_verified: bool = False # Changed to is_email_verified
     ) -> User:
-        """Create a new user"""
+        """Create a new user and optionally create UserProfile if profile data is provided"""
         user = User(
             id=str(uuid.uuid4()),
             username=username,
             email=email,
             password_hash=password_hash,
-            gender=gender,
-            selected_size=selected_size,
-            avatar_url=avatar_url,
             is_email_verified=is_email_verified # Changed to is_email_verified
         )
         db.add(user)
+        db.flush()  # Flush to get user.id before creating profile
+        
+        # Create UserProfile if any profile data is provided
+        if any([gender, selected_size, avatar_url]):
+            profile = UserProfile(
+                user_id=user.id,
+                gender=Gender(gender) if gender else None,
+                selected_size=selected_size,
+                avatar_url=avatar_url
+            )
+            db.add(profile)
+        
         db.commit()
         db.refresh(user)
         return user
@@ -199,6 +208,8 @@ class AuthService:
             data={"sub": user.id}, expires_delta=access_token_expires
         )
         
+        # Get avatar_url from profile if it exists
+        avatar_url = user.profile.avatar_url if user.profile else None
         return {
             "token": access_token,
             "expires_at": datetime.utcnow() + access_token_expires,
@@ -206,7 +217,7 @@ class AuthService:
                 "id": user.id,
                 "username": user.username,
                 "email": user.email,
-                "avatar_url": user.avatar_url,
+                "avatar_url": avatar_url,
                 "is_email_verified": user.is_email_verified, # Use is_email_verified
                 "created_at": user.created_at,
                 "updated_at": user.updated_at

@@ -19,7 +19,7 @@ from slowapi.errors import RateLimitExceeded
 # Import our modules
 from config import settings
 from database import get_db, init_db
-from models import User, OAuthAccount, Brand, Style, UserBrand, UserStyle, Gender, FriendRequest, Friendship, FriendRequestStatus, Product, UserLikedProduct, UserSwipe, Category, Order, OrderItem, OrderStatus, ExclusiveAccessEmail, ProductVariant, ProductStyle
+from models import User, OAuthAccount, Brand, Style, UserBrand, UserStyle, Gender, FriendRequest, Friendship, FriendRequestStatus, Product, UserLikedProduct, UserSwipe, Category, Order, OrderItem, OrderStatus, ExclusiveAccessEmail, ProductVariant, ProductStyle, UserProfile, UserShippingInfo, UserPreferences, PrivacyOption
 from auth_service import auth_service
 from oauth_service import oauth_service
 import payment_service
@@ -143,6 +143,7 @@ class UserSearchResponse(BaseModel):
     id: str
     username: str
     email: str
+    avatar_url: Optional[str] = None
     friend_status: Optional[str] = None # 'friend', 'request_received', 'request_sent', 'not_friend'
 
 class PublicUserProfileResponse(BaseModel):
@@ -504,6 +505,8 @@ async def register(user_data: UserCreate, db: Session = Depends(get_db)):
         data={"sub": user.id}, expires_delta=access_token_expires
     )
     
+    # Get avatar_url from profile if it exists
+    avatar_url = user.profile.avatar_url if user.profile else None
     return AuthResponse(
         token=access_token,
         expires_at=datetime.utcnow() + access_token_expires,
@@ -511,7 +514,7 @@ async def register(user_data: UserCreate, db: Session = Depends(get_db)):
             id=user.id,
             username=user.username,
             email=user.email,
-            avatar_url=user.avatar_url,
+            avatar_url=avatar_url,
             is_active=user.is_active,
             is_email_verified=user.is_email_verified,
             created_at=user.created_at,
@@ -553,6 +556,8 @@ async def login(user_data: UserLogin, db: Session = Depends(get_db)):
         data={"sub": user.id}, expires_delta=access_token_expires
     )
     
+    # Get avatar_url from profile if it exists
+    avatar_url = user.profile.avatar_url if user.profile else None
     return AuthResponse(
         token=access_token,
         expires_at=datetime.utcnow() + access_token_expires,
@@ -560,7 +565,7 @@ async def login(user_data: UserLogin, db: Session = Depends(get_db)):
             id=user.id,
             username=user.username,
             email=user.email,
-            avatar_url=user.avatar_url,
+            avatar_url=avatar_url,
             is_active=user.is_active,
             is_email_verified=user.is_email_verified,
             created_at=user.created_at,
@@ -1075,25 +1080,18 @@ async def get_user_profile(current_user: User = Depends(get_current_user), db: S
     favorite_brands = db.query(Brand).join(UserBrand).filter(UserBrand.user_id == user_id).all()
     favorite_styles = db.query(Style).join(UserStyle).filter(UserStyle.user_id == user_id).all()
     
+    # Get domain-specific data
+    profile = db.query(UserProfile).filter(UserProfile.user_id == user_id).first()
+    shipping_info = db.query(UserShippingInfo).filter(UserShippingInfo.user_id == user_id).first()
+    preferences = db.query(UserPreferences).filter(UserPreferences.user_id == user_id).first()
+    
     return schemas.UserProfileResponse(
         id=current_user.id,
         username=current_user.username,
         email=current_user.email,
-        gender=current_user.gender,
-        selected_size=current_user.selected_size,
-        avatar_url=current_user.avatar_url,
         is_active=current_user.is_active,
         is_email_verified=current_user.is_email_verified,
         is_brand=False,  # Mark as regular user
-        # Shopping information fields
-        full_name=current_user.full_name,
-        delivery_email=current_user.delivery_email,
-        phone=current_user.phone,
-        street=current_user.street,
-        house_number=current_user.house_number,
-        apartment_number=current_user.apartment_number,
-        city=current_user.city,
-        postal_code=current_user.postal_code,
         created_at=current_user.created_at,
         updated_at=current_user.updated_at,
         favorite_brands=[schemas.UserBrandResponse(
@@ -1107,36 +1105,50 @@ async def get_user_profile(current_user: User = Depends(get_current_user), db: S
             id=style.id,
             name=style.name,
             description=style.description
-        ) for style in favorite_styles]
+        ) for style in favorite_styles],
+        profile=schemas.ProfileResponse(
+            full_name=profile.full_name,
+            gender=profile.gender.value if profile.gender else None,
+            selected_size=profile.selected_size,
+            avatar_url=profile.avatar_url
+        ) if profile else None,
+        shipping_info=schemas.ShippingInfoResponse(
+            delivery_email=shipping_info.delivery_email,
+            phone=shipping_info.phone,
+            street=shipping_info.street,
+            house_number=shipping_info.house_number,
+            apartment_number=shipping_info.apartment_number,
+            city=shipping_info.city,
+            postal_code=shipping_info.postal_code
+        ) if shipping_info else None,
+        preferences=schemas.PreferencesResponse(
+            size_privacy=preferences.size_privacy.value if preferences.size_privacy else None,
+            recommendations_privacy=preferences.recommendations_privacy.value if preferences.recommendations_privacy else None,
+            likes_privacy=preferences.likes_privacy.value if preferences.likes_privacy else None,
+            order_notifications=preferences.order_notifications,
+            marketing_notifications=preferences.marketing_notifications
+        ) if preferences else None
     )
 
 @app.get("/api/v1/brands/profile", response_model=schemas.UserProfileResponse)
 async def get_brand_profile(current_user: Brand = Depends(get_current_brand_user), db: Session = Depends(get_db)):
     """Get current brand's complete profile (brands only)"""
     # For brands: Return brand profile in UserProfileResponse format
+    # Brands don't have profile/shipping/preferences, so return None for those
     return schemas.UserProfileResponse(
         id=str(current_user.id),  # Convert integer to string
         username=current_user.name,  # Use brand name as username
         email=current_user.email,
-        gender=None,  # Brands don't have gender
-        selected_size=None,  # Brands don't have selected size
-        avatar_url=current_user.logo,  # Use brand logo as avatar
         is_active=True,  # Brands are always active
         is_email_verified=True,  # Assuming brand emails are verified
         is_brand=True,  # Mark as brand
-        # Shopping information fields (not applicable for brands)
-        full_name=None,
-        delivery_email=None,
-        phone=None,
-        street=None,
-        house_number=None,
-        apartment_number=None,
-        city=None,
-        postal_code=None,
         created_at=current_user.created_at,
         updated_at=current_user.updated_at,
         favorite_brands=[],  # Brands don't have favorite brands
-        favorite_styles=[]  # Brands don't have favorite styles
+        favorite_styles=[],  # Brands don't have favorite styles
+        profile=None,  # Brands don't have user profiles
+        shipping_info=None,  # Brands don't have shipping info
+        preferences=None  # Brands don't have preferences
     )
 
 @app.post("/api/v1/brands/products", response_model=schemas.Product, status_code=status.HTTP_201_CREATED)
@@ -1484,7 +1496,7 @@ async def get_profile_completion_status(current_user: User = Depends(get_current
     missing_fields = []
     required_screens = []
     
-    is_gender_complete = current_user.gender is not None
+    is_gender_complete = current_user.profile.gender is not None if current_user.profile else False
     user_id = str(current_user.id)
     is_brands_complete = db.query(UserBrand).filter(UserBrand.user_id == user_id).count() > 0
     is_styles_complete = db.query(UserStyle).filter(UserStyle.user_id == user_id).count() > 0
@@ -1530,61 +1542,138 @@ async def update_user_profile(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """Update user profile information"""
-    # Update user fields
+    """Update user core information (username/email only)"""
+    # Update user fields only
     if profile_data.username is not None:
         current_user.username = profile_data.username
     if profile_data.email is not None:
         current_user.email = profile_data.email
-    if profile_data.gender is not None:
-        current_user.gender = profile_data.gender
-    if profile_data.selected_size is not None:
-        current_user.selected_size = profile_data.selected_size
-    if profile_data.avatar_url is not None:
-        current_user.avatar_url = profile_data.avatar_url
-    
-    # Update shopping information fields
-    if profile_data.full_name is not None:
-        current_user.full_name = profile_data.full_name
-    if profile_data.delivery_email is not None:
-        current_user.delivery_email = profile_data.delivery_email
-    if profile_data.phone is not None:
-        current_user.phone = profile_data.phone
-    if profile_data.street is not None:
-        current_user.street = profile_data.street
-    if profile_data.house_number is not None:
-        current_user.house_number = profile_data.house_number
-    if profile_data.apartment_number is not None:
-        current_user.apartment_number = profile_data.apartment_number
-    if profile_data.city is not None:
-        current_user.city = profile_data.city
-    if profile_data.postal_code is not None:
-        current_user.postal_code = profile_data.postal_code
     
     current_user.updated_at = datetime.utcnow()
     db.commit()
     db.refresh(current_user)
     
-    return schemas.UserProfileResponse(
-        id=current_user.id,
-        username=current_user.username,
-        email=current_user.email,
-        gender=current_user.gender,
-        selected_size=current_user.selected_size,
-        avatar_url=current_user.avatar_url,
-        is_active=current_user.is_active,
-        is_email_verified=current_user.is_email_verified,
-        # Shopping information fields
-        full_name=current_user.full_name,
-        delivery_email=current_user.delivery_email,
-        phone=current_user.phone,
-        street=current_user.street,
-        house_number=current_user.house_number,
-        apartment_number=current_user.apartment_number,
-        city=current_user.city,
-        postal_code=current_user.postal_code,
-        created_at=current_user.created_at,
-        updated_at=current_user.updated_at
+    # Return updated profile using get_user_profile logic
+    return await get_user_profile(current_user, db)
+
+@app.put("/api/v1/user/profile/data", response_model=schemas.ProfileResponse)
+async def update_user_profile_data(
+    profile_data: schemas.ProfileUpdateRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Update user profile data (name, gender, size, avatar)"""
+    user_id = str(current_user.id)
+    
+    # Get or create profile
+    profile = db.query(UserProfile).filter(UserProfile.user_id == user_id).first()
+    if not profile:
+        profile = UserProfile(user_id=user_id)
+        db.add(profile)
+    
+    # Update profile fields
+    if profile_data.full_name is not None:
+        profile.full_name = profile_data.full_name
+    if profile_data.gender is not None:
+        profile.gender = Gender(profile_data.gender) if profile_data.gender else None
+    if profile_data.selected_size is not None:
+        profile.selected_size = profile_data.selected_size
+    if profile_data.avatar_url is not None:
+        profile.avatar_url = profile_data.avatar_url
+    
+    profile.updated_at = datetime.utcnow()
+    db.commit()
+    db.refresh(profile)
+    
+    return schemas.ProfileResponse(
+        full_name=profile.full_name,
+        gender=profile.gender.value if profile.gender else None,
+        selected_size=profile.selected_size,
+        avatar_url=profile.avatar_url
+    )
+
+@app.put("/api/v1/user/shipping", response_model=schemas.ShippingInfoResponse)
+async def update_user_shipping_info(
+    shipping_data: schemas.ShippingInfoUpdateRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Update user shipping/delivery information"""
+    user_id = str(current_user.id)
+    
+    # Get or create shipping info
+    shipping_info = db.query(UserShippingInfo).filter(UserShippingInfo.user_id == user_id).first()
+    if not shipping_info:
+        shipping_info = UserShippingInfo(user_id=user_id)
+        db.add(shipping_info)
+    
+    # Update shipping fields
+    if shipping_data.delivery_email is not None:
+        shipping_info.delivery_email = shipping_data.delivery_email
+    if shipping_data.phone is not None:
+        shipping_info.phone = shipping_data.phone
+    if shipping_data.street is not None:
+        shipping_info.street = shipping_data.street
+    if shipping_data.house_number is not None:
+        shipping_info.house_number = shipping_data.house_number
+    if shipping_data.apartment_number is not None:
+        shipping_info.apartment_number = shipping_data.apartment_number
+    if shipping_data.city is not None:
+        shipping_info.city = shipping_data.city
+    if shipping_data.postal_code is not None:
+        shipping_info.postal_code = shipping_data.postal_code
+    
+    shipping_info.updated_at = datetime.utcnow()
+    db.commit()
+    db.refresh(shipping_info)
+    
+    return schemas.ShippingInfoResponse(
+        delivery_email=shipping_info.delivery_email,
+        phone=shipping_info.phone,
+        street=shipping_info.street,
+        house_number=shipping_info.house_number,
+        apartment_number=shipping_info.apartment_number,
+        city=shipping_info.city,
+        postal_code=shipping_info.postal_code
+    )
+
+@app.put("/api/v1/user/preferences", response_model=schemas.PreferencesResponse)
+async def update_user_preferences(
+    preferences_data: schemas.PreferencesUpdateRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Update user preferences (privacy and notifications)"""
+    user_id = str(current_user.id)
+    
+    # Get or create preferences
+    preferences = db.query(UserPreferences).filter(UserPreferences.user_id == user_id).first()
+    if not preferences:
+        preferences = UserPreferences(user_id=user_id)
+        db.add(preferences)
+    
+    # Update preference fields
+    if preferences_data.size_privacy is not None:
+        preferences.size_privacy = PrivacyOption(preferences_data.size_privacy)
+    if preferences_data.recommendations_privacy is not None:
+        preferences.recommendations_privacy = PrivacyOption(preferences_data.recommendations_privacy)
+    if preferences_data.likes_privacy is not None:
+        preferences.likes_privacy = PrivacyOption(preferences_data.likes_privacy)
+    if preferences_data.order_notifications is not None:
+        preferences.order_notifications = preferences_data.order_notifications
+    if preferences_data.marketing_notifications is not None:
+        preferences.marketing_notifications = preferences_data.marketing_notifications
+    
+    preferences.updated_at = datetime.utcnow()
+    db.commit()
+    db.refresh(preferences)
+    
+    return schemas.PreferencesResponse(
+        size_privacy=preferences.size_privacy.value if preferences.size_privacy else None,
+        recommendations_privacy=preferences.recommendations_privacy.value if preferences.recommendations_privacy else None,
+        likes_privacy=preferences.likes_privacy.value if preferences.likes_privacy else None,
+        order_notifications=preferences.order_notifications,
+        marketing_notifications=preferences.marketing_notifications
     )
 
 # Brand Management
@@ -2280,10 +2369,12 @@ async def search_users(
             elif received_request:
                 friend_status = 'request_received'
         
+        avatar_url = user.profile.avatar_url if user.profile else None
         result.append({
             "id": user.id,
             "username": user.username,
             "email": user.email,
+            "avatar_url": avatar_url,
             "friend_status": friend_status
         })
     
@@ -2304,10 +2395,11 @@ async def get_public_user_profile(
             detail="User not found"
         )
     
+    gender = user.profile.gender.value if user.profile and user.profile.gender else None
     return {
         "id": user.id,
         "username": user.username,
-        "gender": user.gender
+        "gender": gender
     }
 
 # Health check endpoint
