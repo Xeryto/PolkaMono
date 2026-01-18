@@ -61,34 +61,34 @@ const LoginScreen: React.FC<LoginScreenProps> = ({
 
     // Validate username/email
     if (!usernameOrEmail.trim()) {
-      newErrors.usernameOrEmail = "Ник или email обязателен";
+      newErrors.usernameOrEmail = "ник или email обязателен";
       valid = false;
     } else if (illegalCharRegex.test(usernameOrEmail)) {
-      newErrors.usernameOrEmail = "Ник или email содержит недопустимые символы";
+      newErrors.usernameOrEmail = "ник или email содержит недопустимые символы";
       valid = false;
     } else if (usernameOrEmail.includes("@")) {
       // If it contains '@', it should match email format
       if (!emailRegex.test(usernameOrEmail)) {
-        newErrors.usernameOrEmail = "Неверный формат email";
+        newErrors.usernameOrEmail = "неверный формат email";
         valid = false;
       }
     } else {
       // If it doesn't contain '@', it's considered a username, so no @ allowed
       if (usernameOrEmail.includes("@")) {
-        newErrors.usernameOrEmail = "Ник не может содержать символ @";
+        newErrors.usernameOrEmail = "ник не может содержать символ @";
         valid = false;
       }
     }
 
     // Validate password
     if (!password) {
-      newErrors.password = "Пароль обязателен";
+      newErrors.password = "пароль обязателен";
       valid = false;
     } else if (password.length < 6) {
-      newErrors.password = "Пароль должен быть не менее 6 символов";
+      newErrors.password = "пароль должен быть не менее 6 символов";
       valid = false;
     } else if (!passwordRegex.test(password)) {
-      newErrors.password = "Пароль должен содержать буквы и цифры";
+      newErrors.password = "пароль должен содержать буквы и цифры";
       valid = false;
     }
 
@@ -113,7 +113,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({
     } catch (error) {
       setIsLoading(false);
 
-      let errorMessage = "Ошибка входа. Попробуйте позже.";
+      let errorMessage = "ошибка входа. попробуйте позже.";
       if (error instanceof Error) {
         errorMessage = error.message;
       }
@@ -176,7 +176,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({
                       styles.input,
                       errors.usernameOrEmail ? styles.inputError : null,
                     ]}
-                    placeholder="Ник/Email"
+                    placeholder="ник/email"
                     placeholderTextColor="rgba(0, 0, 0, 1)"
                     autoCapitalize="none"
                     autoComplete="email"
@@ -202,7 +202,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({
                       styles.input,
                       errors.password ? styles.inputError : null,
                     ]}
-                    placeholder="Пароль"
+                    placeholder="пароль"
                     placeholderTextColor="rgba(0, 0, 0, 1)"
                     secureTextEntry
                     value={password}
@@ -231,7 +231,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({
                   {isLoading ? (
                     <ActivityIndicator color="#fff" />
                   ) : (
-                    <Text style={styles.loginButtonText}>Войти</Text>
+                    <Text style={styles.loginButtonText}>войти</Text>
                   )}
                 </Animated.View>
               </TouchableOpacity>
@@ -243,7 +243,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({
                 )}
               >
                 <TouchableOpacity onPress={onForgotPassword}>
-                  <Text style={styles.forgotPasswordText}>Забыли пароль?</Text>
+                  <Text style={styles.forgotPasswordText}>забыли пароль?</Text>
                 </TouchableOpacity>
               </Animated.View>
 
@@ -257,8 +257,8 @@ const LoginScreen: React.FC<LoginScreenProps> = ({
                   style={styles.vkButton}
                   onPress={() =>
                     Alert.alert(
-                      "VK Вход",
-                      "VK вход будет реализован в будущем обновлении."
+                      "vk вход",
+                      "vk вход будет реализован в будущем обновлении."
                     )
                   }
                 >

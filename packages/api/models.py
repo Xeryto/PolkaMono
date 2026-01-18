@@ -44,7 +44,9 @@ class User(Base):
     full_name = Column(String(255), nullable=True)  # Full name for delivery
     delivery_email = Column(String(255), nullable=True)  # Email for delivery notifications
     phone = Column(String(20), nullable=True)  # Phone number for delivery
-    address = Column(Text, nullable=True)  # Delivery address
+    street = Column(String(255), nullable=True)  # Street name
+    house_number = Column(String(50), nullable=True)  # House number
+    apartment_number = Column(String(50), nullable=True)  # Apartment number
     city = Column(String(100), nullable=True)  # City for delivery
     postal_code = Column(String(20), nullable=True)  # Postal code
     created_at = Column(DateTime, default=datetime.utcnow)

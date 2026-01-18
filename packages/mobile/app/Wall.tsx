@@ -154,16 +154,16 @@ const Wall = ({ navigation, onLogout }: WallProps) => {
   const getStats = (): Array<{ label: string; value: string }> => {
     if (userStats) {
       return [
-        { label: "Куплено", value: userStats.items_purchased.toString() },
-        { label: "Пролистано", value: swipeCount.toString() },
+        { label: "куплено", value: userStats.items_purchased.toString() },
+        { label: "пролистано", value: swipeCount.toString() },
       ];
     }
 
     // Fallback to mock data while loading or on error
     return [
-      { label: "Куплено", value: "0" },
+      { label: "куплено", value: "0" },
       {
-        label: "Пролистано",
+        label: "пролистано",
         value: swipeCount > 0 ? swipeCount.toString() : "0",
       },
     ];
@@ -194,7 +194,7 @@ const Wall = ({ navigation, onLogout }: WallProps) => {
       setOrders(fetchedOrders);
     } catch (error) {
       console.error("Error loading orders:", error);
-      setOrderError("Не удалось загрузить заказы.");
+      setOrderError("не удалось загрузить заказы.");
     } finally {
       setIsLoadingOrders(false);
     }
@@ -333,8 +333,8 @@ const Wall = ({ navigation, onLogout }: WallProps) => {
     } catch (error) {
       console.error("Error updating user brands:", error);
       Alert.alert(
-        "Ошибка обновления",
-        "Не удалось обновить любимые бренды. Попробуйте позже.",
+        "ошибка обновления",
+        "не удалось обновить любимые бренды. попробуйте позже.",
         [{ text: "OK" }]
       );
     }
@@ -346,7 +346,7 @@ const Wall = ({ navigation, onLogout }: WallProps) => {
       const brand = popularBrands.find((b) => b === brandName);
       if (!brand) {
         console.error("Brand not found in loaded brands:", brandName);
-        Alert.alert("Ошибка", "Бренд не найден.");
+        Alert.alert("ошибка", "бренд не найден.");
         return;
       }
 
@@ -354,7 +354,7 @@ const Wall = ({ navigation, onLogout }: WallProps) => {
       const brandObj = (allBrands || []).find((b) => b.name === brandName);
       if (!brandObj) {
         console.error("Brand object not found:", brandName);
-        Alert.alert("Ошибка", "Бренд не найден.");
+        Alert.alert("ошибка", "бренд не найден.");
         return;
       }
 
@@ -414,7 +414,7 @@ const Wall = ({ navigation, onLogout }: WallProps) => {
       }
     } catch (error: any) {
       console.error("Error selecting brand:", error);
-      Alert.alert("Ошибка", "Не удалось обновить список брендов.");
+      Alert.alert("ошибка", "не удалось обновить список брендов.");
     }
   };
 
@@ -524,15 +524,15 @@ const Wall = ({ navigation, onLogout }: WallProps) => {
 
   const handleLogout = () => {
     Alert.alert(
-      "Выход",
-      "Вы уверены, что хотите выйти из аккаунта?",
+      "выход",
+      "вы уверены, что хотите выйти из аккаунта?",
       [
         {
-          text: "Отмена",
+          text: "отмена",
           style: "cancel",
         },
         {
-          text: "Выйти",
+          text: "выйти",
           style: "destructive",
           onPress: () => {
             console.log("User logged out");
@@ -658,7 +658,7 @@ const Wall = ({ navigation, onLogout }: WallProps) => {
         <View style={styles.searchContainer}>
           <TextInput
             style={styles.searchInput}
-            placeholder="Поиск"
+            placeholder="поиск"
             placeholderTextColor="rgba(0,0,0,1)"
             value={searchQuery}
             onChangeText={handleSearch}
@@ -863,7 +863,7 @@ const Wall = ({ navigation, onLogout }: WallProps) => {
           style={styles.orderStatusContainer}
         >
           <Text style={[styles.orderStatusText, { marginLeft: 20 }]}>
-            Статус
+            статус
           </Text>
           <Animated.View
             entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
@@ -871,7 +871,7 @@ const Wall = ({ navigation, onLogout }: WallProps) => {
             )}
             style={styles.orderStatus}
           >
-            <Text style={styles.orderStatusText}>Оплачен</Text>
+            <Text style={styles.orderStatusText}>оплачен</Text>
           </Animated.View>
         </Animated.View>
       </Animated.View>
@@ -903,17 +903,17 @@ const Wall = ({ navigation, onLogout }: WallProps) => {
           style={styles.ordersContainer}
         >
           {isLoadingOrders ? (
-            <Text style={styles.emptyStateText}>Загрузка заказов...</Text>
+            <Text style={styles.emptyStateText}>загрузка заказов...</Text>
           ) : orderError ? (
             <Text style={styles.emptyStateText}>{orderError}</Text>
           ) : orders.length === 0 ? (
             <>
-              <Text style={styles.emptyStateText}>У вас пока нет заказов</Text>
+              <Text style={styles.emptyStateText}>у вас пока нет заказов</Text>
               <Pressable
                 style={styles.startShoppingButton}
                 onPress={() => navigation.navigate("Home")}
               >
-                <Text style={styles.startShoppingText}>Начать покупки</Text>
+                <Text style={styles.startShoppingText}>начать покупки</Text>
               </Pressable>
             </>
           ) : (
@@ -936,11 +936,11 @@ const Wall = ({ navigation, onLogout }: WallProps) => {
                     onPress={() => setSelectedOrder(order)}
                   >
                     <Text style={styles.orderNumber}>
-                      Заказ №{order.number}
+                      заказ №{order.number}
                     </Text>
                   </TouchableOpacity>
                   <Text style={styles.orderSummary}>
-                    Итого: {order.total_amount.toFixed(2)} ₽
+                    итого: {order.total_amount.toFixed(2)} ₽
                   </Text>
                 </Animated.View>
               ))}
@@ -965,7 +965,7 @@ const Wall = ({ navigation, onLogout }: WallProps) => {
           setCurrentView("settings");
         }}
       >
-        <Text style={styles.settingsButtonText}>Настройки</Text>
+        <Text style={styles.settingsButtonText}>настройки</Text>
       </Pressable>
     </Animated.View>
   );
@@ -983,7 +983,7 @@ const Wall = ({ navigation, onLogout }: WallProps) => {
             style={styles.favoriteBrandsButton}
             onPress={() => setShowBrandSearch(true)}
           >
-            <Text style={styles.favoriteBrandsText}>Любимые бренды</Text>
+            <Text style={styles.favoriteBrandsText}>любимые бренды</Text>
           </TouchableOpacity>
         </Animated.View>
 
@@ -994,7 +994,7 @@ const Wall = ({ navigation, onLogout }: WallProps) => {
           style={styles.statsContainer}
         >
           {stats.map((stat, index) => {
-            const isPurchased = stat.label === "Куплено";
+            const isPurchased = stat.label === "куплено";
 
             if (isPurchased) {
               return (
@@ -1033,7 +1033,7 @@ const Wall = ({ navigation, onLogout }: WallProps) => {
           )}
           style={styles.sizeSection}
         >
-          <Text style={styles.sizeSectionTitle}>Размер</Text>
+          <Text style={styles.sizeSectionTitle}>размер</Text>
           <Pressable
             style={styles.sizeSelectionWrapper}
             onPress={handleSizePress}
@@ -1076,10 +1076,10 @@ const Wall = ({ navigation, onLogout }: WallProps) => {
         >
           <Text style={styles.profileName}>
             {isLoadingProfile
-              ? "Загрузка..."
+              ? "загрузка..."
               : userProfile
               ? userProfile.username
-              : "Пользователь"}
+              : "пользователь"}
           </Text>
           <View style={styles.profileImageWrapper}>
             <View style={styles.profileImageContainer}>
@@ -1123,7 +1123,7 @@ const Wall = ({ navigation, onLogout }: WallProps) => {
               exiting={FadeOut.duration(ANIMATION_DURATIONS.STANDARD)}
               style={styles.scrollHintContainer}
             >
-              <Text style={styles.scrollHintText}>Листай</Text>
+              <Text style={styles.scrollHintText}>листай</Text>
               <Scroll width={26} height={26} />
             </Animated.View>
           )}
@@ -1193,7 +1193,9 @@ const Wall = ({ navigation, onLogout }: WallProps) => {
           {(() => {
             const text =
               currentView === "wall"
-                ? "СТЕНА"
+                ? showAvatarEdit
+                  ? "АВАТАРКА"
+                  : "СТЕНА"
                 : currentView === "orders"
                 ? selectedOrder
                   ? `ЗАКАЗ №${selectedOrder.number}`

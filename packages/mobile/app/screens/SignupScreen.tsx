@@ -81,7 +81,7 @@ const SignupScreen: React.FC<SignupScreenProps> = ({ onSignup, onBack }) => {
           if (!available) {
             setErrors((prev) => ({
               ...prev,
-              username: "Этот ник уже занят",
+              username: "этот ник уже занят",
             }));
           } else {
             setErrors((prev) => ({
@@ -116,7 +116,7 @@ const SignupScreen: React.FC<SignupScreenProps> = ({ onSignup, onBack }) => {
           if (!available) {
             setErrors((prev) => ({
               ...prev,
-              email: "Этот email уже используется",
+              email: "этот email уже используется",
             }));
           } else {
             setErrors((prev) => ({
@@ -164,19 +164,19 @@ const SignupScreen: React.FC<SignupScreenProps> = ({ onSignup, onBack }) => {
 
     // Validate username
     if (!username.trim()) {
-      newErrors.username = "Ник обязателен";
+      newErrors.username = "ник обязателен";
       valid = false;
     } else if (username.trim().length < 3) {
       newErrors.username = "Ник должен быть не менее 3 символов";
       valid = false;
     } else if (username.includes(" ")) {
-      newErrors.username = "Ник не должен содержать пробелов";
+      newErrors.username = "ник не должен содержать пробелов";
       valid = false;
     } else if (illegalCharRegex.test(username)) {
       newErrors.username = "Ник содержит недопустимые символы";
       valid = false;
     } else if (usernameAvailable === false) {
-      newErrors.username = "Этот ник уже занят";
+      newErrors.username = "этот ник уже занят";
       valid = false;
     } else if (usernameAvailable === null && isCheckingUsername) {
       newErrors.username = "Проверяем доступность ника...";
@@ -197,10 +197,10 @@ const SignupScreen: React.FC<SignupScreenProps> = ({ onSignup, onBack }) => {
       newErrors.email = "Email содержит недопустимые символы";
       valid = false;
     } else if (emailAvailable === false) {
-      newErrors.email = "Этот email уже используется";
+      newErrors.email = "этот email уже используется";
       valid = false;
     } else if (emailAvailable === null && isCheckingEmail) {
-      newErrors.email = "Проверяем доступность email...";
+      newErrors.email = "проверяем доступность email...";
       valid = false;
     }
 
@@ -209,13 +209,13 @@ const SignupScreen: React.FC<SignupScreenProps> = ({ onSignup, onBack }) => {
       newErrors.password = "Пароль обязателен";
       valid = false;
     } else if (password.length < 6) {
-      newErrors.password = "Пароль должен быть не менее 6 символов";
+      newErrors.password = "пароль должен быть не менее 6 символов";
       valid = false;
     } else if (!passwordRegex.test(password)) {
       newErrors.password = "Пароль должен содержать буквы и цифры";
       valid = false;
     } else if (password.includes(" ")) {
-      newErrors.password = "Пароль не должен содержать пробелов";
+      newErrors.password = "пароль не должен содержать пробелов";
       valid = false;
     } else if (illegalCharRegex.test(password)) {
       newErrors.password = "Пароль содержит недопустимые символы";
@@ -224,7 +224,7 @@ const SignupScreen: React.FC<SignupScreenProps> = ({ onSignup, onBack }) => {
 
     // Validate password confirmation
     if (password !== confirmPassword) {
-      newErrors.confirmPassword = "Пароли не совпадают";
+      newErrors.confirmPassword = "пароли не совпадают";
       valid = false;
     }
 
@@ -265,7 +265,7 @@ const SignupScreen: React.FC<SignupScreenProps> = ({ onSignup, onBack }) => {
           message.includes("имя пользователя уже занято") ||
           message.includes("username уже занят")
         ) {
-          fieldErrors.username = "Этот ник уже занят";
+          fieldErrors.username = "этот ник уже занят";
           setUsernameAvailable(false);
         } else if (
           message.includes("Пользователь с таким email уже существует")
@@ -273,7 +273,7 @@ const SignupScreen: React.FC<SignupScreenProps> = ({ onSignup, onBack }) => {
           fieldErrors.email = "Этот email уже используется";
           setEmailAvailable(false);
         } else if (message.includes("Имя пользователя уже занято")) {
-          fieldErrors.username = "Этот ник уже занят";
+          fieldErrors.username = "этот ник уже занят";
           setUsernameAvailable(false);
         } else {
           errorMessage = message;
@@ -437,7 +437,7 @@ const SignupScreen: React.FC<SignupScreenProps> = ({ onSignup, onBack }) => {
                       styles.input,
                       errors.password ? styles.inputError : null,
                     ]}
-                    placeholder="Пароль"
+                    placeholder="пароль"
                     placeholderTextColor="rgba(0, 0, 0, 1)"
                     secureTextEntry
                     value={password}
@@ -493,7 +493,7 @@ const SignupScreen: React.FC<SignupScreenProps> = ({ onSignup, onBack }) => {
                     <ActivityIndicator color="#fff" />
                   ) : (
                     <Text style={styles.signupButtonText}>
-                      Зарегистрироваться
+                      зарегистрироваться
                     </Text>
                   )}
                 </Animated.View>
@@ -516,8 +516,8 @@ const SignupScreen: React.FC<SignupScreenProps> = ({ onSignup, onBack }) => {
                       style={styles.termsLink}
                       onPress={() =>
                         Alert.alert(
-                          "Условия",
-                          "Здесь будут отображены условия использования."
+                          "условия",
+                          "здесь будут отображены условия использования."
                         )
                       }
                     >
@@ -528,12 +528,12 @@ const SignupScreen: React.FC<SignupScreenProps> = ({ onSignup, onBack }) => {
                       style={styles.termsLink}
                       onPress={() =>
                         Alert.alert(
-                          "Политика",
-                          "Здесь будет отображена политика конфиденциальности."
+                          "политика",
+                          "здесь будет отображена политика конфиденциальности."
                         )
                       }
                     >
-                      Политикой конфиденциальности
+                      политикой конфиденциальности
                     </Text>
                   </Text>
 

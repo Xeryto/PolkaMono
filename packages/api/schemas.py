@@ -175,7 +175,9 @@ class UserProfileUpdateRequest(BaseModel):
     full_name: Optional[str] = Field(None, max_length=255)
     delivery_email: Optional[EmailStr] = Field(None, max_length=255)
     phone: Optional[str] = Field(None, max_length=20)
-    address: Optional[str] = None  # Text field, no explicit length limit
+    street: Optional[str] = Field(None, max_length=255)
+    house_number: Optional[str] = Field(None, max_length=50)
+    apartment_number: Optional[str] = Field(None, max_length=50)
     city: Optional[str] = Field(None, max_length=100)
     postal_code: Optional[str] = Field(None, max_length=20)
     
@@ -250,7 +252,9 @@ class UserProfileResponse(BaseModel):
     full_name: Optional[str] = None
     delivery_email: Optional[str] = None
     phone: Optional[str] = None
-    address: Optional[str] = None
+    street: Optional[str] = None
+    house_number: Optional[str] = None
+    apartment_number: Optional[str] = None
     city: Optional[str] = None
     postal_code: Optional[str] = None
     created_at: datetime

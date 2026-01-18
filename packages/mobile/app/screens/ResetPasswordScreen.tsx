@@ -59,19 +59,19 @@ const ResetPasswordScreen: React.FC<ResetPasswordScreenProps> = ({
 
     // Validate password
     if (!password) {
-      newErrors.password = "Пароль обязателен";
+      newErrors.password = "пароль обязателен";
       valid = false;
     } else if (password.length < 6) {
       newErrors.password = "Пароль должен быть не менее 6 символов";
       valid = false;
     } else if (!passwordRegex.test(password)) {
-      newErrors.password = "Пароль должен содержать буквы и цифры";
+      newErrors.password = "пароль должен содержать буквы и цифры";
       valid = false;
     } else if (password.includes(" ")) {
       newErrors.password = "Пароль не должен содержать пробелов";
       valid = false;
     } else if (illegalCharRegex.test(password)) {
-      newErrors.password = "Пароль содержит недопустимые символы";
+      newErrors.password = "пароль содержит недопустимые символы";
       valid = false;
     }
 
@@ -80,7 +80,7 @@ const ResetPasswordScreen: React.FC<ResetPasswordScreenProps> = ({
       newErrors.confirmPassword = "Пожалуйста, подтвердите пароль";
       valid = false;
     } else if (password !== confirmPassword) {
-      newErrors.confirmPassword = "Пароли не совпадают";
+      newErrors.confirmPassword = "пароли не совпадают";
       valid = false;
     }
 
@@ -101,7 +101,7 @@ const ResetPasswordScreen: React.FC<ResetPasswordScreenProps> = ({
       ]);
     } catch (err) {
       setIsLoading(false);
-      let errorMessage = "Произошла неожиданная ошибка.";
+      let errorMessage = "произошла неожиданная ошибка.";
 
       if (err instanceof Error) {
         if (err.message.includes("You cannot reuse a previous password")) {
@@ -172,7 +172,7 @@ const ResetPasswordScreen: React.FC<ResetPasswordScreenProps> = ({
                       styles.input,
                       errors.password ? styles.inputError : null,
                     ]}
-                    placeholder="Новый пароль"
+                    placeholder="новый пароль"
                     placeholderTextColor="rgba(0, 0, 0, 1)"
                     secureTextEntry
                     value={password}
@@ -196,7 +196,7 @@ const ResetPasswordScreen: React.FC<ResetPasswordScreenProps> = ({
                       styles.input,
                       errors.confirmPassword ? styles.inputError : null,
                     ]}
-                    placeholder="Подтвердите новый пароль"
+                    placeholder="подтвердите новый пароль"
                     placeholderTextColor="rgba(0, 0, 0, 1)"
                     secureTextEntry
                     value={confirmPassword}

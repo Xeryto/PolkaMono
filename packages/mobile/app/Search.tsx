@@ -141,9 +141,9 @@ const MIN_SEARCH_LENGTH = 2;
 const fetchMoreSearchResults = async (
   query: string = "",
   filters: SelectedFilters = {
-    category: "Категория",
-    brand: "Бренд",
-    style: "Стиль",
+    category: "категория",
+    brand: "бренд",
+    style: "стиль",
   },
   count: number = 16,
   offset: number = 0
@@ -155,9 +155,9 @@ const fetchMoreSearchResults = async (
 
     // Check if any filter is actively selected (not default)
     const hasActiveFilters =
-      filters.category !== "Категория" ||
-      filters.brand !== "Бренд" ||
-      filters.style !== "Стиль";
+      filters.category !== "категория" ||
+      filters.brand !== "бренд" ||
+      filters.style !== "стиль";
 
     // Don't make API call if query is too short and no active filters
     if (!hasValidQuery && !hasActiveFilters) {
@@ -175,11 +175,11 @@ const fetchMoreSearchResults = async (
     if (hasValidQuery) {
       params.query = trimmedQuery;
     }
-    if (filters.category && filters.category !== "Категория")
+    if (filters.category && filters.category !== "категория")
       params.category = filters.category;
-    if (filters.brand && filters.brand !== "Бренд")
+    if (filters.brand && filters.brand !== "бренд")
       params.brand = filters.brand;
-    if (filters.style && filters.style !== "Стиль")
+    if (filters.style && filters.style !== "стиль")
       params.style = filters.style;
 
     const results = await apiWrapper.getProductSearchResults(
@@ -222,9 +222,9 @@ const Search = ({ navigation }: SearchProps) => {
     null
   );
   const [selectedFilters, setSelectedFilters] = useState<SelectedFilters>({
-    category: "Категория",
-    brand: "Бренд",
-    style: "Стиль",
+    category: "категория",
+    brand: "бренд",
+    style: "стиль",
   });
 
   // Initialize searchResults with persistent storage or default items
@@ -357,9 +357,9 @@ const Search = ({ navigation }: SearchProps) => {
     const trimmedQuery = searchQueryRef.current.trim();
     const hasValidQuery = trimmedQuery.length >= MIN_SEARCH_LENGTH;
     const hasActiveFilters =
-      selectedFiltersRef.current.category !== "Категория" ||
-      selectedFiltersRef.current.brand !== "Бренд" ||
-      selectedFiltersRef.current.style !== "Стиль";
+      selectedFiltersRef.current.category !== "категория" ||
+      selectedFiltersRef.current.brand !== "бренд" ||
+      selectedFiltersRef.current.style !== "стиль";
 
     // Check if we're exiting search mode (was active, now not active)
     const wasSearchActive = prevIsSearchActiveRef.current;
@@ -442,9 +442,9 @@ const Search = ({ navigation }: SearchProps) => {
     option: string
   ) => {
     const defaultValues = {
-      category: "Категория",
-      brand: "Бренд",
-      style: "Стиль",
+      category: "категория",
+      brand: "бренд",
+      style: "стиль",
     };
 
     setSelectedFilters((prev) => ({
@@ -457,9 +457,9 @@ const Search = ({ navigation }: SearchProps) => {
 
   const isFilterSelected = (filterType: keyof SelectedFilters): boolean => {
     const defaultValues = {
-      category: "Категория",
-      brand: "Бренд",
-      style: "Стиль",
+      category: "категория",
+      brand: "бренд",
+      style: "стиль",
     };
     return selectedFilters[filterType] !== defaultValues[filterType];
   };
@@ -528,9 +528,9 @@ const Search = ({ navigation }: SearchProps) => {
   const hasValidQuery = trimmedQuery.length >= MIN_SEARCH_LENGTH;
   const hasActiveQuery = trimmedQuery.length > 0;
   const hasActiveFilters =
-    selectedFilters.category !== "Категория" ||
-    selectedFilters.brand !== "Бренд" ||
-    selectedFilters.style !== "Стиль";
+    selectedFilters.category !== "категория" ||
+    selectedFilters.brand !== "бренд" ||
+    selectedFilters.style !== "стиль";
 
   // The API already filters results by query (including article_number), so we don't need client-side filtering
   // Use searchResults directly as filteredResults since the API handles all filtering
@@ -615,9 +615,9 @@ const Search = ({ navigation }: SearchProps) => {
 
       // Check if any filter is actively selected (not default)
       const hasActiveFilters =
-        selectedFilters.category !== "Категория" ||
-        selectedFilters.brand !== "Бренд" ||
-        selectedFilters.style !== "Стиль";
+        selectedFilters.category !== "категория" ||
+        selectedFilters.brand !== "бренд" ||
+        selectedFilters.style !== "стиль";
 
       // Detect if filters changed (but search query didn't)
       const filtersChanged =
@@ -626,6 +626,26 @@ const Search = ({ navigation }: SearchProps) => {
         prevFiltersRef.current.style !== selectedFilters.style;
 
       const searchQueryChanged = prevSearchQueryRef.current !== searchQuery;
+
+      // Only send query if there's a valid search term (min length) or active filters
+      // Check this FIRST before setting loading state
+      if (!hasValidQuery && !hasActiveFilters) {
+        // Query too short (including spaces-only) or no active filters - clear results to show empty search state
+        // When in search mode, we always want to show the "start search" message, not popular items
+        setSearchResults([]);
+        persistentSearchStorage.results = [];
+        setSearchOffset(0);
+        setHasMoreResults(false);
+        setIsLoadingMoreResults(false);
+        setIsLoadingResults(false); // Not loading since we're skipping the API call
+        // Update refs even if we skip the API call
+        prevFiltersRef.current = selectedFilters;
+        prevSearchQueryRef.current = searchQuery;
+        console.log(
+          "Search - No valid query (including spaces-only) or filters, showing empty search state"
+        );
+        return;
+      }
 
       // If filters changed, clear results immediately to prevent stacking and show loading
       // BUT only if we have active filters, not if filters were just reset
@@ -642,25 +662,9 @@ const Search = ({ navigation }: SearchProps) => {
         );
       }
 
-      // Only send query if there's a valid search term (min length) or active filters
-      if (!hasValidQuery && !hasActiveFilters) {
-        // Query too short or no active filters - clear results to show empty search state
-        // When in search mode, we always want to show the "start search" message, not popular items
-        setSearchResults([]);
-        persistentSearchStorage.results = [];
-        setSearchOffset(0);
-        setHasMoreResults(false);
-        setIsLoadingMoreResults(false);
-        setIsLoadingResults(false); // Not loading since we're skipping the API call
-        // Update refs even if we skip the API call
-        prevFiltersRef.current = selectedFilters;
-        prevSearchQueryRef.current = searchQuery;
-        console.log("Search - No query or filters, showing empty search state");
-        return;
-      }
-
       // For valid queries/filters, show loading state immediately during debounce period
       // This prevents the "nothing found" flash before loading spinner appears
+      // Only set loading if we have a valid query OR active filters (already checked above)
       setIsLoadingResults(true);
       // Clear previous results while debouncing to avoid showing stale results
       if (searchQueryChanged) {
@@ -686,9 +690,9 @@ const Search = ({ navigation }: SearchProps) => {
 
         // Check if any filter is actively selected (not default)
         const currentHasActiveFilters =
-          selectedFilters.category !== "Категория" ||
-          selectedFilters.brand !== "Бренд" ||
-          selectedFilters.style !== "Стиль";
+          selectedFilters.category !== "категория" ||
+          selectedFilters.brand !== "бренд" ||
+          selectedFilters.style !== "стиль";
 
         if (!currentHasValidQuery && !currentHasActiveFilters) {
           // Query is too short or empty - clear results and show empty search state
@@ -840,9 +844,9 @@ const Search = ({ navigation }: SearchProps) => {
     const trimmedQuery = searchQuery.trim();
     const hasValidQuery = trimmedQuery.length >= MIN_SEARCH_LENGTH;
     const hasActiveFilters =
-      selectedFilters.category !== "Категория" ||
-      selectedFilters.brand !== "Бренд" ||
-      selectedFilters.style !== "Стиль";
+      selectedFilters.category !== "категория" ||
+      selectedFilters.brand !== "бренд" ||
+      selectedFilters.style !== "стиль";
 
     if (!hasValidQuery && !hasActiveFilters) {
       return;
@@ -929,9 +933,9 @@ const Search = ({ navigation }: SearchProps) => {
     // Reset any active filters
     setActiveFilter(null);
     setSelectedFilters({
-      category: "Категория",
-      brand: "Бренд",
-      style: "Стиль",
+      category: "категория",
+      brand: "бренд",
+      style: "стиль",
     });
 
     // Clear search results and reset pagination
@@ -1020,7 +1024,7 @@ const Search = ({ navigation }: SearchProps) => {
               styles.searchInput,
               isSearchActive && styles.searchInputActive,
             ]}
-            placeholder="Поиск"
+            placeholder="поиск"
             placeholderTextColor="rgba(0,0,0,0.6)"
             value={searchQuery}
             onChangeText={handleSearch}
@@ -1038,7 +1042,7 @@ const Search = ({ navigation }: SearchProps) => {
                 style={styles.cancelButton}
                 //activeOpacity={0.7}
               >
-                <Text style={styles.cancelButtonText}>Отмена</Text>
+                <Text style={styles.cancelButtonText}>отмена</Text>
               </TouchableOpacity>
             </Animated.View>
           )}
@@ -1178,7 +1182,7 @@ const Search = ({ navigation }: SearchProps) => {
                 )}
                 style={styles.emptyStateTitle}
               >
-                Начните поиск
+                начните поиск
               </Animated.Text>
               <Animated.Text
                 entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
@@ -1186,7 +1190,7 @@ const Search = ({ navigation }: SearchProps) => {
                 )}
                 style={styles.emptyStateDescription}
               >
-                Введите название товара или используйте фильтры для поиска
+                введите название товара или используйте фильтры для поиска
               </Animated.Text>
             </Animated.View>
           ) : isLoadingResults ? (
@@ -1201,7 +1205,7 @@ const Search = ({ navigation }: SearchProps) => {
                 )}
                 style={styles.loadingText}
               >
-                Загрузка...
+                загрузка...
               </Animated.Text>
             </Animated.View>
           ) : showNoResults ? (
@@ -1223,7 +1227,7 @@ const Search = ({ navigation }: SearchProps) => {
                 )}
                 style={styles.noResultsText}
               >
-                Ничего не найдено
+                ничего не найдено
               </Animated.Text>
               <Animated.Text
                 entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
@@ -1231,7 +1235,7 @@ const Search = ({ navigation }: SearchProps) => {
                 )}
                 style={styles.noResultsDescription}
               >
-                Попробуйте изменить поисковый запрос или фильтры
+                попробуйте изменить поисковый запрос или фильтры
               </Animated.Text>
             </Animated.View>
           ) : (

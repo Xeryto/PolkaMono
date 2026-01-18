@@ -56,7 +56,7 @@ const ConfirmationScreen: React.FC<ConfirmationScreenProps> = ({
       await api.updateUserProfile({ gender: option });
       onComplete(option);
     } catch (error) {
-      Alert.alert("Ошибка", "Не удалось сохранить пол. Попробуйте еще раз.");
+      Alert.alert("ошибка", "не удалось сохранить пол. попробуйте еще раз.");
     } finally {
       setIsSubmitting(false);
     }

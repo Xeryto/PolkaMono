@@ -18,6 +18,7 @@ import BackIcon from "../components/svg/BackIcon";
 import Me from "../components/svg/Me";
 import { ANIMATION_DURATIONS, ANIMATION_DELAYS } from "../lib/animations";
 import * as Haptics from "expo-haptics";
+import MeAlt from "../components/svg/MeAlt";
 
 const { width, height } = Dimensions.get("window");
 
@@ -56,8 +57,8 @@ const AvatarEditScreen: React.FC<AvatarEditScreenProps> = ({
 
       if (permissionResult.granted === false) {
         Alert.alert(
-          "Разрешение необходимо",
-          "Необходимо разрешение для доступа к фотографиям."
+          "разрешение необходимо",
+          "необходимо разрешение для доступа к фотографиям."
         );
         return;
       }
@@ -201,7 +202,7 @@ const AvatarEditScreen: React.FC<AvatarEditScreenProps> = ({
 
   const handleConfirm = async () => {
     if (!selectedImage) {
-      Alert.alert("Ошибка", "Пожалуйста, выберите изображение.");
+      Alert.alert("ошибка", "пожалуйста, выберите изображение.");
       return;
     }
 
@@ -270,7 +271,7 @@ const AvatarEditScreen: React.FC<AvatarEditScreenProps> = ({
       onSave(manipulatedImage.uri);
     } catch (error) {
       console.error("Error processing image:", error);
-      Alert.alert("Ошибка", "Не удалось обработать изображение.");
+      Alert.alert("ошибка", "не удалось обработать изображение.");
     } finally {
       setIsLoading(false);
     }
@@ -316,7 +317,7 @@ const AvatarEditScreen: React.FC<AvatarEditScreenProps> = ({
                 </RNAnimated.View>
               ) : (
                 <View style={styles.placeholder}>
-                  <Me width={"80%"} height={"80%"} />
+                  <MeAlt width={"100%"} height={"100%"} />
                 </View>
               )}
             </View>
@@ -325,7 +326,7 @@ const AvatarEditScreen: React.FC<AvatarEditScreenProps> = ({
 
         <TouchableOpacity style={styles.pickImageButton} onPress={pickImage}>
           <Text style={styles.pickImageButtonText}>
-            {selectedImage ? "Изменить фото" : "Выбрать фото"}
+            {selectedImage ? "изменить фото" : "выбрать фото"}
           </Text>
         </TouchableOpacity>
 
@@ -342,7 +343,7 @@ const AvatarEditScreen: React.FC<AvatarEditScreenProps> = ({
                   styles.confirmButtonDisabledText,
               ]}
             >
-              {isLoading ? "Сохранение..." : "Подтвердить"}
+              {isLoading ? "сохранение..." : "подтвердить"}
             </Text>
           </TouchableOpacity>
         </View>

@@ -288,7 +288,9 @@ export interface UserProfile {
   favorite_styles?: Style[];
   // Shopping information fields (will be added to backend)
   phone?: string;
-  address?: string;
+  street?: string;
+  house_number?: string;
+  apartment_number?: string;
   city?: string;
   postal_code?: string;
   full_name?: string;
@@ -1143,7 +1145,9 @@ export interface ShoppingInfo {
   full_name: string;
   delivery_email: string;
   phone: string;
-  address: string;
+  street?: string;
+  house_number?: string;
+  apartment_number?: string;
   city: string;
   postal_code?: string;
 }
@@ -1157,7 +1161,9 @@ export const getShoppingInfo = async (): Promise<ShoppingInfo> => {
     full_name: profile.full_name || '', // Don't fallback to username
     delivery_email: profile.delivery_email || profile.email, // Fallback to account email if no delivery email set
     phone: profile.phone || '',
-    address: profile.address || '',
+    street: profile.street || '',
+    house_number: profile.house_number || '',
+    apartment_number: profile.apartment_number || '',
     city: profile.city || '',
     postal_code: profile.postal_code || '',
   };
@@ -1170,7 +1176,9 @@ export const updateShoppingInfo = async (shoppingInfo: ShoppingInfo): Promise<Sh
     delivery_email: shoppingInfo.delivery_email,
     full_name: shoppingInfo.full_name,
     phone: shoppingInfo.phone,
-    address: shoppingInfo.address,
+    street: shoppingInfo.street,
+    house_number: shoppingInfo.house_number,
+    apartment_number: shoppingInfo.apartment_number,
     city: shoppingInfo.city,
     postal_code: shoppingInfo.postal_code,
   });

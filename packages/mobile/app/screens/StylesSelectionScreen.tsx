@@ -257,7 +257,7 @@ const StylesSelectionScreen: React.FC<StylesSelectionScreenProps> = ({
                   disabled={isSubmitting}
                 >
                   <Text style={styles.continueButtonText}>
-                    {isSubmitting ? "Сохранение..." : "Продолжить"}
+                    {isSubmitting ? "сохранение..." : "продолжить"}
                   </Text>
                 </TouchableOpacity>
               </Animated.View>

@@ -1,4 +1,10 @@
-import React, { useCallback, useRef, useState, useEffect, useMemo } from "react";
+import React, {
+  useCallback,
+  useRef,
+  useState,
+  useEffect,
+  useMemo,
+} from "react";
 import {
   View,
   StyleSheet,
@@ -173,7 +179,7 @@ const fetchMoreCards = async (count: number = 2): Promise<CardItem[]> => {
       error.message &&
       error.message.toLowerCase().includes("invalid token")
     ) {
-      Alert.alert("Сессия истекла", "Пожалуйста, войдите в аккаунт снова.");
+      Alert.alert("сессия истекла", "пожалуйста, войдите в аккаунт снова.");
       // Optionally, trigger navigation to login if available
       // navigation.navigate('Login');
       return [];
@@ -530,44 +536,53 @@ const MainPage = ({ navigation, route }: MainPageProps) => {
   // Ref to store cards for pan responder access
   const cardsRef = useRef<CardItem[]>([]);
   const currentCardIndexRef = useRef(0);
-  
+
   // Update refs when state changes
   useEffect(() => {
     cardsRef.current = cards;
   }, [cards]);
-  
+
   useEffect(() => {
     currentCardIndexRef.current = currentCardIndex;
   }, [currentCardIndex]);
 
   // Ref to track current image index to avoid unnecessary state updates
   const currentImageIndexRef = useRef(0);
-  
+
   useEffect(() => {
     currentImageIndexRef.current = currentImageIndex;
   }, [currentImageIndex]);
 
   // Handle image carousel scroll events - only update index when scrolling stops
-  const handleImageScroll = useCallback((event: NativeSyntheticEvent<NativeScrollEvent>) => {
-    const flipped = isFlippedRef.current;
-    if (flipped || !imageCarouselWidthRef.current) {
-      return;
-    }
-    
-    const contentOffsetX = event.nativeEvent.contentOffset.x;
-    const currentIndex = Math.round(contentOffsetX / imageCarouselWidthRef.current);
-    
-    if (currentIndex >= 0) {
-      const currentCards = cardsRef.current;
-      const cardIndex = currentCardIndexRef.current;
-      const currentCard = currentCards[cardIndex];
-      
-      // Only update if index changed and is valid
-      if (currentCard && currentIndex < currentCard.images.length && currentIndex !== currentImageIndexRef.current) {
-        setCurrentImageIndex(currentIndex);
+  const handleImageScroll = useCallback(
+    (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+      const flipped = isFlippedRef.current;
+      if (flipped || !imageCarouselWidthRef.current) {
+        return;
       }
-    }
-  }, []);
+
+      const contentOffsetX = event.nativeEvent.contentOffset.x;
+      const currentIndex = Math.round(
+        contentOffsetX / imageCarouselWidthRef.current
+      );
+
+      if (currentIndex >= 0) {
+        const currentCards = cardsRef.current;
+        const cardIndex = currentCardIndexRef.current;
+        const currentCard = currentCards[cardIndex];
+
+        // Only update if index changed and is valid
+        if (
+          currentCard &&
+          currentIndex < currentCard.images.length &&
+          currentIndex !== currentImageIndexRef.current
+        ) {
+          setCurrentImageIndex(currentIndex);
+        }
+      }
+    },
+    []
+  );
 
   // Scroll to specific image index
   const scrollToImageIndex = useCallback((index: number) => {
@@ -599,20 +614,24 @@ const MainPage = ({ navigation, route }: MainPageProps) => {
         // - X: from right edge of card (88% width, centered) minus 20px padding minus 25px = cardRight - 45
         // - Y: from top edge plus 20px padding plus 25px = 45
         const { pageX, pageY } = evt.nativeEvent;
-        const windowWidth = Dimensions.get('window').width;
+        const windowWidth = Dimensions.get("window").width;
         const cardWidth = windowWidth * 0.88; // Card width is 88% of screen
         const cardLeft = windowWidth * 0.06; // Card is centered (6% margin on each side)
         const cardRight = cardLeft + cardWidth;
-        
+
         const cancelButtonRight = cardRight - 45; // cardRight - padding(20) - right(25)
         const cancelButtonLeft = cancelButtonRight - 25; // Button width is 25
         const cancelButtonTop = 45; // padding(20) + top(25)
         const cancelButtonBottom = cancelButtonTop + 25; // Button height is 25
-        
+
         // Check if touch is in cancel button area (add padding for easier tapping)
         const touchPadding = 15;
-        if (pageX >= (cancelButtonLeft - touchPadding) && pageX <= (cancelButtonRight + touchPadding) &&
-            pageY >= (cancelButtonTop - touchPadding) && pageY <= (cancelButtonBottom + touchPadding)) {
+        if (
+          pageX >= cancelButtonLeft - touchPadding &&
+          pageX <= cancelButtonRight + touchPadding &&
+          pageY >= cancelButtonTop - touchPadding &&
+          pageY <= cancelButtonBottom + touchPadding
+        ) {
           return false; // Don't capture - let the button handle it
         }
 
@@ -1017,7 +1036,9 @@ const MainPage = ({ navigation, route }: MainPageProps) => {
             : currentCardIndex;
         setTimeout(() => setCurrentCardIndex(newIndex), 0);
         // Add loading card if running low on cards
-        const cardsWithoutLoading = newCards.filter((c) => c.id !== LOADING_CARD_ID);
+        const cardsWithoutLoading = newCards.filter(
+          (c) => c.id !== LOADING_CARD_ID
+        );
         if (cardsWithoutLoading.length < MIN_CARDS_THRESHOLD) {
           // Add loading card if not already present
           const hasLoadingCard = newCards.some((c) => c.id === LOADING_CARD_ID);
@@ -1026,23 +1047,25 @@ const MainPage = ({ navigation, route }: MainPageProps) => {
           }
           // Trigger fetch in background
           console.log("MainPage - Low on cards, fetching more from API");
-          fetchMoreCards(MIN_CARDS_THRESHOLD - cardsWithoutLoading.length + 1).then(
-            (apiCards) => {
-              if (apiCards.length > 0) {
-                setCards((latestCards) => {
-                  // Remove loading cards and add new ones
-                  const filteredCards = latestCards.filter((c) => c.id !== LOADING_CARD_ID);
-                  const updatedCards = [...filteredCards, ...apiCards];
-                  console.log(
-                    "MainPage - Added new cards, total count:",
-                    updatedCards.length
-                  );
-                  persistentCardStorage.cards = updatedCards;
-                  return updatedCards;
-                });
-              }
+          fetchMoreCards(
+            MIN_CARDS_THRESHOLD - cardsWithoutLoading.length + 1
+          ).then((apiCards) => {
+            if (apiCards.length > 0) {
+              setCards((latestCards) => {
+                // Remove loading cards and add new ones
+                const filteredCards = latestCards.filter(
+                  (c) => c.id !== LOADING_CARD_ID
+                );
+                const updatedCards = [...filteredCards, ...apiCards];
+                console.log(
+                  "MainPage - Added new cards, total count:",
+                  updatedCards.length
+                );
+                persistentCardStorage.cards = updatedCards;
+                return updatedCards;
+              });
             }
-          );
+          });
         } else {
           persistentCardStorage.cards = newCards;
         }
@@ -1254,7 +1277,7 @@ const MainPage = ({ navigation, route }: MainPageProps) => {
       }
 
       const isLiked = card.isLiked === true;
-      
+
       return (
         <>
           <View style={styles.imageHolder}>
@@ -1286,11 +1309,15 @@ const MainPage = ({ navigation, route }: MainPageProps) => {
                 >
                   {card.images.map((imageSource, imgIndex) => {
                     // Use the measured width from state, or fallback to calculated width
-                    const containerWidth = imageCarouselWidth || screenWidth * 0.75;
+                    const containerWidth =
+                      imageCarouselWidth || screenWidth * 0.75;
                     return (
-                      <View 
-                        key={`${card.id}-image-${imgIndex}`} 
-                        style={[styles.imageContainer, { width: containerWidth }]}
+                      <View
+                        key={`${card.id}-image-${imgIndex}`}
+                        style={[
+                          styles.imageContainer,
+                          { width: containerWidth },
+                        ]}
                       >
                         <Image
                           source={imageSource}
@@ -1556,22 +1583,21 @@ const MainPage = ({ navigation, route }: MainPageProps) => {
           >
             {card.article_number && (
               <ExpandableSection
-                title="Артикул"
+                title="артикул"
                 content={card.article_number}
               />
             )}
-            <ExpandableSection title="Описание" content={card.description} />
+            <ExpandableSection title="описание" content={card.description} />
             <ExpandableSection
-              title="Цвет"
+              title="цвет"
               content={translateColorToRussian(card.color)}
             />
+            <ExpandableSection title="материалы" content={card.materials} />
             <ExpandableSection
-              title="Материалы"
-              content={translateMaterialToRussian(card.materials)}
-            />
-            <ExpandableSection
-              title="Политика возврата"
-              content={card.brand_return_policy || "Политика возврата не указана"}
+              title="политика возврата"
+              content={
+                card.brand_return_policy || "политика возврата не указана"
+              }
             />
           </ScrollView>
         </View>
@@ -1785,7 +1811,9 @@ const MainPage = ({ navigation, route }: MainPageProps) => {
             if (apiCards.length > 0) {
               setCards((prevCards) => {
                 // Remove loading cards and add new ones
-                const filteredCards = prevCards.filter((c) => c.id !== LOADING_CARD_ID);
+                const filteredCards = prevCards.filter(
+                  (c) => c.id !== LOADING_CARD_ID
+                );
                 if (filteredCards.length >= MIN_CARDS_THRESHOLD) {
                   return prevCards;
                 }
@@ -1867,7 +1895,7 @@ const MainPage = ({ navigation, route }: MainPageProps) => {
               {cards.length > 0 ? (
                 <>
                   <Text style={styles.brandName} numberOfLines={1}>
-                    {cards[currentCardIndex]?.brand_name || "Бренд не указан"}
+                    {cards[currentCardIndex]?.brand_name || "бренд не указан"}
                   </Text>
                   <Text style={styles.price}>
                     {`${cards[currentCardIndex]?.price.toFixed(2) || "0.00"} ₽`}

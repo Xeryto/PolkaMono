@@ -93,6 +93,7 @@ interface SettingsProps {
     | "shopping"
     | "my_info"
     | "notifications"
+    | "privacy"
     | "documents"
     | null; // Initial section to show when embedded
 }
@@ -125,6 +126,7 @@ const Settings = ({
     | "shopping"
     | "my_info"
     | "notifications"
+    | "privacy"
     | "documents"
     | "delete_account"
     | null
@@ -168,6 +170,10 @@ const Settings = ({
     city: "",
     postalCode: "",
     fullName: "",
+    street: "",
+    houseNumber: "",
+    apartmentNumber: "",
+    index: "",
   });
   const phoneCountryCode = "+7"; // Fixed to Russian country code
   const [isLoadingShoppingInfo, setIsLoadingShoppingInfo] = useState(false);
@@ -175,6 +181,36 @@ const Settings = ({
     null
   );
   const [isSavingShoppingInfo, setIsSavingShoppingInfo] = useState(false);
+  const [deliveryScreenView, setDeliveryScreenView] = useState<
+    "main" | "address"
+  >("main");
+
+  // Focus state for address fields
+  const [focusedAddressField, setFocusedAddressField] = useState<string | null>(
+    null
+  );
+
+  // Animated values for address label positions (0 = left, 1 = right)
+  const streetLabelPos = useSharedValue(0);
+  const houseNumberLabelPos = useSharedValue(0);
+  const cityLabelPos = useSharedValue(0);
+  const apartmentNumberLabelPos = useSharedValue(0);
+  const indexLabelPos = useSharedValue(0);
+
+  // Shared values for address label widths (will be measured)
+  const streetLabelWidth = useSharedValue(0);
+  const houseNumberLabelWidth = useSharedValue(0);
+  const cityLabelWidth = useSharedValue(0);
+  const apartmentNumberLabelWidth = useSharedValue(0);
+  const indexLabelWidth = useSharedValue(0);
+
+  // Animated values for phone and delivery email label positions
+  const phoneLabelPos = useSharedValue(0);
+  const deliveryEmailLabelPos = useSharedValue(0);
+
+  // Shared values for phone and delivery email label widths
+  const phoneLabelWidth = useSharedValue(0);
+  const deliveryEmailLabelWidth = useSharedValue(0);
 
   // My Info state
   const [myInfo, setMyInfo] = useState({
@@ -196,6 +232,9 @@ const Settings = ({
 
   // Focus state for floating labels
   const [focusedField, setFocusedField] = useState<string | null>(null);
+  const [focusedShoppingField, setFocusedShoppingField] = useState<
+    string | null
+  >(null);
 
   // Animated values for label positions (0 = left, 1 = right)
   const firstNameLabelPos = useSharedValue(0);
@@ -242,6 +281,72 @@ const Settings = ({
     });
   }, [focusedField, myInfo.email]);
 
+  // Update address label positions based on focus/text state
+  useEffect(() => {
+    const shouldMoveRight =
+      focusedAddressField === "street" || !!shoppingInfo.street;
+    streetLabelPos.value = withTiming(shouldMoveRight ? 1 : 0, {
+      duration: 300,
+      easing: ReanimatedEasing.out(ReanimatedEasing.ease),
+    });
+  }, [focusedAddressField, shoppingInfo.street]);
+
+  useEffect(() => {
+    const shouldMoveRight =
+      focusedAddressField === "houseNumber" || !!shoppingInfo.houseNumber;
+    houseNumberLabelPos.value = withTiming(shouldMoveRight ? 1 : 0, {
+      duration: 300,
+      easing: ReanimatedEasing.out(ReanimatedEasing.ease),
+    });
+  }, [focusedAddressField, shoppingInfo.houseNumber]);
+
+  useEffect(() => {
+    const shouldMoveRight =
+      focusedAddressField === "city" || !!shoppingInfo.city;
+    cityLabelPos.value = withTiming(shouldMoveRight ? 1 : 0, {
+      duration: 300,
+      easing: ReanimatedEasing.out(ReanimatedEasing.ease),
+    });
+  }, [focusedAddressField, shoppingInfo.city]);
+
+  useEffect(() => {
+    const shouldMoveRight =
+      focusedAddressField === "apartmentNumber" ||
+      !!shoppingInfo.apartmentNumber;
+    apartmentNumberLabelPos.value = withTiming(shouldMoveRight ? 1 : 0, {
+      duration: 300,
+      easing: ReanimatedEasing.out(ReanimatedEasing.ease),
+    });
+  }, [focusedAddressField, shoppingInfo.apartmentNumber]);
+
+  useEffect(() => {
+    const shouldMoveRight =
+      focusedAddressField === "index" || !!shoppingInfo.index;
+    indexLabelPos.value = withTiming(shouldMoveRight ? 1 : 0, {
+      duration: 300,
+      easing: ReanimatedEasing.out(ReanimatedEasing.ease),
+    });
+  }, [focusedAddressField, shoppingInfo.index]);
+
+  // Update phone and email label positions
+  useEffect(() => {
+    const shouldMoveRight =
+      focusedShoppingField === "phoneNumber" || !!shoppingInfo.phoneNumber;
+    phoneLabelPos.value = withTiming(shouldMoveRight ? 1 : 0, {
+      duration: 300,
+      easing: ReanimatedEasing.out(ReanimatedEasing.ease),
+    });
+  }, [focusedShoppingField, shoppingInfo.phoneNumber]);
+
+  useEffect(() => {
+    const shouldMoveRight =
+      focusedShoppingField === "deliveryEmail" || !!shoppingInfo.deliveryEmail;
+    deliveryEmailLabelPos.value = withTiming(shouldMoveRight ? 1 : 0, {
+      duration: 300,
+      easing: ReanimatedEasing.out(ReanimatedEasing.ease),
+    });
+  }, [focusedShoppingField, shoppingInfo.deliveryEmail]);
+
   // Create animated styles at component level (hooks must be at top level)
   const firstNameAnimatedStyle = useAnimatedStyle(() => {
     const translateX = calculateTranslateX(
@@ -283,9 +388,91 @@ const Settings = ({
     };
   });
 
+  // Address field animated styles
+  const streetAnimatedStyle = useAnimatedStyle(() => {
+    const translateX = calculateTranslateX(
+      streetLabelPos.value,
+      streetLabelWidth.value || 50 // Fallback width for "улица"
+    );
+    return {
+      transform: [{ translateX }],
+    };
+  });
+
+  const houseNumberAnimatedStyle = useAnimatedStyle(() => {
+    const translateX = calculateTranslateX(
+      houseNumberLabelPos.value,
+      houseNumberLabelWidth.value || 80 // Fallback width for "номер дома"
+    );
+    return {
+      transform: [{ translateX }],
+    };
+  });
+
+  const cityAnimatedStyle = useAnimatedStyle(() => {
+    const translateX = calculateTranslateX(
+      cityLabelPos.value,
+      cityLabelWidth.value || 40 // Fallback width for "город"
+    );
+    return {
+      transform: [{ translateX }],
+    };
+  });
+
+  const apartmentNumberAnimatedStyle = useAnimatedStyle(() => {
+    const translateX = calculateTranslateX(
+      apartmentNumberLabelPos.value,
+      apartmentNumberLabelWidth.value || 120 // Fallback width for "номер квартиры"
+    );
+    return {
+      transform: [{ translateX }],
+    };
+  });
+
+  const indexAnimatedStyle = useAnimatedStyle(() => {
+    const translateX = calculateTranslateX(
+      indexLabelPos.value,
+      indexLabelWidth.value || 50 // Fallback width for "индекс"
+    );
+    return {
+      transform: [{ translateX }],
+    };
+  });
+
+  // Phone and delivery email animated styles
+  const phoneAnimatedStyle = useAnimatedStyle(() => {
+    const translateX = calculateTranslateX(
+      phoneLabelPos.value,
+      phoneLabelWidth.value || 60 // Fallback width for "телефон"
+    );
+    return {
+      transform: [{ translateX }],
+    };
+  });
+
+  const deliveryEmailAnimatedStyle = useAnimatedStyle(() => {
+    const translateX = calculateTranslateX(
+      deliveryEmailLabelPos.value,
+      deliveryEmailLabelWidth.value || 50 // Fallback width for "email"
+    );
+    return {
+      transform: [{ translateX }],
+    };
+  });
+
   // Helper function to set focused field
   const setFocusedFieldWithAnimation = (field: string | null) => {
     setFocusedField(field);
+  };
+
+  // Helper function to set focused address field
+  const setFocusedAddressFieldWithAnimation = (field: string | null) => {
+    setFocusedAddressField(field);
+  };
+
+  // Helper function to set focused shopping field (for phone/email)
+  const setFocusedShoppingFieldWithAnimation = (field: string | null) => {
+    setFocusedShoppingField(field);
   };
 
   // Debounce timer for username checking
@@ -294,6 +481,13 @@ const Settings = ({
   // Notifications state
   const [orderNotifications, setOrderNotifications] = useState(true);
   const [marketingNotifications, setMarketingNotifications] = useState(true);
+
+  // Privacy settings
+  type PrivacyOption = "nobody" | "friends" | "everyone";
+  const [sizePrivacy, setSizePrivacy] = useState<PrivacyOption>("friends");
+  const [recommendationsPrivacy, setRecommendationsPrivacy] =
+    useState<PrivacyOption>("friends");
+  const [likesPrivacy, setLikesPrivacy] = useState<PrivacyOption>("friends");
 
   // Cache duration: 5 minutes
   const STATS_CACHE_DURATION = 5 * 60 * 1000;
@@ -309,16 +503,16 @@ const Settings = ({
   const getStats = (): StatItem[] => {
     if (userStats) {
       return [
-        { label: "Куплено", value: userStats.items_purchased.toString() },
-        { label: "Пролистано", value: swipeCount.toString() }, // Use session storage count for real-time updates
+        { label: "куплено", value: userStats.items_purchased.toString() },
+        { label: "пролистано", value: swipeCount.toString() }, // Use session storage count for real-time updates
       ];
     }
 
     // Fallback to mock data while loading or on error
     return [
-      { label: "Куплено", value: "0" },
+      { label: "куплено", value: "0" },
       {
-        label: "Пролистано",
+        label: "пролистано",
         value: swipeCount > 0 ? swipeCount.toString() : "0",
       },
     ];
@@ -351,7 +545,7 @@ const Settings = ({
   const getBottomText = useCallback(() => {
     switch (activeSection) {
       case "shopping":
-        return "ДОСТАВКА";
+        return "АДРЕС";
       case "payment":
         return "ОПЛАТА";
       case "support":
@@ -360,6 +554,8 @@ const Settings = ({
         return "МОИ ДАННЫЕ";
       case "notifications":
         return "УВЕДОМЛЕНИЯ";
+      case "privacy":
+        return "ПРИВАТНОСТЬ";
       case "documents":
         return "ДОКУМЕНТЫ";
       case "delete_account":
@@ -371,6 +567,7 @@ const Settings = ({
 
   useEffect(() => {
     if (activeSection === "shopping") {
+      setDeliveryScreenView("main");
       loadShoppingInfo();
     }
     if (activeSection === "my_info") {
@@ -429,14 +626,14 @@ const Settings = ({
         // Don't show alert for auth errors
       } else if (error.status >= 500) {
         Alert.alert(
-          "Ошибка сервера",
-          "Проблема с сервером. Попробуйте позже.",
+          "ошибка сервера",
+          "проблема с сервером. попробуйте позже.",
           [{ text: "OK" }]
         );
       } else {
         Alert.alert(
-          "Ошибка загрузки",
-          "Не удалось загрузить профиль пользователя.",
+          "ошибка загрузки",
+          "не удалось загрузить профиль пользователя.",
           [{ text: "OK" }]
         );
       }
@@ -459,14 +656,14 @@ const Settings = ({
         // Don't show alert for auth errors
       } else if (error.status >= 500) {
         Alert.alert(
-          "Ошибка сервера",
-          "Проблема с сервером. Попробуйте позже.",
+          "ошибка сервера",
+          "проблема с сервером. попробуйте позже.",
           [{ text: "OK" }]
         );
       } else {
         Alert.alert(
           "Ошибка загрузки",
-          "Не удалось загрузить список брендов. Попробуйте позже.",
+          "не удалось загрузить список брендов. попробуйте позже.",
           [{ text: "OK" }]
         );
       }
@@ -543,17 +740,17 @@ const Settings = ({
         if (apiError.status === 401) {
           console.log("Authentication error updating user size");
         } else if (apiError.status >= 500) {
-          Alert.alert("Ошибка", "Проблема с сервером. Попробуйте позже.");
+          Alert.alert("ошибка", "проблема с сервером. попробуйте позже.");
         } else {
           Alert.alert(
             "Ошибка",
-            "Не удалось обновить размер. Попробуйте позже."
+            "не удалось обновить размер. попробуйте позже."
           );
         }
       }
     } catch (error: any) {
       console.error("Error updating user size:", error);
-      Alert.alert("Ошибка", "Не удалось обновить размер.");
+      Alert.alert("ошибка", "не удалось обновить размер.");
     }
   };
 
@@ -570,8 +767,8 @@ const Settings = ({
     } catch (error) {
       console.error("Error updating user brands:", error);
       Alert.alert(
-        "Ошибка обновления",
-        "Не удалось обновить любимые бренды. Попробуйте позже.",
+        "ошибка обновления",
+        "не удалось обновить любимые бренды. попробуйте позже.",
         [{ text: "OK" }]
       );
     }
@@ -593,17 +790,23 @@ const Settings = ({
       } else if (phoneNumber.startsWith("8")) {
         phoneNumber = phoneNumber.substring(1);
       }
+
+      // Load separate address fields from API
       setShoppingInfo({
-        address: shoppingData.address,
+        address: "", // Removed field, kept empty for state structure compatibility
         phoneNumber: phoneNumber,
         deliveryEmail: shoppingData.delivery_email,
-        city: shoppingData.city,
+        city: shoppingData.city || "",
         postalCode: shoppingData.postal_code || "",
+        index: shoppingData.postal_code || "",
         fullName: shoppingData.full_name || "", // Don't fallback to username
+        street: shoppingData.street || "",
+        houseNumber: shoppingData.house_number || "",
+        apartmentNumber: shoppingData.apartment_number || "",
       });
     } catch (error: any) {
       console.error("Error loading shopping information:", error);
-      setShoppingInfoError("Не удалось загрузить информацию о доставке.");
+      setShoppingInfoError("не удалось загрузить информацию о доставке.");
     } finally {
       setIsLoadingShoppingInfo(false);
     }
@@ -636,7 +839,7 @@ const Settings = ({
       }
     } catch (error: any) {
       console.error("Error loading my info:", error);
-      setMyInfoError("Не удалось загрузить данные.");
+      setMyInfoError("не удалось загрузить данные.");
     } finally {
       setIsLoadingMyInfo(false);
     }
@@ -646,6 +849,18 @@ const Settings = ({
   const debouncedCheckUsername = (username: string) => {
     if (usernameTimeoutRef.current) {
       clearTimeout(usernameTimeoutRef.current);
+    }
+
+    // Immediate validation for illegal characters and spaces (like in signup)
+    const illegalCharRegex = /[^a-zA-Z0-9#$-_!]/;
+    if (username.includes(" ")) {
+      setUsernameError("ник не должен содержать пробелов");
+      setUsernameAvailable(null);
+      return;
+    } else if (username.trim() && illegalCharRegex.test(username)) {
+      setUsernameError("ник содержит недопустимые символы");
+      setUsernameAvailable(null);
+      return;
     }
 
     usernameTimeoutRef.current = setTimeout(async () => {
@@ -665,7 +880,7 @@ const Settings = ({
           );
           setUsernameAvailable(available);
           if (!available) {
-            setUsernameError("Этот ник уже занят");
+            setUsernameError("этот ник уже занят");
           } else {
             setUsernameError("");
           }
@@ -678,7 +893,7 @@ const Settings = ({
       } else {
         setUsernameAvailable(null);
         if (username.trim().length > 0 && username.trim().length < 3) {
-          setUsernameError("Ник должен быть не менее 3 символов");
+          setUsernameError("ник должен быть не менее 3 символов");
         } else {
           setUsernameError("");
         }
@@ -695,46 +910,94 @@ const Settings = ({
     };
   }, []);
 
+  // Validate if form is valid (same validation as signup for username)
+  const isFormValid = useCallback(() => {
+    // Check required fields
+    if (!myInfo.firstName.trim()) return false;
+    if (!myInfo.lastName.trim()) return false;
+    if (!myInfo.gender) return false;
+
+    // Validate username (same rules as signup)
+    const illegalCharRegex = /[^a-zA-Z0-9#$-_!]/;
+    if (!myInfo.username.trim()) return false;
+    if (myInfo.username.trim().length < 3) return false;
+    if (myInfo.username.includes(" ")) return false;
+    if (illegalCharRegex.test(myInfo.username)) return false;
+    if (usernameAvailable === false) return false;
+    if (
+      usernameAvailable === null &&
+      isCheckingUsername &&
+      myInfo.username.trim() !== originalUsername.trim()
+    ) {
+      return false;
+    }
+
+    return true;
+  }, [
+    myInfo.firstName,
+    myInfo.lastName,
+    myInfo.gender,
+    myInfo.username,
+    usernameAvailable,
+    isCheckingUsername,
+    originalUsername,
+  ]);
+
+  // Validate address form - all fields required except apartmentNumber
+  const isAddressFormValid = useCallback(() => {
+    if (!shoppingInfo.street.trim()) return false;
+    if (!shoppingInfo.houseNumber.trim()) return false;
+    if (!shoppingInfo.city.trim()) return false;
+    if (!shoppingInfo.index.trim()) return false;
+    // apartmentNumber is optional, so we don't check it
+    return true;
+  }, [
+    shoppingInfo.street,
+    shoppingInfo.houseNumber,
+    shoppingInfo.city,
+    shoppingInfo.index,
+  ]);
+
   const saveMyInfo = async () => {
     // Validate required fields
     if (!myInfo.firstName.trim()) {
-      Alert.alert("Ошибка", "Пожалуйста, введите ваше имя.");
+      Alert.alert("ошибка", "пожалуйста, введите ваше имя.");
       return;
     }
 
     if (!myInfo.lastName.trim()) {
-      Alert.alert("Ошибка", "Пожалуйста, введите вашу фамилию.");
+      Alert.alert("ошибка", "пожалуйста, введите вашу фамилию.");
       return;
     }
 
     if (!myInfo.gender) {
-      Alert.alert("Ошибка", "Пожалуйста, выберите пол.");
+      Alert.alert("ошибка", "пожалуйста, выберите пол.");
       return;
     }
 
-    // Validate username
+    // Validate username (same as signup)
     const illegalCharRegex = /[^a-zA-Z0-9#$-_!]/;
     if (!myInfo.username.trim()) {
-      setUsernameError("Ник обязателен");
+      setUsernameError("ник обязателен");
       return;
     } else if (myInfo.username.trim().length < 3) {
-      setUsernameError("Ник должен быть не менее 3 символов");
+      setUsernameError("ник должен быть не менее 3 символов");
       return;
     } else if (myInfo.username.includes(" ")) {
-      setUsernameError("Ник не должен содержать пробелов");
+      setUsernameError("ник не должен содержать пробелов");
       return;
     } else if (illegalCharRegex.test(myInfo.username)) {
-      setUsernameError("Ник содержит недопустимые символы");
+      setUsernameError("ник содержит недопустимые символы");
       return;
     } else if (usernameAvailable === false) {
-      setUsernameError("Этот ник уже занят");
+      setUsernameError("этот ник уже занят");
       return;
     } else if (
       usernameAvailable === null &&
       isCheckingUsername &&
       myInfo.username.trim() !== originalUsername.trim()
     ) {
-      setUsernameError("Проверяем доступность ника...");
+      setUsernameError("проверяем доступность ника...");
       return;
     }
 
@@ -759,8 +1022,8 @@ const Settings = ({
       setActiveSection(null);
     } catch (error: any) {
       console.error("Error saving my info:", error);
-      setMyInfoError("Не удалось сохранить данные.");
-      Alert.alert("Ошибка", "Не удалось сохранить данные. Попробуйте позже.");
+      setMyInfoError("не удалось сохранить данные.");
+      Alert.alert("ошибка", "не удалось сохранить данные. попробуйте позже.");
     } finally {
       setIsSavingMyInfo(false);
     }
@@ -781,7 +1044,7 @@ const Settings = ({
       }
 
       if (!shoppingInfo.deliveryEmail.trim()) {
-        Alert.alert("Ошибка", "Пожалуйста, введите email для доставки.");
+        Alert.alert("ошибка", "пожалуйста, введите email для доставки.");
         return;
       }
 
@@ -795,43 +1058,48 @@ const Settings = ({
       if (phoneDigits.length !== 10) {
         Alert.alert(
           "Ошибка",
-          "Номер телефона должен содержать 10 цифр (без кода страны +7)."
+          "номер телефона должен содержать 10 цифр (без кода страны +7)."
         );
         return;
       }
 
-      if (!shoppingInfo.address.trim()) {
-        Alert.alert("Ошибка", "Пожалуйста, введите адрес доставки.");
+      // Validate street is provided
+      if (!shoppingInfo.street || !shoppingInfo.street.trim()) {
+        Alert.alert("ошибка", "пожалуйста, введите улицу.");
         return;
       }
 
       if (!shoppingInfo.city.trim()) {
-        Alert.alert("Ошибка", "Пожалуйста, введите город.");
+        Alert.alert("ошибка", "пожалуйста, введите город.");
         return;
       }
 
-      // Validate postal code format if provided (must be exactly 6 digits)
-      if (shoppingInfo.postalCode.trim()) {
-        const postalDigits = shoppingInfo.postalCode.replace(/\D/g, "");
+      // Validate postal code/index format if provided (must be exactly 6 digits)
+      const postalCodeToUse = shoppingInfo.index || shoppingInfo.postalCode;
+      if (postalCodeToUse.trim()) {
+        const postalDigits = postalCodeToUse.replace(/\D/g, "");
         if (postalDigits.length !== 6) {
           Alert.alert("Ошибка", "Почтовый индекс должен содержать 6 цифр.");
           return;
         }
       }
 
-      // Save shopping information using the new API
+      // Save shopping information using the new API with separate address fields
       // Combine country code and phone number
       const fullPhoneNumber = phoneCountryCode + phoneDigits;
       await api.updateShoppingInfo({
         full_name: shoppingInfo.fullName,
         delivery_email: shoppingInfo.deliveryEmail,
         phone: fullPhoneNumber,
-        address: shoppingInfo.address,
-        city: shoppingInfo.city,
-        postal_code: shoppingInfo.postalCode,
+        street: shoppingInfo.street.trim(),
+        house_number: shoppingInfo.houseNumber?.trim() || undefined,
+        apartment_number: shoppingInfo.apartmentNumber?.trim() || undefined,
+        city: shoppingInfo.city.trim(),
+        postal_code:
+          postalCodeToUse?.trim() || shoppingInfo.postalCode || undefined,
       });
 
-      Alert.alert("Успешно", "Информация о доставке сохранена.");
+      Alert.alert("успешно", "информация о доставке сохранена.");
     } catch (error: any) {
       console.error("Error saving shopping information:", error);
       // Check if it's a validation error from the backend
@@ -844,7 +1112,7 @@ const Settings = ({
         Array.isArray(errorMessage) && errorMessage[0]
           ? errorMessage[0].msg || errorMessage[0]
           : errorMessage;
-      Alert.alert("Ошибка", String(validationError));
+      Alert.alert("ошибка", String(validationError));
     } finally {
       setIsSavingShoppingInfo(false);
     }
@@ -939,17 +1207,17 @@ const Settings = ({
         if (apiError.status === 401) {
           console.log("Authentication error updating brands");
         } else if (apiError.status >= 500) {
-          Alert.alert("Ошибка", "Проблема с сервером. Попробуйте позже.");
+          Alert.alert("ошибка", "проблема с сервером. попробуйте позже.");
         } else {
           Alert.alert(
             "Ошибка",
-            "Не удалось обновить выбор бренда. Попробуйте позже."
+            "не удалось обновить выбор бренда. попробуйте позже."
           );
         }
       }
     } catch (error: any) {
       console.error("Error selecting brand:", error);
-      Alert.alert("Ошибка", "Не удалось обновить список брендов.");
+      Alert.alert("ошибка", "не удалось обновить список брендов.");
     }
   };
 
@@ -1188,7 +1456,7 @@ const Settings = ({
         <View style={styles.searchContainer}>
           <TextInput
             style={styles.searchInput}
-            placeholder="Поиск"
+            placeholder="поиск"
             placeholderTextColor="rgba(0,0,0,1)"
             value={searchQuery}
             onChangeText={handleSearch}
@@ -1215,6 +1483,7 @@ const Settings = ({
       | "shopping"
       | "my_info"
       | "notifications"
+      | "privacy"
       | "documents",
     delay: number
   ) => (
@@ -1241,11 +1510,12 @@ const Settings = ({
 
   const renderMainButtons = () => {
     const menuItems = [
-      { title: "Мои данные", section: "my_info" as const, delay: 50 },
-      { title: "Адрес доставки", section: "shopping" as const, delay: 100 },
-      { title: "Поддержка", section: "support" as const, delay: 150 },
-      { title: "Уведомления", section: "notifications" as const, delay: 200 },
-      { title: "Документы", section: "documents" as const, delay: 250 },
+      { title: "мои данные", section: "my_info" as const, delay: 50 },
+      { title: "адрес доставки", section: "shopping" as const, delay: 100 },
+      { title: "поддержка", section: "support" as const, delay: 150 },
+      { title: "уведомления", section: "notifications" as const, delay: 200 },
+      { title: "приватность", section: "privacy" as const, delay: 250 },
+      { title: "документы", section: "documents" as const, delay: 300 },
     ];
 
     return (
@@ -1318,7 +1588,7 @@ const Settings = ({
               exiting={FadeOut.duration(ANIMATION_DURATIONS.STANDARD)}
               style={styles.scrollHintContainer}
             >
-              <Text style={styles.scrollHintText}>Листай</Text>
+              <Text style={styles.scrollHintText}>листай</Text>
               <Scroll width={26} height={26} />
             </Animated.View>
           )}
@@ -1349,7 +1619,7 @@ const Settings = ({
                 }}
               >
                 <Text style={styles.deleteAccountButtonText}>
-                  Удалить аккаунт
+                  удалить аккаунт
                 </Text>
               </Pressable>
             </Animated.View>
@@ -1359,222 +1629,681 @@ const Settings = ({
     );
   };
 
-  const renderShoppingContent = () => (
-    <View style={styles.contentContainer}>
-      <Animated.View
-        style={styles.backButton}
-        entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
-          ANIMATION_DELAYS.LARGE
-        )}
-      >
-        <TouchableOpacity onPress={() => setActiveSection(null)}>
-          <BackIcon width={22} height={22} />
-        </TouchableOpacity>
-      </Animated.View>
-
-      <Animated.View
-        entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
-          ANIMATION_DELAYS.EXTENDED
-        )}
-        style={styles.shoppingTitleSection}
-      >
-        <Text style={styles.shoppingTitle}>Информация о доставке</Text>
-      </Animated.View>
-
-      {isLoadingShoppingInfo ? (
-        <Animated.View
-          entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
-            ANIMATION_DELAYS.VERY_LARGE
-          )}
-          style={styles.shoppingFormContainer}
-        >
-          <Text style={styles.loadingText}>Загрузка...</Text>
-        </Animated.View>
-      ) : shoppingInfoError ? (
-        <Animated.View
-          entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
-            ANIMATION_DELAYS.VERY_LARGE
-          )}
-          style={styles.shoppingFormContainer}
-        >
-          <Text style={styles.errorText}>{shoppingInfoError}</Text>
-        </Animated.View>
-      ) : (
-        <ScrollView
-          style={styles.shoppingForm}
-          showsVerticalScrollIndicator={false}
-        >
+  const renderShoppingContent = () => {
+    // Main screen with three oval buttons
+    if (deliveryScreenView === "main") {
+      return (
+        <View style={styles.contentContainer}>
           <Animated.View
+            style={styles.backButton}
             entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
-              ANIMATION_DELAYS.VERY_LARGE
+              ANIMATION_DELAYS.LARGE
             )}
-            style={styles.inputContainer}
           >
-            <Text style={styles.inputLabel}>Полное имя для доставки *</Text>
-            <TextInput
-              style={styles.textInput}
-              placeholder="Введите ваше полное имя для доставки"
-              placeholderTextColor="rgba(0,0,0,0.5)"
-              value={shoppingInfo.fullName}
-              onChangeText={(text) =>
-                setShoppingInfo((prev) => ({ ...prev, fullName: text }))
-              }
-            />
+            <TouchableOpacity onPress={() => setActiveSection(null)}>
+              <BackIcon width={22} height={22} />
+            </TouchableOpacity>
           </Animated.View>
 
-          <Animated.View
-            entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
-              ANIMATION_DELAYS.VERY_LARGE + ANIMATION_DELAYS.SMALL
-            )}
-            style={styles.inputContainer}
-          >
-            <Text style={styles.inputLabel}>Email для доставки *</Text>
-            <TextInput
-              style={styles.textInput}
-              placeholder="Введите email для доставки"
-              placeholderTextColor="rgba(0,0,0,0.5)"
-              value={shoppingInfo.deliveryEmail}
-              onChangeText={(text) =>
-                setShoppingInfo((prev) => ({ ...prev, deliveryEmail: text }))
-              }
-              keyboardType="email-address"
-              autoCapitalize="none"
-            />
-          </Animated.View>
-
-          <Animated.View
-            entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
-              ANIMATION_DELAYS.VERY_LARGE + ANIMATION_DELAYS.STANDARD
-            )}
-            style={styles.inputContainer}
-          >
-            <Text style={styles.inputLabel}>Телефон *</Text>
-            <View
-              style={{ flexDirection: "row", alignItems: "center", gap: 8 }}
+          {isLoadingShoppingInfo ? (
+            <Animated.View
+              entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
+                ANIMATION_DELAYS.VERY_LARGE
+              )}
+              style={styles.shoppingFormContainer}
             >
-              <View
-                style={{
-                  backgroundColor: "rgba(0,0,0,0.05)",
-                  paddingHorizontal: 12,
-                  paddingVertical: 12,
-                  borderRadius: 8,
-                  borderWidth: 1,
-                  borderColor: "rgba(0,0,0,0.1)",
-                }}
+              <Text style={styles.loadingText}>Загрузка...</Text>
+            </Animated.View>
+          ) : shoppingInfoError ? (
+            <Animated.View
+              entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
+                ANIMATION_DELAYS.VERY_LARGE
+              )}
+              style={styles.shoppingFormContainer}
+            >
+              <Text style={styles.errorText}>{shoppingInfoError}</Text>
+            </Animated.View>
+          ) : (
+            <View style={styles.myInfoScrollContainer}>
+              <ScrollView
+                style={styles.shoppingForm}
+                showsVerticalScrollIndicator={false}
               >
-                <Text style={{ fontSize: 16, fontWeight: "500" }}>
-                  {phoneCountryCode}
-                </Text>
+                {/* Address Button */}
+                <Animated.View
+                  entering={FadeInDown.duration(
+                    ANIMATION_DURATIONS.MEDIUM
+                  ).delay(ANIMATION_DELAYS.VERY_LARGE)}
+                  style={styles.myInfoInputContainer}
+                >
+                  <TouchableOpacity
+                    style={styles.myInfoOvalInput}
+                    onPress={() => {
+                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                      setDeliveryScreenView("address");
+                    }}
+                  >
+                    <Text style={styles.myInfoOvalInputText}>адрес</Text>
+                  </TouchableOpacity>
+                </Animated.View>
+
+                {/* Address Summary - only show if all required fields are filled */}
+                {(() => {
+                  // Check if all required fields are filled
+                  const allRequiredFieldsFilled =
+                    shoppingInfo.street.trim() &&
+                    shoppingInfo.houseNumber.trim() &&
+                    shoppingInfo.city.trim() &&
+                    shoppingInfo.index.trim();
+
+                  if (!allRequiredFieldsFilled) {
+                    return null;
+                  }
+
+                  const addressParts = [];
+                  addressParts.push(`ул. ${shoppingInfo.street}`);
+                  addressParts.push(`д. ${shoppingInfo.houseNumber}`);
+                  if (shoppingInfo.apartmentNumber) {
+                    addressParts.push(
+                      `кв./офис ${shoppingInfo.apartmentNumber}`
+                    );
+                  }
+                  addressParts.push(shoppingInfo.city);
+                  addressParts.push(shoppingInfo.index);
+                  const addressSummary = addressParts.join(", ");
+
+                  if (addressSummary) {
+                    return (
+                      <Animated.View
+                        entering={FadeInDown.duration(
+                          ANIMATION_DURATIONS.MEDIUM
+                        ).delay(
+                          ANIMATION_DELAYS.VERY_LARGE + ANIMATION_DELAYS.SMALL
+                        )}
+                        style={[
+                          styles.myInfoInputContainer,
+                          { marginTop: -10, marginBottom: 10 },
+                        ]}
+                      >
+                        <Text style={styles.addressSummaryText}>
+                          {addressSummary}
+                        </Text>
+                      </Animated.View>
+                    );
+                  }
+                  return null;
+                })()}
+
+                {/* Phone Number */}
+                <Animated.View
+                  entering={FadeInDown.duration(
+                    ANIMATION_DURATIONS.MEDIUM
+                  ).delay(ANIMATION_DELAYS.VERY_LARGE + ANIMATION_DELAYS.SMALL)}
+                  style={styles.myInfoInputContainer}
+                >
+                  <View style={styles.myInfoOvalInput}>
+                    <Animated.View
+                      style={[
+                        styles.floatingLabelContainer,
+                        phoneAnimatedStyle,
+                      ]}
+                    >
+                      <Text
+                        style={styles.floatingLabel}
+                        onLayout={(event) => {
+                          const { width } = event.nativeEvent.layout;
+                          if (width > 0) {
+                            phoneLabelWidth.value = width;
+                          }
+                        }}
+                      >
+                        телефон
+                      </Text>
+                    </Animated.View>
+                    <View
+                      style={{
+                        flexDirection: "row",
+                        alignItems: "center",
+                        gap: 8,
+                        flex: 1,
+                      }}
+                    >
+                      {shoppingInfo.phoneNumber && (
+                        <View
+                          style={{
+                            backgroundColor: "rgba(0,0,0,0.05)",
+                            paddingHorizontal: 12,
+                            paddingVertical: 8,
+                            borderRadius: 8,
+                          }}
+                        >
+                          <Text style={{ fontSize: 14, fontWeight: "500" }}>
+                            {phoneCountryCode}
+                          </Text>
+                        </View>
+                      )}
+                      <TextInput
+                        style={[
+                          styles.myInfoOvalTextInput,
+                          !shoppingInfo.phoneNumber &&
+                          focusedShoppingField !== "phoneNumber"
+                            ? styles.myInfoOvalTextInputEmpty
+                            : null,
+                          (focusedShoppingField === "phoneNumber" ||
+                            shoppingInfo.phoneNumber) &&
+                            styles.myInfoOvalTextInputWithLabel,
+                          { flex: 1 },
+                        ]}
+                        value={shoppingInfo.phoneNumber}
+                        onFocus={() =>
+                          setFocusedShoppingFieldWithAnimation("phoneNumber")
+                        }
+                        onBlur={() =>
+                          setFocusedShoppingFieldWithAnimation(null)
+                        }
+                        onChangeText={(text) => {
+                          const digitsOnly = text.replace(/\D/g, "");
+                          const limited = digitsOnly.substring(0, 10);
+                          setShoppingInfo((prev) => ({
+                            ...prev,
+                            phoneNumber: limited,
+                          }));
+                        }}
+                        keyboardType="phone-pad"
+                        maxLength={10}
+                        placeholder="XXX XXX XX XX"
+                        placeholderTextColor="transparent"
+                        onSubmitEditing={() => Keyboard.dismiss()}
+                        blurOnSubmit={true}
+                        returnKeyType="done"
+                      />
+                    </View>
+                  </View>
+                </Animated.View>
+
+                {/* Email */}
+                <Animated.View
+                  entering={FadeInDown.duration(
+                    ANIMATION_DURATIONS.MEDIUM
+                  ).delay(
+                    ANIMATION_DELAYS.VERY_LARGE + ANIMATION_DELAYS.STANDARD
+                  )}
+                  style={styles.myInfoInputContainer}
+                >
+                  <View style={styles.myInfoOvalInput}>
+                    <Animated.View
+                      style={[
+                        styles.floatingLabelContainer,
+                        deliveryEmailAnimatedStyle,
+                      ]}
+                    >
+                      <Text
+                        style={styles.floatingLabel}
+                        onLayout={(event) => {
+                          const { width } = event.nativeEvent.layout;
+                          if (width > 0) {
+                            deliveryEmailLabelWidth.value = width;
+                          }
+                        }}
+                      >
+                        email
+                      </Text>
+                    </Animated.View>
+                    <TextInput
+                      style={[
+                        styles.myInfoOvalTextInput,
+                        !shoppingInfo.deliveryEmail &&
+                        focusedShoppingField !== "deliveryEmail"
+                          ? styles.myInfoOvalTextInputEmpty
+                          : null,
+                        (focusedShoppingField === "deliveryEmail" ||
+                          shoppingInfo.deliveryEmail) &&
+                          styles.myInfoOvalTextInputWithLabel,
+                      ]}
+                      value={shoppingInfo.deliveryEmail}
+                      onFocus={() =>
+                        setFocusedShoppingFieldWithAnimation("deliveryEmail")
+                      }
+                      onBlur={() => setFocusedShoppingFieldWithAnimation(null)}
+                      onChangeText={(text) => {
+                        const cleanedText = text.replace(/\n/g, "");
+                        setShoppingInfo((prev) => ({
+                          ...prev,
+                          deliveryEmail: cleanedText,
+                        }));
+                      }}
+                      keyboardType="email-address"
+                      autoCapitalize="none"
+                      onSubmitEditing={() => Keyboard.dismiss()}
+                      blurOnSubmit={true}
+                      returnKeyType="done"
+                      multiline
+                      numberOfLines={2}
+                    />
+                  </View>
+                </Animated.View>
+              </ScrollView>
+
+              <View style={styles.myInfoConfirmButtonContainer}>
+                <TouchableOpacity
+                  style={[
+                    styles.confirmButton,
+                    (isSavingShoppingInfo ||
+                      !shoppingInfo.phoneNumber.trim() ||
+                      !shoppingInfo.deliveryEmail.trim()) &&
+                      styles.confirmButtonDisabled,
+                  ]}
+                  onPress={saveShoppingInfo}
+                  disabled={
+                    isSavingShoppingInfo ||
+                    !shoppingInfo.phoneNumber.trim() ||
+                    !shoppingInfo.deliveryEmail.trim()
+                  }
+                >
+                  <Text
+                    style={[
+                      styles.confirmButtonText,
+                      (isSavingShoppingInfo ||
+                        !shoppingInfo.phoneNumber.trim() ||
+                        !shoppingInfo.deliveryEmail.trim()) &&
+                        styles.confirmButtonDisabledText,
+                    ]}
+                  >
+                    {isSavingShoppingInfo ? "сохранение..." : "подтвердить"}
+                  </Text>
+                </TouchableOpacity>
               </View>
-              <TextInput
-                style={[styles.textInput, { flex: 1 }]}
-                placeholder="XXX XXX XX XX"
-                placeholderTextColor="rgba(0,0,0,0.5)"
-                value={shoppingInfo.phoneNumber}
-                onChangeText={(text) => {
-                  // Only allow digits
-                  const digitsOnly = text.replace(/\D/g, "");
-                  // Limit to 10 digits for Russian phone numbers
-                  const limited = digitsOnly.substring(0, 10);
-                  setShoppingInfo((prev) => ({
-                    ...prev,
-                    phoneNumber: limited,
-                  }));
-                }}
-                keyboardType="phone-pad"
-                maxLength={10}
-              />
             </View>
-          </Animated.View>
+          )}
+        </View>
+      );
+    }
 
-          <Animated.View
-            entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
-              ANIMATION_DELAYS.VERY_LARGE + ANIMATION_DELAYS.EXTENDED
-            )}
-            style={styles.inputContainer}
+    // Detailed address screen
+    return (
+      <View style={styles.contentContainer}>
+        <Animated.View
+          style={styles.backButton}
+          entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
+            ANIMATION_DELAYS.LARGE
+          )}
+        >
+          <TouchableOpacity
+            onPress={() => {
+              setDeliveryScreenView("main");
+            }}
           >
-            <Text style={styles.inputLabel}>Город *</Text>
-            <TextInput
-              style={styles.textInput}
-              placeholder="Введите город"
-              placeholderTextColor="rgba(0,0,0,0.5)"
-              value={shoppingInfo.city}
-              onChangeText={(text) =>
-                setShoppingInfo((prev) => ({ ...prev, city: text }))
+            <BackIcon width={22} height={22} />
+          </TouchableOpacity>
+        </Animated.View>
+
+        <View style={styles.myInfoScrollContainer}>
+          <FlatList
+            data={[
+              { type: "street", key: "street" },
+              { type: "houseNumber", key: "houseNumber" },
+              { type: "city", key: "city" },
+              { type: "apartmentNumber", key: "apartmentNumber" },
+              { type: "index", key: "index" },
+            ]}
+            renderItem={({ item }) => {
+              switch (item.type) {
+                case "street":
+                  return (
+                    <Animated.View
+                      entering={FadeInDown.duration(
+                        ANIMATION_DURATIONS.MEDIUM
+                      ).delay(ANIMATION_DELAYS.VERY_LARGE)}
+                      style={styles.myInfoInputContainer}
+                    >
+                      <View style={styles.myInfoOvalInput}>
+                        <Animated.View
+                          style={[
+                            styles.floatingLabelContainer,
+                            streetAnimatedStyle,
+                          ]}
+                        >
+                          <Text
+                            style={styles.floatingLabel}
+                            onLayout={(event) => {
+                              const { width } = event.nativeEvent.layout;
+                              if (width > 0) {
+                                streetLabelWidth.value = width;
+                              }
+                            }}
+                          >
+                            улица
+                          </Text>
+                        </Animated.View>
+                        <TextInput
+                          style={[
+                            styles.myInfoOvalTextInput,
+                            !shoppingInfo.street &&
+                            focusedAddressField !== "street"
+                              ? styles.myInfoOvalTextInputEmpty
+                              : null,
+                            (focusedAddressField === "street" ||
+                              shoppingInfo.street) &&
+                              styles.myInfoOvalTextInputWithLabel,
+                          ]}
+                          value={shoppingInfo.street}
+                          onFocus={() =>
+                            setFocusedAddressFieldWithAnimation("street")
+                          }
+                          onBlur={() =>
+                            setFocusedAddressFieldWithAnimation(null)
+                          }
+                          onChangeText={(text) => {
+                            const cleanedText = text.replace(/\n/g, "");
+                            setShoppingInfo((prev) => ({
+                              ...prev,
+                              street: cleanedText,
+                            }));
+                          }}
+                          onSubmitEditing={() => Keyboard.dismiss()}
+                          blurOnSubmit={true}
+                          returnKeyType="done"
+                          multiline
+                          numberOfLines={2}
+                        />
+                      </View>
+                    </Animated.View>
+                  );
+                case "houseNumber":
+                  return (
+                    <Animated.View
+                      entering={FadeInDown.duration(
+                        ANIMATION_DURATIONS.MEDIUM
+                      ).delay(
+                        ANIMATION_DELAYS.VERY_LARGE + ANIMATION_DELAYS.SMALL
+                      )}
+                      style={styles.myInfoInputContainer}
+                    >
+                      <View style={styles.myInfoOvalInput}>
+                        <Animated.View
+                          style={[
+                            styles.floatingLabelContainer,
+                            houseNumberAnimatedStyle,
+                          ]}
+                        >
+                          <Text
+                            style={styles.floatingLabel}
+                            onLayout={(event) => {
+                              const { width } = event.nativeEvent.layout;
+                              if (width > 0) {
+                                houseNumberLabelWidth.value = width;
+                              }
+                            }}
+                          >
+                            номер дома
+                          </Text>
+                        </Animated.View>
+                        <TextInput
+                          style={[
+                            styles.myInfoOvalTextInput,
+                            !shoppingInfo.houseNumber &&
+                            focusedAddressField !== "houseNumber"
+                              ? styles.myInfoOvalTextInputEmpty
+                              : null,
+                            (focusedAddressField === "houseNumber" ||
+                              shoppingInfo.houseNumber) &&
+                              styles.myInfoOvalTextInputWithLabel,
+                          ]}
+                          value={shoppingInfo.houseNumber}
+                          onFocus={() =>
+                            setFocusedAddressFieldWithAnimation("houseNumber")
+                          }
+                          onBlur={() =>
+                            setFocusedAddressFieldWithAnimation(null)
+                          }
+                          onChangeText={(text) => {
+                            const cleanedText = text.replace(/\n/g, "");
+                            setShoppingInfo((prev) => ({
+                              ...prev,
+                              houseNumber: cleanedText,
+                            }));
+                          }}
+                          onSubmitEditing={() => Keyboard.dismiss()}
+                          blurOnSubmit={true}
+                          returnKeyType="done"
+                          multiline
+                          numberOfLines={2}
+                        />
+                      </View>
+                    </Animated.View>
+                  );
+                case "city":
+                  return (
+                    <Animated.View
+                      entering={FadeInDown.duration(
+                        ANIMATION_DURATIONS.MEDIUM
+                      ).delay(
+                        ANIMATION_DELAYS.VERY_LARGE + ANIMATION_DELAYS.STANDARD
+                      )}
+                      style={styles.myInfoInputContainer}
+                    >
+                      <View style={styles.myInfoOvalInput}>
+                        <Animated.View
+                          style={[
+                            styles.floatingLabelContainer,
+                            cityAnimatedStyle,
+                          ]}
+                        >
+                          <Text
+                            style={styles.floatingLabel}
+                            onLayout={(event) => {
+                              const { width } = event.nativeEvent.layout;
+                              if (width > 0) {
+                                cityLabelWidth.value = width;
+                              }
+                            }}
+                          >
+                            город
+                          </Text>
+                        </Animated.View>
+                        <TextInput
+                          style={[
+                            styles.myInfoOvalTextInput,
+                            !shoppingInfo.city && focusedAddressField !== "city"
+                              ? styles.myInfoOvalTextInputEmpty
+                              : null,
+                            (focusedAddressField === "city" ||
+                              shoppingInfo.city) &&
+                              styles.myInfoOvalTextInputWithLabel,
+                          ]}
+                          value={shoppingInfo.city}
+                          onFocus={() =>
+                            setFocusedAddressFieldWithAnimation("city")
+                          }
+                          onBlur={() =>
+                            setFocusedAddressFieldWithAnimation(null)
+                          }
+                          onChangeText={(text) => {
+                            const cleanedText = text.replace(/\n/g, "");
+                            setShoppingInfo((prev) => ({
+                              ...prev,
+                              city: cleanedText,
+                            }));
+                          }}
+                          onSubmitEditing={() => Keyboard.dismiss()}
+                          blurOnSubmit={true}
+                          returnKeyType="done"
+                          multiline
+                          numberOfLines={2}
+                        />
+                      </View>
+                    </Animated.View>
+                  );
+                case "apartmentNumber":
+                  return (
+                    <Animated.View
+                      entering={FadeInDown.duration(
+                        ANIMATION_DURATIONS.MEDIUM
+                      ).delay(
+                        ANIMATION_DELAYS.VERY_LARGE + ANIMATION_DELAYS.EXTENDED
+                      )}
+                      style={styles.myInfoInputContainer}
+                    >
+                      <View style={styles.myInfoOvalInput}>
+                        <Animated.View
+                          style={[
+                            styles.floatingLabelContainer,
+                            apartmentNumberAnimatedStyle,
+                          ]}
+                        >
+                          <Text
+                            style={styles.floatingLabel}
+                            onLayout={(event) => {
+                              const { width } = event.nativeEvent.layout;
+                              if (width > 0) {
+                                apartmentNumberLabelWidth.value = width;
+                              }
+                            }}
+                          >
+                            {focusedAddressField === "apartmentNumber" ||
+                            shoppingInfo.apartmentNumber
+                              ? "кв./офис"
+                              : "квартира/офис"}
+                          </Text>
+                        </Animated.View>
+                        <TextInput
+                          style={[
+                            styles.myInfoOvalTextInput,
+                            !shoppingInfo.apartmentNumber &&
+                            focusedAddressField !== "apartmentNumber"
+                              ? styles.myInfoOvalTextInputEmpty
+                              : null,
+                            (focusedAddressField === "apartmentNumber" ||
+                              shoppingInfo.apartmentNumber) &&
+                              styles.myInfoOvalTextInputWithLabel,
+                          ]}
+                          value={shoppingInfo.apartmentNumber}
+                          onFocus={() =>
+                            setFocusedAddressFieldWithAnimation(
+                              "apartmentNumber"
+                            )
+                          }
+                          onBlur={() =>
+                            setFocusedAddressFieldWithAnimation(null)
+                          }
+                          onChangeText={(text) => {
+                            const cleanedText = text.replace(/\n/g, "");
+                            setShoppingInfo((prev) => ({
+                              ...prev,
+                              apartmentNumber: cleanedText,
+                            }));
+                          }}
+                          onSubmitEditing={() => Keyboard.dismiss()}
+                          blurOnSubmit={true}
+                          returnKeyType="done"
+                          multiline
+                          numberOfLines={2}
+                        />
+                      </View>
+                    </Animated.View>
+                  );
+                case "index":
+                  return (
+                    <Animated.View
+                      entering={FadeInDown.duration(
+                        ANIMATION_DURATIONS.MEDIUM
+                      ).delay(
+                        ANIMATION_DELAYS.VERY_LARGE + ANIMATION_DELAYS.LARGE
+                      )}
+                      style={styles.myInfoInputContainer}
+                    >
+                      <View style={styles.myInfoOvalInput}>
+                        <Animated.View
+                          style={[
+                            styles.floatingLabelContainer,
+                            indexAnimatedStyle,
+                          ]}
+                        >
+                          <Text
+                            style={styles.floatingLabel}
+                            onLayout={(event) => {
+                              const { width } = event.nativeEvent.layout;
+                              if (width > 0) {
+                                indexLabelWidth.value = width;
+                              }
+                            }}
+                          >
+                            индекс
+                          </Text>
+                        </Animated.View>
+                        <TextInput
+                          style={[
+                            styles.myInfoOvalTextInput,
+                            !shoppingInfo.index &&
+                            focusedAddressField !== "index"
+                              ? styles.myInfoOvalTextInputEmpty
+                              : null,
+                            (focusedAddressField === "index" ||
+                              shoppingInfo.index) &&
+                              styles.myInfoOvalTextInputWithLabel,
+                          ]}
+                          value={shoppingInfo.index}
+                          onFocus={() =>
+                            setFocusedAddressFieldWithAnimation("index")
+                          }
+                          onBlur={() =>
+                            setFocusedAddressFieldWithAnimation(null)
+                          }
+                          onChangeText={(text) => {
+                            const cleanedText = text
+                              .replace(/\D/g, "")
+                              .substring(0, 6);
+                            setShoppingInfo((prev) => ({
+                              ...prev,
+                              index: cleanedText,
+                            }));
+                          }}
+                          keyboardType="numeric"
+                          maxLength={6}
+                          onSubmitEditing={() => Keyboard.dismiss()}
+                          blurOnSubmit={true}
+                          returnKeyType="done"
+                        />
+                      </View>
+                    </Animated.View>
+                  );
+                default:
+                  return null;
               }
-            />
-          </Animated.View>
-
-          <Animated.View
-            entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
-              ANIMATION_DELAYS.VERY_LARGE + ANIMATION_DELAYS.LARGE
-            )}
-            style={styles.inputContainer}
-          >
-            <Text style={styles.inputLabel}>Почтовый индекс</Text>
-            <TextInput
-              style={styles.textInput}
-              placeholder="XXXXXX (6 цифр)"
-              placeholderTextColor="rgba(0,0,0,0.5)"
-              value={shoppingInfo.postalCode}
-              onChangeText={(text) => {
-                // Only allow digits
-                const digitsOnly = text.replace(/\D/g, "");
-                // Limit to 6 digits for Russian postal codes
-                const limited = digitsOnly.substring(0, 6);
-                setShoppingInfo((prev) => ({ ...prev, postalCode: limited }));
-              }}
-              keyboardType="numeric"
-              maxLength={6}
-            />
-          </Animated.View>
-
-          <Animated.View
-            entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
-              ANIMATION_DELAYS.VERY_LARGE + ANIMATION_DELAYS.EXTENDED
-            )}
-            style={styles.inputContainer}
-          >
-            <Text style={styles.inputLabel}>Адрес доставки *</Text>
-            <TextInput
-              style={[styles.textInput, styles.textArea]}
-              placeholder="Введите полный адрес доставки"
-              placeholderTextColor="rgba(0,0,0,0.5)"
-              value={shoppingInfo.address}
-              onChangeText={(text) =>
-                setShoppingInfo((prev) => ({ ...prev, address: text }))
-              }
-              multiline
-              numberOfLines={3}
-            />
-          </Animated.View>
-
-          <Animated.View
-            entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
-              ANIMATION_DELAYS.VERY_LARGE + ANIMATION_DELAYS.VERY_LARGE
-            )}
-            style={styles.saveButtonContainer}
-          >
-            <Pressable
+            }}
+            keyExtractor={(item) => item.key}
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={styles.myInfoFlatListContent}
+            style={styles.myInfoFlatList}
+          />
+          <View style={styles.myInfoConfirmButtonContainer}>
+            <TouchableOpacity
               style={[
-                styles.saveButton,
-                isSavingShoppingInfo && styles.saveButtonDisabled,
+                styles.confirmButton,
+                (isSavingShoppingInfo || !isAddressFormValid()) &&
+                  styles.confirmButtonDisabled,
               ]}
               onPress={saveShoppingInfo}
-              disabled={isSavingShoppingInfo}
+              disabled={isSavingShoppingInfo || !isAddressFormValid()}
             >
-              <Text style={styles.saveButtonText}>
-                {isSavingShoppingInfo ? "Сохранение..." : "Сохранить"}
+              <Text
+                style={[
+                  styles.confirmButtonText,
+                  (isSavingShoppingInfo || !isAddressFormValid()) &&
+                    styles.confirmButtonDisabledText,
+                ]}
+              >
+                {isSavingShoppingInfo ? "сохранение..." : "подтвердить"}
               </Text>
-            </Pressable>
-          </Animated.View>
-        </ScrollView>
-      )}
-    </View>
-  );
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
+    );
+  };
 
   const renderSupportContent = () => (
-    <View style={styles.contentContainer}>
+    <View style={[styles.contentContainer, { paddingTop: 0 }]}>
       <View style={styles.topContent}>
         <Animated.View
           style={styles.backButtonAlt}
@@ -1597,7 +2326,7 @@ const Settings = ({
             ) : (
               <TextInput
                 style={styles.searchInput}
-                placeholder="Ввести бренд"
+                placeholder="ввести бренд"
                 placeholderTextColor="rgba(0,0,0,1)"
                 value={supportMessage}
                 onChangeText={setSupportMessage}
@@ -1616,10 +2345,10 @@ const Settings = ({
           style={{ marginTop: 20 }}
         >
           <Text style={styles.sectionTitle}>
-            Хотите видеть больше брендов на платформе?
+            хотите видеть больше брендов на платформе?
           </Text>
           <Text style={styles.sectionTitle}>
-            Напишите и мы постараемся добавить их в скором времени
+            напишите и мы постараемся добавить их в скором времени
           </Text>
         </Animated.View>
       </View>
@@ -1631,7 +2360,7 @@ const Settings = ({
         style={styles.supportContainer}
       >
         <Text style={styles.supportText}>
-          В случае любых вопросов напишите на почту{" "}
+          в случае любых вопросов напишите на почту{" "}
         </Text>
         <TouchableOpacity
           onPress={() => Linking.openURL("mailto:support@polkamarket.ru")}
@@ -1668,7 +2397,7 @@ const Settings = ({
             >
               <View style={styles.myInfoOvalInputGender}>
                 <View style={styles.genderTextContainer}>
-                  <Text style={styles.myInfoOvalInputText}>Пол</Text>
+                  <Text style={styles.myInfoOvalInputText}>пол</Text>
                 </View>
                 <View style={styles.genderCirclesContainer}>
                   <TouchableOpacity
@@ -1724,7 +2453,7 @@ const Settings = ({
                       }
                     }}
                   >
-                    Имя
+                    имя
                   </Text>
                 </Animated.View>
                 <TextInput
@@ -1740,8 +2469,15 @@ const Settings = ({
                   onFocus={() => setFocusedFieldWithAnimation("firstName")}
                   onBlur={() => setFocusedFieldWithAnimation(null)}
                   onChangeText={(text) => {
-                    setMyInfo((prev) => ({ ...prev, firstName: text }));
+                    // Remove newlines - Enter should dismiss keyboard, not create new line
+                    const cleanedText = text.replace(/\n/g, "");
+                    setMyInfo((prev) => ({ ...prev, firstName: cleanedText }));
                   }}
+                  onSubmitEditing={() => {
+                    Keyboard.dismiss();
+                  }}
+                  blurOnSubmit={true}
+                  returnKeyType="done"
                   multiline
                   numberOfLines={2}
                 />
@@ -1769,7 +2505,7 @@ const Settings = ({
                       }
                     }}
                   >
-                    Фамилия
+                    фамилия
                   </Text>
                 </Animated.View>
                 <TextInput
@@ -1785,8 +2521,15 @@ const Settings = ({
                   onFocus={() => setFocusedFieldWithAnimation("lastName")}
                   onBlur={() => setFocusedFieldWithAnimation(null)}
                   onChangeText={(text) => {
-                    setMyInfo((prev) => ({ ...prev, lastName: text }));
+                    // Remove newlines - Enter should dismiss keyboard, not create new line
+                    const cleanedText = text.replace(/\n/g, "");
+                    setMyInfo((prev) => ({ ...prev, lastName: cleanedText }));
                   }}
+                  onSubmitEditing={() => {
+                    Keyboard.dismiss();
+                  }}
+                  blurOnSubmit={true}
+                  returnKeyType="done"
                   multiline
                   numberOfLines={2}
                 />
@@ -1829,7 +2572,7 @@ const Settings = ({
                         }
                       }}
                     >
-                      Никнейм
+                      никнейм
                     </Text>
                   </Animated.View>
                   <TextInput
@@ -1846,31 +2589,19 @@ const Settings = ({
                     onFocus={() => setFocusedFieldWithAnimation("username")}
                     onBlur={() => setFocusedFieldWithAnimation(null)}
                     onChangeText={(text) => {
-                      setMyInfo((prev) => ({ ...prev, username: text }));
-                      debouncedCheckUsername(text);
+                      // Remove newlines - Enter should dismiss keyboard, not create new line
+                      const cleanedText = text.replace(/\n/g, "");
+                      setMyInfo((prev) => ({ ...prev, username: cleanedText }));
+                      debouncedCheckUsername(cleanedText);
                     }}
+                    onSubmitEditing={() => {
+                      Keyboard.dismiss();
+                    }}
+                    blurOnSubmit={true}
+                    returnKeyType="done"
                     multiline
                     numberOfLines={2}
                   />
-                  {isCheckingUsername && (
-                    <ActivityIndicator
-                      size="small"
-                      color="#FFA500"
-                      style={styles.myInfoStatusIndicator}
-                    />
-                  )}
-                  {usernameAvailable === true &&
-                    !isCheckingUsername &&
-                    myInfo.username.trim() !== originalUsername.trim() && (
-                      <Text
-                        style={[
-                          styles.myInfoStatusText,
-                          styles.statusTextSuccess,
-                        ]}
-                      >
-                        ✓
-                      </Text>
-                    )}
                   {usernameAvailable === false && !isCheckingUsername && (
                     <Text
                       style={[styles.myInfoStatusText, styles.statusTextError]}
@@ -1906,7 +2637,7 @@ const Settings = ({
                       }
                     }}
                   >
-                    Email
+                    email
                   </Text>
                 </Animated.View>
                 <TextInput
@@ -1917,6 +2648,11 @@ const Settings = ({
                   ]}
                   value={myInfo.email}
                   editable={false}
+                  onSubmitEditing={() => {
+                    Keyboard.dismiss();
+                  }}
+                  blurOnSubmit={true}
+                  returnKeyType="done"
                   multiline
                   numberOfLines={2}
                 />
@@ -1939,15 +2675,6 @@ const Settings = ({
           <TouchableOpacity onPress={() => setActiveSection(null)}>
             <BackIcon width={22} height={22} />
           </TouchableOpacity>
-        </Animated.View>
-
-        <Animated.View
-          entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
-            ANIMATION_DELAYS.EXTENDED
-          )}
-          style={styles.shoppingTitleSection}
-        >
-          <Text style={styles.shoppingTitle}>Мои данные</Text>
         </Animated.View>
 
         {isLoadingMyInfo ? (
@@ -1982,18 +2709,20 @@ const Settings = ({
               <TouchableOpacity
                 style={[
                   styles.confirmButton,
-                  isSavingMyInfo && styles.confirmButtonDisabled,
+                  (isSavingMyInfo || !isFormValid()) &&
+                    styles.confirmButtonDisabled,
                 ]}
                 onPress={saveMyInfo}
-                disabled={isSavingMyInfo}
+                disabled={isSavingMyInfo || !isFormValid()}
               >
                 <Text
                   style={[
                     styles.confirmButtonText,
-                    isSavingMyInfo && styles.confirmButtonDisabledText,
+                    (isSavingMyInfo || !isFormValid()) &&
+                      styles.confirmButtonDisabledText,
                   ]}
                 >
-                  {isSavingMyInfo ? "Сохранение..." : "Подтвердить"}
+                  {isSavingMyInfo ? "сохранение..." : "подтвердить"}
                 </Text>
               </TouchableOpacity>
             </View>
@@ -2014,6 +2743,119 @@ const Settings = ({
     setMarketingNotifications(value);
   };
 
+  const renderPrivacyContent = () => {
+    const privacyOptions: PrivacyOption[] = ["nobody", "friends", "everyone"];
+    const getPrivacyLabel = (option: PrivacyOption): string => {
+      switch (option) {
+        case "nobody":
+          return "никто";
+        case "friends":
+          return "друзья";
+        case "everyone":
+          return "все";
+        default:
+          return "";
+      }
+    };
+
+    const privacyItems = [
+      {
+        id: "size",
+        label: "мой размер",
+        value: sizePrivacy,
+        onChange: setSizePrivacy,
+        delay: ANIMATION_DELAYS.VERY_LARGE + ANIMATION_DELAYS.SMALL,
+      },
+      {
+        id: "recommendations",
+        label: "мои рекомендации",
+        value: recommendationsPrivacy,
+        onChange: setRecommendationsPrivacy,
+        delay: ANIMATION_DELAYS.VERY_LARGE + ANIMATION_DELAYS.STANDARD,
+      },
+      {
+        id: "likes",
+        label: "мои лайки",
+        value: likesPrivacy,
+        onChange: setLikesPrivacy,
+        delay: ANIMATION_DELAYS.VERY_LARGE + ANIMATION_DELAYS.MEDIUM,
+      },
+    ];
+
+    const renderPrivacyOval = ({
+      item,
+    }: {
+      item: {
+        id: string;
+        label: string;
+        value: PrivacyOption;
+        onChange: (value: PrivacyOption) => void;
+        delay: number;
+      };
+    }) => (
+      <Animated.View
+        entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
+          item.delay
+        )}
+        style={styles.myInfoInputContainer}
+      >
+        <View style={styles.myInfoOvalInputGender}>
+          <View style={styles.privacyRowContainer}>
+            <View style={styles.genderTextContainer}>
+              <Text style={styles.myInfoOvalInputText}>{item.label}</Text>
+            </View>
+            <TouchableOpacity
+              style={styles.privacyOptionOval}
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                const currentIndex = privacyOptions.indexOf(item.value);
+                const nextIndex = (currentIndex + 1) % privacyOptions.length;
+                item.onChange(privacyOptions[nextIndex]);
+              }}
+            >
+              <Text style={styles.privacyOptionText}>
+                {getPrivacyLabel(item.value)}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Animated.View>
+    );
+
+    return (
+      <View style={styles.contentContainer}>
+        <Animated.View
+          style={styles.backButton}
+          entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
+            ANIMATION_DELAYS.LARGE
+          )}
+        >
+          <TouchableOpacity onPress={() => setActiveSection(null)}>
+            <BackIcon width={22} height={22} />
+          </TouchableOpacity>
+        </Animated.View>
+
+        <Animated.View
+          entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
+            ANIMATION_DELAYS.VERY_LARGE
+          )}
+          style={styles.privacySectionTitle}
+        >
+          <Text style={styles.privacySectionTitleText}>кто видит:</Text>
+        </Animated.View>
+
+        <FlatList
+          data={privacyItems}
+          renderItem={renderPrivacyOval}
+          keyExtractor={(item) => item.id}
+          style={[styles.myInfoFlatList, { left: 0 }]}
+          contentContainerStyle={styles.myInfoFlatListContent}
+          showsVerticalScrollIndicator={false}
+        />
+      </View>
+    );
+  };
+
   const renderNotificationsContent = () => (
     <View style={styles.contentContainer}>
       <Animated.View
@@ -2027,15 +2869,6 @@ const Settings = ({
         </TouchableOpacity>
       </Animated.View>
 
-      <Animated.View
-        entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
-          ANIMATION_DELAYS.EXTENDED
-        )}
-        style={styles.shoppingTitleSection}
-      >
-        <Text style={styles.shoppingTitle}>Уведомления</Text>
-      </Animated.View>
-
       <View style={styles.notificationsContainer}>
         <Animated.View
           entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
@@ -2045,7 +2878,7 @@ const Settings = ({
         >
           <View style={styles.notificationItem}>
             <Text style={styles.notificationItemText}>
-              Уведомления о заказах
+              уведомления о заказах
             </Text>
             <View style={styles.switchContainer}>
               <Switch
@@ -2067,7 +2900,7 @@ const Settings = ({
         >
           <View style={styles.notificationItem}>
             <Text style={styles.notificationItemText}>
-              Маркетинговые уведомления
+              маркетинговые уведомления
             </Text>
             <View style={styles.switchContainer}>
               <Switch
@@ -2106,7 +2939,7 @@ const Settings = ({
         >
           <View style={styles.deleteAccountQuestion}>
             <Text style={styles.deleteAccountQuestionText}>
-              Уверены, что хотите удалить аккаунт?
+              уверены, что хотите удалить аккаунт?
             </Text>
           </View>
         </Animated.View>
@@ -2124,12 +2957,12 @@ const Settings = ({
                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
                 // TODO: Implement account deletion
                 Alert.alert(
-                  "Уведомление",
-                  "Функция удаления аккаунта будет доступна в ближайшее время."
+                  "уведомление",
+                  "функция удаления аккаунта будет доступна в ближайшее время."
                 );
               }}
             >
-              <Text style={styles.deleteAccountYesButtonText}>Да</Text>
+              <Text style={styles.deleteAccountYesButtonText}>да</Text>
             </Pressable>
           </Animated.View>
 
@@ -2146,7 +2979,7 @@ const Settings = ({
                 setActiveSection(null);
               }}
             >
-              <Text style={styles.deleteAccountNoButtonText}>Нет</Text>
+              <Text style={styles.deleteAccountNoButtonText}>нет</Text>
             </Pressable>
           </Animated.View>
         </View>
@@ -2158,7 +2991,7 @@ const Settings = ({
           style={styles.deleteAccountWarningContainer}
         >
           <Text style={styles.deleteAccountWarningText}>
-            Это действия нельзя обратить. Персональные данные удалятся
+            это действия нельзя обратить. персональные данные удалятся
           </Text>
         </Animated.View>
       </View>
@@ -2175,6 +3008,8 @@ const Settings = ({
         return renderMyInfoContent();
       case "notifications":
         return renderNotificationsContent();
+      case "privacy":
+        return renderPrivacyContent();
       case "delete_account":
         return renderDeleteAccountContent();
       case "payment":
@@ -2194,8 +3029,8 @@ const Settings = ({
             </Animated.View>
             <View style={styles.placeholderContainer}>
               <Text style={styles.placeholderText}>
-                {activeSection === "payment" && "Оплата"}
-                {activeSection === "documents" && "Документы"}
+                {activeSection === "payment" && "оплата"}
+                {activeSection === "documents" && "документы"}
               </Text>
               <Text style={styles.placeholderSubtext}>Раздел в разработке</Text>
             </View>
@@ -2571,6 +3406,7 @@ const styles = StyleSheet.create({
     height: "100%",
     justifyContent: "space-between",
     alignItems: "center",
+    paddingTop: 40,
   },
   backButton: {
     position: "absolute",
@@ -3073,8 +3909,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   shoppingForm: {
-    width: "100%",
+    width: 0.88 * width,
     paddingHorizontal: 20,
+    borderRadius: 41,
+    left: -height * 0.025,
   },
   inputContainer: {
     marginBottom: 20,
@@ -3112,12 +3950,15 @@ const styles = StyleSheet.create({
     position: "relative",
   },
   inputError: {
+    borderWidth: 2,
     borderColor: "rgba(255, 100, 100, 0.7)",
   },
   inputSuccess: {
-    borderColor: "rgba(0, 170, 0, 0.7)",
+    borderWidth: 2,
+    borderColor: "rgba(0, 170, 0, 0.4)",
   },
   inputChecking: {
+    borderWidth: 2,
     borderColor: "rgba(255, 165, 0, 0.7)",
   },
   statusIndicator: {
@@ -3297,6 +4138,14 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     textAlign: "center",
   },
+  addressSummaryText: {
+    fontFamily: "IgraSans",
+    fontSize: 14,
+    color: "rgba(0,0,0,0.6)",
+    textAlign: "left",
+    paddingHorizontal: 20,
+    lineHeight: 20,
+  },
   myInfoOvalInput: {
     backgroundColor: "#E2CCB2",
     borderRadius: 41,
@@ -3401,7 +4250,7 @@ const styles = StyleSheet.create({
     width: height * 0.1, // Account for 2px border on each side
     height: height * 0.1,
     borderRadius: (height * 0.1) / 2,
-    backgroundColor: "#D8B68F",
+    backgroundColor: "#DEC2A1",
     justifyContent: "center",
     alignItems: "center",
     opacity: 0.6,
@@ -3412,13 +4261,51 @@ const styles = StyleSheet.create({
     elevation: 6,
   },
   genderCircleSelected: {
-    backgroundColor: "#AD7E49",
+    backgroundColor: "#C5A077",
   },
   genderCircleText: {
     fontFamily: "IgraSans",
     fontSize: 17,
     color: "#000",
     fontWeight: "bold",
+  },
+  privacySectionTitle: {
+    marginBottom: 20,
+    textAlign: "left",
+    width: "100%",
+    paddingHorizontal: height * 0.025,
+  },
+  privacySectionTitleText: {
+    fontFamily: "IgraSans",
+    fontSize: 20,
+    color: "#000",
+  },
+  privacyOptionText: {
+    fontFamily: "IgraSans",
+    fontSize: 16,
+    color: "#000",
+  },
+  privacyRowContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    flex: 1,
+  },
+  privacyOptionOval: {
+    backgroundColor: "#DEC2A1",
+    borderRadius: 41,
+    paddingHorizontal: 20,
+    paddingVertical: 0,
+    height: height * 0.1,
+    width: width * 0.275,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 6,
   },
   myInfoStatusIndicator: {
     position: "absolute",

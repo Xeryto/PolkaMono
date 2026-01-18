@@ -131,7 +131,7 @@ const ForgotPasswordScreen: React.FC<ForgotPasswordScreenProps> = ({
                     <View style={styles.inputContainer}>
                       <TextInput
                         style={[styles.input, error ? styles.inputError : null]}
-                        placeholder="Имя пользователя или Email"
+                        placeholder="имя пользователя или email"
                         placeholderTextColor="rgba(0, 0, 0, 1)"
                         autoCapitalize="none"
                         autoComplete="email"

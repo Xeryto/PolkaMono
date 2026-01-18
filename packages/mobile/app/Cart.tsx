@@ -292,26 +292,26 @@ const Cart = ({ navigation }: CartProps) => {
       const missingFields: string[] = [];
 
       if (!shoppingInfo.full_name || shoppingInfo.full_name.trim() === "") {
-        missingFields.push("Полное имя");
+        missingFields.push("полное имя");
       }
 
       if (!shoppingInfo.phone || shoppingInfo.phone.trim() === "") {
-        missingFields.push("Телефон");
+        missingFields.push("телефон");
       }
 
-      if (!shoppingInfo.address || shoppingInfo.address.trim() === "") {
-        missingFields.push("Адрес");
+      if (!shoppingInfo.street || shoppingInfo.street.trim() === "") {
+        missingFields.push("улица");
       }
 
       if (!shoppingInfo.city || shoppingInfo.city.trim() === "") {
-        missingFields.push("Город");
+        missingFields.push("город");
       }
 
       if (
         !shoppingInfo.delivery_email ||
         shoppingInfo.delivery_email.trim() === ""
       ) {
-        missingFields.push("Email для доставки");
+        missingFields.push("email для доставки");
       }
 
       return {
@@ -322,7 +322,7 @@ const Cart = ({ navigation }: CartProps) => {
       console.error("Error validating address information:", error);
       return {
         isValid: false,
-        missingFields: ["Не удалось загрузить информацию о доставке"],
+        missingFields: ["не удалось загрузить информацию о доставке"],
       };
     }
   };
@@ -344,7 +344,7 @@ const Cart = ({ navigation }: CartProps) => {
       if (!addressValidation.isValid) {
         const missingFieldsText = addressValidation.missingFields.join(", ");
         setPaymentError(
-          `Для оформления заказа необходимо заполнить информацию о доставке: ${missingFieldsText}. Пожалуйста, перейдите в настройки профиля.`
+          `для оформления заказа необходимо заполнить информацию о доставке: ${missingFieldsText}. пожалуйста, перейдите в настройки профиля.`
         );
         setIsSubmitting(false);
         return;
@@ -400,7 +400,7 @@ const Cart = ({ navigation }: CartProps) => {
       entering={FadeIn.duration(ANIMATION_DURATIONS.STANDARD)}
       style={styles.loadingContainer}
     >
-      <Text style={styles.loadingText}>Перенаправление на оплату...</Text>
+      <Text style={styles.loadingText}>перенаправление на оплату...</Text>
     </Animated.View>
   );
   const ConfirmationScreen = () => (
@@ -444,12 +444,12 @@ const Cart = ({ navigation }: CartProps) => {
               )}
               style={styles.emptyCartContainer}
             >
-              <Text style={styles.emptyCartText}>Ваша корзина пуста</Text>
+              <Text style={styles.emptyCartText}>ваша корзина пуста</Text>
               <Pressable
                 style={styles.shopButton}
                 onPress={() => navigation.navigate("Home")}
               >
-                <Text style={styles.shopButtonText}>Продолжить покупки</Text>
+                <Text style={styles.shopButtonText}>продолжить покупки</Text>
               </Pressable>
             </Animated.View>
           ) : (
@@ -742,7 +742,7 @@ const styles = StyleSheet.create({
   totalText: {
     textAlign: "left",
     fontFamily: "IgraSans",
-    fontSize: 34,
+    fontSize: 30,
     color: "#000",
   },
   checkoutButton: {
@@ -795,6 +795,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     backgroundColor: "#F2ECE7",
     borderRadius: 41,
+    padding: 20,
   },
   loadingText: { fontFamily: "IgraSans", fontSize: 24, color: "#4A3120" },
   confirmationContainer: {

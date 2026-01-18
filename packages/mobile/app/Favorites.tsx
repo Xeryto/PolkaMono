@@ -236,7 +236,7 @@ const UserActionButton = memo(
               ]}
               onPress={onCancelRequest}
             >
-              <Text style={styles.cancelRequestText}>Отменить заявку</Text>
+              <Text style={styles.cancelRequestText}>отменить заявку</Text>
             </TouchableOpacity>
           </Animated.View>
         )}
@@ -359,7 +359,7 @@ const Favorites = ({ navigation }: FavoritesProps) => {
       console.error("Error loading friends data:", error);
       // Don't show alerts for authentication errors
       if (error.status !== 401) {
-        Alert.alert("Ошибка", "Не удалось загрузить список друзей");
+        Alert.alert("ошибка", "не удалось загрузить список друзей");
       }
     } finally {
       setIsLoadingFriends(false);
@@ -580,7 +580,7 @@ const Favorites = ({ navigation }: FavoritesProps) => {
             "status" in error &&
             error.status !== 401
           ) {
-            Alert.alert("Ошибка", "Не удалось выполнить поиск пользователей");
+            Alert.alert("ошибка", "не удалось выполнить поиск пользователей");
           }
         }
       } finally {
@@ -767,11 +767,11 @@ const Favorites = ({ navigation }: FavoritesProps) => {
         updateSearchItemStatus(acceptedItem.id, "friend");
       }
 
-      Alert.alert("Успех", "Заявка в друзья принята");
+      Alert.alert("успех", "заявка в друзья принята");
     } catch (error) {
       console.error("Error accepting friend request:", error);
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      Alert.alert("Ошибка", "Не удалось принять заявку в друзья");
+      Alert.alert("ошибка", "не удалось принять заявку в друзья");
     }
   };
 
@@ -790,11 +790,11 @@ const Favorites = ({ navigation }: FavoritesProps) => {
         removeFriendFromLists(rejectedItem.id);
       }
 
-      Alert.alert("Успех", "Заявка в друзья отклонена");
+      Alert.alert("успех", "заявка в друзья отклонена");
     } catch (error) {
       console.error("Error rejecting friend request:", error);
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      Alert.alert("Ошибка", "Не удалось отклонить заявку в друзья");
+      Alert.alert("ошибка", "не удалось отклонить заявку в друзья");
     }
   };
 
@@ -831,11 +831,11 @@ const Favorites = ({ navigation }: FavoritesProps) => {
         }
       }
 
-      Alert.alert("Успех", "Заявка в друзья отправлена");
+      Alert.alert("успех", "заявка в друзья отправлена");
     } catch (error) {
       console.error("Error sending friend request:", error);
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      Alert.alert("Ошибка", "Не удалось отправить заявку в друзья");
+      Alert.alert("ошибка", "не удалось отправить заявку в друзья");
     }
   };
 
@@ -856,11 +856,11 @@ const Favorites = ({ navigation }: FavoritesProps) => {
         updateSearchItemStatus(cancelledItem.id, "not_friend");
       }
 
-      Alert.alert("Успех", "Заявка в друзья отменена");
+      Alert.alert("успех", "заявка в друзья отменена");
     } catch (error) {
       console.error("Error cancelling friend request:", error);
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      Alert.alert("Ошибка", "Не удалось отменить заявку в друзья");
+      Alert.alert("ошибка", "не удалось отменить заявку в друзья");
     }
   };
 
@@ -879,11 +879,11 @@ const Favorites = ({ navigation }: FavoritesProps) => {
       setMainShowConfirmDialog(false);
       setMainPendingRemoval(null);
 
-      Alert.alert("Успех", "Друг удален из списка");
+      Alert.alert("успех", "друг удален из списка");
     } catch (error) {
       console.error("Error removing friend:", error);
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      Alert.alert("Ошибка", "Не удалось удалить друга");
+      Alert.alert("ошибка", "не удалось удалить друга");
     }
   };
 
@@ -1188,7 +1188,7 @@ const Favorites = ({ navigation }: FavoritesProps) => {
             await cancelFriendRequest(sentRequest.id);
           } else {
             console.error("Could not find request ID for user:", item.username);
-            Alert.alert("Ошибка", "Не удалось найти заявку для отмены");
+            Alert.alert("ошибка", "не удалось найти заявку для отмены");
           }
         }
       }
@@ -1323,7 +1323,7 @@ const Favorites = ({ navigation }: FavoritesProps) => {
     return (
       <View style={styles.container}>
         <View style={styles.loadingContainer}>
-          <Text style={styles.loadingText}>Загрузка...</Text>
+          <Text style={styles.loadingText}>загрузка...</Text>
         </View>
       </View>
     );
@@ -1336,7 +1336,7 @@ const Favorites = ({ navigation }: FavoritesProps) => {
     return (
       <View style={styles.container}>
         <View style={styles.loadingContainer}>
-          <Text style={styles.loadingText}>Загрузка друзей...</Text>
+          <Text style={styles.loadingText}>загрузка друзей...</Text>
         </View>
       </View>
     );
@@ -1348,7 +1348,7 @@ const Favorites = ({ navigation }: FavoritesProps) => {
       {!isReady ? (
         // Simple loading screen until heavy animations are ready
         <View style={styles.loadingContainer}>
-          <Text style={styles.loadingText}>Загрузка...</Text>
+          <Text style={styles.loadingText}>загрузка...</Text>
         </View>
       ) : (
         <>
@@ -1677,7 +1677,7 @@ const SearchContent = ({
         >
           <TextInput
             style={styles.searchInput}
-            placeholder="Поиск"
+            placeholder="поиск"
             placeholderTextColor="rgba(0,0,0,0.6)"
             value={searchQuery}
             onChangeText={handleSearch}
@@ -1720,7 +1720,7 @@ const SearchContent = ({
                   ).delay(ANIMATION_DELAYS.MEDIUM)}
                   style={styles.emptyStateTitle}
                 >
-                  Начните поиск
+                  начните поиск
                 </Animated.Text>
                 <Animated.Text
                   entering={FadeInDown.duration(
@@ -1728,7 +1728,7 @@ const SearchContent = ({
                   ).delay(ANIMATION_DELAYS.LARGE)}
                   style={styles.emptyStateDescription}
                 >
-                  Введите имя пользователя для поиска друзей
+                  введите имя пользователя для поиска друзей
                 </Animated.Text>
               </Animated.View>
             ) : (
@@ -1744,7 +1744,7 @@ const SearchContent = ({
                   ).delay(ANIMATION_DELAYS.MEDIUM)}
                   style={styles.emptyStateDescription}
                 >
-                  Введите минимум {minSearchLength} символа для поиска
+                  введите минимум {minSearchLength} символа для поиска
                 </Animated.Text>
               </Animated.View>
             )
@@ -1760,7 +1760,7 @@ const SearchContent = ({
                 )}
                 style={styles.loadingText}
               >
-                Поиск...
+                поиск...
               </Animated.Text>
             </Animated.View>
           ) : filteredFriends.length === 0 ? (
@@ -1782,7 +1782,7 @@ const SearchContent = ({
                 )}
                 style={styles.noResultsText}
               >
-                Пользователи не найдены
+                пользователи не найдены
               </Animated.Text>
               <Animated.Text
                 entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
@@ -1790,7 +1790,7 @@ const SearchContent = ({
                 )}
                 style={styles.noResultsDescription}
               >
-                Попробуйте изменить поисковый запрос
+                попробуйте изменить поисковый запрос
               </Animated.Text>
             </Animated.View>
           ) : (
@@ -1908,7 +1908,7 @@ const FriendProfileView = React.memo(
           console.log("Loaded friend profile:", profile);
         } catch (error) {
           console.error("Error loading friend profile:", error);
-          setProfileError("Не удалось загрузить профиль пользователя");
+          setProfileError("не удалось загрузить профиль пользователя");
         } finally {
           setIsLoadingProfile(false);
         }
@@ -2031,13 +2031,13 @@ const FriendProfileView = React.memo(
             // Don't show alert for authentication errors, just log them
             console.log("Authentication error loading friend recommendations");
           } else if (error.status === 404) {
-            Alert.alert("Ошибка", "Друг не найден");
+            Alert.alert("ошибка", "друг не найден");
           } else if (error.status >= 500) {
-            Alert.alert("Ошибка", "Проблема с сервером. Попробуйте позже");
+            Alert.alert("ошибка", "проблема с сервером. попробуйте позже");
           } else {
             Alert.alert(
-              "Ошибка",
-              "Не удалось загрузить рекомендации для друга"
+              "ошибка",
+              "не удалось загрузить рекомендации для друга"
             );
           }
         } finally {
@@ -2121,8 +2121,8 @@ const FriendProfileView = React.memo(
                 >
                   <Text style={styles.regenerateButtonText}>
                     {isRegenerating || isSpinning
-                      ? "ЗАГРУЗКА..."
-                      : "Сделать AI подборку"}
+                      ? "загрузка..."
+                      : "сделать ai подборку"}
                   </Text>
                 </LinearGradient>
               </TouchableOpacity>
@@ -2155,8 +2155,8 @@ const FriendProfileView = React.memo(
               <View style={styles.loadingContainer}>
                 <Text style={styles.loadingText}>
                   {isRegenerating
-                    ? "Подбираем новые рекомендации..."
-                    : "Загружаем рекомендации..."}
+                    ? "подбираем новые рекомендации..."
+                    : "загружаем рекомендации..."}
                 </Text>
               </View>
             ) : (
@@ -2179,7 +2179,7 @@ const FriendProfileView = React.memo(
           <Animated.View style={styles.textContainer}>
             <Text style={styles.text}>
               {isLoadingProfile
-                ? "Загрузка..."
+                ? "загрузка..."
                 : profileError
                 ? friend.username
                 : friendProfile?.username || friend.username}

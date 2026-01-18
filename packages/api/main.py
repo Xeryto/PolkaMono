@@ -1089,7 +1089,9 @@ async def get_user_profile(current_user: User = Depends(get_current_user), db: S
         full_name=current_user.full_name,
         delivery_email=current_user.delivery_email,
         phone=current_user.phone,
-        address=current_user.address,
+        street=current_user.street,
+        house_number=current_user.house_number,
+        apartment_number=current_user.apartment_number,
         city=current_user.city,
         postal_code=current_user.postal_code,
         created_at=current_user.created_at,
@@ -1126,7 +1128,9 @@ async def get_brand_profile(current_user: Brand = Depends(get_current_brand_user
         full_name=None,
         delivery_email=None,
         phone=None,
-        address=None,
+        street=None,
+        house_number=None,
+        apartment_number=None,
         city=None,
         postal_code=None,
         created_at=current_user.created_at,
@@ -1546,8 +1550,12 @@ async def update_user_profile(
         current_user.delivery_email = profile_data.delivery_email
     if profile_data.phone is not None:
         current_user.phone = profile_data.phone
-    if profile_data.address is not None:
-        current_user.address = profile_data.address
+    if profile_data.street is not None:
+        current_user.street = profile_data.street
+    if profile_data.house_number is not None:
+        current_user.house_number = profile_data.house_number
+    if profile_data.apartment_number is not None:
+        current_user.apartment_number = profile_data.apartment_number
     if profile_data.city is not None:
         current_user.city = profile_data.city
     if profile_data.postal_code is not None:
@@ -1570,7 +1578,9 @@ async def update_user_profile(
         full_name=current_user.full_name,
         delivery_email=current_user.delivery_email,
         phone=current_user.phone,
-        address=current_user.address,
+        street=current_user.street,
+        house_number=current_user.house_number,
+        apartment_number=current_user.apartment_number,
         city=current_user.city,
         postal_code=current_user.postal_code,
         created_at=current_user.created_at,

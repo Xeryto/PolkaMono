@@ -69,13 +69,13 @@ const VerificationCodeScreen: React.FC<VerificationCodeScreenProps> = ({
       await api.requestVerificationEmail(); // This function should now trigger sending a code
       setResendCooldown(60); // Start the 60-second cooldown
       Alert.alert(
-        "Код отправлен повторно",
-        "Новый код подтверждения был отправлен на ваш email."
+        "код отправлен повторно",
+        "новый код подтверждения был отправлен на ваш email."
       );
     } catch (err) {
       const message =
         err instanceof Error ? err.message : "An unknown error occurred.";
-      Alert.alert("Ошибка", `Не удалось отправить код повторно: ${message}`);
+      Alert.alert("ошибка", `не удалось отправить код повторно: ${message}`);
     }
     setResendLoading(false);
   };
