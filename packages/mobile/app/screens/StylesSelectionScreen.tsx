@@ -101,8 +101,8 @@ const StylesSelectionScreen: React.FC<StylesSelectionScreenProps> = ({
       onComplete(selectedStyles);
     } catch (error) {
       Alert.alert(
-        "Ошибка",
-        "Не удалось сохранить любимые стили. Попробуйте еще раз."
+        "ошибка",
+        "не удалось сохранить любимые стили. попробуйте еще раз."
       );
     } finally {
       setIsSubmitting(false);
@@ -220,14 +220,14 @@ const StylesSelectionScreen: React.FC<StylesSelectionScreenProps> = ({
                     exiting={FadeOut.duration(ANIMATION_DURATIONS.STANDARD)}
                     style={styles.scrollHintContainer}
                   >
-                    <Text style={styles.scrollHintText}>Листай</Text>
+                    <Text style={styles.scrollHintText}>листай</Text>
                     <Scroll width={26} height={26} />
                   </Animated.View>
                 )}
 
                 {isLoadingStyles ? (
                   <View style={styles.loadingContainer}>
-                    <Text style={styles.loadingText}>Загрузка стилей...</Text>
+                    <Text style={styles.loadingText}>загрузка стилей...</Text>
                   </View>
                 ) : (
                   <FlatList

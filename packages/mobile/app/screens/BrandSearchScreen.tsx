@@ -155,8 +155,8 @@ const BrandSearchScreen: React.FC<BrandSearchScreenProps> = ({
       onComplete(selectedBrands);
     } catch (error) {
       Alert.alert(
-        "Ошибка",
-        "Не удалось сохранить любимые бренды. Попробуйте еще раз."
+        "ошибка",
+        "не удалось сохранить любимые бренды. попробуйте еще раз."
       );
     } finally {
       setIsSubmitting(false);
@@ -274,7 +274,7 @@ const BrandSearchScreen: React.FC<BrandSearchScreenProps> = ({
                   <View style={styles.searchInputContainer}>
                     <TextInput
                       style={[styles.searchInput]}
-                      placeholder="Поиск"
+                      placeholder="поиск"
                       placeholderTextColor="rgba(0,0,0,1)"
                       value={searchQuery}
                       onChangeText={handleSearch}
@@ -295,7 +295,7 @@ const BrandSearchScreen: React.FC<BrandSearchScreenProps> = ({
                           onPress={handleCancelSearch}
                           style={styles.cancelButton}
                         >
-                          <Text style={styles.cancelButtonText}>Отмена</Text>
+                          <Text style={styles.cancelButtonText}>отмена</Text>
                         </TouchableOpacity>
                       </Animated.View>
                     )}
@@ -318,7 +318,7 @@ const BrandSearchScreen: React.FC<BrandSearchScreenProps> = ({
                       error={brandsError}
                       onRetry={retryFetchBrands}
                       timeout={15000}
-                      message="Загрузка брендов..."
+                      message="загрузка брендов..."
                     />
                   ) : (
                     <FlatList
@@ -372,7 +372,7 @@ const BrandSearchScreen: React.FC<BrandSearchScreenProps> = ({
                   disabled={isSubmitting}
                 >
                   <Text style={styles.continueButtonText}>
-                    {isSubmitting ? "Сохранение..." : "Продолжить"}
+                    {isSubmitting ? "сохранение..." : "продолжить"}
                   </Text>
                 </TouchableOpacity>
               </Animated.View>

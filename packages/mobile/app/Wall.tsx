@@ -998,6 +998,7 @@ const Wall = ({ navigation, onLogout }: WallProps) => {
         >
           {stats.map((stat, index) => {
             const isPurchased = stat.label === "куплено";
+            const isScrolled = stat.label === "пролистано";
 
             if (isPurchased) {
               return (
@@ -1007,6 +1008,26 @@ const Wall = ({ navigation, onLogout }: WallProps) => {
                     onPress={() => {
                       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                       setCurrentView("orders");
+                    }}
+                    style={({ pressed }) => [
+                      styles.valueWrapper,
+                      pressed && styles.valueWrapperPressed,
+                    ]}
+                  >
+                    <Text style={styles.statValue}>{stat.value}</Text>
+                  </Pressable>
+                </View>
+              );
+            }
+
+            if (isScrolled) {
+              return (
+                <View key={index} style={styles.statItem}>
+                  <Text style={styles.statLabel}>{stat.label}</Text>
+                  <Pressable
+                    onPress={() => {
+                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                      navigation.navigate("RecentPieces");
                     }}
                     style={({ pressed }) => [
                       styles.valueWrapper,

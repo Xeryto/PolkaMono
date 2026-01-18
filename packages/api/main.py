@@ -1844,6 +1844,57 @@ async def get_user_favorites(
         ))
     return results
 
+# Get Recent Swipes Endpoint
+@app.get("/api/v1/user/recent-swipes", response_model=List[schemas.Product])
+async def get_recent_swipes(
+    limit: int = 5,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Get the most recently swiped products for the current user (up to 5)"""
+    # Get recent swipes ordered by created_at descending, limit to 5
+    recent_swipes = db.query(UserSwipe).filter(
+        UserSwipe.user_id == current_user.id
+    ).order_by(UserSwipe.created_at.desc()).limit(limit).all()
+    
+    # Extract product IDs, maintaining order
+    product_ids = [swipe.product_id for swipe in recent_swipes]
+    
+    # Get products in the same order
+    products = db.query(Product).join(Brand).filter(
+        Product.id.in_(product_ids)
+    ).all()
+    
+    # Create a map for quick lookup
+    product_map = {product.id: product for product in products}
+    
+    # Build results in the order of swipes
+    results = []
+    liked_product_ids = {ulp.product_id for ulp in current_user.liked_products}
+    
+    for product_id in product_ids:
+        product = product_map.get(product_id)
+        if product:
+            results.append(schemas.Product(
+                id=product.id,
+                name=product.name,
+                description=product.description,
+                price=product.price,
+                images=product.images,
+                color=product.color,
+                material=product.material,
+                article_number=product.article_number,
+                brand_id=product.brand_id,
+                category_id=product.category_id,
+                styles=[ps.style_id for ps in product.styles],
+                variants=[schemas.ProductVariantSchema(size=v.size, stock_quantity=v.stock_quantity) for v in sort_variants_by_size(product.variants)],
+                brand_name=product.brand.name,
+                brand_return_policy=product.brand.return_policy,
+                is_liked=product.id in liked_product_ids
+            ))
+    
+    return results
+
 # Item Recommendations Endpoints
 @app.get("/api/v1/recommendations/for_user", response_model=List[schemas.Product])
 async def get_recommendations_for_user(

@@ -33,6 +33,7 @@ import ForgotPasswordScreen from "./app/screens/ForgotPasswordScreen";
 import ResetPasswordScreen from "./app/screens/ResetPasswordScreen";
 import VerificationCodeScreen from "./app/screens/VerificationCodeScreen";
 import PasswordResetVerificationScreen from "./app/screens/PasswordResetVerificationScreen";
+import RecentPiecesScreen from "./app/screens/RecentPiecesScreen";
 
 import * as SplashScreen from "expo-splash-screen";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
@@ -82,7 +83,8 @@ type ScreenName =
   | "Search"
   | "Favorites"
   | "Wall"
-  | "Settings";
+  | "Settings"
+  | "RecentPieces";
 type NavigationListener = () => void;
 
 interface SimpleNavigation {
@@ -376,6 +378,7 @@ export default function App() {
     Favorites: {},
     Wall: {},
     Settings: {},
+    RecentPieces: {},
   });
 
   // Initialize cart from storage
@@ -1536,6 +1539,9 @@ export default function App() {
                 )}
                 {currentScreen === "Wall" && (
                   <WallPage navigation={navigation} onLogout={handleLogout} />
+                )}
+                {currentScreen === "RecentPieces" && (
+                  <RecentPiecesScreen navigation={navigation} />
                 )}
               </Animated.View>
 

@@ -1068,6 +1068,11 @@ export const getUserRecommendations = async (): Promise<Product[]> => {
   return await apiRequest('/api/v1/recommendations/for_user', 'GET');
 };
 
+// Get recent swipes (last 5 seen pieces)
+export const getRecentSwipes = async (limit: number = 5): Promise<Product[]> => {
+  return await apiRequest(`/api/v1/user/recent-swipes?limit=${limit}`, 'GET');
+};
+
 export const toggleFavorite = async (productId: string, action: 'like' | 'unlike'): Promise<{ message: string }> => {
   return await apiRequest('/api/v1/user/favorites/toggle', 'POST', {
     product_id: productId,
