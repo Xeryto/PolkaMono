@@ -13,7 +13,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
-import Animated, { FadeInDown } from "react-native-reanimated";
+import Animated, { FadeInDown, FadeOutDown } from "react-native-reanimated";
 import BackIcon from "../components/svg/BackIcon";
 import Cart2 from "../components/svg/Cart2";
 import Heart2 from "../components/svg/Heart2";
@@ -374,14 +374,20 @@ const RecentPiecesScreen: React.FC<RecentPiecesScreenProps> = ({
     return (
       <View style={styles.emptyContainer}>
         <Text style={styles.emptyText}>
-          Вы еще не просмотрели ни одного товара
+          вы еще не просмотрели ни одного товара
         </Text>
       </View>
     );
   };
 
   return (
-    <View style={styles.content}>
+    <Animated.View
+      style={styles.content}
+      entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
+        ANIMATION_DELAYS.LARGE
+      )}
+      exiting={FadeOutDown.duration(ANIMATION_DURATIONS.MICRO)}
+    >
       {/* Header with oval background */}
       <View style={styles.header}>
         <TouchableOpacity
@@ -393,16 +399,35 @@ const RecentPiecesScreen: React.FC<RecentPiecesScreenProps> = ({
         >
           <BackIcon width={22} height={22} />
         </TouchableOpacity>
-        <View style={styles.titleOval}>
-          <Text style={styles.title}>просмотренные</Text>
+        <View style={styles.titleOvalShadowWrapper}>
+          <View style={styles.titleOvalWrapper}>
+            <LinearGradient
+              colors={["#F5ECE14D", "#F5ECE1"]}
+              locations={[0, 1]}
+              start={{ x: 0.25, y: 0 }}
+              end={{ x: 0.6, y: 1.5 }}
+              style={styles.titleOvalBorder}
+            />
+            <View style={styles.titleOvalInnerWrapper}>
+              <LinearGradient
+                colors={["#F5ECE1", "#DFCAB5"]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.titleOvalContainer}
+              >
+                <Text style={styles.title}>недавно</Text>
+                <Text style={styles.title}>просмотренные</Text>
+              </LinearGradient>
+            </View>
+          </View>
         </View>
-        <View style={styles.headerSpacer} />
       </View>
 
       {/* List - only render if mounted, has data, and not loading */}
       {isMounted && recentPieces.length > 0 && !isLoading ? (
         <FlatList
           data={recentPieces}
+          style={{ borderRadius: 41 }}
           renderItem={renderPiece}
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.listContent}
@@ -411,7 +436,7 @@ const RecentPiecesScreen: React.FC<RecentPiecesScreenProps> = ({
       ) : (
         renderEmpty()
       )}
-    </View>
+    </Animated.View>
   );
 };
 
@@ -425,44 +450,70 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     paddingHorizontal: 20,
-    paddingTop: 20,
+    paddingBottom: 15,
   },
   header: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
-    marginBottom: 20,
-    height: 50,
+    justifyContent: "center",
+    height: height * 0.065,
+    paddingHorizontal: width * 0.06,
+    zIndex: 10,
+    marginBottom: 5,
   },
   backButton: {
     padding: 10,
-    marginLeft: -10,
+    position: "absolute",
+    left: width * 0.05,
   },
-  titleOval: {
-    backgroundColor: "#E2CCB2",
+  titleOvalShadowWrapper: {
+    height: "100%",
     borderRadius: 30,
-    borderWidth: 3,
-    borderColor: "#F5ECE1",
-    paddingHorizontal: 20,
-    paddingVertical: 8,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.25,
-    shadowRadius: 3.84,
+    shadowRadius: 4,
     elevation: 5,
+  },
+  titleOvalWrapper: {
+    height: "100%",
+    width: "100%",
+    borderRadius: 30,
+    position: "relative",
+    overflow: "hidden",
+  },
+  titleOvalBorder: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    borderRadius: 30,
+  },
+  titleOvalInnerWrapper: {
+    width: "100%",
+    height: "100%",
+    padding: 3,
+    borderRadius: 30,
+  },
+  titleOvalContainer: {
+    width: "100%",
+    height: "100%",
+    borderRadius: 27,
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: 20,
+    paddingVertical: height * 0.015,
   },
   title: {
     fontFamily: "IgraSans",
-    fontSize: 22,
+    fontSize: 18,
+    lineHeight: 22,
     color: "#000",
     textAlign: "center",
   },
-  headerSpacer: {
-    width: 42, // Same width as back button for centering
-  },
   listContent: {
-    borderRadius: 41,
-    paddingBottom: 20,
+    paddingTop: 15,
   },
   pieceWrapper: {
     width: "100%",

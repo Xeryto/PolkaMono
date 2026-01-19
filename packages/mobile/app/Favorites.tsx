@@ -253,7 +253,7 @@ const Favorites = ({ navigation }: FavoritesProps) => {
   const [isSearchActive, setIsSearchActive] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [isMounted, setIsMounted] = useState(true);
-  const [isReady, setIsReady] = useState(false); // Control initial render
+  const [isReady, setIsReady] = useState(true); // Always ready for smooth transitions
   const [selectedFriend, setSelectedFriend] = useState<FriendItem | null>(null);
   const [isRegenerating, setIsRegenerating] = useState(false);
   const [customRecommendations, setCustomRecommendations] = useState<{
@@ -430,14 +430,7 @@ const Favorites = ({ navigation }: FavoritesProps) => {
     transform: [{ scale: pressAnimationScale.value }],
   }));
 
-  // Use InteractionManager to delay heavy operations until animations complete
-  useEffect(() => {
-    const task = InteractionManager.runAfterInteractions(() => {
-      setIsReady(true);
-    });
-
-    return () => task.cancel();
-  }, []);
+  // Removed InteractionManager delay - screen renders immediately for smooth transitions
 
   // Cleanup animations on unmount
   useEffect(() => {
@@ -1048,34 +1041,68 @@ const Favorites = ({ navigation }: FavoritesProps) => {
     );
   };
 
-  // Render a recommended item
-  const renderRecommendedItem: ListRenderItem<CardItem> = ({
-    item,
-    index,
-    separators,
-  }) => {
-    // Simple static rendering for Android
-    if (!USE_ANIMATIONS) {
+  // Render a recommended item - now accepts friend data for navigation
+  const renderRecommendedItem =
+    (
+      friend: FriendItem,
+      recommendedItems: CardItem[]
+    ): ListRenderItem<CardItem> =>
+    ({ item, index, separators }) => {
+      // Simple static rendering for Android
+      if (!USE_ANIMATIONS) {
+        return (
+          <View style={styles.recommendationItemWrapper}>
+            <View style={styles.itemContainer}>
+              <Pressable
+                style={styles.itemImageContainer}
+                onPress={() => {
+                  console.log(`Recommended item pressed: ${item.brand_name}`);
+
+                  // Navigate to FriendRecommendationsScreen with friend data and items starting from clicked item
+                  navigation.navigate("FriendRecommendations", {
+                    friendId: friend.id,
+                    friendUsername: friend.username,
+                    friendIcon: require("./assets/Vision.png"), // Default icon
+                    initialItems: recommendedItems,
+                    clickedItemIndex: index,
+                  });
+                }}
+              >
+                <Image
+                  source={item.images[0]}
+                  style={styles.itemImage as ImageStyle}
+                />
+                <View style={styles.itemInfo}>
+                  <Text style={styles.itemName} numberOfLines={1}>
+                    {item.brand_name}
+                  </Text>
+                </View>
+                <PriceTag price={item.price} />
+              </Pressable>
+            </View>
+          </View>
+        );
+      }
+
+      // More complex animations for iOS
       return (
         <View style={styles.recommendationItemWrapper}>
           <View style={styles.itemContainer}>
             <Pressable
               style={styles.itemImageContainer}
               onPress={() => {
-                console.log(`Recommended item pressed: ${item.brand_name}`);
-
-                // Use the isLiked property from the item directly
-                handleNavigate(
-                  "Home",
-                  { ...item, isLiked: item.isLiked },
-                  true
-                );
+                console.log(`Recommended item pressed: ${item.name}`);
+                // Navigate to FriendRecommendationsScreen with friend data and items starting from clicked item
+                navigation.navigate("FriendRecommendations", {
+                  friendId: friend.id,
+                  friendUsername: friend.username,
+                  friendIcon: require("./assets/Vision.png"), // Default icon
+                  initialItems: recommendedItems,
+                  clickedItemIndex: index,
+                });
               }}
             >
-              <Image
-                source={item.images[0]}
-                style={styles.itemImage as ImageStyle}
-              />
+              <Image source={item.images[0]} style={styles.itemImage} />
               <View style={styles.itemInfo}>
                 <Text style={styles.itemName} numberOfLines={1}>
                   {item.brand_name}
@@ -1086,32 +1113,7 @@ const Favorites = ({ navigation }: FavoritesProps) => {
           </View>
         </View>
       );
-    }
-
-    // More complex animations for iOS
-    return (
-      <View style={styles.recommendationItemWrapper}>
-        <View style={styles.itemContainer}>
-          <Pressable
-            style={styles.itemImageContainer}
-            onPress={() => {
-              console.log(`Recommended item pressed: ${item.name}`);
-              // Use the isLiked property from the item directly
-              handleNavigate("Home", { ...item, isLiked: item.isLiked }, true);
-            }}
-          >
-            <Image source={item.images[0]} style={styles.itemImage} />
-            <View style={styles.itemInfo}>
-              <Text style={styles.itemName} numberOfLines={1}>
-                {item.brand_name}
-              </Text>
-            </View>
-            <PriceTag price={item.price} />
-          </Pressable>
-        </View>
-      </View>
-    );
-  };
+    };
 
   // Custom render function for search results that includes user status
   const renderSearchUser: ListRenderItem<FriendItem> = ({
@@ -1318,108 +1320,87 @@ const Favorites = ({ navigation }: FavoritesProps) => {
     );
   };
 
-  // Don't render until interactions are complete
-  if (!isReady) {
-    return (
-      <View style={styles.container}>
-        <View style={styles.loadingContainer}>
-          <Text style={styles.loadingText}>загрузка...</Text>
-        </View>
-      </View>
-    );
-  }
-
   if (!isMounted) return null;
 
-  // Show loading state for friends
-  if (isLoadingFriends) {
-    return (
-      <View style={styles.container}>
-        <View style={styles.loadingContainer}>
-          <Text style={styles.loadingText}>загрузка друзей...</Text>
-        </View>
-      </View>
-    );
-  }
-
-  // Simplified render method
+  // Simplified render method - always render immediately for smooth transitions
   return (
-    <View style={styles.container}>
-      {!isReady ? (
-        // Simple loading screen until heavy animations are ready
-        <View style={styles.loadingContainer}>
-          <Text style={styles.loadingText}>загрузка...</Text>
-        </View>
-      ) : (
-        <>
-          {/* Main Content (visible by default) */}
-          <Animated.View style={mainViewAnimatedStyle}>
-            <MainContent
-              activeView={activeView}
-              toggleSearch={toggleSearch}
-              handleBottomBoxPressIn={handleBottomBoxPressIn}
-              handleBottomBoxPressOut={handleBottomBoxPressOut}
-              bottomBoxAnimatedStyle={bottomBoxAnimatedStyle}
-              renderSavedItem={renderSavedItem}
-              renderFriendItem={renderFriendItem}
-              savedItems={savedItems}
-              friendItems={friendItems}
-              onAcceptRequest={acceptFriendRequest}
-              onRejectRequest={rejectFriendRequest}
-              handleNavigate={handleNavigate}
-            />
-          </Animated.View>
-
-          {/* Search Content (hidden by default) */}
-          <Animated.View style={searchViewAnimatedStyle}>
-            <SearchContent
-              searchQuery={searchQuery}
-              handleSearch={handleSearch}
-              toggleSearch={toggleSearch}
-              filteredFriends={filteredFriends}
-              renderSearchUser={renderSearchUser}
-              onSendFriendRequest={sendFriendRequest}
-              onRemoveFriend={(friendId) => {
-                const friend = friendItems.find((f) => f.id === friendId);
-                if (friend) {
-                  setSearchPendingRemoval(friend);
-                  setSearchShowConfirmDialog(true);
-                }
-              }}
-              pendingRemoval={searchPendingRemoval}
-              showConfirmDialog={searchShowConfirmDialog}
-              setShowConfirmDialog={setSearchShowConfirmDialog}
-              setPendingRemoval={setSearchPendingRemoval}
-              removeFriend={removeFriend}
-              hasValidQuery={hasValidQuery}
-              trimmedQuery={trimmedQuery}
-              isSearching={isSearching}
-              minSearchLength={MIN_FRIEND_SEARCH_LENGTH}
-            />
-          </Animated.View>
-
-          {/* Friend Profile View (hidden by default) */}
-          <Animated.View style={profileViewAnimatedStyle}>
-            {selectedFriend && (
-              <FriendProfileView
-                key={`friend-profile-${selectedFriend.id}`}
-                friend={selectedFriend}
-                onBack={handleBackFromProfile}
-                recommendedItems={getRecommendationsForFriend(
-                  selectedFriend.id
-                )}
-                renderRecommendedItem={renderRecommendedItem}
-                onRegenerate={handleRegenerateRecommendations}
-                isRegenerating={isRegenerating}
-                setCustomRecommendations={setCustomRecommendations}
-                isLoadingFriendRecs={isLoadingFriendRecs[selectedFriend?.id]}
-                setIsLoadingFriendRecs={setIsLoadingFriendRecs}
-              />
-            )}
-          </Animated.View>
-        </>
+    <Animated.View
+      style={styles.container}
+      entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
+        ANIMATION_DELAYS.LARGE
       )}
-    </View>
+      exiting={FadeOutDown.duration(ANIMATION_DURATIONS.MICRO)}
+    >
+      <>
+        {/* Main Content (visible by default) */}
+        <Animated.View style={mainViewAnimatedStyle}>
+          <MainContent
+            activeView={activeView}
+            toggleSearch={toggleSearch}
+            handleBottomBoxPressIn={handleBottomBoxPressIn}
+            handleBottomBoxPressOut={handleBottomBoxPressOut}
+            bottomBoxAnimatedStyle={bottomBoxAnimatedStyle}
+            renderSavedItem={renderSavedItem}
+            renderFriendItem={renderFriendItem}
+            savedItems={savedItems}
+            friendItems={friendItems}
+            onAcceptRequest={acceptFriendRequest}
+            onRejectRequest={rejectFriendRequest}
+            handleNavigate={handleNavigate}
+            isLoadingFriends={isLoadingFriends}
+          />
+        </Animated.View>
+
+        {/* Search Content (hidden by default) */}
+        <Animated.View style={searchViewAnimatedStyle}>
+          <SearchContent
+            searchQuery={searchQuery}
+            handleSearch={handleSearch}
+            toggleSearch={toggleSearch}
+            filteredFriends={filteredFriends}
+            renderSearchUser={renderSearchUser}
+            onSendFriendRequest={sendFriendRequest}
+            onRemoveFriend={(friendId) => {
+              const friend = friendItems.find((f) => f.id === friendId);
+              if (friend) {
+                setSearchPendingRemoval(friend);
+                setSearchShowConfirmDialog(true);
+              }
+            }}
+            pendingRemoval={searchPendingRemoval}
+            showConfirmDialog={searchShowConfirmDialog}
+            setShowConfirmDialog={setSearchShowConfirmDialog}
+            setPendingRemoval={setSearchPendingRemoval}
+            removeFriend={removeFriend}
+            hasValidQuery={hasValidQuery}
+            trimmedQuery={trimmedQuery}
+            isSearching={isSearching}
+            minSearchLength={MIN_FRIEND_SEARCH_LENGTH}
+          />
+        </Animated.View>
+
+        {/* Friend Profile View (hidden by default) */}
+        <Animated.View style={profileViewAnimatedStyle}>
+          {selectedFriend && (
+            <FriendProfileView
+              key={`friend-profile-${selectedFriend.id}`}
+              friend={selectedFriend}
+              onBack={handleBackFromProfile}
+              recommendedItems={getRecommendationsForFriend(selectedFriend.id)}
+              renderRecommendedItem={renderRecommendedItem(
+                selectedFriend,
+                getRecommendationsForFriend(selectedFriend.id)
+              )}
+              onRegenerate={handleRegenerateRecommendations}
+              isRegenerating={isRegenerating}
+              setCustomRecommendations={setCustomRecommendations}
+              isLoadingFriendRecs={isLoadingFriendRecs[selectedFriend?.id]}
+              setIsLoadingFriendRecs={setIsLoadingFriendRecs}
+            />
+          )}
+        </Animated.View>
+      </>
+    </Animated.View>
   );
 };
 
@@ -1441,6 +1422,7 @@ interface MainContentProps {
     params?: any,
     fromFavorites?: boolean
   ) => void;
+  isLoadingFriends: boolean;
 }
 
 interface BottomBoxContentProps {
@@ -1491,6 +1473,7 @@ const MainContent = ({
   onAcceptRequest,
   onRejectRequest,
   handleNavigate,
+  isLoadingFriends,
 }: MainContentProps) => {
   return (
     <>
@@ -1508,7 +1491,13 @@ const MainContent = ({
         <View style={{ flex: 1, borderRadius: 41 }}>
           {activeView === "friends" && (
             <>
-              {friendItems.length === 0 ? (
+              {isLoadingFriends ? (
+                <View style={styles.mainEmptyStateContainer}>
+                  <Text style={styles.mainEmptyStateText}>
+                    загрузка друзей...
+                  </Text>
+                </View>
+              ) : friendItems.length === 0 ? (
                 <View style={styles.mainEmptyStateContainer}>
                   <Text style={styles.mainEmptyStateText}>
                     пора добавить первого друга
@@ -1989,12 +1978,9 @@ const FriendProfileView = React.memo(
     }, [recommendedItems]);
 
     // Create a memoized render function to avoid unnecessary re-renders
-    const renderItem = React.useCallback(
-      ({ item, index, separators }: ListRenderItemInfo<CardItem>) => {
-        return renderRecommendedItem({ item, index, separators });
-      },
-      [renderRecommendedItem, isNewRecommendation]
-    ); // Only re-create when these dependencies change
+    const renderItem = React.useCallback(renderRecommendedItem, [
+      renderRecommendedItem,
+    ]); // renderRecommendedItem already returns a ListRenderItem function
 
     // In FriendProfileView, fetch recommendations from the real API
     useEffect(() => {

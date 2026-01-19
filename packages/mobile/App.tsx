@@ -15,6 +15,8 @@ import {
   Button,
 } from "react-native";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
+import { NavigationContainer, useFocusEffect } from "@react-navigation/native";
+import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { LinearGradient } from "expo-linear-gradient";
 import MainPage from "./app/MainPage";
 import CartPage from "./app/Cart";
@@ -34,6 +36,7 @@ import ResetPasswordScreen from "./app/screens/ResetPasswordScreen";
 import VerificationCodeScreen from "./app/screens/VerificationCodeScreen";
 import PasswordResetVerificationScreen from "./app/screens/PasswordResetVerificationScreen";
 import RecentPiecesScreen from "./app/screens/RecentPiecesScreen";
+import FriendRecommendationsScreen from "./app/screens/FriendRecommendationsScreen";
 
 import * as SplashScreen from "expo-splash-screen";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
@@ -42,6 +45,7 @@ import * as api from "./app/services/api";
 import { useSession } from "./app/hooks/useSession";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { sessionManager } from "./app/services/api";
+import { ANIMATION_DURATIONS } from "./app/lib/animations";
 import {
   NetworkTimeoutError,
   NetworkRetryError,
@@ -84,7 +88,8 @@ type ScreenName =
   | "Favorites"
   | "Wall"
   | "Settings"
-  | "RecentPieces";
+  | "RecentPieces"
+  | "FriendRecommendations";
 type NavigationListener = () => void;
 
 interface SimpleNavigation {
@@ -94,14 +99,181 @@ interface SimpleNavigation {
   setParams?: (params: any) => void;
 }
 
+// React Navigation types
+export type RootStackParamList = {
+  Home: {
+    refreshCards?: boolean;
+    refreshTimestamp?: number;
+    addCardItem?: any;
+  };
+  Cart: undefined;
+  Search: undefined;
+  Favorites: undefined;
+  Wall: undefined;
+  RecentPieces: undefined;
+  FriendRecommendations: {
+    friendId?: string;
+    friendUsername?: string;
+    friendIcon?: any;
+    initialItems?: any[];
+    clickedItemIndex?: number;
+  };
+};
+
+const Stack = createNativeStackNavigator<RootStackParamList>();
+
 interface NavButtonProps {
   onPress: () => void;
   children: React.ReactNode;
   isActive?: boolean;
 }
 
+// NavButton component
+const NavButton = ({ onPress, children, isActive }: NavButtonProps) => {
+  // Animation values for press effect (using native driver)
+  const scale = useRef(new Animated.Value(1)).current;
+  // Shadow opacity as regular state (not animated) to avoid native driver conflicts
+  const [shadowOpacity, setShadowOpacity] = useState(isActive ? 0.5 : 0);
+
+  // Update shadow opacity when active state changes (non-animated)
+  useEffect(() => {
+    setShadowOpacity(isActive ? 0.5 : 0);
+  }, [isActive]);
+
+  const handlePressIn = () => {
+    Animated.timing(scale, {
+      toValue: 0.9,
+      duration: 80,
+      useNativeDriver: true,
+      easing: Easing.inOut(Easing.ease),
+    }).start();
+  };
+
+  const handlePressOut = () => {
+    Animated.timing(scale, {
+      toValue: 1,
+      duration: 150,
+      useNativeDriver: true,
+      easing: Easing.inOut(Easing.ease),
+    }).start();
+    onPress();
+  };
+
+  return (
+    <Pressable onPressIn={handlePressIn} onPressOut={handlePressOut}>
+      <View
+        style={[
+          styles.navItem,
+          {
+            shadowOpacity,
+            shadowColor: "#000",
+            shadowOffset: { width: 0, height: 2 },
+            shadowRadius: 4,
+            elevation: isActive ? 5 : 0,
+          },
+        ]}
+      >
+        <Animated.View
+          style={{
+            transform: [{ scale }],
+          }}
+        >
+          {children}
+        </Animated.View>
+      </View>
+    </Pressable>
+  );
+};
+
 // Prevent the splash screen from auto-hiding
 SplashScreen.preventAutoHideAsync();
+
+// Screen wrapper component that ensures entering animations trigger
+// This forces remounting when screens come into focus so entering animations play
+// Ensures old screen is completely unmounted before new one mounts
+function ScreenWrapper({
+  children,
+  screenName,
+}: {
+  children: React.ReactNode;
+  screenName: string;
+}) {
+  const [renderKey, setRenderKey] = React.useState(0);
+  const [isVisible, setIsVisible] = React.useState(true);
+  const isMountedRef = React.useRef(false);
+  const isFocusedRef = React.useRef(false);
+  const timerRef = React.useRef<NodeJS.Timeout | null>(null);
+
+  useFocusEffect(
+    React.useCallback(() => {
+      // Clear any pending timer
+      if (timerRef.current) {
+        clearTimeout(timerRef.current);
+        timerRef.current = null;
+      }
+
+      const wasFocused = isFocusedRef.current;
+      isFocusedRef.current = true;
+
+      // Always remount when screen comes into focus (except on very first mount)
+      // This ensures entering animations always play, matching Search's behavior
+      if (!isMountedRef.current) {
+        // First mount - don't remount yet, let initial render happen
+        isMountedRef.current = true;
+        return () => {
+          // When losing focus, immediately hide to ensure clean unmount
+          isFocusedRef.current = false;
+          setIsVisible(false);
+        };
+      }
+
+      // Screen is coming into focus after being unfocused
+      if (!wasFocused) {
+        // Ensure old instance is hidden first (should already be hidden from cleanup)
+        setIsVisible(false);
+        // Use a delay to ensure the old component is fully unmounted
+        // before mounting the new one
+        timerRef.current = setTimeout(() => {
+          setRenderKey((prev) => prev + 1);
+          setIsVisible(true);
+          timerRef.current = null;
+        }, 32); // Two frame delay to ensure clean unmount
+
+        return () => {
+          if (timerRef.current) {
+            clearTimeout(timerRef.current);
+            timerRef.current = null;
+          }
+          // When losing focus, immediately hide to ensure clean unmount
+          isFocusedRef.current = false;
+          setIsVisible(false);
+        };
+      }
+
+      return () => {
+        if (timerRef.current) {
+          clearTimeout(timerRef.current);
+          timerRef.current = null;
+        }
+        // When losing focus, immediately hide to ensure clean unmount
+        isFocusedRef.current = false;
+        setIsVisible(false);
+      };
+    }, [])
+  );
+
+  // Don't render anything when hidden to ensure clean unmount
+  if (!isVisible) {
+    return null;
+  }
+
+  // Use key prop to force remount when renderKey changes
+  return (
+    <React.Fragment key={`${screenName}-${renderKey}`}>
+      {children}
+    </React.Fragment>
+  );
+}
 
 const loadFonts = async () => {
   await Font.loadAsync({
@@ -109,6 +281,284 @@ const loadFonts = async () => {
     REM: require("./app/assets/fonts/REM-Regular.ttf"), // Adjust the path as needed
   });
 };
+
+// Main Navigator Component with custom tab bar
+function MainNavigator({
+  onLogout,
+  comingFromSignup,
+  navigationRef,
+  setCurrentRoute,
+}: {
+  onLogout: () => void;
+  comingFromSignup: boolean;
+  navigationRef: React.RefObject<any>;
+  setCurrentRoute: (route: string) => void;
+}) {
+  // Create navigation adapter for screens
+  const createNavigationAdapter = (nav: any, route: any): SimpleNavigation => {
+    return {
+      navigate: (screen: string, params?: any) => {
+        if (screen === "Home" && route.name === "Home") {
+          // Special case: refresh cards when already on Home
+          nav.setParams({
+            refreshCards: true,
+            refreshTimestamp: Date.now(),
+          });
+          return;
+        }
+        nav.navigate(screen as keyof RootStackParamList, params);
+      },
+      goBack: () => nav.navigate("Home"),
+      addListener: (event: string, callback: NavigationListener) => {
+        if (event === "beforeRemove") {
+          return nav.addListener("beforeRemove", callback);
+        }
+        return () => {};
+      },
+      setParams: (params: any) => nav.setParams(params),
+    };
+  };
+
+  return (
+    <Stack.Navigator
+      initialRouteName="Home"
+      screenOptions={{
+        headerShown: false,
+        contentStyle: { backgroundColor: "transparent" },
+        animation: "none", // Disable React Navigation animations - screens handle their own transitions with entering/exiting
+        presentation: "card", // Ensure proper screen lifecycle for entering/exiting animations
+      }}
+      screenListeners={{
+        state: (e) => {
+          const state = e.data.state;
+          if (state) {
+            const route = state.routes[state.index];
+            setCurrentRoute(route.name);
+          }
+        },
+      }}
+    >
+      <Stack.Screen
+        name="Home"
+        options={{
+          animation: "none",
+          presentation: "card",
+        }}
+      >
+        {({ navigation: nav, route }) => (
+          <ScreenWrapper screenName="home">
+            <MainPage
+              key={`home-${route.params?.refreshTimestamp || 0}`}
+              navigation={createNavigationAdapter(nav, route)}
+              route={route}
+            />
+          </ScreenWrapper>
+        )}
+      </Stack.Screen>
+      <Stack.Screen
+        name="Cart"
+        options={{
+          animation: "none",
+          presentation: "card",
+        }}
+      >
+        {({ navigation: nav, route }) => (
+          <ScreenWrapper screenName="cart">
+            <CartPage navigation={createNavigationAdapter(nav, route)} />
+          </ScreenWrapper>
+        )}
+      </Stack.Screen>
+      <Stack.Screen
+        name="Search"
+        options={{
+          animation: "none",
+          presentation: "card",
+        }}
+      >
+        {({ navigation: nav, route }) => (
+          <ScreenWrapper screenName="search">
+            <SearchPage navigation={createNavigationAdapter(nav, route)} />
+          </ScreenWrapper>
+        )}
+      </Stack.Screen>
+      <Stack.Screen
+        name="Favorites"
+        options={{
+          animation: "none",
+          presentation: "card",
+        }}
+      >
+        {({ navigation: nav, route }) => (
+          <ScreenWrapper screenName="favorites">
+            <FavoritesPage navigation={createNavigationAdapter(nav, route)} />
+          </ScreenWrapper>
+        )}
+      </Stack.Screen>
+      <Stack.Screen
+        name="Wall"
+        options={{
+          animation: "none",
+          presentation: "card",
+        }}
+      >
+        {({ navigation: nav, route }) => (
+          <ScreenWrapper screenName="wall">
+            <WallPage
+              navigation={createNavigationAdapter(nav, route)}
+              onLogout={onLogout}
+            />
+          </ScreenWrapper>
+        )}
+      </Stack.Screen>
+      <Stack.Screen
+        name="RecentPieces"
+        options={{
+          animation: "none",
+          presentation: "card",
+        }}
+      >
+        {({ navigation: nav, route }) => (
+          <ScreenWrapper screenName="recent-pieces">
+            <RecentPiecesScreen
+              navigation={createNavigationAdapter(nav, route)}
+            />
+          </ScreenWrapper>
+        )}
+      </Stack.Screen>
+      <Stack.Screen
+        name="FriendRecommendations"
+        options={{
+          animation: "none",
+          presentation: "card",
+        }}
+      >
+        {({ navigation: nav, route }) => {
+          const params = route.params || {};
+          return (
+            <ScreenWrapper
+              screenName={`friend-rec-${params.friendId || "default"}`}
+            >
+              <FriendRecommendationsScreen
+                navigation={createNavigationAdapter(nav, route)}
+                route={{
+                  params: {
+                    friendId: params.friendId || "",
+                    friendUsername: params.friendUsername || "",
+                    friendIcon: params.friendIcon,
+                    initialItems: params.initialItems || [],
+                    clickedItemIndex: params.clickedItemIndex || 0,
+                  },
+                }}
+              />
+            </ScreenWrapper>
+          );
+        }}
+      </Stack.Screen>
+    </Stack.Navigator>
+  );
+}
+
+// Main App Navigator wrapper with NavigationContainer and tab bar
+function MainAppNavigator({
+  onLogout,
+  comingFromSignup,
+}: {
+  onLogout: () => void;
+  comingFromSignup: boolean;
+}) {
+  const navigationRef = React.useRef<any>(null);
+  const [currentRoute, setCurrentRoute] = React.useState<string>("Home");
+
+  return (
+    <NavigationContainer
+      ref={navigationRef}
+      theme={{
+        dark: false,
+        colors: {
+          primary: "#CDA67A",
+          background: "transparent",
+          card: "transparent",
+          text: "#000",
+          border: "transparent",
+          notification: "#CDA67A",
+        },
+      }}
+      onStateChange={(state) => {
+        if (state) {
+          const route = state.routes[state.index];
+          setCurrentRoute(route.name);
+        }
+      }}
+    >
+      <LinearGradient
+        colors={["#FAE9CF", "#CCA479", "#CDA67A", "#6A462F"]}
+        locations={[0, 0.34, 0.5, 0.87]}
+        style={styles.gradient}
+        start={{ x: 0, y: 0.2 }}
+        end={{ x: 1, y: 0.8 }}
+      >
+        <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
+          <View style={styles.screenContainer}>
+            <MainNavigator
+              onLogout={onLogout}
+              comingFromSignup={comingFromSignup}
+              navigationRef={navigationRef}
+              setCurrentRoute={setCurrentRoute}
+            />
+          </View>
+
+          {/* Custom Bottom Tab Bar */}
+          <View style={styles.navbar}>
+            <NavButton
+              onPress={() => {
+                navigationRef.current?.navigate("Cart");
+              }}
+              isActive={currentRoute === "Cart"}
+            >
+              <Cart width={32.75} height={32} />
+            </NavButton>
+
+            <NavButton
+              onPress={() => {
+                navigationRef.current?.navigate("Search");
+              }}
+              isActive={currentRoute === "Search"}
+            >
+              <Search width={24.75} height={24.75} />
+            </NavButton>
+
+            <NavButton
+              onPress={() => {
+                navigationRef.current?.navigate("Home");
+              }}
+              isActive={currentRoute === "Home"}
+            >
+              <Logo width={21} height={28} />
+            </NavButton>
+
+            <NavButton
+              onPress={() => {
+                navigationRef.current?.navigate("Favorites");
+              }}
+              isActive={currentRoute === "Favorites"}
+            >
+              <Heart width={28.74} height={25.07} />
+            </NavButton>
+
+            <NavButton
+              onPress={() => {
+                navigationRef.current?.navigate("Wall");
+              }}
+              isActive={currentRoute === "Wall"}
+            >
+              <Me width={30.25} height={30.25} />
+            </NavButton>
+          </View>
+        </SafeAreaView>
+      </LinearGradient>
+    </NavigationContainer>
+  );
+}
 
 export default function App() {
   const [fontsLoaded, setFontsLoaded] = useState(false);
@@ -244,9 +694,7 @@ export default function App() {
   const [forgotPasswordEmail, setForgotPasswordEmail] = useState<string>("");
   const [passwordResetCode, setPasswordResetCode] = useState<string>("");
 
-  const [currentScreen, setCurrentScreen] = useState<ScreenName>("Home");
-  const [previousScreen, setPreviousScreen] = useState<ScreenName | null>(null);
-  const [isTransitioning, setIsTransitioning] = useState(false);
+  // Removed: currentScreen, previousScreen, isTransitioning - now handled by React Navigation
   const [cartInitialized, setCartInitialized] = useState(false);
   const [comingFromSignup, setComingFromSignup] = useState(false); // Track if user is coming from signup
 
@@ -361,25 +809,10 @@ export default function App() {
     }
   };
 
-  // Animation values
-  const fadeAnim = useRef(new Animated.Value(1)).current;
-  const slideAnim = useRef(new Animated.Value(0)).current;
-
-  // Navigation event listeners
+  // Navigation event listeners (kept for compatibility with screens that might use beforeRemove)
   const navigationListeners = useRef<Record<string, Set<NavigationListener>>>({
     beforeRemove: new Set(),
   }).current;
-
-  // Keep track of screen params
-  const [screenParams, setScreenParams] = useState<Record<ScreenName, any>>({
-    Home: {},
-    Cart: {},
-    Search: {},
-    Favorites: {},
-    Wall: {},
-    Settings: {},
-    RecentPieces: {},
-  });
 
   // Initialize cart from storage
   useEffect(() => {
@@ -561,14 +994,12 @@ export default function App() {
 
   const handleLoadingFinish = () => {
     dispatchNav({ type: "SET_OVERLAY", overlay: "none" });
-    setCurrentScreen("Home");
+    // Screen navigation handled by React Navigation
   };
 
   const handleAuthLoadingFinish = () => {
     dispatchNav({ type: "SET_OVERLAY", overlay: "none" });
-    if (isAuthenticated) {
-      setCurrentScreen("Home");
-    }
+    // Screen navigation handled by React Navigation
   };
 
   const handleLogin = async () => {
@@ -938,14 +1369,12 @@ export default function App() {
       }, 50);
 
       // Reset states
-      setCurrentScreen("Home");
       setProfileCompletionStatus(null);
       setGender(null);
       setSelectedBrands([]);
       transitionTo("unauthenticated");
     } catch (error) {
       console.error("Error during logout:", error);
-      setCurrentScreen("Home");
       dispatchNav({ type: "SET_OVERLAY", overlay: "up" });
     }
   };
@@ -1041,16 +1470,7 @@ export default function App() {
       // Update the user's profile with the selected styles
       await api.updateUserStyles(styles);
 
-      // Store styles in screenParams for the main page
-      setScreenParams((prev) => ({
-        ...prev,
-        Home: {
-          ...prev.Home,
-          gender: gender,
-          selected_brands: selectedBrands,
-          favorite_styles: styles,
-        },
-      }));
+      // Styles saved - MainPage can fetch from API if needed
 
       // Complete profile flow
       setComingFromSignup(true);
@@ -1260,168 +1680,13 @@ export default function App() {
     transitionTo("unauthenticated");
   };
 
-  // Notify listeners before screen change
+  // Notify listeners before screen change (kept for compatibility)
   const notifyBeforeRemove = () => {
     navigationListeners.beforeRemove.forEach((listener) => listener());
   };
 
-  // Improved screen transition with proper lifecycle
-  const handleNavPress = (screen: ScreenName, params?: any) => {
-    // Special case: If pressing Home while already on Home, refresh cards instead of navigating
-    if (screen === "Home" && currentScreen === "Home") {
-      // Update params with a refreshCards signal and timestamp to ensure it's unique each time
-      setScreenParams((prev) => ({
-        ...prev,
-        Home: {
-          ...prev.Home,
-          refreshCards: true,
-          refreshTimestamp: Date.now(),
-        },
-      }));
-      // Skip the screen transition animation
-      return;
-    }
-
-    if (screen === currentScreen && !params) return;
-
-    setIsTransitioning(true);
-    setPreviousScreen(currentScreen);
-
-    // Update params for the target screen if provided
-    if (params) {
-      setScreenParams((prev) => ({
-        ...prev,
-        [screen]: params,
-      }));
-    }
-
-    // Notify current screen it's about to be removed
-    notifyBeforeRemove();
-
-    // Fade out current screen
-    Animated.timing(fadeAnim, {
-      toValue: 0,
-      duration: 150, // Faster fade out
-      useNativeDriver: true,
-    }).start(() => {
-      // Change screen
-      setCurrentScreen(screen);
-
-      // Reset slide position for entrance animation
-      slideAnim.setValue(30); // Reduced from 50 for subtler animation
-
-      // Slide and fade in new screen
-      Animated.parallel([
-        Animated.timing(fadeAnim, {
-          toValue: 1,
-          duration: 200,
-          useNativeDriver: true,
-        }),
-        Animated.timing(slideAnim, {
-          toValue: 0,
-          duration: 250,
-          useNativeDriver: true,
-          easing: Easing.out(Easing.ease),
-        }),
-      ]).start(() => {
-        setIsTransitioning(false);
-      });
-    });
-  };
-
-  // Enhanced navigation object with proper listeners and params support
-  const navigation: SimpleNavigation = {
-    navigate: (screen: string, params?: any) =>
-      handleNavPress(screen as ScreenName, params),
-    goBack: () => handleNavPress("Home"),
-    addListener: (event: string, callback: NavigationListener) => {
-      if (!navigationListeners[event]) {
-        navigationListeners[event] = new Set();
-      }
-      navigationListeners[event].add(callback);
-
-      // Return unsubscribe function
-      return () => {
-        navigationListeners[event].delete(callback);
-      };
-    },
-    setParams: (params: any) => {
-      // Update params for the current screen
-      setScreenParams((prev) => ({
-        ...prev,
-        [currentScreen]: {
-          ...prev[currentScreen],
-          ...params,
-        },
-      }));
-    },
-  };
-
-  const NavButton = ({ onPress, children, isActive }: NavButtonProps) => {
-    // Animation values for press effect and shadow
-    const [scale] = useState(new Animated.Value(1));
-    const [shadowOpacity] = useState(new Animated.Value(isActive ? 0.5 : 0));
-
-    // Update shadow opacity when active state changes
-    useEffect(() => {
-      Animated.timing(shadowOpacity, {
-        toValue: isActive ? 0.5 : 0,
-        duration: 150,
-        useNativeDriver: false, // Shadow opacity can't use native driver
-        easing: Easing.inOut(Easing.ease),
-      }).start();
-    }, [isActive, shadowOpacity]);
-
-    const handlePressIn = () => {
-      Animated.timing(scale, {
-        toValue: 0.9,
-        duration: 80,
-        useNativeDriver: true,
-        easing: Easing.inOut(Easing.ease),
-      }).start();
-    };
-
-    const handlePressOut = () => {
-      Animated.timing(scale, {
-        toValue: 1,
-        duration: 150,
-        useNativeDriver: true,
-        easing: Easing.inOut(Easing.ease),
-      }).start();
-
-      // Call the actual onPress handler
-      onPress();
-    };
-
-    // Create animated shadow style that will change with shadowOpacity value
-    const animatedShadowStyle = {
-      shadowColor: "rgba(0, 0, 0, 1)",
-      shadowOffset: { width: 0, height: 4 },
-      shadowRadius: 4,
-      shadowOpacity: shadowOpacity,
-      elevation: shadowOpacity.interpolate({
-        inputRange: [0, 0.5],
-        outputRange: [0, 3],
-      }),
-      backgroundColor: "transparent",
-      borderRadius: 18,
-    };
-
-    return (
-      <Pressable
-        style={[styles.navItem, isActive ? styles.activeNavItem : null]}
-        onPressIn={handlePressIn}
-        onPressOut={handlePressOut}
-        disabled={isTransitioning} // Prevent navigation during transitions
-      >
-        <Animated.View
-          style={[{ transform: [{ scale }] }, animatedShadowStyle]}
-        >
-          {children}
-        </Animated.View>
-      </Pressable>
-    );
-  };
+  // Old navigation code removed - React Navigation handles navigation now
+  // NavButton is defined at the top level of the file
 
   // User interface based on phase; overlays rendered on top
   return (
@@ -1503,86 +1768,10 @@ export default function App() {
         )}
 
         {navState.phase === "main" && (
-          <LinearGradient
-            colors={["#FAE9CF", "#CCA479", "#CDA67A", "#6A462F"]}
-            locations={[0, 0.34, 0.5, 0.87]}
-            style={styles.gradient}
-            start={{ x: 0, y: 0.2 }}
-            end={{ x: 1, y: 0.8 }}
-          >
-            <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
-              <Animated.View
-                style={[
-                  styles.screenContainer,
-                  comingFromSignup
-                    ? { opacity: 1, transform: [{ translateY: 0 }] }
-                    : {
-                        opacity: fadeAnim,
-                        transform: [{ translateY: slideAnim }],
-                      },
-                ]}
-              >
-                {currentScreen === "Home" && (
-                  <MainPage
-                    navigation={navigation}
-                    route={{ params: screenParams.Home }}
-                  />
-                )}
-                {currentScreen === "Cart" && (
-                  <CartPage navigation={navigation} />
-                )}
-                {currentScreen === "Search" && (
-                  <SearchPage navigation={navigation} />
-                )}
-                {currentScreen === "Favorites" && (
-                  <FavoritesPage navigation={navigation} />
-                )}
-                {currentScreen === "Wall" && (
-                  <WallPage navigation={navigation} onLogout={handleLogout} />
-                )}
-                {currentScreen === "RecentPieces" && (
-                  <RecentPiecesScreen navigation={navigation} />
-                )}
-              </Animated.View>
-
-              <View style={styles.navbar}>
-                <NavButton
-                  onPress={() => handleNavPress("Cart")}
-                  isActive={currentScreen === "Cart"}
-                >
-                  <Cart width={32.75} height={32} />
-                </NavButton>
-
-                <NavButton
-                  onPress={() => handleNavPress("Search")}
-                  isActive={currentScreen === "Search"}
-                >
-                  <Search width={24.75} height={24.75} />
-                </NavButton>
-
-                <NavButton
-                  onPress={() => handleNavPress("Home")}
-                  isActive={currentScreen === "Home"}
-                >
-                  <Logo width={21} height={28} />
-                </NavButton>
-
-                <NavButton
-                  onPress={() => handleNavPress("Favorites")}
-                  isActive={currentScreen === "Favorites"}
-                >
-                  <Heart width={28.74} height={25.07} />
-                </NavButton>
-
-                <NavButton
-                  onPress={() => handleNavPress("Wall")}
-                  isActive={currentScreen === "Wall"}
-                >
-                  <Me width={30.25} height={30.25} />
-                </NavButton>
-              </View>
-            </SafeAreaView>
-          </LinearGradient>
+          <MainAppNavigator
+            onLogout={handleLogout}
+            comingFromSignup={comingFromSignup}
+          />
         )}
 
         {navState.overlay === "static" && <SimpleAuthLoadingScreen />}

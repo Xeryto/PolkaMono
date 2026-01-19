@@ -1184,11 +1184,14 @@ const Wall = ({ navigation, onLogout }: WallProps) => {
   };
 
   return (
-    <View style={styles.container}>
-      <Animated.View
-        entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM)}
-        style={styles.roundedBox}
-      >
+    <Animated.View
+      style={styles.container}
+      entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
+        ANIMATION_DELAYS.LARGE
+      )}
+      exiting={FadeOutDown.duration(ANIMATION_DURATIONS.MICRO)}
+    >
+      <Animated.View style={styles.roundedBox}>
         <LinearGradient
           colors={["rgba(205, 166, 122, 0.4)", "rgba(205, 166, 122, 0)"]}
           start={{ x: 0, y: 1 }}
@@ -1239,7 +1242,7 @@ const Wall = ({ navigation, onLogout }: WallProps) => {
           })()}
         </View>
       </Animated.View>
-    </View>
+    </Animated.View>
   );
 };
 

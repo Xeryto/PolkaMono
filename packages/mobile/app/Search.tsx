@@ -1007,6 +1007,9 @@ const Search = ({ navigation }: SearchProps) => {
   return (
     <Animated.View
       style={styles.container}
+      entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
+        ANIMATION_DELAYS.LARGE
+      )}
       exiting={FadeOutDown.duration(ANIMATION_DURATIONS.MICRO)}
     >
       <Animated.View

@@ -14,7 +14,11 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
-import Animated, { FadeIn, FadeInDown } from "react-native-reanimated";
+import Animated, {
+  FadeIn,
+  FadeInDown,
+  FadeOutDown,
+} from "react-native-reanimated";
 import * as WebBrowser from "expo-web-browser";
 import Cancel from "./components/svg/Cancel";
 import { RoundedRect, Shadow, Canvas } from "@shopify/react-native-skia";
@@ -420,7 +424,13 @@ const Cart = ({ navigation }: CartProps) => {
   );
 
   return (
-    <View style={styles.container}>
+    <Animated.View
+      style={styles.container}
+      entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
+        ANIMATION_DELAYS.LARGE
+      )}
+      exiting={FadeOutDown.duration(ANIMATION_DURATIONS.MICRO)}
+    >
       <Animated.View
         entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM)}
         style={styles.roundedBox}
@@ -600,7 +610,7 @@ const Cart = ({ navigation }: CartProps) => {
           <Text style={styles.text}>КОРЗИНА</Text>
         </View>
       </Animated.View>
-    </View>
+    </Animated.View>
   );
 };
 
