@@ -104,15 +104,15 @@ const ForgotPasswordScreen: React.FC<ForgotPasswordScreenProps> = ({
               {isSuccess ? (
                 <View style={styles.successContainer}>
                   <Text style={styles.successText}>
-                    Если аккаунт с таким именем пользователя или email
+                    если аккаунт с таким именем пользователя или email
                     существует, код подтверждения был отправлен.
                   </Text>
                 </View>
               ) : (
                 <>
-                  <Text style={styles.title}>Сброс пароля</Text>
+                  <Text style={styles.title}>сброс пароля</Text>
                   <Text style={styles.subtitle}>
-                    Введите ваше имя пользователя или email ниже, и мы отправим
+                    введите ваше имя пользователя или email ниже, и мы отправим
                     вам код подтверждения для сброса пароля.
                   </Text>
 
@@ -164,7 +164,7 @@ const ForgotPasswordScreen: React.FC<ForgotPasswordScreenProps> = ({
                       {isLoading ? (
                         <ActivityIndicator color="#fff" />
                       ) : (
-                        <Text style={styles.sendButtonText}>Отправить код</Text>
+                        <Text style={styles.sendButtonText}>отправить код</Text>
                       )}
                     </Animated.View>
                   </TouchableOpacity>

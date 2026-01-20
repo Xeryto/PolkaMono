@@ -20,7 +20,10 @@ import {
   ScrollView,
   NativeSyntheticEvent,
   NativeScrollEvent,
+  Share,
+  Linking,
 } from "react-native";
+import * as Clipboard from "expo-clipboard";
 import { LinearGradient } from "expo-linear-gradient";
 import * as Haptics from "expo-haptics";
 import Animated, { FadeInDown, FadeOutDown } from "react-native-reanimated";
@@ -36,6 +39,9 @@ import HeartFilled from "./components/svg/HeartFilled";
 import More from "./components/svg/More";
 import Seen from "./components/svg/Seen";
 import Cancel from "./components/svg/Cancel";
+import Link from "./components/svg/Link";
+import LinkPressed from "./components/svg/LinkPressed";
+import ShareIcon from "./components/svg/Share";
 import * as api from "./services/api";
 import { apiWrapper } from "./services/apiWrapper";
 import fallbackImage from "./assets/Vision.png"; // Use as fallback for missing images
@@ -323,6 +329,12 @@ const MainPage = ({ navigation, route }: MainPageProps) => {
   const sizesTranslateX = useRef(new RNAnimated.Value(-screenWidth)).current;
   const imageHeightPercent = useRef(new RNAnimated.Value(100)).current;
 
+  // Backside animation values
+  const backButtonsTranslateX = useRef(new RNAnimated.Value(0)).current;
+  const backSizesTranslateX = useRef(
+    new RNAnimated.Value(-screenWidth)
+  ).current;
+
   // Page fade-in animation - removed, React Navigation handles screen transitions
 
   // Add refresh animation state
@@ -344,11 +356,69 @@ const MainPage = ({ navigation, route }: MainPageProps) => {
   const isAnimatingRef = useRef(false);
   const isRefreshingRef = useRef(false);
   const [showSizeSelection, setShowSizeSelection] = useState(false);
+  const [showBackSizeSelection, setShowBackSizeSelection] = useState(false);
 
   // Reset to first card when component mounts to prevent showing old state
   useEffect(() => {
     setCurrentCardIndex(0);
     setCurrentImageIndex(0);
+  }, []);
+
+  // Handle deep linking for product URLs
+  useEffect(() => {
+    const handleDeepLink = async (url: string) => {
+      try {
+        // Parse URL: polka://product/{productId}
+        const match = url.match(/polka:\/\/product\/(.+)/);
+        if (match && match[1]) {
+          const productId = match[1];
+          console.log("MainPage - Deep link received for product:", productId);
+
+          // Fetch product details
+          try {
+            const product = await api.getProductDetails(productId);
+            const cardItem = mapProductToCardItem(product);
+
+            // Add product to top of cards
+            setCards((prevCards) => {
+              // Remove any existing card with same ID to avoid duplicates
+              const filteredCards = prevCards.filter(
+                (c) => c.id !== cardItem.id
+              );
+              const updatedCards = [cardItem, ...filteredCards];
+              persistentCardStorage.cards = updatedCards;
+              return updatedCards;
+            });
+
+            // Set as current card
+            setCurrentCardIndex(0);
+          } catch (error) {
+            console.error(
+              "MainPage - Error fetching product from deep link:",
+              error
+            );
+          }
+        }
+      } catch (error) {
+        console.error("MainPage - Error handling deep link:", error);
+      }
+    };
+
+    // Handle initial URL if app was opened via deep link
+    Linking.getInitialURL().then((url) => {
+      if (url) {
+        handleDeepLink(url);
+      }
+    });
+
+    // Listen for deep links while app is running
+    const subscription = Linking.addEventListener("url", (event) => {
+      handleDeepLink(event.url);
+    });
+
+    return () => {
+      subscription.remove();
+    };
   }, []);
 
   // Update refs when state changes
@@ -362,10 +432,19 @@ const MainPage = ({ navigation, route }: MainPageProps) => {
   const [selectedSize, setSelectedSize] = useState<string | null>(null);
   const [userSelectedSize, setUserSelectedSize] = useState<string | null>(null);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [isLinkCopied, setIsLinkCopied] = useState(false);
+  const [showLinkCopiedPopup, setShowLinkCopiedPopup] = useState(false);
 
   // Animation state for buttons
   const cartButtonScale = useRef(new RNAnimated.Value(1)).current;
   const seenButtonScale = useRef(new RNAnimated.Value(1)).current;
+  const linkButtonScale = useRef(new RNAnimated.Value(1)).current;
+  const shareButtonScale = useRef(new RNAnimated.Value(1)).current;
+
+  // Animation state for backside buttons
+  const backCartButtonScale = useRef(new RNAnimated.Value(1)).current;
+  const backLinkButtonScale = useRef(new RNAnimated.Value(1)).current;
+  const backShareButtonScale = useRef(new RNAnimated.Value(1)).current;
 
   // Flip card state
   const [isFlipped, setIsFlipped] = useState(false);
@@ -392,7 +471,20 @@ const MainPage = ({ navigation, route }: MainPageProps) => {
       easing: ANIMATION_EASING.CUBIC,
     }).start();
     setIsFlipped((prev) => !prev);
-  }, [isFlipped, flipAnimation]);
+    // Reset size selections when flipping
+    if (isFlipped) {
+      // Flipping back to front - reset backside size selection
+      backButtonsTranslateX.setValue(0);
+      backSizesTranslateX.setValue(-screenWidth);
+      setShowBackSizeSelection(false);
+    } else {
+      // Flipping to back - reset front size selection
+      buttonsTranslateX.setValue(0);
+      sizesTranslateX.setValue(-screenWidth);
+      imageHeightPercent.setValue(100);
+      setShowSizeSelection(false);
+    }
+  }, [isFlipped, flipAnimation, screenWidth]);
 
   // Initialize cards state with a callback to avoid unnecessary updates
   const [cards, setCards] = useState<CardItem[]>([]);
@@ -1080,6 +1172,7 @@ const MainPage = ({ navigation, route }: MainPageProps) => {
       flipAnimation.setValue(0);
       setIsFlipped(false);
       resetToButtons();
+      resetToBackButtons();
       // Reset pan position
       pan.setValue({ x: 0, y: screenHeight });
       // Animate card back to original position
@@ -1140,6 +1233,209 @@ const MainPage = ({ navigation, route }: MainPageProps) => {
     // Call the actual press handler
     swipeCard("up");
   };
+
+  // Handle link button press-in animation
+  const handleLinkPressIn = () => {
+    RNAnimated.timing(linkButtonScale, {
+      toValue: 0.85,
+      duration: 80,
+      useNativeDriver: true,
+      easing: Easing.inOut(Easing.ease),
+    }).start();
+  };
+
+  // Handle link button press-out animation
+  const handleLinkPressOut = () => {
+    RNAnimated.timing(linkButtonScale, {
+      toValue: 1,
+      duration: 150,
+      useNativeDriver: true,
+      easing: Easing.inOut(Easing.ease),
+    }).start();
+  };
+
+  // Handle share button press-in animation
+  const handleSharePressIn = () => {
+    RNAnimated.timing(shareButtonScale, {
+      toValue: 0.85,
+      duration: 80,
+      useNativeDriver: true,
+      easing: Easing.inOut(Easing.ease),
+    }).start();
+  };
+
+  // Handle share button press-out animation
+  const handleSharePressOut = () => {
+    RNAnimated.timing(shareButtonScale, {
+      toValue: 1,
+      duration: 150,
+      useNativeDriver: true,
+      easing: Easing.inOut(Easing.ease),
+    }).start();
+  };
+
+  // Handle backside cart button press-in animation
+  const handleBackCartPressIn = () => {
+    RNAnimated.timing(backCartButtonScale, {
+      toValue: 0.85,
+      duration: 80,
+      useNativeDriver: true,
+      easing: Easing.inOut(Easing.ease),
+    }).start();
+  };
+
+  // Handle backside cart button press-out animation
+  const handleBackCartPressOut = () => {
+    RNAnimated.timing(backCartButtonScale, {
+      toValue: 1,
+      duration: 150,
+      useNativeDriver: true,
+      easing: Easing.inOut(Easing.ease),
+    }).start();
+    handleBackCartPress();
+  };
+
+  // Handle backside cart button press
+  const handleBackCartPress = () => {
+    // Animate buttons out and size selection in on the back
+    RNAnimated.parallel([
+      RNAnimated.timing(backButtonsTranslateX, {
+        toValue: screenWidth,
+        duration: 300,
+        easing: Easing.ease,
+        useNativeDriver: true,
+      }),
+      RNAnimated.timing(backSizesTranslateX, {
+        toValue: 0,
+        duration: 300,
+        easing: Easing.ease,
+        useNativeDriver: true,
+      }),
+    ]).start(() => {
+      requestAnimationFrame(() => {
+        setShowBackSizeSelection(true);
+      });
+    });
+  };
+
+  // Handle cancel backside size selection
+  const handleCancelBackSizeSelection = () => {
+    // Animate back to buttons on the back
+    RNAnimated.parallel([
+      RNAnimated.timing(backButtonsTranslateX, {
+        toValue: 0,
+        duration: 300,
+        easing: Easing.ease,
+        useNativeDriver: true,
+      }),
+      RNAnimated.timing(backSizesTranslateX, {
+        toValue: -screenWidth,
+        duration: 300,
+        easing: Easing.ease,
+        useNativeDriver: true,
+      }),
+    ]).start(() => {
+      requestAnimationFrame(() => {
+        setShowBackSizeSelection(false);
+      });
+    });
+  };
+
+  // Function to reset UI from backside size selection back to buttons
+  const resetToBackButtons = () => {
+    backButtonsTranslateX.setValue(0);
+    backSizesTranslateX.setValue(-screenWidth);
+    setShowBackSizeSelection(false);
+  };
+
+  // Handle backside link button press-in animation
+  const handleBackLinkPressIn = () => {
+    RNAnimated.timing(backLinkButtonScale, {
+      toValue: 0.85,
+      duration: 80,
+      useNativeDriver: true,
+      easing: Easing.inOut(Easing.ease),
+    }).start();
+  };
+
+  // Handle backside link button press-out animation
+  const handleBackLinkPressOut = () => {
+    RNAnimated.timing(backLinkButtonScale, {
+      toValue: 1,
+      duration: 150,
+      useNativeDriver: true,
+      easing: Easing.inOut(Easing.ease),
+    }).start();
+  };
+
+  // Handle backside share button press-in animation
+  const handleBackSharePressIn = () => {
+    RNAnimated.timing(backShareButtonScale, {
+      toValue: 0.85,
+      duration: 80,
+      useNativeDriver: true,
+      easing: Easing.inOut(Easing.ease),
+    }).start();
+  };
+
+  // Handle backside share button press-out animation
+  const handleBackSharePressOut = () => {
+    RNAnimated.timing(backShareButtonScale, {
+      toValue: 1,
+      duration: 150,
+      useNativeDriver: true,
+      easing: Easing.inOut(Easing.ease),
+    }).start();
+  };
+
+  // Handle link button press
+  const handleLinkPress = useCallback(async () => {
+    const currentCard = cards[currentCardIndex];
+    if (!currentCard) return;
+
+    // Generate a link to the product
+    const productUrl = `polka://product/${currentCard.id}`;
+
+    try {
+      // Copy to clipboard
+      await Clipboard.setStringAsync(productUrl);
+
+      // Show copied state
+      setIsLinkCopied(true);
+      setShowLinkCopiedPopup(true);
+
+      // Provide haptic feedback
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+
+      // Reset copied state after 2 seconds
+      setTimeout(() => {
+        setIsLinkCopied(false);
+        setShowLinkCopiedPopup(false);
+      }, 2000);
+    } catch (error) {
+      console.error("Error copying link:", error);
+    }
+  }, [cards, currentCardIndex]);
+
+  // Handle share button press
+  const handleSharePress = useCallback(async () => {
+    const currentCard = cards[currentCardIndex];
+    if (!currentCard) return;
+
+    // Generate a link to the product
+    const productUrl = `polka://product/${currentCard.id}`;
+
+    try {
+      await Share.share({
+        message: `Посмотрите ${currentCard.name} от ${currentCard.brand_name} на Полке!\n${productUrl}`,
+        title: currentCard.name,
+        url: productUrl,
+      });
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    } catch (error) {
+      console.error("Error sharing:", error);
+    }
+  }, [cards, currentCardIndex]);
 
   const handleCartPress = () => {
     // Animate buttons out and size selection in
@@ -1428,108 +1724,56 @@ const MainPage = ({ navigation, route }: MainPageProps) => {
               },
             ]}
           >
-            {card?.variants && card.variants.length === 1 ? (
-              // Single size layout - centered relative to full card width
-              <>
-                {card.variants.map((variant) => {
-                  const isAvailable = variant.stock_quantity > 0;
-                  const isUserSize = variant.size === userSelectedSize;
-                  const isOneSize = variant.size === "One Size";
+            {/* Scrollable Size List */}
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.sizeScrollContent}
+              style={styles.sizeScrollView}
+            >
+              {card?.variants?.map((variant, index) => {
+                const isAvailable = variant.stock_quantity > 0;
+                const isUserSize = variant.size === userSelectedSize;
+                const isOneSize = variant.size === "One Size";
 
-                  return (
-                    <Pressable
-                      key={variant.size}
-                      style={[
-                        isOneSize ? styles.sizeOval : styles.sizeCircle,
-                        isAvailable
-                          ? styles.sizeCircleAvailable
-                          : styles.sizeCircleUnavailable,
-                        isUserSize && isAvailable
-                          ? styles.sizeCircleUserSize
-                          : null,
-                      ]}
-                      onPress={() => {
-                        if (isAvailable) {
-                          handleSizeSelect(variant.size);
-                        } else {
-                          Haptics.impactAsync(
-                            Haptics.ImpactFeedbackStyle.Light
-                          );
-                        }
-                      }}
-                      disabled={!isAvailable}
+                return (
+                  <Pressable
+                    key={variant.size}
+                    style={[
+                      isOneSize ? styles.sizeOval : styles.sizeCircle,
+                      isAvailable
+                        ? styles.sizeCircleAvailable
+                        : styles.sizeCircleUnavailable,
+                      isUserSize && isAvailable
+                        ? styles.sizeCircleUserSize
+                        : null,
+                      index > 0 ? { marginLeft: 10 } : null,
+                    ]}
+                    onPress={() => {
+                      if (isAvailable) {
+                        handleSizeSelect(variant.size);
+                      } else {
+                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                      }
+                    }}
+                    disabled={!isAvailable}
+                  >
+                    <Text
+                      style={isOneSize ? styles.sizeOvalText : styles.sizeText}
                     >
-                      <Text
-                        style={
-                          isOneSize ? styles.sizeOvalText : styles.sizeText
-                        }
-                      >
-                        {variant.size}
-                      </Text>
-                    </Pressable>
-                  );
-                })}
-                <Pressable
-                  onPress={handleCancelSizeSelection}
-                  style={styles.cancelSizeSelectionButtonAbsolute}
-                >
-                  <Cancel width={27} height={27} />
-                </Pressable>
-              </>
-            ) : (
-              // Multiple sizes layout - cancel acts as another size
-              <>
-                {card?.variants?.map((variant, index) => {
-                  const isAvailable = variant.stock_quantity > 0;
-                  const isUserSize = variant.size === userSelectedSize;
-                  const isOneSize = variant.size === "One Size";
-
-                  return (
-                    <Pressable
-                      key={variant.size}
-                      style={[
-                        isOneSize ? styles.sizeOval : styles.sizeCircle,
-                        isAvailable
-                          ? styles.sizeCircleAvailable
-                          : styles.sizeCircleUnavailable,
-                        isUserSize && isAvailable
-                          ? styles.sizeCircleUserSize
-                          : null,
-                        index > 0 ? { marginLeft: 10 } : null,
-                      ]}
-                      onPress={() => {
-                        if (isAvailable) {
-                          handleSizeSelect(variant.size);
-                        } else {
-                          Haptics.impactAsync(
-                            Haptics.ImpactFeedbackStyle.Light
-                          );
-                        }
-                      }}
-                      disabled={!isAvailable}
-                    >
-                      <Text
-                        style={
-                          isOneSize ? styles.sizeOvalText : styles.sizeText
-                        }
-                      >
-                        {variant.size}
-                      </Text>
-                    </Pressable>
-                  );
-                })}
-                <Pressable
-                  onPress={handleCancelSizeSelection}
-                  style={[
-                    styles.sizeCircle,
-                    styles.cancelSizeButton,
-                    { marginLeft: 10 },
-                  ]}
-                >
-                  <Cancel width={27} height={27} />
-                </Pressable>
-              </>
-            )}
+                      {variant.size}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </ScrollView>
+            {/* Fixed Cancel Button in Right Corner */}
+            <Pressable
+              onPress={handleCancelSizeSelection}
+              style={styles.cancelSizeSelectionButtonFixed}
+            >
+              <Cancel width={27} height={27} />
+            </Pressable>
           </RNAnimated.View>
         </>
       );
@@ -1562,7 +1806,9 @@ const MainPage = ({ navigation, route }: MainPageProps) => {
 
   // Render function for the back of the card
   const renderBackOfCard = useCallback(
-    (card: CardItem) => {
+    (card: CardItem, index: number) => {
+      const isLiked = card.isLiked === true;
+
       return (
         <View style={styles.cardBackContainer}>
           <Pressable style={[styles.removeButton]} onPress={handleFlip}>
@@ -1605,10 +1851,175 @@ const MainPage = ({ navigation, route }: MainPageProps) => {
               }
             />
           </ScrollView>
+
+          {/* Buttons Container - Backside */}
+          <RNAnimated.View
+            style={[
+              styles.backButtonContainer,
+              {
+                transform: [{ translateX: backButtonsTranslateX }],
+                opacity: showBackSizeSelection ? 0 : 1,
+              },
+            ]}
+          >
+            {/* Link Copied Popup */}
+            {showLinkCopiedPopup && (
+              <Animated.View
+                entering={FadeInDown.duration(200)}
+                exiting={FadeOutDown.duration(200)}
+                style={styles.linkCopiedPopup}
+              >
+                <Text style={styles.linkCopiedText}>Ссылка скопирована</Text>
+              </Animated.View>
+            )}
+            <Pressable
+              style={styles.backButton}
+              onPressIn={handleBackCartPressIn}
+              onPressOut={handleBackCartPressOut}
+            >
+              <RNAnimated.View
+                style={{ transform: [{ scale: backCartButtonScale }] }}
+              >
+                <Cart2 width={33} height={33} />
+              </RNAnimated.View>
+            </Pressable>
+
+            <Pressable
+              style={styles.backButton}
+              onPressIn={handleBackLinkPressIn}
+              onPressOut={handleBackLinkPressOut}
+              onPress={handleLinkPress}
+            >
+              <RNAnimated.View
+                style={{ transform: [{ scale: backLinkButtonScale }] }}
+              >
+                {isLinkCopied ? (
+                  <LinkPressed width={33} height={33} />
+                ) : (
+                  <Link width={33} height={33} />
+                )}
+              </RNAnimated.View>
+            </Pressable>
+
+            <Pressable
+              style={styles.backButton}
+              onPressIn={handleBackSharePressIn}
+              onPressOut={handleBackSharePressOut}
+              onPress={handleSharePress}
+            >
+              <RNAnimated.View
+                style={{ transform: [{ scale: backShareButtonScale }] }}
+              >
+                <ShareIcon width={33} height={33} />
+              </RNAnimated.View>
+            </Pressable>
+
+            <View style={{ zIndex: 999 }}>
+              <HeartButton
+                isLiked={isLiked}
+                onToggleLike={() => toggleLike(index)}
+              />
+            </View>
+
+            {/* Add long press overlay for the heart */}
+            <Pressable
+              style={[
+                styles.longPressOverlay,
+                { position: "absolute", right: 0, zIndex: 998 },
+              ]}
+              onLongPress={() => handleLongPress(index)}
+              delayLongPress={300}
+            />
+          </RNAnimated.View>
+
+          {/* Size Selection Circles - Backside */}
+          <RNAnimated.View
+            style={[
+              styles.backSizeContainer,
+              {
+                transform: [{ translateX: backSizesTranslateX }],
+                opacity: showBackSizeSelection ? 1 : 0,
+              },
+            ]}
+          >
+            {/* Scrollable Size List */}
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.sizeScrollContent}
+              style={styles.sizeScrollView}
+            >
+              {card?.variants?.map((variant, variantIndex) => {
+                const isAvailable = variant.stock_quantity > 0;
+                const isUserSize = variant.size === userSelectedSize;
+                const isOneSize = variant.size === "One Size";
+
+                return (
+                  <Pressable
+                    key={variant.size}
+                    style={[
+                      isOneSize ? styles.sizeOval : styles.sizeCircle,
+                      isAvailable
+                        ? styles.sizeCircleAvailable
+                        : styles.sizeCircleUnavailable,
+                      isUserSize && isAvailable
+                        ? styles.sizeCircleUserSize
+                        : null,
+                      variantIndex > 0 ? { marginLeft: 10 } : null,
+                    ]}
+                    onPress={() => {
+                      if (isAvailable) {
+                        handleSizeSelect(variant.size);
+                      } else {
+                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                      }
+                    }}
+                    disabled={!isAvailable}
+                  >
+                    <Text
+                      style={isOneSize ? styles.sizeOvalText : styles.sizeText}
+                    >
+                      {variant.size}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </ScrollView>
+            {/* Fixed Cancel Button in Right Corner */}
+            <Pressable
+              onPress={handleCancelBackSizeSelection}
+              style={styles.cancelSizeSelectionButtonFixed}
+            >
+              <Cancel width={27} height={27} />
+            </Pressable>
+          </RNAnimated.View>
         </View>
       );
     },
-    [handleFlip]
+    [
+      handleFlip,
+      handleBackCartPressIn,
+      handleBackCartPressOut,
+      handleBackCartPress,
+      handleBackLinkPressIn,
+      handleBackLinkPressOut,
+      handleBackSharePressIn,
+      handleBackSharePressOut,
+      handleLinkPress,
+      handleSharePress,
+      toggleLike,
+      handleLongPress,
+      handleSizeSelect,
+      handleCancelBackSizeSelection,
+      userSelectedSize,
+      cards,
+      currentCardIndex,
+      showBackSizeSelection,
+      backButtonsTranslateX,
+      backSizesTranslateX,
+      isLinkCopied,
+      showLinkCopiedPopup,
+    ]
   );
 
   // Adjust the renderCard function to add safeguards
@@ -1691,7 +2102,7 @@ const MainPage = ({ navigation, route }: MainPageProps) => {
               backAnimatedStyle,
             ]}
           >
-            <View style={styles.cardFace}>{renderBackOfCard(card)}</View>
+            <View style={styles.cardFace}>{renderBackOfCard(card, index)}</View>
           </RNAnimated.View>
         </RNAnimated.View>
       );
@@ -2076,13 +2487,28 @@ const styles = StyleSheet.create({
     //marginBottom: 10, // Space below the price
   },
   sizeContainer: {
-    flexDirection: "row",
-    justifyContent: "space-around",
-    alignItems: "center",
     width: "100%",
-    marginBottom: 0,
+    alignItems: "center",
+    justifyContent: "center",
+    flexDirection: "row",
+    gap: 10,
     paddingHorizontal: 20,
+    height: 60,
     position: "relative",
+    overflow: "hidden",
+  },
+  sizeScrollView: {
+    flex: 1,
+    width: "100%",
+    height: 60,
+    borderRadius: 41,
+  },
+  sizeScrollContent: {
+    width: "100%",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    minHeight: 60,
   },
   sizeCircle: {
     width: 41,
@@ -2096,6 +2522,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.25,
     shadowRadius: 3.84,
     elevation: 5,
+    marginVertical: 9.5, // Center vertically: (60 - 41) / 2 = 9.5
   },
   sizeCircleAvailable: {
     backgroundColor: "#E2CCB2", // Available sizes
@@ -2123,6 +2550,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.25,
     shadowRadius: 3.84,
     elevation: 5,
+    marginVertical: 9.5, // Center vertically: (60 - 41) / 2 = 9.5
   },
   sizeOvalText: {
     color: "#000",
@@ -2157,6 +2585,20 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.25,
     shadowRadius: 3.84,
     elevation: 5,
+  },
+  cancelSizeSelectionButtonFixed: {
+    width: 41,
+    height: 41,
+    borderRadius: 20.5,
+    backgroundColor: "rgba(230, 109, 123, 0.54)",
+    justifyContent: "center",
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
+    zIndex: 10,
   },
   cancelSizeButton: {
     backgroundColor: "rgba(230, 109, 123, 0.54)",
@@ -2240,16 +2682,16 @@ const styles = StyleSheet.create({
     paddingBottom: 20,
   },
   expandableContainer: {
-    marginBottom: 10,
+    marginBottom: 5,
     borderBottomWidth: 1,
     borderBottomColor: "#eee",
-    paddingBottom: 5,
+    paddingBottom: 3,
   },
   expandableHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    paddingVertical: 10,
+    paddingVertical: 6,
   },
   expandableTitle: {
     fontFamily: "REM",
@@ -2270,6 +2712,43 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(230, 109, 123, 0.54)",
     borderRadius: 5, // Make it circular
     padding: 0,
+  },
+  backButtonContainer: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-end",
+    width: "100%",
+    position: "relative",
+    height: Dimensions.get("window").height * 0.06,
+  },
+  backButton: {
+    padding: 5,
+  },
+  backSizeContainer: {
+    position: "absolute",
+    bottom: 10,
+    width: "100%",
+    alignItems: "center",
+    justifyContent: "center",
+    flexDirection: "row",
+    gap: 10,
+  },
+  linkCopiedPopup: {
+    position: "absolute",
+    top: -50,
+    left: "50%",
+    marginLeft: -80,
+    backgroundColor: "rgba(0, 0, 0, 0.8)",
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 8,
+    zIndex: 1000,
+  },
+  linkCopiedText: {
+    color: "#FFF",
+    fontFamily: "REM",
+    fontSize: 14,
+    textAlign: "center",
   },
 });
 

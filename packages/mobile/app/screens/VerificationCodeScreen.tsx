@@ -135,9 +135,9 @@ const VerificationCodeScreen: React.FC<VerificationCodeScreenProps> = ({
               >
                 <BackIcon width={22} height={22} />
               </TouchableOpacity>
-              <Text style={styles.title}>Подтвердите почту</Text>
+              <Text style={styles.title}>подтвердите почту</Text>
               <Text style={styles.subtitle}>
-                Мы отправили 6-значный код на {email}. Пожалуйста, введите его
+                мы отправили 6-значный код на {email}. пожалуйста, введите его
                 ниже.
               </Text>
 
@@ -195,7 +195,7 @@ const VerificationCodeScreen: React.FC<VerificationCodeScreenProps> = ({
                 {isLoading ? (
                   <ActivityIndicator color="#fff" />
                 ) : (
-                  <Text style={styles.buttonText}>Подтвердить</Text>
+                  <Text style={styles.buttonText}>подтвердить</Text>
                 )}
               </TouchableOpacity>
 
@@ -217,11 +217,11 @@ const VerificationCodeScreen: React.FC<VerificationCodeScreenProps> = ({
                       styles.resendButtonTextDisabled,
                     ]}
                   >
-                    Повторить через {resendCooldown}с
+                    повторить через {resendCooldown}с
                   </Text>
                 ) : (
                   <Text style={styles.resendButtonText}>
-                    Отправить код повторно
+                    отправить код повторно
                   </Text>
                 )}
               </TouchableOpacity>

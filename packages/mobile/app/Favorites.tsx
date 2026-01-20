@@ -346,9 +346,9 @@ const Favorites = ({ navigation }: FavoritesProps) => {
         }));
 
       const allFriendItems = [
-        ...friendsList,
-        ...sentRequestsList,
-        ...receivedRequestsList,
+        ...receivedRequestsList, // First: received friend invitations
+        ...friendsList, // Second: added friends
+        ...sentRequestsList, // Third: sent friendship invitations
       ];
       console.log("Processed Friend Items:", allFriendItems);
 
@@ -1652,29 +1652,31 @@ const SearchContent = ({
     <>
       {/* Search Input */}
       <Animated.View
-        style={styles.searchContainer}
         entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM)}
-        exiting={FadeOutDown.duration(ANIMATION_DURATIONS.MICRO)}
+        style={styles.favoritesSearchContainer}
       >
-        <View
-          style={{
-            flex: 1,
-            flexDirection: "row",
-            alignItems: "center",
-            justifyContent: "space-between",
-          }}
-        >
+        <View style={styles.favoritesSearchInputContainer}>
           <TextInput
-            style={styles.searchInput}
+            style={styles.favoritesSearchInput}
             placeholder="поиск"
             placeholderTextColor="rgba(0,0,0,0.6)"
             value={searchQuery}
             onChangeText={handleSearch}
             autoFocus={true}
           />
-          <Pressable style={styles.cancelButton} onPress={toggleSearch}>
-            <Text style={styles.cancelButtonText}>Отмена</Text>
-          </Pressable>
+
+          <Animated.View
+            entering={FadeInDown.duration(ANIMATION_DURATIONS.STANDARD)}
+            exiting={FadeOutDown.duration(ANIMATION_DURATIONS.QUICK)}
+            style={styles.favoritesCancelButtonContainer}
+          >
+            <TouchableOpacity
+              onPress={toggleSearch}
+              style={styles.favoritesCancelButton}
+            >
+              <Text style={styles.favoritesCancelButtonText}>Отмена</Text>
+            </TouchableOpacity>
+          </Animated.View>
         </View>
       </Animated.View>
 
@@ -2339,11 +2341,12 @@ const styles = StyleSheet.create({
   columnWrapper: {
     justifyContent: "space-between",
     paddingHorizontal: 0, // Match recommendations: outer padding handles spacing
+    marginBottom: 14, // Vertical spacing to match horizontal spacing (14px gap)
   },
   itemContainer: {
     height: (width * 0.88 - 45) / 2,
     width: "100%", // Calculate width for two columns with spacing
-    marginBottom: 14, // Account for shadows (10px base + 4px shadow radius)
+    marginBottom: 0, // Reduced to match horizontal spacing (handled by columnWrapper gap)
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.25,
@@ -2447,14 +2450,14 @@ const styles = StyleSheet.create({
   // Product item styles matching Search.tsx
   productItem: {
     width: (width * 0.88 - 42 - 14) / 2, // Container width - list padding (42 = 21*2) - gap (14, 1.5:1 ratio)
-    marginBottom: 14, // 1.5:1 ratio with outer padding
+    marginBottom: 0, // Vertical spacing handled by columnWrapper to match horizontal spacing
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.25,
     shadowRadius: 4,
     elevation: 4,
     backgroundColor: "#EDE7E2",
-    borderRadius: 40,
+    borderRadius: 30,
   },
   productImageContainer: {
     overflow: "hidden",
@@ -2499,36 +2502,47 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 4,
   },
-  searchContainer: {
+  favoritesSearchContainer: {
+    position: "absolute",
     width: "88%",
     left: "6%",
     height: height * 0.1,
+    zIndex: 10,
+    top: Platform.OS === "ios" ? height * 0.02 : height * 0.04,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.25,
     shadowRadius: 4,
-    elevation: 6,
+    elevation: 4,
     backgroundColor: "#F2ECE7",
     borderRadius: 41,
-    zIndex: 10,
-    //position: 'absolute',
-    top: Platform.OS === "ios" ? height * 0.02 : height * 0.04,
+    overflow: "hidden",
   },
-  searchInput: {
-    flex: 1,
-    padding: 15,
+  favoritesSearchInputContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    height: "100%",
+    paddingHorizontal: 15,
+  },
+  favoritesSearchInput: {
     fontSize: 30,
     fontFamily: "Igra Sans",
+    flex: 1,
     height: "100%",
+    paddingVertical: 10,
   },
-  cancelButton: {
-    paddingHorizontal: Platform.OS === "ios" ? 45 : 50, // Smaller padding on Android
+  favoritesCancelButtonContainer: {
+    marginRight: -15,
+  },
+  favoritesCancelButton: {
+    paddingHorizontal: Platform.OS === "ios" ? 45 : 50,
     backgroundColor: "#C8A688",
     borderRadius: 41,
-    paddingVertical: Platform.OS === "ios" ? 35 : 27, // Smaller on Android
-    marginRight: -1,
+    paddingVertical: Platform.OS === "ios" ? 34 : 27,
+    height: "100%",
   },
-  cancelButtonText: {
+  favoritesCancelButtonText: {
     fontFamily: "Igra Sans",
     fontSize: 18,
     color: "#4A3120",
@@ -2600,7 +2614,7 @@ const styles = StyleSheet.create({
   },
   itemWrapper: {
     width: (width * 0.88 - 42 - 14) / 2, // Container width - list padding (42 = 21*2) - gap (14, 1.5:1 ratio)
-    marginBottom: 14, // 1.5:1 ratio with outer padding
+    marginBottom: 0, // Vertical spacing matches horizontal spacing (handled by columnWrapper)
   },
   searchItemWrapper: {
     width: "47%",
@@ -2716,7 +2730,7 @@ const styles = StyleSheet.create({
   recommendationsColumnWrapper: {
     justifyContent: "space-between",
     paddingHorizontal: 0,
-    marginBottom: 0,
+    marginBottom: 14, // Vertical spacing to match horizontal spacing (14px gap)
   },
   recommendationItemWrapper: {
     width: (width * 0.88 - 42 - 14) / 2, // Container width - list padding (42 = 21*2) - gap (14, 1.5:1 ratio)

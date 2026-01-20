@@ -32,6 +32,8 @@ import Animated, {
   useSharedValue,
   useAnimatedStyle,
   withTiming,
+  withDelay,
+  runOnJS,
   Easing as ReanimatedEasing,
 } from "react-native-reanimated";
 import BackIcon from "./components/svg/BackIcon";
@@ -112,6 +114,173 @@ if (
 ) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
 }
+
+// Helper function to get privacy label - defined outside component
+const getPrivacyLabel = (option: "nobody" | "friends" | "everyone"): string => {
+  switch (option) {
+    case "nobody":
+      return "никто";
+    case "friends":
+      return "друзья";
+    case "everyone":
+      return "все";
+    default:
+      return "";
+  }
+};
+
+// Animated Privacy Text Component - defined outside Settings component to maintain state
+const AnimatedPrivacyText = ({
+  value,
+  itemId,
+  textStyle,
+}: {
+  value: "nobody" | "friends" | "everyone";
+  itemId: string;
+  textStyle: any;
+}) => {
+  const scale = useSharedValue(1);
+  const translateX = useSharedValue(0);
+  const opacity = useSharedValue(1);
+  const [displayLabel, setDisplayLabel] = useState(() =>
+    getPrivacyLabel(value)
+  );
+  const prevValueRef = useRef<"nobody" | "friends" | "everyone">(value);
+  const isAnimatingRef = useRef(false);
+  const isInitialMount = useRef(true);
+  const [animationComplete, setAnimationComplete] = useState(0);
+  const [lastAnimatedValue, setLastAnimatedValue] = useState<
+    "nobody" | "friends" | "everyone"
+  >(value);
+  const targetValueRef = useRef<"nobody" | "friends" | "everyone">(value);
+
+  // Completion handler - only updates state
+  const handleAnimationComplete = useCallback(
+    (animatedValue: "nobody" | "friends" | "everyone") => {
+      setLastAnimatedValue(animatedValue);
+      setAnimationComplete((prev) => prev + 1);
+    },
+    []
+  );
+
+  // Function to start animation - extracted to avoid dependency issues
+  const startAnimation = useCallback(
+    (targetValue: "nobody" | "friends" | "everyone") => {
+      if (isAnimatingRef.current) {
+        // Store target value if animation is in progress
+        targetValueRef.current = targetValue;
+        return;
+      }
+
+      isAnimatingRef.current = true;
+      const newLabel = getPrivacyLabel(targetValue);
+
+      // First: Animate old text to shrink (don't translate yet)
+      scale.value = withTiming(
+        0.5,
+        {
+          duration: ANIMATION_DURATIONS.MEDIUM,
+          easing: ReanimatedEasing.out(ReanimatedEasing.cubic),
+        },
+        () => {
+          // After shrink completes, then slide right
+          translateX.value = withTiming(
+            width * 0.4,
+            {
+              duration: ANIMATION_DURATIONS.MEDIUM,
+              easing: ReanimatedEasing.in(ReanimatedEasing.cubic),
+            },
+            () => {
+              // After old text slides out, update label and reset for new text
+              runOnJS(setDisplayLabel)(newLabel);
+              opacity.value = 0;
+              translateX.value = -width * 0.4;
+              scale.value = 0.5;
+
+              // Small delay before new text appears, then animate in
+              translateX.value = withDelay(
+                150,
+                withTiming(0, {
+                  duration: ANIMATION_DURATIONS.MEDIUM,
+                  easing: ReanimatedEasing.out(ReanimatedEasing.cubic),
+                })
+              );
+
+              scale.value = withDelay(
+                150,
+                withTiming(1, {
+                  duration: ANIMATION_DURATIONS.MEDIUM,
+                  easing: ReanimatedEasing.out(ReanimatedEasing.cubic),
+                })
+              );
+
+              opacity.value = withDelay(
+                150,
+                withTiming(
+                  1,
+                  {
+                    duration: ANIMATION_DURATIONS.MEDIUM,
+                  },
+                  () => {
+                    runOnJS(handleAnimationComplete)(targetValue);
+                  }
+                )
+              );
+            }
+          );
+        }
+      );
+    },
+    [handleAnimationComplete]
+  );
+
+  useEffect(() => {
+    // Skip animation on initial mount
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
+      prevValueRef.current = value;
+      targetValueRef.current = value;
+      return;
+    }
+
+    // Update target value ref
+    targetValueRef.current = value;
+
+    // Handle animation completion
+    if (animationComplete > 0) {
+      // Animation just completed, update prevValue
+      prevValueRef.current = lastAnimatedValue;
+      isAnimatingRef.current = false;
+
+      // Check if we need to animate to new target
+      if (targetValueRef.current !== lastAnimatedValue) {
+        startAnimation(targetValueRef.current);
+        return;
+      }
+    }
+
+    // Check if we need to start new animation
+    if (
+      prevValueRef.current !== targetValueRef.current &&
+      !isAnimatingRef.current
+    ) {
+      startAnimation(targetValueRef.current);
+    }
+  }, [value, startAnimation, animationComplete, lastAnimatedValue]);
+
+  const animatedStyle = useAnimatedStyle(() => {
+    return {
+      transform: [{ scale: scale.value }, { translateX: translateX.value }],
+      opacity: opacity.value,
+    };
+  });
+
+  return (
+    <Animated.Text style={[textStyle, animatedStyle]}>
+      {displayLabel}
+    </Animated.Text>
+  );
+};
 
 const Settings = ({
   navigation,
@@ -2834,18 +3003,6 @@ const Settings = ({
 
   const renderPrivacyContent = () => {
     const privacyOptions: PrivacyOption[] = ["nobody", "friends", "everyone"];
-    const getPrivacyLabel = (option: PrivacyOption): string => {
-      switch (option) {
-        case "nobody":
-          return "никто";
-        case "friends":
-          return "друзья";
-        case "everyone":
-          return "все";
-        default:
-          return "";
-      }
-    };
 
     const privacyItems = [
       {
@@ -2919,9 +3076,12 @@ const Settings = ({
                 }
               }}
             >
-              <Text style={styles.privacyOptionText}>
-                {getPrivacyLabel(item.value)}
-              </Text>
+              <AnimatedPrivacyText
+                key={item.id}
+                value={item.value}
+                itemId={item.id}
+                textStyle={styles.privacyOptionText}
+              />
             </TouchableOpacity>
           </View>
         </View>
@@ -4407,6 +4567,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
+    overflow: "hidden",
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.25,

@@ -3,7 +3,6 @@ import {
   View,
   Text,
   StyleSheet,
-  TextInput,
   FlatList,
   Pressable,
   Image,
@@ -13,6 +12,7 @@ import {
   Keyboard,
   ScrollView,
   ActivityIndicator,
+  TextInput,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import Animated, {
@@ -1043,7 +1043,6 @@ const Search = ({ navigation }: SearchProps) => {
               <TouchableOpacity
                 onPress={handleCancelSearch}
                 style={styles.cancelButton}
-                //activeOpacity={0.7}
               >
                 <Text style={styles.cancelButtonText}>отмена</Text>
               </TouchableOpacity>
@@ -1339,30 +1338,12 @@ const styles = StyleSheet.create({
     elevation: 4,
     backgroundColor: "#F2ECE7",
     borderRadius: 41,
-    overflow: "hidden", // Ensures the children don't overflow the rounded corners
+    overflow: "hidden",
   },
   searchContainerActive: {
     // When search is active, make search container slightly wider
     width: "92%",
     shadowOpacity: 0.35, // Make shadow more prominent when active
-  },
-  searchInputContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    height: "100%",
-    paddingHorizontal: 15,
-  },
-  searchInput: {
-    fontSize: 30,
-    fontFamily: "Igra Sans",
-    flex: 1,
-    height: "100%",
-    paddingVertical: 10, // Add some vertical padding
-  },
-  searchInputActive: {
-    // Slightly smaller font when search is active to make room for cancel button
-    fontSize: 26,
   },
   filtersContainer: {
     marginBottom: "5%",
@@ -1512,7 +1493,7 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 4,
     backgroundColor: "#EDE7E2",
-    borderRadius: 40,
+    borderRadius: Math.round((0.25 * (width * 0.88 - 42 - 14)) / 2),
   },
   imageContainer: {
     overflow: "hidden",
@@ -1643,14 +1624,31 @@ const styles = StyleSheet.create({
     marginBottom: 10,
     marginLeft: 25,
   },
+  searchInputContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    height: "100%",
+    paddingHorizontal: 15,
+  },
+  searchInput: {
+    fontSize: 30,
+    fontFamily: "Igra Sans",
+    flex: 1,
+    height: "100%",
+    paddingVertical: 10,
+  },
+  searchInputActive: {
+    fontSize: 26,
+  },
   cancelButtonContainer: {
     marginRight: -15,
   },
   cancelButton: {
-    paddingHorizontal: Platform.OS === "ios" ? 45 : 50, // Smaller padding on Android
+    paddingHorizontal: Platform.OS === "ios" ? 45 : 50,
     backgroundColor: "#C8A688",
     borderRadius: 41,
-    paddingVertical: Platform.OS === "ios" ? 34 : 27, // Smaller on Android
+    paddingVertical: Platform.OS === "ios" ? 34 : 27,
     height: "100%",
   },
   cancelButtonText: {
