@@ -15,6 +15,7 @@ import {
   Keyboard,
   Platform,
   Alert,
+  Linking,
   NativeSyntheticEvent,
   NativeScrollEvent,
 } from "react-native";
@@ -338,7 +339,7 @@ const Wall = ({ navigation, onLogout }: WallProps) => {
       Alert.alert(
         "ошибка обновления",
         "не удалось обновить любимые бренды. попробуйте позже.",
-        [{ text: "OK" }]
+        [{ text: "OK" }],
       );
     }
   };
@@ -425,7 +426,7 @@ const Wall = ({ navigation, onLogout }: WallProps) => {
   const filteredBrands =
     searchQuery.length > 0
       ? popularBrands.filter((brand) =>
-          brand.toLowerCase().includes(searchQuery.toLowerCase())
+          brand.toLowerCase().includes(searchQuery.toLowerCase()),
         )
       : popularBrands;
 
@@ -545,7 +546,7 @@ const Wall = ({ navigation, onLogout }: WallProps) => {
           },
         },
       ],
-      { cancelable: true }
+      { cancelable: true },
     );
   };
 
@@ -625,7 +626,7 @@ const Wall = ({ navigation, onLogout }: WallProps) => {
       <Animated.View
         style={styles.backButton}
         entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
-          ANIMATION_DELAYS.LARGE
+          ANIMATION_DELAYS.LARGE,
         )}
       >
         <TouchableOpacity onPress={() => setShowBrandSearch(false)}>
@@ -635,7 +636,7 @@ const Wall = ({ navigation, onLogout }: WallProps) => {
 
       <Animated.View
         entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
-          ANIMATION_DELAYS.EXTENDED
+          ANIMATION_DELAYS.EXTENDED,
         )}
         style={styles.selectedBubblesContainer}
       >
@@ -654,7 +655,7 @@ const Wall = ({ navigation, onLogout }: WallProps) => {
 
       <Animated.View
         entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
-          ANIMATION_DELAYS.VERY_LARGE
+          ANIMATION_DELAYS.VERY_LARGE,
         )}
         style={styles.searchResultsContainer}
       >
@@ -685,7 +686,7 @@ const Wall = ({ navigation, onLogout }: WallProps) => {
       if (item.product_id) {
         console.log(
           "Wall - Fetching full product details for product_id:",
-          item.product_id
+          item.product_id,
         );
 
         const fullProduct = await api.getProductDetails(item.product_id);
@@ -710,7 +711,7 @@ const Wall = ({ navigation, onLogout }: WallProps) => {
         navigation.navigate("Home", { addCardItem: cardItem });
       } else {
         console.log(
-          "Wall - No product_id available, using order item data only"
+          "Wall - No product_id available, using order item data only",
         );
 
         const cardItem: CardItem = {
@@ -721,11 +722,20 @@ const Wall = ({ navigation, onLogout }: WallProps) => {
           images: item.images
             ? item.images.map((img) => ({ uri: img }))
             : item.image
-            ? [{ uri: item.image }]
-            : [],
+              ? [{ uri: item.image }]
+              : [],
           isLiked: false,
           size: item.size,
           quantity: 1,
+          color_variants: [
+            {
+              color_name: item.color || "Unknown",
+              color_hex: "#888888",
+              images: item.images || (item.image ? [item.image] : []),
+              variants: [{ size: item.size, stock_quantity: 1 }],
+            },
+          ],
+          selected_color_index: 0,
           variants: [{ size: item.size, stock_quantity: 1 }],
           description: item.description || "No description available.",
           color: item.color || "Unknown",
@@ -746,11 +756,20 @@ const Wall = ({ navigation, onLogout }: WallProps) => {
         images: item.images
           ? item.images.map((img) => ({ uri: img }))
           : item.image
-          ? [{ uri: item.image }]
-          : [],
+            ? [{ uri: item.image }]
+            : [],
         isLiked: false,
         size: item.size,
         quantity: 1,
+        color_variants: [
+          {
+            color_name: item.color || "Unknown",
+            color_hex: "#888888",
+            images: item.images || (item.image ? [item.image] : []),
+            variants: [{ size: item.size, stock_quantity: 1 }],
+          },
+        ],
+        selected_color_index: 0,
         variants: [{ size: item.size, stock_quantity: 1 }],
         description: item.description || "No description available.",
         color: item.color || "Unknown",
@@ -767,7 +786,7 @@ const Wall = ({ navigation, onLogout }: WallProps) => {
       <Animated.View
         style={styles.backButton}
         entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
-          ANIMATION_DELAYS.LARGE
+          ANIMATION_DELAYS.LARGE,
         )}
       >
         <TouchableOpacity onPress={() => setSelectedOrder(null)}>
@@ -777,7 +796,7 @@ const Wall = ({ navigation, onLogout }: WallProps) => {
 
       <Animated.View
         entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
-          ANIMATION_DELAYS.LARGE
+          ANIMATION_DELAYS.LARGE,
         )}
         style={styles.orderDetailsContainer}
       >
@@ -789,7 +808,7 @@ const Wall = ({ navigation, onLogout }: WallProps) => {
             <Animated.View
               key={item.id}
               entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
-                ANIMATION_DELAYS.STANDARD + index * ANIMATION_DELAYS.SMALL
+                ANIMATION_DELAYS.STANDARD + index * ANIMATION_DELAYS.SMALL,
               )}
               style={styles.cartItem}
             >
@@ -810,7 +829,7 @@ const Wall = ({ navigation, onLogout }: WallProps) => {
                       {item.name}
                     </Text>
                     <Text style={styles.itemPrice}>{`${item.price.toFixed(
-                      2
+                      2,
                     )} ₽`}</Text>
                     <Text style={styles.itemSize}>{item.size}</Text>
                   </View>
@@ -851,7 +870,7 @@ const Wall = ({ navigation, onLogout }: WallProps) => {
 
         <Animated.View
           entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
-            ANIMATION_DELAYS.VERY_LARGE + ANIMATION_DELAYS.SMALL
+            ANIMATION_DELAYS.VERY_LARGE + ANIMATION_DELAYS.SMALL,
           )}
           style={styles.orderTotalContainer}
         >
@@ -861,7 +880,7 @@ const Wall = ({ navigation, onLogout }: WallProps) => {
         </Animated.View>
         <Animated.View
           entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
-            ANIMATION_DELAYS.VERY_LARGE + ANIMATION_DELAYS.STANDARD
+            ANIMATION_DELAYS.VERY_LARGE + ANIMATION_DELAYS.STANDARD,
           )}
           style={styles.orderStatusContainer}
         >
@@ -870,7 +889,7 @@ const Wall = ({ navigation, onLogout }: WallProps) => {
           </Text>
           <Animated.View
             entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
-              ANIMATION_DELAYS.VERY_LARGE + ANIMATION_DELAYS.EXTENDED
+              ANIMATION_DELAYS.VERY_LARGE + ANIMATION_DELAYS.EXTENDED,
             )}
             style={styles.orderStatus}
           >
@@ -891,7 +910,7 @@ const Wall = ({ navigation, onLogout }: WallProps) => {
         <Animated.View
           style={styles.backButton}
           entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
-            ANIMATION_DELAYS.LARGE
+            ANIMATION_DELAYS.LARGE,
           )}
         >
           <TouchableOpacity onPress={() => setCurrentView("wall")}>
@@ -901,7 +920,7 @@ const Wall = ({ navigation, onLogout }: WallProps) => {
 
         <Animated.View
           entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
-            ANIMATION_DELAYS.VERY_LARGE
+            ANIMATION_DELAYS.VERY_LARGE,
           )}
           style={styles.ordersContainer}
         >
@@ -928,20 +947,45 @@ const Wall = ({ navigation, onLogout }: WallProps) => {
                 <Animated.View
                   key={order.id}
                   entering={FadeInDown.duration(
-                    ANIMATION_DURATIONS.MEDIUM
+                    ANIMATION_DURATIONS.MEDIUM,
                   ).delay(
-                    ANIMATION_DELAYS.VERY_LARGE + index * ANIMATION_DELAYS.SMALL
+                    ANIMATION_DELAYS.VERY_LARGE +
+                      index * ANIMATION_DELAYS.SMALL,
                   )}
                   style={styles.orderItem}
                 >
-                  <TouchableOpacity
-                    style={styles.orderBubble}
-                    onPress={() => setSelectedOrder(order)}
-                  >
-                    <Text style={styles.orderNumber}>
-                      заказ №{order.number}
-                    </Text>
-                  </TouchableOpacity>
+                  <View style={styles.orderBubble}>
+                    <TouchableOpacity
+                      style={styles.orderBubbleTouchArea}
+                      onPress={() => setSelectedOrder(order)}
+                    >
+                      <Text
+                        style={styles.orderNumber}
+                        numberOfLines={1}
+                        adjustsFontSizeToFit
+                        minimumFontScale={0.5}
+                      >
+                        заказ №{order.number}
+                      </Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={styles.returnButton}
+                      onPress={() => {
+                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                        const subject = encodeURIComponent(
+                          `Return Request - Order #${order.number}`,
+                        );
+                        const body = encodeURIComponent(
+                          `Здравствуйте,\n\nХочу инициировать возврат по заказу №${order.number}.\n\nС уважением`,
+                        );
+                        Linking.openURL(
+                          `mailto:support@polkamarket.ru?subject=${subject}&body=${body}`,
+                        );
+                      }}
+                    >
+                      <Text style={styles.returnButtonText}>возврат</Text>
+                    </TouchableOpacity>
+                  </View>
                   <Text style={styles.orderSummary}>
                     итого: {order.total_amount.toFixed(2)} ₽
                   </Text>
@@ -957,7 +1001,7 @@ const Wall = ({ navigation, onLogout }: WallProps) => {
   const renderSettingsButton = () => (
     <Animated.View
       entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
-        ANIMATION_DELAYS.VERY_LARGE + ANIMATION_DELAYS.EXTENDED
+        ANIMATION_DELAYS.VERY_LARGE + ANIMATION_DELAYS.EXTENDED,
       )}
       style={styles.settingsButtonContainer}
     >
@@ -978,7 +1022,7 @@ const Wall = ({ navigation, onLogout }: WallProps) => {
       <View style={styles.scrollableContent}>
         <Animated.View
           entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
-            ANIMATION_DELAYS.EXTENDED
+            ANIMATION_DELAYS.EXTENDED,
           )}
           style={styles.favoriteBrandsSection}
         >
@@ -992,7 +1036,7 @@ const Wall = ({ navigation, onLogout }: WallProps) => {
 
         <Animated.View
           entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
-            ANIMATION_DELAYS.VERY_LARGE
+            ANIMATION_DELAYS.VERY_LARGE,
           )}
           style={styles.statsContainer}
         >
@@ -1053,7 +1097,7 @@ const Wall = ({ navigation, onLogout }: WallProps) => {
 
         <Animated.View
           entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
-            ANIMATION_DELAYS.VERY_LARGE + ANIMATION_DELAYS.SMALL
+            ANIMATION_DELAYS.VERY_LARGE + ANIMATION_DELAYS.SMALL,
           )}
           style={styles.sizeSection}
         >
@@ -1094,7 +1138,7 @@ const Wall = ({ navigation, onLogout }: WallProps) => {
         {/* Fixed header with avatar and logout */}
         <Animated.View
           entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
-            ANIMATION_DELAYS.LARGE
+            ANIMATION_DELAYS.LARGE,
           )}
           style={styles.profileSection}
         >
@@ -1102,8 +1146,8 @@ const Wall = ({ navigation, onLogout }: WallProps) => {
             {isLoadingProfile
               ? "загрузка..."
               : userProfile
-              ? userProfile.username
-              : "пользователь"}
+                ? userProfile.username
+                : "пользователь"}
           </Text>
           <View style={styles.profileImageWrapper}>
             <View style={styles.profileImageContainer}>
@@ -1126,7 +1170,7 @@ const Wall = ({ navigation, onLogout }: WallProps) => {
         <Animated.View
           style={styles.logoutButton}
           entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
-            ANIMATION_DELAYS.LARGE
+            ANIMATION_DELAYS.LARGE,
           )}
         >
           <TouchableOpacity
@@ -1187,7 +1231,7 @@ const Wall = ({ navigation, onLogout }: WallProps) => {
     <Animated.View
       style={styles.container}
       entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
-        ANIMATION_DELAYS.LARGE
+        ANIMATION_DELAYS.LARGE,
       )}
       exiting={FadeOutDown.duration(ANIMATION_DURATIONS.MICRO)}
     >
@@ -1224,10 +1268,10 @@ const Wall = ({ navigation, onLogout }: WallProps) => {
                   ? "АВАТАРКА"
                   : "СТЕНА"
                 : currentView === "orders"
-                ? selectedOrder
-                  ? `ЗАКАЗ №${selectedOrder.number}`
-                  : "ЗАКАЗЫ"
-                : settingsBottomText;
+                  ? selectedOrder
+                    ? `ЗАКАЗ №${selectedOrder.number}`
+                    : "ЗАКАЗЫ"
+                  : settingsBottomText;
             // Use smaller font for longer text like "УВЕДОМЛЕНИЯ" (11 chars)
             const fontSize = text.length > 10 ? 34 : 38;
             return (
@@ -1700,16 +1744,43 @@ const styles = StyleSheet.create({
     marginBottom: 25,
   },
   orderBubble: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     backgroundColor: "#E2CCB2",
     borderRadius: 41,
-    padding: 20,
-    justifyContent: "center",
     marginBottom: 20,
     height: 0.1 * height,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.25,
     shadowRadius: 4,
+  },
+  orderBubbleTouchArea: {
+    flex: 1,
+    justifyContent: "center",
+    height: "100%",
+    minWidth: 0,
+    paddingLeft: 20,
+  },
+  returnButton: {
+    paddingHorizontal: Platform.OS === "ios" ? 20 : 24,
+    backgroundColor: "#D8B68F",
+    borderRadius: 41,
+    alignSelf: "stretch",
+    justifyContent: "center",
+    alignItems: "center",
+    marginLeft: 10,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 6,
+  },
+  returnButtonText: {
+    fontFamily: "IgraSans",
+    fontSize: 18,
+    color: "#4A3120",
   },
   orderNumber: {
     fontFamily: "IgraSans",
