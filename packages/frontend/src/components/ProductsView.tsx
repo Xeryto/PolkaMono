@@ -106,9 +106,9 @@ export function ProductsView() {
                       {product.name}
                     </p>
                     <div className="flex flex-wrap gap-2 mt-1">
-                      {product.color && (
+                      {product.color_variants?.length > 0 && (
                         <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
-                          Цвет: {translateColorToRussian(product.color)}
+                          Цвета: {product.color_variants.map((cv) => translateColorToRussian(cv.color_name)).join(", ")}
                         </span>
                       )}
                       {product.material && (
@@ -120,10 +120,10 @@ export function ProductsView() {
                     </div>
                     <p className="text-sm text-muted-foreground mt-1">
                       В наличии:{" "}
-                      {product.variants.reduce(
-                        (sum: number, v: any) => sum + v.stock_quantity,
+                      {product.color_variants?.reduce(
+                        (sum, cv) => sum + (cv.variants?.reduce((s, v) => s + v.stock_quantity, 0) ?? 0),
                         0
-                      )}
+                      ) ?? 0}
                     </p>
                   </div>
                   <p className="font-bold text-foreground">

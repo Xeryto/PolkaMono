@@ -71,24 +71,16 @@ def create_payment(db: Session, user_id: str, amount: float, currency: str, desc
     db.refresh(order)
 
     for item in items:
-        product = db.query(Product).filter(Product.id == item.product_id).first()
-        if not product:
-            raise Exception(f"Product with id {item.product_id} not found")
-
-        # Find the product variant for the specific size
-        variant = db.query(ProductVariant).filter(
-            ProductVariant.product_id == item.product_id,
-            ProductVariant.size == item.size
-        ).first()
-        
+        variant = db.query(ProductVariant).filter(ProductVariant.id == item.product_variant_id).first()
         if not variant:
-            raise Exception(f"Product variant with size {item.size} not found for product {item.product_id}")
-        
-        # Check if there's enough stock
+            raise Exception(f"Product variant with id {item.product_variant_id} not found")
+        product = variant.product
+        if not product:
+            raise Exception(f"Product not found for variant {item.product_variant_id}")
+
         if variant.stock_quantity < item.quantity:
-            raise Exception(f"Insufficient stock for product {product.name} in size {item.size}. Available: {variant.stock_quantity}, Requested: {item.quantity}")
-        
-        # Reduce stock quantity
+            raise Exception(f"Insufficient stock for product {product.name} in size {variant.size}. Available: {variant.stock_quantity}, Requested: {item.quantity}")
+
         variant.stock_quantity -= item.quantity
 
         order_item = OrderItem(

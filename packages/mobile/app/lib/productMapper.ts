@@ -1,54 +1,100 @@
 /**
- * Utility functions for mapping API Product objects to CardItem objects
- * Ensures consistent data transformation across all screens (Main, Search, Favorites, Cart, Settings, etc.)
+ * Utility functions for mapping API Product objects to CardItem objects.
+ * Products have color_variants; CardItem shows one color at a time (selected_color_index).
  */
 
-import { ImageSourcePropType } from 'react-native';
 import * as api from '../services/api';
-import { CardItem } from '../types/product';
+import { CardItem, ColorVariant } from '../types/product';
 
-// Fallback images for products without images
 const fallbackImage = require('../assets/Vision.png');
 const vision2Image = require('../assets/Vision2.png');
 
+function mapImages(urls: string[]) {
+  if (!urls || urls.length === 0) return [fallbackImage, vision2Image];
+  return urls.map((uri) => ({ uri }));
+}
+
 /**
- * Maps an API Product object to a CardItem object
- * This function ensures article_number and all other fields are consistently preserved
- * across all screens in the mobile app
- * 
- * @param product - The API Product object to map
- * @param index - Optional index for fallback ID generation
- * @returns A CardItem object with all fields properly mapped
+ * Maps an API Product to a CardItem. Uses first color variant as selected.
  */
-export function mapProductToCardItem(
-  product: api.Product,
-  index?: number
-): CardItem {
+export function mapProductToCardItem(product: api.Product, index?: number): CardItem {
+  const color_variants: ColorVariant[] = (product.color_variants || []).map((cv) => ({
+    id: cv.id,
+    color_name: cv.color_name,
+    color_hex: cv.color_hex,
+    images: cv.images || [],
+    variants: (cv.variants || []).map((v) => ({
+      id: v.id,
+      size: v.size,
+      stock_quantity: v.stock_quantity,
+    })),
+  }));
+
+  const selected_index = 0;
+  const selected = color_variants[selected_index];
+  const generalUrls = product.general_images || [];
+  const colorUrls = selected?.images || [];
+  const combinedUrls = [...generalUrls, ...colorUrls];
+  const images = combinedUrls.length > 0 ? mapImages(combinedUrls) : (selected ? mapImages(selected.images) : [fallbackImage, vision2Image]);
+  const variants = selected?.variants ?? [];
+  const available_sizes = variants.map((v) => v.size);
+  const color = selected?.color_name ?? '';
+
   return {
     id: product.id ? product.id.toString() : `fallback-${index ?? 0}`,
     name: product.name,
     brand_name: product.brand_name || `Brand ${product.brand_id}`,
     price: product.price,
-    images:
-      product.images && product.images.length > 0
-        ? product.images.map((img) => ({ uri: img }))
-        : [fallbackImage, vision2Image],
+    images,
     isLiked: product.is_liked === true,
-    variants: product.variants || [],
-    description:
-      product.description || '',
-    color: product.color || '',
-    materials: product.material || '',
-    brand_return_policy:
-      product.brand_return_policy || product.return_policy || 'No specific brand return policy provided.',
-    article_number: product.article_number, // Preserve article_number for all screens
-    available_sizes: product.variants
-      ? product.variants.map((v) => v.size)
-      : [],
-    // Optional API-specific fields for compatibility
+    color_variants,
+    selected_color_index: selected_index,
+    variants,
+    available_sizes,
+    description: product.description ?? '',
+    color,
+    materials: product.material ?? '',
+    brand_return_policy: product.brand_return_policy ?? 'No specific brand return policy provided.',
+    article_number: product.article_number,
     brand_id: product.brand_id,
     category_id: product.category_id,
     styles: product.styles,
+    general_images: product.general_images ?? [],
+  };
+}
+
+/**
+ * Returns images and variants for a CardItem for the given color index.
+ * Merges general_images (from card) with color-specific images.
+ */
+export function getCardItemForColorIndex(card: CardItem, colorIndex: number): {
+  images: CardItem['images'];
+  variants: CardItem['variants'];
+  available_sizes: string[];
+  color: string;
+} {
+  const cv = card.color_variants?.[colorIndex];
+  const generalUrls = card.general_images ?? [];
+  if (!cv) {
+    return {
+      images: card.images,
+      variants: card.variants ?? [],
+      available_sizes: card.available_sizes ?? [],
+      color: card.color,
+    };
+  }
+  const colorUrls = cv.images ?? [];
+  const combined = [...generalUrls, ...colorUrls];
+  const images =
+    combined.length > 0
+      ? combined.map((uri) => ({ uri }))
+      : [fallbackImage, vision2Image];
+  const variants = cv.variants ?? [];
+  return {
+    images,
+    variants,
+    available_sizes: variants.map((v) => v.size),
+    color: cv.color_name,
   };
 }
 

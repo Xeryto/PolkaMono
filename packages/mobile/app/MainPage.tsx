@@ -23,10 +23,19 @@ import {
   Share,
   Linking,
 } from "react-native";
+import { TouchableOpacity } from "react-native-gesture-handler";
 import * as Clipboard from "expo-clipboard";
 import { LinearGradient } from "expo-linear-gradient";
 import * as Haptics from "expo-haptics";
-import Animated, { FadeInDown, FadeOutDown } from "react-native-reanimated";
+import Animated, {
+  FadeInDown,
+  FadeOutDown,
+  interpolate,
+  runOnJS,
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming,
+} from "react-native-reanimated";
 import {
   ANIMATION_DURATIONS,
   ANIMATION_DELAYS,
@@ -47,7 +56,10 @@ import { apiWrapper } from "./services/apiWrapper";
 import fallbackImage from "./assets/Vision.png"; // Use as fallback for missing images
 import vision2Image from "./assets/Vision2.png";
 import { CardItem, CartItem } from "./types/product";
-import { mapProductToCardItem } from "./lib/productMapper";
+import {
+  mapProductToCardItem,
+  getCardItemForColorIndex,
+} from "./lib/productMapper";
 import {
   translateColorToRussian,
   translateMaterialToRussian,
@@ -75,6 +87,16 @@ interface MainPageProps {
 // Add a constant for the minimum number of cards to maintain
 const MIN_CARDS_THRESHOLD = 3;
 
+// Distance from card edges for corner overlays and content padding (unified)
+const CARD_CORNER_INSET = 20;
+// Inner white box size for all four corners (same top/side spacing)
+const CORNER_BOX_SIZE = 52;
+const CORNER_OVERLAY_SIZE = CARD_CORNER_INSET + CORNER_BOX_SIZE; // 72 – overlay extends to edge
+// Back of card: less vertical padding for a tighter layout
+const CARD_BACK_VERTICAL_INSET = 12;
+const CARD_BACK_BOTTOM_INSET = 8;
+const SIZE_PANEL_CLOSED_WIDTH = 52;
+
 // Loading card ID constant
 const LOADING_CARD_ID = "__loading_card__";
 
@@ -86,6 +108,8 @@ const createLoadingCard = (): CardItem => ({
   price: 0,
   images: [fallbackImage],
   isLiked: false,
+  color_variants: [],
+  selected_color_index: 0,
   description: "",
   color: "",
   materials: "",
@@ -160,7 +184,7 @@ const fetchMoreCards = async (count: number = 2): Promise<CardItem[]> => {
     // Add a check to ensure products is an array
     if (!products || !Array.isArray(products)) {
       console.error(
-        "fetchMoreCards - API did not return a valid array of products."
+        "fetchMoreCards - API did not return a valid array of products.",
       );
       return []; // Return an empty array to prevent further errors
     }
@@ -198,7 +222,7 @@ const fetchMoreCards = async (count: number = 2): Promise<CardItem[]> => {
 // Like/unlike using the real API
 const toggleLikeApi = async (
   productId: string,
-  setLiked: boolean
+  setLiked: boolean,
 ): Promise<boolean> => {
   try {
     const action = setLiked ? "like" : "unlike";
@@ -266,7 +290,7 @@ const HeartButton: React.FC<HeartButtonProps> = ({ isLiked, onToggleLike }) => {
     Haptics.impactAsync(
       isLiked
         ? Haptics.ImpactFeedbackStyle.Light // Feedback for unliking
-        : Haptics.ImpactFeedbackStyle.Medium // Feedback for liking
+        : Haptics.ImpactFeedbackStyle.Medium, // Feedback for liking
     );
 
     // Animate the heart
@@ -327,13 +351,7 @@ const MainPage = ({ navigation, route }: MainPageProps) => {
   const fadeAnim = useRef(new RNAnimated.Value(1)).current;
   const buttonsTranslateX = useRef(new RNAnimated.Value(0)).current;
   const sizesTranslateX = useRef(new RNAnimated.Value(-screenWidth)).current;
-  const imageHeightPercent = useRef(new RNAnimated.Value(100)).current;
-
-  // Backside animation values
-  const backButtonsTranslateX = useRef(new RNAnimated.Value(0)).current;
-  const backSizesTranslateX = useRef(
-    new RNAnimated.Value(-screenWidth)
-  ).current;
+  const imageHeightPercent = useRef(new RNAnimated.Value(100)).current; // Kept for refs; image is always full size
 
   // Page fade-in animation - removed, React Navigation handles screen transitions
 
@@ -348,7 +366,7 @@ const MainPage = ({ navigation, route }: MainPageProps) => {
   // Animation controller references to allow cancellation
   const heartAnimationRef = useRef<RNAnimated.CompositeAnimation | null>(null);
   const longPressAnimationRef = useRef<RNAnimated.CompositeAnimation | null>(
-    null
+    null,
   );
 
   const [currentCardIndex, setCurrentCardIndex] = useState(0);
@@ -383,7 +401,7 @@ const MainPage = ({ navigation, route }: MainPageProps) => {
             setCards((prevCards) => {
               // Remove any existing card with same ID to avoid duplicates
               const filteredCards = prevCards.filter(
-                (c) => c.id !== cardItem.id
+                (c) => c.id !== cardItem.id,
               );
               const updatedCards = [cardItem, ...filteredCards];
               persistentCardStorage.cards = updatedCards;
@@ -395,7 +413,7 @@ const MainPage = ({ navigation, route }: MainPageProps) => {
           } catch (error) {
             console.error(
               "MainPage - Error fetching product from deep link:",
-              error
+              error,
             );
           }
         }
@@ -434,6 +452,11 @@ const MainPage = ({ navigation, route }: MainPageProps) => {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [isLinkCopied, setIsLinkCopied] = useState(false);
   const [showLinkCopiedPopup, setShowLinkCopiedPopup] = useState(false);
+  const [colorSelectorOpen, setColorSelectorOpen] = useState(false);
+  const [dropdownContentHeight, setDropdownContentHeight] = useState(0);
+  const colorDropdownHeight = useSharedValue(52); // closed = trigger height (matches other corners)
+  const sizePanelWidth = useSharedValue(52); // closed = cart corner only; open = full width
+  const backSizePanelWidth = useSharedValue(52); // back side: same grow animation
 
   // Animation state for buttons
   const cartButtonScale = useRef(new RNAnimated.Value(1)).current;
@@ -473,9 +496,8 @@ const MainPage = ({ navigation, route }: MainPageProps) => {
     setIsFlipped((prev) => !prev);
     // Reset size selections when flipping
     if (isFlipped) {
-      // Flipping back to front - reset backside size selection
-      backButtonsTranslateX.setValue(0);
-      backSizesTranslateX.setValue(-screenWidth);
+      // Flipping back to front - reset backside size panel
+      backSizePanelWidth.set(SIZE_PANEL_CLOSED_WIDTH);
       setShowBackSizeSelection(false);
     } else {
       // Flipping to back - reset front size selection
@@ -499,7 +521,7 @@ const MainPage = ({ navigation, route }: MainPageProps) => {
           setUserSelectedSize(userProfile.profile?.selected_size || null);
           console.log(
             "MainPage - User selected size:",
-            userProfile.profile?.selected_size
+            userProfile.profile?.selected_size,
           );
         }
 
@@ -524,7 +546,7 @@ const MainPage = ({ navigation, route }: MainPageProps) => {
         console.log(
           "MainPage - Setting initial cards:",
           starterCards.length,
-          "cards"
+          "cards",
         );
         console.log("MainPage - First card ID:", starterCards[0]?.id);
         setCards(starterCards);
@@ -539,11 +561,11 @@ const MainPage = ({ navigation, route }: MainPageProps) => {
       console.log(
         "MainPage - Loading from persistent storage:",
         persistentCardStorage.cards.length,
-        "cards"
+        "cards",
       );
       console.log(
         "MainPage - First persistent card ID:",
-        persistentCardStorage.cards[0]?.id
+        persistentCardStorage.cards[0]?.id,
       );
       setCards(persistentCardStorage.cards);
       setIsLoadingInitialCards(false);
@@ -577,11 +599,11 @@ const MainPage = ({ navigation, route }: MainPageProps) => {
 
       if (result.success) {
         console.log(
-          `MainPage - Swipe tracked successfully: ${productId} - ${swipeDirection}, new count: ${result.newCount}`
+          `MainPage - Swipe tracked successfully: ${productId} - ${swipeDirection}, new count: ${result.newCount}`,
         );
       } else {
         console.log(
-          `MainPage - Swipe tracking failed, rolled back to count: ${result.newCount}`
+          `MainPage - Swipe tracking failed, rolled back to count: ${result.newCount}`,
         );
       }
     } catch (error) {
@@ -620,7 +642,6 @@ const MainPage = ({ navigation, route }: MainPageProps) => {
   useEffect(() => {
     setCurrentImageIndex(0);
     if (imageScrollViewRef.current && imageCarouselWidth > 0) {
-      // Small delay to ensure ScrollView is laid out
       setTimeout(() => {
         imageScrollViewRef.current?.scrollTo({
           x: 0,
@@ -629,6 +650,78 @@ const MainPage = ({ navigation, route }: MainPageProps) => {
       }, 0);
     }
   }, [currentCardIndex, imageCarouselWidth]);
+
+  // Close color selector when card changes
+  useEffect(() => {
+    setColorSelectorOpen(false);
+    setDropdownContentHeight(0);
+    colorDropdownHeight.value = 52;
+  }, [currentCardIndex]);
+
+  // White corner: closed = trigger only; open = trigger + list (tight bottom, consistent gaps)
+  const COLOR_CORNER_CLOSED_HEIGHT = 52;
+  const COLOR_GAP = 6; // same between trigger↔first and between each option
+  const COLOR_OPTION_HEIGHT = 32; // 26 circle + 3+3 padding
+  const COLOR_DROPDOWN_ITEM_HEIGHT = COLOR_OPTION_HEIGHT + COLOR_GAP; // 38
+  const COLOR_DROPDOWN_BOTTOM_PADDING = 8;
+  useEffect(() => {
+    if (colorSelectorOpen && dropdownContentHeight > 0) {
+      colorDropdownHeight.value = withTiming(dropdownContentHeight, {
+        duration: 220,
+      });
+    }
+  }, [colorSelectorOpen, dropdownContentHeight]);
+
+  const closeColorSelector = useCallback(() => {
+    colorDropdownHeight.value = withTiming(
+      COLOR_CORNER_CLOSED_HEIGHT,
+      { duration: 180 },
+      (finished) => {
+        if (finished) {
+          runOnJS(setColorSelectorOpen)(false);
+          runOnJS(setDropdownContentHeight)(0);
+        }
+      },
+    );
+  }, []);
+
+  const colorDropdownAnimatedStyle = useAnimatedStyle(() => ({
+    height: colorDropdownHeight.value,
+    overflow: "hidden" as const,
+  }));
+
+  const handleColorSelect = useCallback(
+    (colorIndex: number) => {
+      const card = cards[currentCardIndex];
+      if (
+        !card?.color_variants?.length ||
+        colorIndex < 0 ||
+        colorIndex >= card.color_variants.length
+      )
+        return;
+      const next = getCardItemForColorIndex(card, colorIndex);
+      setCards((prev) => {
+        const nextCards = [...prev];
+        nextCards[currentCardIndex] = {
+          ...card,
+          selected_color_index: colorIndex,
+          images: next.images,
+          variants: next.variants,
+          available_sizes: next.available_sizes,
+          color: next.color,
+        };
+        return nextCards;
+      });
+      setCurrentImageIndex(0);
+      closeColorSelector();
+      if (imageScrollViewRef.current && imageCarouselWidth > 0) {
+        setTimeout(() => {
+          imageScrollViewRef.current?.scrollTo({ x: 0, animated: false });
+        }, 0);
+      }
+    },
+    [cards, currentCardIndex, imageCarouselWidth, closeColorSelector],
+  );
 
   // Ref to store cards for pan responder access
   const cardsRef = useRef<CardItem[]>([]);
@@ -660,7 +753,7 @@ const MainPage = ({ navigation, route }: MainPageProps) => {
 
       const contentOffsetX = event.nativeEvent.contentOffset.x;
       const currentIndex = Math.round(
-        contentOffsetX / imageCarouselWidthRef.current
+        contentOffsetX / imageCarouselWidthRef.current,
       );
 
       if (currentIndex >= 0) {
@@ -678,7 +771,7 @@ const MainPage = ({ navigation, route }: MainPageProps) => {
         }
       }
     },
-    []
+    [],
   );
 
   // Scroll to specific image index
@@ -706,20 +799,19 @@ const MainPage = ({ navigation, route }: MainPageProps) => {
         }
 
         // Check if touch is in the cancel button area - if so, don't capture
-        // Cancel button is positioned absolutely at right: 25, top: 25
-        // cardBackContainer has padding: 20, so button is at:
-        // - X: from right edge of card (88% width, centered) minus 20px padding minus 25px = cardRight - 45
-        // - Y: from top edge plus 20px padding plus 25px = 45
+        // Cancel button: right CARD_CORNER_INSET, top CARD_BACK_VERTICAL_INSET, 25x25
         const { pageX, pageY } = evt.nativeEvent;
         const windowWidth = Dimensions.get("window").width;
-        const cardWidth = windowWidth * 0.88; // Card width is 88% of screen
-        const cardLeft = windowWidth * 0.06; // Card is centered (6% margin on each side)
+        const cardWidth = windowWidth * 0.88;
+        const cardLeft = windowWidth * 0.06;
         const cardRight = cardLeft + cardWidth;
+        const rightInset = 20; // CARD_CORNER_INSET
+        const topInset = 12; // CARD_BACK_VERTICAL_INSET
 
-        const cancelButtonRight = cardRight - 45; // cardRight - padding(20) - right(25)
-        const cancelButtonLeft = cancelButtonRight - 25; // Button width is 25
-        const cancelButtonTop = 45; // padding(20) + top(25)
-        const cancelButtonBottom = cancelButtonTop + 25; // Button height is 25
+        const cancelButtonRight = cardRight - rightInset - 25;
+        const cancelButtonLeft = cancelButtonRight - 25;
+        const cancelButtonTop = topInset;
+        const cancelButtonBottom = cancelButtonTop + 25;
 
         // Check if touch is in cancel button area (add padding for easier tapping)
         const touchPadding = 15;
@@ -777,7 +869,7 @@ const MainPage = ({ navigation, route }: MainPageProps) => {
           useNativeDriver: false,
         }).start();
       },
-    })
+    }),
   ).current;
 
   // Enhance the panResponder to be even more robust
@@ -822,15 +914,15 @@ const MainPage = ({ navigation, route }: MainPageProps) => {
           // Swipe up - get fresh state values
           console.log(
             "MainPage - Gesture handler - cards length:",
-            cards.length
+            cards.length,
           );
           console.log(
             "MainPage - Gesture handler - currentCardIndex:",
-            currentCardIndex
+            currentCardIndex,
           );
           console.log(
             "MainPage - Gesture handler - cards:",
-            cards.map((c) => ({ id: c.id, name: c.name }))
+            cards.map((c) => ({ id: c.id, name: c.name })),
           );
 
           // Use a callback to get the most current state
@@ -838,14 +930,14 @@ const MainPage = ({ navigation, route }: MainPageProps) => {
             const currentCard = currentCards[currentCardIndex];
             console.log(
               "MainPage - Gesture handler - current card from callback:",
-              currentCard
+              currentCard,
             );
             if (currentCard) {
               swipeCard("up", currentCard);
             } else {
               console.error(
                 "MainPage - Gesture handler - no card found at index:",
-                currentCardIndex
+                currentCardIndex,
               );
             }
             return currentCards; // Don't modify the cards, just get the current state
@@ -867,7 +959,7 @@ const MainPage = ({ navigation, route }: MainPageProps) => {
           useNativeDriver: false,
         }).start();
       },
-    })
+    }),
   ).current;
 
   const fadeOutIn = useCallback(() => {
@@ -925,7 +1017,7 @@ const MainPage = ({ navigation, route }: MainPageProps) => {
 
       if (index < 0 || index >= cards.length) {
         console.log(
-          `toggleLike - Invalid index: ${index}, cards length: ${cards.length}`
+          `toggleLike - Invalid index: ${index}, cards length: ${cards.length}`,
         );
         return;
       }
@@ -935,7 +1027,7 @@ const MainPage = ({ navigation, route }: MainPageProps) => {
       const newLikedStatus = !currentLikedStatus;
 
       console.log(
-        `toggleLike - Card ${card.id} toggling from ${currentLikedStatus} to ${newLikedStatus}`
+        `toggleLike - Card ${card.id} toggling from ${currentLikedStatus} to ${newLikedStatus}`,
       );
 
       // Create a completely new array to ensure state change is detected
@@ -947,7 +1039,7 @@ const MainPage = ({ navigation, route }: MainPageProps) => {
 
       // Log before and after
       console.log(
-        `toggleLike - Before update: ${cards[index].isLiked}, After update will be: ${newCards[index].isLiked}`
+        `toggleLike - Before update: ${cards[index].isLiked}, After update will be: ${newCards[index].isLiked}`,
       );
 
       // Update state with new array
@@ -960,11 +1052,11 @@ const MainPage = ({ navigation, route }: MainPageProps) => {
       toggleLikeApi(card.id, newLikedStatus).then((success) => {
         if (success) {
           console.log(
-            `toggleLike - Updated card ${card.id} like status to: ${newLikedStatus}`
+            `toggleLike - Updated card ${card.id} like status to: ${newLikedStatus}`,
           );
         } else {
           console.error(
-            `toggleLike - Failed to update card ${card.id} like status to: ${newLikedStatus}`
+            `toggleLike - Failed to update card ${card.id} like status to: ${newLikedStatus}`,
           );
           // Optionally revert the state if API call fails
           setCards((prevCards) => {
@@ -978,7 +1070,7 @@ const MainPage = ({ navigation, route }: MainPageProps) => {
         }
       });
     },
-    [cards]
+    [cards],
   );
 
   const handleLongPress = useCallback(
@@ -992,7 +1084,7 @@ const MainPage = ({ navigation, route }: MainPageProps) => {
       // Provide haptic feedback,
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     },
-    [cards, toggleLike]
+    [cards, toggleLike],
   );
 
   // Clean up animations when component unmounts or changes
@@ -1004,7 +1096,7 @@ const MainPage = ({ navigation, route }: MainPageProps) => {
 
   const swipeCard = (
     direction: "up" | "right" = "up",
-    cardToSwipe?: CardItem
+    cardToSwipe?: CardItem,
   ) => {
     if (isAnimating) return;
 
@@ -1016,7 +1108,7 @@ const MainPage = ({ navigation, route }: MainPageProps) => {
     console.log("MainPage - Current card index:", currentCardIndex);
     console.log(
       "MainPage - Cards array:",
-      cards.map((c) => ({ id: c.id, name: c.name }))
+      cards.map((c) => ({ id: c.id, name: c.name })),
     );
     console.log("MainPage - Card passed to function:", cardToSwipe);
 
@@ -1029,7 +1121,7 @@ const MainPage = ({ navigation, route }: MainPageProps) => {
     const realCards = cards.filter((c) => c.id !== LOADING_CARD_ID);
     if (realCards.length === 1) {
       console.log(
-        "MainPage - Preventing swipe of last card until more are loaded"
+        "MainPage - Preventing swipe of last card until more are loaded",
       );
       // Show a quick bounce animation to indicate swipe is not allowed
       RNAnimated.sequence([
@@ -1083,20 +1175,20 @@ const MainPage = ({ navigation, route }: MainPageProps) => {
       setCards((prevCards) => {
         console.log(
           "MainPage - setCards callback - prevCards length:",
-          prevCards.length
+          prevCards.length,
         );
         console.log(
           "MainPage - setCards callback - currentCardIndex:",
-          currentCardIndex
+          currentCardIndex,
         );
         console.log(
           "MainPage - setCards callback - prevCards:",
-          prevCards.map((c) => ({ id: c.id, name: c.name }))
+          prevCards.map((c) => ({ id: c.id, name: c.name })),
         );
 
         if (prevCards.length === 0) {
           console.log(
-            "MainPage - setCards callback - prevCards is empty, returning empty array"
+            "MainPage - setCards callback - prevCards is empty, returning empty array",
           );
           return [];
         }
@@ -1104,13 +1196,13 @@ const MainPage = ({ navigation, route }: MainPageProps) => {
         if (newCards.length > 0) {
           console.log(
             "MainPage - setCards callback - removing card at index:",
-            currentCardIndex
+            currentCardIndex,
           );
           newCards.splice(currentCardIndex, 1);
         }
         // Log removed card info
         console.log(
-          `MainPage - Card ${currentCard?.id} was swiped ${direction}`
+          `MainPage - Card ${currentCard?.id} was swiped ${direction}`,
         );
         console.log("MainPage - Remaining cards:", newCards.length);
 
@@ -1123,7 +1215,7 @@ const MainPage = ({ navigation, route }: MainPageProps) => {
           trackSwipe(currentCard.id, direction);
         } else {
           console.error(
-            "MainPage - Cannot track swipe: currentCard.id is missing"
+            "MainPage - Cannot track swipe: currentCard.id is missing",
           );
         }
         // Reset current index if needed
@@ -1134,7 +1226,7 @@ const MainPage = ({ navigation, route }: MainPageProps) => {
         setTimeout(() => setCurrentCardIndex(newIndex), 0);
         // Add loading card if running low on cards
         const cardsWithoutLoading = newCards.filter(
-          (c) => c.id !== LOADING_CARD_ID
+          (c) => c.id !== LOADING_CARD_ID,
         );
         if (cardsWithoutLoading.length < MIN_CARDS_THRESHOLD) {
           // Add loading card if not already present
@@ -1145,18 +1237,18 @@ const MainPage = ({ navigation, route }: MainPageProps) => {
           // Trigger fetch in background
           console.log("MainPage - Low on cards, fetching more from API");
           fetchMoreCards(
-            MIN_CARDS_THRESHOLD - cardsWithoutLoading.length + 1
+            MIN_CARDS_THRESHOLD - cardsWithoutLoading.length + 1,
           ).then((apiCards) => {
             if (apiCards.length > 0) {
               setCards((latestCards) => {
                 // Remove loading cards and add new ones
                 const filteredCards = latestCards.filter(
-                  (c) => c.id !== LOADING_CARD_ID
+                  (c) => c.id !== LOADING_CARD_ID,
                 );
                 const updatedCards = [...filteredCards, ...apiCards];
                 console.log(
                   "MainPage - Added new cards, total count:",
-                  updatedCards.length
+                  updatedCards.length,
                 );
                 persistentCardStorage.cards = updatedCards;
                 return updatedCards;
@@ -1295,56 +1387,23 @@ const MainPage = ({ navigation, route }: MainPageProps) => {
     handleBackCartPress();
   };
 
-  // Handle backside cart button press
+  // Handle backside cart: same horizontal grow as front (panel goes over other icons)
   const handleBackCartPress = () => {
-    // Animate buttons out and size selection in on the back
-    RNAnimated.parallel([
-      RNAnimated.timing(backButtonsTranslateX, {
-        toValue: screenWidth,
-        duration: 300,
-        easing: Easing.ease,
-        useNativeDriver: true,
-      }),
-      RNAnimated.timing(backSizesTranslateX, {
-        toValue: 0,
-        duration: 300,
-        easing: Easing.ease,
-        useNativeDriver: true,
-      }),
-    ]).start(() => {
-      requestAnimationFrame(() => {
-        setShowBackSizeSelection(true);
-      });
-    });
+    setShowBackSizeSelection(true);
+    backSizePanelWidth.value = withTiming(sizePanelMaxWidth, { duration: 280 });
   };
 
-  // Handle cancel backside size selection
   const handleCancelBackSizeSelection = () => {
-    // Animate back to buttons on the back
-    RNAnimated.parallel([
-      RNAnimated.timing(backButtonsTranslateX, {
-        toValue: 0,
-        duration: 300,
-        easing: Easing.ease,
-        useNativeDriver: true,
-      }),
-      RNAnimated.timing(backSizesTranslateX, {
-        toValue: -screenWidth,
-        duration: 300,
-        easing: Easing.ease,
-        useNativeDriver: true,
-      }),
-    ]).start(() => {
-      requestAnimationFrame(() => {
-        setShowBackSizeSelection(false);
-      });
+    backSizePanelWidth.value = withTiming(SIZE_PANEL_CLOSED_WIDTH, {
+      duration: 220,
+    });
+    requestAnimationFrame(() => {
+      setTimeout(() => setShowBackSizeSelection(false), 220);
     });
   };
 
-  // Function to reset UI from backside size selection back to buttons
   const resetToBackButtons = () => {
-    backButtonsTranslateX.setValue(0);
-    backSizesTranslateX.setValue(-screenWidth);
+    backSizePanelWidth.set(SIZE_PANEL_CLOSED_WIDTH);
     setShowBackSizeSelection(false);
   };
 
@@ -1437,69 +1496,49 @@ const MainPage = ({ navigation, route }: MainPageProps) => {
     }
   }, [cards, currentCardIndex]);
 
+  const CORNER_INSET = CARD_CORNER_INSET;
+  // Card is 88% of screen width; keep panel within card bounds
+  const cardWidth = screenWidth * 0.88;
+  const sizePanelMaxWidth = cardWidth - CORNER_INSET * 2;
+
   const handleCartPress = () => {
-    // Animate buttons out and size selection in
-    RNAnimated.parallel([
-      RNAnimated.timing(buttonsTranslateX, {
-        toValue: screenWidth,
-        duration: 300,
-        easing: Easing.ease,
-        useNativeDriver: true,
-      }),
-      RNAnimated.timing(sizesTranslateX, {
-        toValue: 0,
-        duration: 300,
-        easing: Easing.ease,
-        useNativeDriver: true,
-      }),
-      RNAnimated.timing(imageHeightPercent, {
-        toValue: 90, // Shrink to 75% height
-        duration: 300,
-        easing: Easing.ease,
-        useNativeDriver: false, // Must be false for percentage changes
-      }),
-    ]).start(() => {
-      requestAnimationFrame(() => {
-        setShowSizeSelection(true);
-      });
+    setShowSizeSelection(true);
+    sizePanelWidth.value = withTiming(sizePanelMaxWidth, {
+      duration: 280,
     });
   };
 
   const handleCancelSizeSelection = () => {
-    // Animate back to buttons
-    RNAnimated.parallel([
-      RNAnimated.timing(buttonsTranslateX, {
-        toValue: 0,
-        duration: 300,
-        easing: Easing.ease,
-        useNativeDriver: true,
-      }),
-      RNAnimated.timing(sizesTranslateX, {
-        toValue: -screenWidth,
-        duration: 300,
-        easing: Easing.ease,
-        useNativeDriver: true,
-      }),
-      RNAnimated.timing(imageHeightPercent, {
-        toValue: 100,
-        duration: 300,
-        easing: Easing.ease,
-        useNativeDriver: false,
-      }),
-    ]).start(() => {
-      requestAnimationFrame(() => {
-        setShowSizeSelection(false);
-      });
+    sizePanelWidth.value = withTiming(SIZE_PANEL_CLOSED_WIDTH, {
+      duration: 220,
+    });
+    requestAnimationFrame(() => {
+      setTimeout(() => setShowSizeSelection(false), 220);
     });
   };
 
-  // Function to reset UI from size selection back to buttons
   const resetToButtons = () => {
-    buttonsTranslateX.setValue(0);
-    sizesTranslateX.setValue(-screenWidth);
-    imageHeightPercent.setValue(100);
+    sizePanelWidth.set(SIZE_PANEL_CLOSED_WIDTH);
     setShowSizeSelection(false);
   };
+
+  const sizePanelAnimatedStyle = useAnimatedStyle(() => {
+    const radius = interpolate(
+      sizePanelWidth.value,
+      [SIZE_PANEL_CLOSED_WIDTH, sizePanelMaxWidth],
+      [16, 0],
+    );
+    return {
+      width: sizePanelWidth.value,
+      overflow: "hidden" as const,
+      borderTopRightRadius: radius,
+    };
+  });
+
+  const backSizePanelTailAnimatedStyle = useAnimatedStyle(() => ({
+    width: Math.max(0, backSizePanelWidth.value - CORNER_BOX_SIZE),
+    overflow: "hidden" as const,
+  }));
 
   const handleSizeSelect = (size: string) => {
     const currentCard = cards[currentCardIndex];
@@ -1513,13 +1552,13 @@ const MainPage = ({ navigation, route }: MainPageProps) => {
       return;
     }
 
-    // Add the current card with selected size to cart
-    // Spread the current card to preserve all fields including article_number
+    // Add the current card with selected size to cart (include product_variant_id for payment)
     const cartItem: CartItem = {
-      ...currentCard, // Spread all fields to preserve article_number and other optional fields
-      size: size,
+      ...currentCard,
+      size,
       quantity: 1,
-      delivery: { cost: 0, estimatedTime: "" }, // Add dummy delivery info for now, Cart.tsx will update it
+      delivery: { cost: 0, estimatedTime: "" },
+      product_variant_id: selectedVariant.id,
     };
 
     // Add item to the cart using global storage
@@ -1581,15 +1620,10 @@ const MainPage = ({ navigation, route }: MainPageProps) => {
 
       return (
         <>
-          <View style={styles.imageHolder}>
-            <RNAnimated.View
-              style={{
-                width: "100%",
-                height: imageHeightPercent.interpolate({
-                  inputRange: [90, 100],
-                  outputRange: ["90%", "100%"],
-                }),
-              }}
+          {/* Image: full card minus padding */}
+          <View style={styles.imageHolder} pointerEvents="box-none">
+            <View
+              style={styles.imageFullBleed}
               onLayout={(event) => {
                 const { width } = event.nativeEvent.layout;
                 if (width > 0 && width !== imageCarouselWidthRef.current) {
@@ -1609,9 +1643,8 @@ const MainPage = ({ navigation, route }: MainPageProps) => {
                   style={styles.imageCarousel}
                 >
                   {card.images.map((imageSource, imgIndex) => {
-                    // Use the measured width from state, or fallback to calculated width
                     const containerWidth =
-                      imageCarouselWidth || screenWidth * 0.75;
+                      imageCarouselWidth || screenWidth * 0.88;
                     return (
                       <View
                         key={`${card.id}-image-${imgIndex}`}
@@ -1639,10 +1672,16 @@ const MainPage = ({ navigation, route }: MainPageProps) => {
                   />
                 </View>
               )}
-            </RNAnimated.View>
-            <Pressable style={styles.dotsButton} onPress={handleFlip}>
-              <More width={23} height={33} />
-            </Pressable>
+            </View>
+          </View>
+
+          {/* Top-right: three dots – same inset as other corners */}
+          <View style={styles.cornerOverlayTopRight} pointerEvents="box-none">
+            <View style={styles.cornerInnerTopRight}>
+              <Pressable onPress={handleFlip}>
+                <More width={33} height={33} />
+              </Pressable>
+            </View>
           </View>
 
           {/* Image Navigation Dots */}
@@ -1661,120 +1700,189 @@ const MainPage = ({ navigation, route }: MainPageProps) => {
             </View>
           )}
 
-          {/* Buttons Container */}
-          <RNAnimated.View
-            style={[
-              styles.buttonContainer,
-              {
-                transform: [{ translateX: buttonsTranslateX }],
-                opacity: showSizeSelection ? 0 : 1,
-              },
-            ]}
-          >
-            <Pressable
-              style={styles.button}
-              onPressIn={handleCartPressIn}
-              onPressOut={handleCartPressOut}
-            >
-              <RNAnimated.View
-                style={{ transform: [{ scale: cartButtonScale }] }}
+          {/* Bottom-left: size panel – same inset, grows to the right */}
+          <View style={styles.cornerOverlayBottomLeft} pointerEvents="box-none">
+            <View style={styles.sizePanelPosition}>
+              <Animated.View
+                style={[styles.sizePanelOuter, sizePanelAnimatedStyle]}
               >
-                <Cart2 width={33} height={33} />
-              </RNAnimated.View>
-            </Pressable>
-
-            <Pressable
-              style={styles.button}
-              onPressIn={handleSeenPressIn}
-              onPressOut={handleSeenPressOut}
-            >
-              <RNAnimated.View
-                style={{ transform: [{ scale: seenButtonScale }] }}
-              >
-                <Seen width={33} height={33} />
-              </RNAnimated.View>
-            </Pressable>
-
-            {/* Use HeartButton with explicit index */}
-            <View style={{ zIndex: 999 }}>
-              <HeartButton
-                isLiked={isLiked}
-                onToggleLike={() => toggleLike(index)}
-              />
-            </View>
-
-            {/* Add long press overlay for the heart */}
-            <Pressable
-              style={[
-                styles.longPressOverlay,
-                { position: "absolute", right: 0, zIndex: 998 },
-              ]}
-              onLongPress={() => handleLongPress(index)}
-              delayLongPress={300}
-            />
-          </RNAnimated.View>
-
-          {/* Size Selection Circles */}
-          <RNAnimated.View
-            style={[
-              styles.sizeContainer,
-              {
-                transform: [{ translateX: sizesTranslateX }],
-                opacity: showSizeSelection ? 1 : 0,
-              },
-            ]}
-          >
-            {/* Scrollable Size List */}
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.sizeScrollContent}
-              style={styles.sizeScrollView}
-            >
-              {card?.variants?.map((variant, index) => {
-                const isAvailable = variant.stock_quantity > 0;
-                const isUserSize = variant.size === userSelectedSize;
-                const isOneSize = variant.size === "One Size";
-
-                return (
+                <View style={styles.sizePanelRow}>
                   <Pressable
-                    key={variant.size}
-                    style={[
-                      isOneSize ? styles.sizeOval : styles.sizeCircle,
-                      isAvailable
-                        ? styles.sizeCircleAvailable
-                        : styles.sizeCircleUnavailable,
-                      isUserSize && isAvailable
-                        ? styles.sizeCircleUserSize
-                        : null,
-                      index > 0 ? { marginLeft: 10 } : null,
-                    ]}
+                    style={styles.cornerOverlayBottomLeftInner}
+                    onPressIn={handleCartPressIn}
+                    onPressOut={handleCartPressOut}
+                    onPress={handleCartPress}
+                  >
+                    <RNAnimated.View
+                      style={{ transform: [{ scale: cartButtonScale }] }}
+                    >
+                      <Cart2 width={33} height={33} />
+                    </RNAnimated.View>
+                  </Pressable>
+                  <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    contentContainerStyle={styles.sizeScrollContent}
+                    style={styles.sizePanelScrollView}
+                    pointerEvents={showSizeSelection ? "auto" : "none"}
+                  >
+                    {card?.variants?.map((variant, variantIndex) => {
+                      const isAvailable = variant.stock_quantity > 0;
+                      const isUserSize = variant.size === userSelectedSize;
+                      const isOneSize = variant.size === "One Size";
+                      return (
+                        <Pressable
+                          key={variant.size}
+                          style={[
+                            isOneSize ? styles.sizeOval : styles.sizeCircle,
+                            isAvailable
+                              ? styles.sizeCircleAvailable
+                              : styles.sizeCircleUnavailable,
+                            isUserSize && isAvailable
+                              ? styles.sizeCircleUserSize
+                              : null,
+                            variantIndex > 0 ? { marginLeft: 10 } : null,
+                          ]}
+                          onPress={() => {
+                            if (isAvailable) {
+                              handleSizeSelect(variant.size);
+                            } else {
+                              Haptics.impactAsync(
+                                Haptics.ImpactFeedbackStyle.Light,
+                              );
+                            }
+                          }}
+                          disabled={!isAvailable}
+                        >
+                          <Text
+                            style={
+                              isOneSize ? styles.sizeOvalText : styles.sizeText
+                            }
+                          >
+                            {variant.size}
+                          </Text>
+                        </Pressable>
+                      );
+                    })}
+                  </ScrollView>
+                  <Pressable
+                    onPress={handleCancelSizeSelection}
+                    style={styles.sizePanelCancelButton}
+                  >
+                    <Cancel width={27} height={27} />
+                  </Pressable>
+                </View>
+              </Animated.View>
+            </View>
+          </View>
+
+          {/* Bottom-right: like – same inset, overlay extends to edge (no image line) */}
+          <View
+            style={styles.cornerOverlayBottomRight}
+            pointerEvents="box-none"
+          >
+            <View style={styles.cornerInnerBottomRight}>
+              <View
+                style={[
+                  styles.cornerOverlayBottomRightInner,
+                  { position: "relative" },
+                ]}
+              >
+                <View style={{ zIndex: 999 }}>
+                  <HeartButton
+                    isLiked={isLiked}
+                    onToggleLike={() => toggleLike(index)}
+                  />
+                </View>
+                <Pressable
+                  style={[StyleSheet.absoluteFill, { zIndex: 998 }]}
+                  onLongPress={() => handleLongPress(index)}
+                  delayLongPress={300}
+                />
+              </View>
+            </View>
+          </View>
+
+          {/* Top-left: color selector – same inset; only animate height if more than one color */}
+          {card.color_variants?.length > 0 && (
+            <View style={styles.cornerOverlayTopLeft} pointerEvents="box-none">
+              <Animated.View
+                style={[
+                  styles.colorSelectorCornerBox,
+                  styles.colorSelectorInnerPos,
+                  colorDropdownAnimatedStyle,
+                ]}
+              >
+                <View style={styles.colorSelectorTriggerRow}>
+                  <TouchableOpacity
+                    style={styles.colorSelectorTriggerCircle}
                     onPress={() => {
-                      if (isAvailable) {
-                        handleSizeSelect(variant.size);
-                      } else {
-                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                      if (colorSelectorOpen) {
+                        closeColorSelector();
+                      } else if ((card.color_variants?.length ?? 0) > 1) {
+                        const otherCount = Math.max(
+                          0,
+                          (card.color_variants?.length ?? 1) - 1,
+                        );
+                        const openHeight =
+                          COLOR_CORNER_CLOSED_HEIGHT +
+                          COLOR_GAP +
+                          otherCount * COLOR_DROPDOWN_ITEM_HEIGHT +
+                          COLOR_DROPDOWN_BOTTOM_PADDING;
+                        setDropdownContentHeight(openHeight);
+                        setColorSelectorOpen(true);
                       }
                     }}
-                    disabled={!isAvailable}
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                    activeOpacity={0.7}
                   >
-                    <Text
-                      style={isOneSize ? styles.sizeOvalText : styles.sizeText}
-                    >
-                      {variant.size}
-                    </Text>
-                  </Pressable>
-                );
-              })}
-            </ScrollView>
-            {/* Fixed Cancel Button in Right Corner */}
-            <Pressable
-              onPress={handleCancelSizeSelection}
-              style={styles.cancelSizeSelectionButtonFixed}
-            >
-              <Cancel width={27} height={27} />
-            </Pressable>
-          </RNAnimated.View>
+                    <View style={styles.colorSelectorSelectedRing}>
+                      <View
+                        style={[
+                          styles.colorSwatchCircle,
+                          {
+                            backgroundColor: card.color_variants[
+                              card.selected_color_index
+                            ]?.color_hex?.startsWith("#")
+                              ? card.color_variants[card.selected_color_index]
+                                  .color_hex
+                              : "#808080",
+                          },
+                        ]}
+                      />
+                    </View>
+                  </TouchableOpacity>
+                </View>
+                {colorSelectorOpen && (
+                  <View style={styles.colorSelectorDropdownCircles}>
+                    {card.color_variants
+                      .map((cv, idx) => ({ cv, idx }))
+                      .filter(({ idx }) => idx !== card.selected_color_index)
+                      .map(({ cv, idx }) => (
+                        <View key={cv.id ?? cv.color_name + idx}>
+                          <TouchableOpacity
+                            style={styles.colorSelectorOptionCircle}
+                            onPress={() => handleColorSelect(idx)}
+                            activeOpacity={0.7}
+                          >
+                            <View
+                              style={[
+                                styles.colorSwatchCircleSmall,
+                                {
+                                  backgroundColor: cv.color_hex?.startsWith("#")
+                                    ? cv.color_hex
+                                    : "#808080",
+                                },
+                              ]}
+                            />
+                          </TouchableOpacity>
+                        </View>
+                      ))}
+                  </View>
+                )}
+              </Animated.View>
+            </View>
+          )}
         </>
       );
     },
@@ -1783,7 +1891,7 @@ const MainPage = ({ navigation, route }: MainPageProps) => {
       buttonsTranslateX,
       sizesTranslateX,
       imageHeightPercent,
-      handleFlip, // Added handleFlip
+      handleFlip,
       scrollToImageIndex,
       handleImageScroll,
       screenWidth,
@@ -1799,9 +1907,13 @@ const MainPage = ({ navigation, route }: MainPageProps) => {
       userSelectedSize,
       handleSizeSelect,
       handleCancelSizeSelection,
-      cards, // Added cards to ensure card data is up-to-date
+      cards,
       imageScrollViewRef,
-    ]
+      colorSelectorOpen,
+      setColorSelectorOpen,
+      handleColorSelect,
+      closeColorSelector,
+    ],
   );
 
   // Render function for the back of the card
@@ -1852,16 +1964,8 @@ const MainPage = ({ navigation, route }: MainPageProps) => {
             />
           </ScrollView>
 
-          {/* Buttons Container - Backside */}
-          <RNAnimated.View
-            style={[
-              styles.backButtonContainer,
-              {
-                transform: [{ translateX: backButtonsTranslateX }],
-                opacity: showBackSizeSelection ? 0 : 1,
-              },
-            ]}
-          >
+          {/* Back bottom strip: same inset as front (20px), four even slots, panel overlays when expanded */}
+          <View style={styles.backBottomStrip}>
             {/* Link Copied Popup */}
             {showLinkCopiedPopup && (
               <Animated.View
@@ -1872,127 +1976,134 @@ const MainPage = ({ navigation, route }: MainPageProps) => {
                 <Text style={styles.linkCopiedText}>Ссылка скопирована</Text>
               </Animated.View>
             )}
-            <Pressable
-              style={styles.backButton}
-              onPressIn={handleBackCartPressIn}
-              onPressOut={handleBackCartPressOut}
-            >
-              <RNAnimated.View
-                style={{ transform: [{ scale: backCartButtonScale }] }}
-              >
-                <Cart2 width={33} height={33} />
-              </RNAnimated.View>
-            </Pressable>
 
-            <Pressable
-              style={styles.backButton}
-              onPressIn={handleBackLinkPressIn}
-              onPressOut={handleBackLinkPressOut}
-              onPress={handleLinkPress}
-            >
-              <RNAnimated.View
-                style={{ transform: [{ scale: backLinkButtonScale }] }}
-              >
-                {isLinkCopied ? (
-                  <LinkPressed width={33} height={33} />
-                ) : (
-                  <Link width={33} height={33} />
-                )}
-              </RNAnimated.View>
-            </Pressable>
-
-            <Pressable
-              style={styles.backButton}
-              onPressIn={handleBackSharePressIn}
-              onPressOut={handleBackSharePressOut}
-              onPress={handleSharePress}
-            >
-              <RNAnimated.View
-                style={{ transform: [{ scale: backShareButtonScale }] }}
-              >
-                <ShareIcon width={33} height={33} />
-              </RNAnimated.View>
-            </Pressable>
-
-            <View style={{ zIndex: 999 }}>
-              <HeartButton
-                isLiked={isLiked}
-                onToggleLike={() => toggleLike(index)}
-              />
-            </View>
-
-            {/* Add long press overlay for the heart */}
-            <Pressable
-              style={[
-                styles.longPressOverlay,
-                { position: "absolute", right: 0, zIndex: 998 },
-              ]}
-              onLongPress={() => handleLongPress(index)}
-              delayLongPress={300}
-            />
-          </RNAnimated.View>
-
-          {/* Size Selection Circles - Backside */}
-          <RNAnimated.View
-            style={[
-              styles.backSizeContainer,
-              {
-                transform: [{ translateX: backSizesTranslateX }],
-                opacity: showBackSizeSelection ? 1 : 0,
-              },
-            ]}
-          >
-            {/* Scrollable Size List */}
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.sizeScrollContent}
-              style={styles.sizeScrollView}
-            >
-              {card?.variants?.map((variant, variantIndex) => {
-                const isAvailable = variant.stock_quantity > 0;
-                const isUserSize = variant.size === userSelectedSize;
-                const isOneSize = variant.size === "One Size";
-
-                return (
-                  <Pressable
-                    key={variant.size}
-                    style={[
-                      isOneSize ? styles.sizeOval : styles.sizeCircle,
-                      isAvailable
-                        ? styles.sizeCircleAvailable
-                        : styles.sizeCircleUnavailable,
-                      isUserSize && isAvailable
-                        ? styles.sizeCircleUserSize
-                        : null,
-                      variantIndex > 0 ? { marginLeft: 10 } : null,
-                    ]}
-                    onPress={() => {
-                      if (isAvailable) {
-                        handleSizeSelect(variant.size);
-                      } else {
-                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                      }
-                    }}
-                    disabled={!isAvailable}
+            {/* Four icons: cart in flow, then link/share/heart. Expanding sizes panel is absolute. */}
+            <View style={styles.backIconSlotsRow}>
+              <View style={styles.backCartSlot}>
+                <Pressable
+                  style={styles.backIconBox}
+                  onPressIn={handleBackCartPressIn}
+                  onPressOut={handleBackCartPressOut}
+                  onPress={handleBackCartPress}
+                >
+                  <RNAnimated.View
+                    style={{ transform: [{ scale: backCartButtonScale }] }}
                   >
-                    <Text
-                      style={isOneSize ? styles.sizeOvalText : styles.sizeText}
+                    <Cart2 width={33} height={33} />
+                  </RNAnimated.View>
+                </Pressable>
+                <Animated.View
+                  style={[
+                    styles.backSizePanelTail,
+                    backSizePanelTailAnimatedStyle,
+                    { zIndex: 1001, elevation: 1002 },
+                  ]}
+                  pointerEvents={showBackSizeSelection ? "auto" : "none"}
+                >
+                  <View style={styles.sizePanelRow}>
+                    <ScrollView
+                      horizontal
+                      showsHorizontalScrollIndicator={false}
+                      contentContainerStyle={styles.sizeScrollContent}
+                      style={styles.sizePanelScrollView}
                     >
-                      {variant.size}
-                    </Text>
-                  </Pressable>
-                );
-              })}
-            </ScrollView>
-            {/* Fixed Cancel Button in Right Corner */}
-            <Pressable
-              onPress={handleCancelBackSizeSelection}
-              style={styles.cancelSizeSelectionButtonFixed}
-            >
-              <Cancel width={27} height={27} />
-            </Pressable>
-          </RNAnimated.View>
+                      {card?.variants?.map((variant, variantIndex) => {
+                        const isAvailable = variant.stock_quantity > 0;
+                        const isUserSize = variant.size === userSelectedSize;
+                        const isOneSize = variant.size === "One Size";
+                        return (
+                          <Pressable
+                            key={variant.size}
+                            style={[
+                              isOneSize ? styles.sizeOval : styles.sizeCircle,
+                              isAvailable
+                                ? styles.sizeCircleAvailable
+                                : styles.sizeCircleUnavailable,
+                              isUserSize && isAvailable
+                                ? styles.sizeCircleUserSize
+                                : null,
+                              variantIndex > 0 ? { marginLeft: 10 } : null,
+                            ]}
+                            onPress={() => {
+                              if (isAvailable) {
+                                handleSizeSelect(variant.size);
+                                resetToBackButtons();
+                              } else {
+                                Haptics.impactAsync(
+                                  Haptics.ImpactFeedbackStyle.Light,
+                                );
+                              }
+                            }}
+                            disabled={!isAvailable}
+                          >
+                            <Text
+                              style={
+                                isOneSize
+                                  ? styles.sizeOvalText
+                                  : styles.sizeText
+                              }
+                            >
+                              {variant.size}
+                            </Text>
+                          </Pressable>
+                        );
+                      })}
+                    </ScrollView>
+                    <Pressable
+                      onPress={handleCancelBackSizeSelection}
+                      style={styles.sizePanelCancelButton}
+                    >
+                      <Cancel width={27} height={27} />
+                    </Pressable>
+                  </View>
+                </Animated.View>
+              </View>
+              <View style={styles.backIconSpacer} />
+              <Pressable
+                style={styles.backIconBox}
+                onPressIn={handleBackLinkPressIn}
+                onPressOut={handleBackLinkPressOut}
+                onPress={handleLinkPress}
+              >
+                <RNAnimated.View
+                  style={{ transform: [{ scale: backLinkButtonScale }] }}
+                >
+                  {isLinkCopied ? (
+                    <LinkPressed width={33} height={33} />
+                  ) : (
+                    <Link width={33} height={33} />
+                  )}
+                </RNAnimated.View>
+              </Pressable>
+              <View style={styles.backIconSpacer} />
+              <Pressable
+                style={styles.backIconBox}
+                onPressIn={handleBackSharePressIn}
+                onPressOut={handleBackSharePressOut}
+                onPress={handleSharePress}
+              >
+                <RNAnimated.View
+                  style={{ transform: [{ scale: backShareButtonScale }] }}
+                >
+                  <ShareIcon width={33} height={33} />
+                </RNAnimated.View>
+              </Pressable>
+              <View style={styles.backIconSpacer} />
+              <View style={styles.backIconBoxWrapper}>
+                <View style={styles.backIconBox}>
+                  <HeartButton
+                    isLiked={isLiked}
+                    onToggleLike={() => toggleLike(index)}
+                  />
+                </View>
+                <Pressable
+                  style={StyleSheet.absoluteFill}
+                  onLongPress={() => handleLongPress(index)}
+                  delayLongPress={300}
+                />
+              </View>
+            </View>
+          </View>
         </View>
       );
     },
@@ -2011,15 +2122,14 @@ const MainPage = ({ navigation, route }: MainPageProps) => {
       handleLongPress,
       handleSizeSelect,
       handleCancelBackSizeSelection,
+      resetToBackButtons,
       userSelectedSize,
       cards,
       currentCardIndex,
       showBackSizeSelection,
-      backButtonsTranslateX,
-      backSizesTranslateX,
       isLinkCopied,
       showLinkCopiedPopup,
-    ]
+    ],
   );
 
   // Adjust the renderCard function to add safeguards
@@ -2117,7 +2227,7 @@ const MainPage = ({ navigation, route }: MainPageProps) => {
       renderFrontOfCard,
       renderBackOfCard,
       panResponder,
-    ]
+    ],
   );
 
   // Function to refresh cards with a subtle animation
@@ -2157,7 +2267,7 @@ const MainPage = ({ navigation, route }: MainPageProps) => {
         const updatedCards = [...newCards, ...prevCards.slice(0, 3)];
         console.log(
           "MainPage - Cards refreshed, new count:",
-          updatedCards.length
+          updatedCards.length,
         );
 
         // Update persistent storage
@@ -2228,7 +2338,7 @@ const MainPage = ({ navigation, route }: MainPageProps) => {
               setCards((prevCards) => {
                 // Remove loading cards and add new ones
                 const filteredCards = prevCards.filter(
-                  (c) => c.id !== LOADING_CARD_ID
+                  (c) => c.id !== LOADING_CARD_ID,
                 );
                 if (filteredCards.length >= MIN_CARDS_THRESHOLD) {
                   return prevCards;
@@ -2266,7 +2376,7 @@ const MainPage = ({ navigation, route }: MainPageProps) => {
     <Animated.View
       style={[styles.container]}
       entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
-        ANIMATION_DELAYS.LARGE
+        ANIMATION_DELAYS.LARGE,
       )}
       exiting={FadeOutDown.duration(ANIMATION_DURATIONS.MICRO)}
     >
@@ -2332,14 +2442,58 @@ const styles = StyleSheet.create({
     width: "88%",
     height: "90%",
     borderRadius: 41,
-    backgroundColor: "rgba(205, 166, 122, 0)", // #CDA67A with 40% opacity
+    backgroundColor: "rgba(205, 166, 122, 0)",
     position: "relative",
-    //justifyContent: 'center',
-    //alignItems: 'center',
-    //overflow: 'hidden',
     borderWidth: 3,
     borderColor: "rgba(205, 166, 122, 0.4)",
     zIndex: 900,
+  },
+  colorSelectorTriggerCircle: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  colorSelectorSelectedRing: {
+    width: 26 + 4 * 2 + 4 * 2,
+    height: 26 + 4 * 2 + 4 * 2,
+    borderRadius: 21,
+    borderWidth: 4,
+    borderColor: "#4A3120",
+    backgroundColor: "#F2ECE7",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  colorSwatchCircle: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    borderWidth: 1,
+    borderColor: "rgba(0,0,0,0.2)",
+  },
+  colorSelectorDropdownWrapper: {
+    width: 32,
+    marginTop: 6,
+    alignSelf: "center",
+  },
+  colorSelectorDropdownCircles: {
+    flexDirection: "column",
+    alignItems: "center",
+    gap: 6,
+    marginTop: 6,
+    paddingBottom: 0,
+  },
+  colorSelectorOptionCircle: {
+    padding: 3,
+    borderRadius: 13,
+  },
+  colorSwatchCircleSmall: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    borderWidth: 1,
+    borderColor: "rgba(0,0,0,0.2)",
   },
   whiteBox: {
     width: "102%",
@@ -2366,17 +2520,15 @@ const styles = StyleSheet.create({
     width: "100%",
     height: "100%",
     borderRadius: 41,
-    backgroundColor: "#F2ECE7", // White background
-    shadowColor: "#000", // Shadow color
-    shadowOffset: {
-      width: 0.25,
-      height: 4, // Vertical offset
-    },
-    shadowOpacity: 0.5, // Shadow opacity
-    shadowRadius: 4, // Shadow blur
-    elevation: 10, // For Android shadow
-    justifyContent: "center", // Center content vertically
-    alignItems: "center", // Center content horizontally
+    backgroundColor: "#F2ECE7",
+    shadowColor: "#000",
+    shadowOffset: { width: 0.25, height: 4 },
+    shadowOpacity: 0.5,
+    shadowRadius: 4,
+    elevation: 10,
+    justifyContent: "center",
+    alignItems: "center",
+    padding: CARD_CORNER_INSET,
   },
   overlayLabelContainer: {
     width: "102%",
@@ -2388,11 +2540,17 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   imageHolder: {
-    width: "75%",
-    height: "80%",
+    position: "absolute",
+    top: CARD_CORNER_INSET,
+    left: CARD_CORNER_INSET,
+    right: CARD_CORNER_INSET,
+    bottom: CARD_CORNER_INSET,
     justifyContent: "center",
     alignItems: "center",
-    marginBottom: 5, // Space between image and buttons
+  },
+  imageFullBleed: {
+    width: "100%",
+    height: "100%",
   },
   image: {
     width: "100%",
@@ -2419,7 +2577,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     position: "absolute",
-    bottom: 10,
+    bottom: CARD_CORNER_INSET + CORNER_BOX_SIZE / 2 - 8 / 2,
     width: "100%",
   },
   imageDot: {
@@ -2432,29 +2590,167 @@ const styles = StyleSheet.create({
   imageDotActive: {
     backgroundColor: "#4A3120",
   },
-  dotsButton: {
+  cornerOverlayTopLeft: {
     position: "absolute",
-    top: -15, // Adjust as needed
-    right: -22.5, // Adjust as needed
-    padding: 5,
-    //backgroundColor: 'rgba(255, 255, 255, 0.7)', // Semi-transparent background
-    borderRadius: 5,
+    top: 0,
+    left: 0,
+    width: CORNER_OVERLAY_SIZE,
+    height: CORNER_OVERLAY_SIZE,
+    backgroundColor: "#F2ECE7",
+    borderTopLeftRadius: 41,
+    borderBottomRightRadius: 16,
+    zIndex: 20,
+    elevation: 21,
+  },
+  cornerOverlayTopRight: {
+    position: "absolute",
+    top: 0,
+    right: 0,
+    width: CORNER_OVERLAY_SIZE,
+    height: CORNER_OVERLAY_SIZE,
+    backgroundColor: "#F2ECE7",
+    borderTopRightRadius: 41,
+    borderBottomLeftRadius: 16,
+    zIndex: 20,
+    elevation: 21,
+  },
+  cornerOverlayBottomLeft: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    width: CORNER_OVERLAY_SIZE,
+    height: CORNER_OVERLAY_SIZE,
+    backgroundColor: "#F2ECE7",
+    borderBottomLeftRadius: 41,
+    borderTopRightRadius: 16,
+    zIndex: 25,
+    elevation: 26,
+  },
+  cornerOverlayBottomRight: {
+    position: "absolute",
+    bottom: 0,
+    right: 0,
+    width: CORNER_OVERLAY_SIZE,
+    height: CORNER_OVERLAY_SIZE,
+    backgroundColor: "#F2ECE7",
+    borderBottomRightRadius: 41,
+    borderTopLeftRadius: 16,
+    zIndex: 20,
+    elevation: 21,
+  },
+  cornerInnerTopLeft: {
+    position: "absolute",
+    top: CARD_CORNER_INSET,
+    left: CARD_CORNER_INSET,
+    width: CORNER_BOX_SIZE,
+    height: CORNER_BOX_SIZE,
+  },
+  cornerInnerTopRight: {
+    position: "absolute",
+    top: CARD_CORNER_INSET,
+    right: CARD_CORNER_INSET,
+    width: CORNER_BOX_SIZE,
+    height: CORNER_BOX_SIZE,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  cornerInnerBottomLeft: {
+    position: "absolute",
+    bottom: CARD_CORNER_INSET,
+    left: CARD_CORNER_INSET,
+    width: CORNER_BOX_SIZE,
+    height: CORNER_BOX_SIZE,
+  },
+  cornerInnerBottomRight: {
+    position: "absolute",
+    bottom: CARD_CORNER_INSET,
+    right: CARD_CORNER_INSET,
+    width: CORNER_BOX_SIZE,
+    height: CORNER_BOX_SIZE,
+  },
+  sizePanelOuter: {
+    backgroundColor: "#F2ECE7",
+    height: CORNER_BOX_SIZE,
+    justifyContent: "center",
+  },
+  sizePanelRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    minHeight: CORNER_BOX_SIZE,
+  },
+  sizePanelScrollView: {
+    flex: 1,
+    height: 60,
+    minWidth: 0,
+  },
+  sizePanelCancelButton: {
+    width: 41,
+    height: 41,
+    borderRadius: 20.5,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "rgba(230, 109, 123, 0.54)",
+  },
+  cornerOverlayTopRightInner: {
+    backgroundColor: "#F2ECE7",
+    width: CORNER_BOX_SIZE,
+    height: CORNER_BOX_SIZE,
+    padding: 10,
+    borderBottomLeftRadius: 16,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  cornerOverlayBottomLeftInner: {
+    backgroundColor: "#F2ECE7",
+    width: CORNER_BOX_SIZE,
+    height: CORNER_BOX_SIZE,
+    padding: 10,
+    borderTopRightRadius: 16,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  cornerOverlayBottomRightInner: {
+    backgroundColor: "#F2ECE7",
+    width: CORNER_BOX_SIZE,
+    height: CORNER_BOX_SIZE,
+    padding: 10,
+    borderTopLeftRadius: 16,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  sizePanelPosition: {
+    position: "absolute",
+    left: CARD_CORNER_INSET,
+    bottom: CARD_CORNER_INSET,
+  },
+  colorSelectorCornerBox: {
+    backgroundColor: "#F2ECE7",
+    paddingHorizontal: 10,
+    paddingVertical: 0,
+    borderBottomRightRadius: 16,
+    width: CORNER_BOX_SIZE,
+    minHeight: CORNER_BOX_SIZE,
+    overflow: "hidden",
+    justifyContent: "flex-start",
+    alignItems: "center",
+  },
+  colorSelectorTriggerRow: {
+    width: "100%",
+    height: CORNER_BOX_SIZE,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  colorSelectorInnerPos: {
+    position: "absolute",
+    top: CARD_CORNER_INSET,
+    left: CARD_CORNER_INSET,
   },
   dotsImage: {
-    width: 23, // Adjust size as needed
-    height: 33, // Adjust size as needed
-  },
-  buttonContainer: {
-    flexDirection: "row",
-    justifyContent: "space-around",
-    width: "110%",
-    marginBottom: -60,
-    //paddingBottom: 0, // Padding for the buttons
+    width: 23,
+    height: 33,
   },
   button: {
     padding: 5,
-    //backgroundColor: '#E0E0E0', // Button background color
-    //borderRadius: 5,
   },
   icon: {
     width: 33,
@@ -2633,12 +2929,13 @@ const styles = StyleSheet.create({
     right: -10,
     zIndex: 998,
   },
-  // New styles for card back and expandable sections
+  // Card back: reduced vertical padding for tighter layout
   cardBackContainer: {
     flex: 1,
-    padding: 20,
+    minHeight: 0,
     justifyContent: "flex-start",
-    alignItems: "center",
+    alignItems: "stretch",
+    width: "100%",
   },
   removeButton: {
     width: 25,
@@ -2648,18 +2945,17 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     position: "absolute",
-    right: 25,
-    top: 25,
-    zIndex: 1000, // Ensure button is above other elements including pan handlers
-    elevation: 10, // For Android
+    right: 0,
+    zIndex: 1000,
+    elevation: 10,
   },
   cardBackHeader: {
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: 20,
+    marginBottom: CARD_BACK_VERTICAL_INSET,
     width: "100%",
     justifyContent: "flex-start",
-    paddingRight: 50, // Added to prevent overlap with the button
+    paddingRight: 50,
   },
   cardBackImage: {
     width: 80,
@@ -2677,9 +2973,54 @@ const styles = StyleSheet.create({
   expandableSectionsContainer: {
     width: "100%",
     flex: 1,
+    minHeight: 0,
   },
   expandableSectionsContent: {
-    paddingBottom: 20,
+    paddingBottom: CARD_BACK_VERTICAL_INSET,
+    flexGrow: 1,
+  },
+  backBottomStrip: {
+    width: "100%",
+    height: CORNER_BOX_SIZE + CARD_BACK_BOTTOM_INSET,
+    paddingHorizontal: 0,
+    //backgroundColor: "#F2ECE7",
+    borderTopLeftRadius: 16,
+    borderTopRightRadius: 16,
+    justifyContent: "center",
+    position: "relative",
+  },
+  backIconSlotsRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    width: "100%",
+  },
+  backIconSpacer: {
+    flex: 1,
+    minWidth: 0,
+  },
+  backCartSlot: {
+    width: CORNER_BOX_SIZE,
+    position: "relative",
+  },
+  backSizePanelTail: {
+    position: "absolute",
+    left: CORNER_BOX_SIZE,
+    top: 0,
+    bottom: 0,
+    backgroundColor: "#F2ECE7",
+    justifyContent: "center",
+  },
+  backIconBoxWrapper: {
+    width: CORNER_BOX_SIZE,
+    position: "relative",
+  },
+  backIconBox: {
+    width: CORNER_BOX_SIZE,
+    height: CORNER_BOX_SIZE,
+    backgroundColor: "#F2ECE7",
+    borderRadius: 16,
+    justifyContent: "center",
+    alignItems: "center",
   },
   expandableContainer: {
     marginBottom: 5,
@@ -2712,26 +3053,6 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(230, 109, 123, 0.54)",
     borderRadius: 5, // Make it circular
     padding: 0,
-  },
-  backButtonContainer: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "flex-end",
-    width: "100%",
-    position: "relative",
-    height: Dimensions.get("window").height * 0.06,
-  },
-  backButton: {
-    padding: 5,
-  },
-  backSizeContainer: {
-    position: "absolute",
-    bottom: 10,
-    width: "100%",
-    alignItems: "center",
-    justifyContent: "center",
-    flexDirection: "row",
-    gap: 10,
   },
   linkCopiedPopup: {
     position: "absolute",

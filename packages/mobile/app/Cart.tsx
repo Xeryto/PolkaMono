@@ -178,35 +178,30 @@ const Cart = ({ navigation }: CartProps) => {
       setIsLoading(true);
       const items = [...global.cartStorage.getItems()];
       const itemsWithDelivery = items.map((item: any) => {
-        // Explicitly map old CartItem structure to new CartItem structure
         const newItem: CartItem = {
+          ...item,
           id: item.id,
           name: item.name,
           price: item.price,
-          images: item.images,
+          images: item.images ?? [],
           size: item.size,
-          quantity: item.quantity,
+          quantity: item.quantity ?? 1,
           isLiked: item.isLiked,
           cartItemId:
-            item.cartItemId || `${item.id}-${item.size}-${Date.now()}`,
-          delivery: { cost: 350.0, estimatedTime: "1-3 дня" }, // Default delivery
+            item.cartItemId || `${item.id}-${item.size}-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
           brand_name: item.brand_name,
-          brand_return_policy: item.brand_return_policy,
-          description: item.description,
-          materials: item.materials,
-          color: item.color,
+          brand_return_policy: item.brand_return_policy ?? "",
+          description: item.description ?? "",
+          materials: item.materials ?? "",
+          color: item.color ?? "",
+          color_variants: item.color_variants ?? [],
+          selected_color_index: item.selected_color_index ?? 0,
           variants: item.variants,
-          article_number: item.article_number, // Preserve article_number when loading from storage
+          article_number: item.article_number,
+          product_variant_id: item.product_variant_id,
         };
-        try {
-          const delivery = getItemDeliveryInfo(newItem.id, newItem.quantity!);
-          return { ...newItem, delivery } as CartItem;
-        } catch (error) {
-          return {
-            ...newItem,
-            delivery: { cost: 350.0, estimatedTime: "1-3 дня" },
-          } as CartItem;
-        }
+        const delivery = getItemDeliveryInfo(newItem.id, newItem.quantity!);
+        return { ...newItem, delivery } as CartItem;
       });
       setCartItems(itemsWithDelivery);
       setIsLoading(false);
@@ -227,15 +222,15 @@ const Cart = ({ navigation }: CartProps) => {
                 )
             );
           if (!hasChanges) return prevItems;
-          return items.map((newItem) => {
+          return items.map((newItem: any) => {
             const existingItem = prevItems.find(
               (item) => item.cartItemId === newItem.cartItemId
             );
+            const delivery = existingItem?.delivery ?? getItemDeliveryInfo(newItem.id, newItem.quantity ?? 1);
             return {
               ...newItem,
-              delivery: existingItem
-                ? existingItem.delivery
-                : { cost: "350 р", estimatedTime: "1-3 дня" },
+              delivery,
+              product_variant_id: newItem.product_variant_id,
             } as CartItem;
           });
         });
@@ -356,11 +351,17 @@ const Cart = ({ navigation }: CartProps) => {
 
       const currentUserProfile = await retrieveUserProfile();
       console.log(cartItems[0]);
-      const receiptItems = cartItems.map((item) => ({
-        product_id: item.id,
-        quantity: item.quantity!,
-        size: item.size!,
-      }));
+      const receiptItems = cartItems
+        .filter((item) => item.product_variant_id)
+        .map((item) => ({
+          product_variant_id: item.product_variant_id!,
+          quantity: item.quantity ?? 1,
+        }));
+      if (receiptItems.length === 0) {
+        setPaymentError("Нет товаров с выбранным размером для оплаты.");
+        setIsSubmitting(false);
+        return;
+      }
 
       const paymentDetails: api.PaymentCreateRequest = {
         amount: {

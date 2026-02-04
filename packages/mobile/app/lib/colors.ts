@@ -1,5 +1,5 @@
 /**
- * Product color options. Must stay in sync with packages/mobile/app/lib/colors.ts
+ * Product color options. Must stay in sync with packages/frontend/src/lib/colors.ts
  * (same name and hex values for consistency across frontend and mobile).
  */
 export interface ProductColorOption {
@@ -8,7 +8,7 @@ export interface ProductColorOption {
   hex: string;
 }
 
-export const colors: ProductColorOption[] = [
+export const PRODUCT_COLORS: ProductColorOption[] = [
   { name: "Black", russian: "Черный", hex: "#000000" },
   { name: "Blue", russian: "Синий", hex: "#0000FF" },
   { name: "Brown", russian: "Коричневый", hex: "#964B00" },
@@ -22,3 +22,8 @@ export const colors: ProductColorOption[] = [
   { name: "White", russian: "Белый", hex: "#FFFFFF" },
   { name: "Yellow", russian: "Желтый", hex: "#FFFF00" },
 ];
+
+export function getColorHex(name: string): string {
+  const c = PRODUCT_COLORS.find((x) => x.name === name);
+  return c?.hex ?? "#808080";
+}

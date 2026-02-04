@@ -239,50 +239,77 @@ class ProductStyle(Base):
 
 
 class Product(Base):
-    """Product model for recommendations"""
+    """Product model for recommendations. Images and color live on ProductColorVariant."""
     __tablename__ = "products"
     
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
     name = Column(String(255), nullable=False)
     description = Column(String(1000), nullable=True)
     price = Column(Float, nullable=False)
-    images = Column(ARRAY(String), nullable=True) # New field for multiple image URLs
-    color = Column(String(50), nullable=True) # NEW: Color
-    material = Column(String(100), nullable=True) # NEW: Material
-    article_number = Column(String(50), nullable=True) # Article number for user-facing identification, search, and sharing (unique constraint enforced in __table_args__)
+    material = Column(String(100), nullable=True)
+    article_number = Column(String(50), nullable=True)  # Article number for user-facing identification, search, and sharing
     brand_id = Column(Integer, ForeignKey("brands.id"), nullable=False)
     category_id = Column(String(50), ForeignKey("categories.id"), nullable=False)
-    purchase_count = Column(Integer, nullable=False, default=0) # Track number of times product has been purchased (denormalized for performance)
+    purchase_count = Column(Integer, nullable=False, default=0)  # Denormalized for performance
+    general_images = Column(ARRAY(String), nullable=True)  # Images shown for all color variants
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     brand = relationship("Brand")
     category = relationship("Category")
     styles = relationship("ProductStyle", back_populates="product", cascade="all, delete-orphan")
-    variants = relationship("ProductVariant", back_populates="product", cascade="all, delete-orphan")
+    color_variants = relationship("ProductColorVariant", back_populates="product", cascade="all, delete-orphan", order_by="ProductColorVariant.display_order")
 
     __table_args__ = (
-        Index('idx_product_purchase_count', 'purchase_count'),  # Index for efficient sorting by purchase_count
-        Index('idx_product_article_number', 'article_number'),  # Index for efficient searching by article number
-        UniqueConstraint('article_number', name='uq_product_article_number'),  # Unique constraint for article numbers
+        Index('idx_product_purchase_count', 'purchase_count'),
+        Index('idx_product_article_number', 'article_number'),
+        UniqueConstraint('article_number', name='uq_product_article_number'),
     )
 
-class ProductVariant(Base):
-    """Product variant model for sizes and inventory"""
-    __tablename__ = "product_variants"
+
+class ProductColorVariant(Base):
+    """One color variation of a product: its own images and size/stock variants."""
+    __tablename__ = "product_color_variants"
     __table_args__ = {"extend_existing": True}
 
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
     product_id = Column(String, ForeignKey("products.id", ondelete="CASCADE"), nullable=False)
+    color_name = Column(String(50), nullable=False)  # Canonical name (e.g. Black, Blue)
+    color_hex = Column(String(50), nullable=False)    # Hex for UI (e.g. #000000)
+    images = Column(ARRAY(String), nullable=True)    # Image URLs for this color
+    display_order = Column(Integer, nullable=False, default=0)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    product = relationship("Product", back_populates="color_variants")
+    variants = relationship("ProductVariant", back_populates="color_variant", cascade="all, delete-orphan")
+
+    __table_args__ = (
+        UniqueConstraint('product_id', 'color_name', name='uq_product_color'),
+    )
+
+
+class ProductVariant(Base):
+    """Size and stock for a specific product color variant."""
+    __tablename__ = "product_variants"
+    __table_args__ = {"extend_existing": True}
+
+    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    product_color_variant_id = Column(String, ForeignKey("product_color_variants.id", ondelete="CASCADE"), nullable=False)
     size = Column(String(10), nullable=False)
     stock_quantity = Column(Integer, nullable=False, default=0)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
-    product = relationship("Product", back_populates="variants")
+    color_variant = relationship("ProductColorVariant", back_populates="variants")
+
+    @property
+    def product(self):
+        """Convenience access to Product from color_variant (for order/payment code)."""
+        return self.color_variant.product if self.color_variant else None
 
     __table_args__ = (
-        UniqueConstraint('product_id', 'size', name='uq_product_size'),
+        UniqueConstraint('product_color_variant_id', 'size', name='uq_color_variant_size'),
     )
 
 class UserLikedProduct(Base):

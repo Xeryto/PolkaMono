@@ -32,21 +32,8 @@ import { formatCurrency } from "@/lib/currency";
 interface ProductDetailsModalProps {
   isOpen: boolean;
   onClose: () => void;
-  product: {
-    id: string;
-    name: string;
-    description?: string;
-    price: number;
-    images: string[];
-    color?: string;
-    material?: string;
-    brand_id: number;
-    category_id: string;
-    styles: string[];
-    variants: { size: string; stock_quantity: number }[];
-    article_number?: string; // Article number (артикул) - auto-generated, read-only
-  };
-  onProductUpdated: () => void; // Callback to refresh product list
+  product: api.ProductResponse;
+  onProductUpdated: () => void;
 }
 
 export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({
@@ -57,57 +44,50 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({
 }) => {
   const { token } = useAuth(); // Get token from useAuth
 
-  // Initialize states directly from product prop, they will be re-evaluated on product prop change
   const [name, setName] = useState(product.name);
   const [description, setDescription] = useState(product.description || "");
   const [price, setPrice] = useState(product.price || 0);
-  const [selectedColors, setSelectedColors] = useState<string[]>(
-    product.color?.split(", ").filter((c) => c) || []
-  );
   const [selectedMaterials, setSelectedMaterials] = useState<string[]>(
     product.material ? product.material.split(", ").filter((m) => m) : []
   );
-  const [images, setImages] = useState<string[]>(product.images || []);
-  const [imageFiles, setImageFiles] = useState<File[]>([]);
-  const [imagePreviews, setImagePreviews] = useState<string[]>([]);
+  const [colorVariations, setColorVariations] = useState<api.ProductColorVariantSchema[]>(
+    product.color_variants?.length ? product.color_variants : [{ color_name: "", color_hex: "#808080", images: [], variants: [] }]
+  );
+  const [colorVariationFiles, setColorVariationFiles] = useState<File[][]>(
+    product.color_variants?.map(() => []) || [[]]
+  );
+  const [generalImages, setGeneralImages] = useState<string[]>(product.general_images || []);
+  const [generalImageFiles, setGeneralImageFiles] = useState<File[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
-  const [selectedStyles, setSelectedStyles] = useState<string[]>([]);
+  const [selectedStyles, setSelectedStyles] = useState<string[]>(product.styles || []);
   const [styles, setStyles] = useState<any[]>([]);
   const [categories, setCategories] = useState<any[]>([]);
-  const [selectedCategory, setSelectedCategory] = useState(
-    product.category_id || ""
-  );
-  const [variants, setVariants] = useState(product.variants || []);
+  const [selectedCategory, setSelectedCategory] = useState(product.category_id || "");
 
-  // Helper function to check for duplicate sizes
-  const hasDuplicateSizes = (
-    variants: { size: string; stock_quantity: number }[]
-  ) => {
-    const seenSizes = new Set<string>();
-    for (const variant of variants) {
-      if (variant.size.trim() === "") {
-        continue; // Ignore empty sizes for duplicate check
-      }
-      if (seenSizes.has(variant.size)) {
-        return true; // Duplicate found
-      }
-      seenSizes.add(variant.size);
+  const hasDuplicateSizes = (variants: { size: string; stock_quantity: number }[]) => {
+    const seen = new Set<string>();
+    for (const v of variants) {
+      if (!v.size.trim()) continue;
+      if (seen.has(v.size)) return true;
+      seen.add(v.size);
     }
-    return false; // No duplicates
+    return false;
   };
 
   useEffect(() => {
     setName(product.name);
     setDescription(product.description || "");
     setPrice(product.price || 0);
-    setSelectedColors(product.color?.split(", ").filter((c) => c) || []);
-    setSelectedMaterials(
-      product.material ? product.material.split(", ").filter((m) => m) : []
-    );
-    setImages(product.images || []);
+    setSelectedMaterials(product.material ? product.material.split(", ").filter((m) => m) : []);
     setSelectedStyles(product.styles || []);
-    setVariants(product.variants || []);
+    setSelectedCategory(product.category_id || "");
+    setColorVariations(
+      product.color_variants?.length ? product.color_variants : [{ color_name: "", color_hex: "#808080", images: [], variants: [] }]
+    );
+    setColorVariationFiles(product.color_variants?.map(() => []) || [[]]);
+    setGeneralImages(product.general_images || []);
+    setGeneralImageFiles([]);
   }, [product]);
 
   useEffect(() => {
@@ -122,73 +102,65 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({
       } catch (error) {
         toast({
           title: "Error fetching data",
-          description:
-            "Could not fetch styles and categories. Please try again later.",
+          description: "Could not fetch styles and categories.",
           variant: "destructive",
         });
       }
     };
     fetchData();
-
-    return () => {
-      imagePreviews.forEach((url) => URL.revokeObjectURL(url));
-    };
-  }, [toast, imagePreviews]);
+  }, [toast]);
 
   const handleSave = async () => {
     if (!token) {
       toast({
-        title: "Authentication Error",
-        description: "You must be logged in to update a product.",
+        title: "Ошибка",
+        description: "Войдите в систему для сохранения.",
         variant: "destructive",
       });
       return;
     }
-
-    if (hasDuplicateSizes(variants)) {
-      toast({
-        title: "Invalid Variants",
-        description: "Duplicate sizes are not allowed.",
-        variant: "destructive",
-      });
-      return;
+    for (const cv of colorVariations) {
+      if (hasDuplicateSizes(cv.variants || [])) {
+        toast({
+          title: "Ошибка",
+          description: `Дублирующиеся размеры в цвете "${cv.color_name}".`,
+          variant: "destructive",
+        });
+        return;
+      }
     }
 
     setIsLoading(true);
     try {
-      const updatedProductData = {
-        name,
-        description,
-        price,
-        color: selectedColors.join(", "),
-        material: selectedMaterials.join(", "),
-        styles: selectedStyles,
-        category_id: selectedCategory,
-        variants,
-        images, // Send the updated list of existing images
-        // Note: article_number is not included as it's auto-generated and read-only
-      };
-
-      await api.updateProduct(product.id, updatedProductData, token);
-
-      if (imageFiles.length > 0) {
-        const formData = new FormData();
-        imageFiles.forEach((file) => {
-          formData.append("files", file);
-        });
-        await api.uploadProductImages(product.id, formData, token);
-      }
-
+      await api.updateProduct(
+        product.id,
+        {
+          name,
+          description,
+          price,
+          material: selectedMaterials.join(", ") || undefined,
+          styles: selectedStyles,
+          category_id: selectedCategory,
+          color_variants: colorVariations.map((cv) => ({
+            color_name: cv.color_name,
+            color_hex: cv.color_hex,
+            images: cv.images || [],
+            variants: (cv.variants || []).filter((v) => v.size.trim() && v.stock_quantity >= 0),
+          })),
+          general_images: generalImages.length ? generalImages : undefined,
+        },
+        token
+      );
       toast({
-        title: "Product Updated",
-        description: "The product has been updated successfully.",
+        title: "Успех",
+        description: "Товар обновлен.",
       });
       onProductUpdated();
       onClose();
     } catch (error) {
       toast({
-        title: "Error updating product",
-        description: "Could not update product. Please try again later.",
+        title: "Ошибка",
+        description: "Не удалось обновить товар.",
         variant: "destructive",
       });
     } finally {
@@ -196,23 +168,119 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({
     }
   };
 
-  const handleVariantChange = (
-    index: number,
-    field: string,
-    value: string | number
-  ) => {
-    const newVariants = [...variants];
-    (newVariants[index] as any)[field] = value;
-    setVariants(newVariants);
+  const updateColorVariation = (colorIndex: number, upd: Partial<api.ProductColorVariantSchema>) => {
+    setColorVariations((prev) => {
+      const next = [...prev];
+      next[colorIndex] = { ...next[colorIndex], ...upd };
+      return next;
+    });
   };
 
-  const handleAddVariant = () => {
-    setVariants([...variants, { size: "", stock_quantity: 0 }]);
+  const handleVariantChange = (colorIndex: number, variantIndex: number, field: string, value: string | number) => {
+    setColorVariations((prev) => {
+      const next = [...prev];
+      const vars = [...(next[colorIndex].variants || [])];
+      (vars[variantIndex] as any)[field] = value;
+      next[colorIndex] = { ...next[colorIndex], variants: vars };
+      return next;
+    });
   };
 
-  const handleRemoveVariant = (index: number) => {
-    const newVariants = variants.filter((_, i) => i !== index);
-    setVariants(newVariants);
+  const handleAddVariant = (colorIndex: number) => {
+    setColorVariations((prev) => {
+      const next = [...prev];
+      const vars = [...(next[colorIndex].variants || []), { size: "", stock_quantity: 0 }];
+      next[colorIndex] = { ...next[colorIndex], variants: vars };
+      return next;
+    });
+  };
+
+  const handleRemoveVariant = (colorIndex: number, variantIndex: number) => {
+    setColorVariations((prev) => {
+      const next = [...prev];
+      next[colorIndex] = {
+        ...next[colorIndex],
+        variants: (next[colorIndex].variants || []).filter((_, i) => i !== variantIndex),
+      };
+      return next;
+    });
+  };
+
+  const handleColorSelect = (colorIndex: number, colorName: string) => {
+    const c = colors.find((x) => x.name === colorName);
+    if (c) updateColorVariation(colorIndex, { color_name: c.name, color_hex: c.hex });
+  };
+
+  const handleAddColorVariation = () => {
+    setColorVariations((prev) => [
+      ...prev,
+      { color_name: "", color_hex: "#808080", images: [], variants: [] },
+    ]);
+    setColorVariationFiles((prev) => [...prev, []]);
+  };
+
+  const handleRemoveColorVariation = (colorIndex: number) => {
+    if (colorVariations.length <= 1) {
+      toast({
+        title: "Ошибка",
+        description: "Должен остаться хотя бы один цвет.",
+        variant: "destructive",
+      });
+      return;
+    }
+    setColorVariations((prev) => prev.filter((_, i) => i !== colorIndex));
+    setColorVariationFiles((prev) => prev.filter((_, i) => i !== colorIndex));
+  };
+
+  const handleColorVariationImages = (colorIndex: number, files: File[]) => {
+    const newUrls = files.map((f) => URL.createObjectURL(f));
+    const prev = colorVariations[colorIndex];
+    if ((prev.images?.length || 0) + newUrls.length > 5) {
+      toast({
+        title: "Ошибка",
+        description: "Максимум 5 изображений на цвет.",
+        variant: "destructive",
+      });
+      return;
+    }
+    updateColorVariation(colorIndex, {
+      images: [...(prev.images || []), ...newUrls],
+    });
+    setColorVariationFiles((prev) => {
+      const next = [...prev];
+      next[colorIndex] = [...(next[colorIndex] || []), ...files];
+      return next;
+    });
+  };
+
+  const removeColorVariationImage = (colorIndex: number, imageIndex: number) => {
+    const prev = colorVariations[colorIndex];
+    const newImages = (prev.images || []).filter((_, i) => i !== imageIndex);
+    updateColorVariation(colorIndex, { images: newImages });
+    setColorVariationFiles((prev) => {
+      const next = [...prev];
+      next[colorIndex] = (next[colorIndex] || []).filter((_, i) => i !== imageIndex);
+      return next;
+    });
+  };
+
+  const handleGeneralImages = (files: File[]) => {
+    const newUrls = files.map((f) => URL.createObjectURL(f));
+    if (generalImages.length + newUrls.length > 5) {
+      toast({
+        title: "Ошибка",
+        description: "Максимум 5 общих изображений.",
+        variant: "destructive",
+      });
+      return;
+    }
+    setGeneralImages((prev) => [...prev, ...newUrls]);
+    setGeneralImageFiles((prev) => [...prev, ...files]);
+  };
+
+  const removeGeneralImage = (index: number) => {
+    setGeneralImages((prev) => prev.filter((_, i) => i !== index));
+    setGeneralImageFiles((prev) => prev.filter((_, i) => i !== index));
   };
 
   return (
@@ -274,38 +342,6 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({
                   />
                 </div>
                 <div>
-                  <Label htmlFor="colors">Цвет</Label>
-                  <MultiSelect
-                    options={colors.map((colorOption) => ({
-                      label: colorOption.russian,
-                      value: colorOption.name,
-                      hex: colorOption.hex,
-                    }))}
-                    value={selectedColors}
-                    onValueChange={setSelectedColors}
-                    placeholder="Выберите цвета"
-                    className="mt-1"
-                    renderOption={(option) => (
-                      <div className="flex items-center">
-                        <div
-                          className="w-4 h-4 rounded-full mr-2 border"
-                          style={{ background: option.hex }}
-                        ></div>
-                        {option.label}
-                      </div>
-                    )}
-                    renderBadge={(option) => (
-                      <div className="flex items-center">
-                        <div
-                          className="w-3 h-3 rounded-full mr-1 border"
-                          style={{ background: option.hex }}
-                        ></div>
-                        {option.label}
-                      </div>
-                    )}
-                  />
-                </div>
-                <div>
                   <Label htmlFor="materials">Материал</Label>
                   <MultiSelect
                     options={materials.map((materialOption) => ({
@@ -320,78 +356,6 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({
                 </div>
               </div>
               <div className="space-y-4">
-                <div>
-                  <Label htmlFor="images">Изображения (до 5)</Label>
-                  <FileInput
-                    id="images"
-                    multiple
-                    accept="image/*"
-                    onFilesChange={(files) => {
-                      if (
-                        images.length + imagePreviews.length + files.length >
-                        5
-                      ) {
-                        toast({
-                          title: "Error",
-                          description: "You can upload a maximum of 5 images.",
-                          variant: "destructive",
-                        });
-                        return;
-                      }
-                      const newImageFiles = [...imageFiles, ...files];
-                      const newImagePreviews = [
-                        ...imagePreviews,
-                        ...files.map((file) => URL.createObjectURL(file)),
-                      ];
-                      setImageFiles(newImageFiles);
-                      setImagePreviews(newImagePreviews);
-                    }}
-                    selectedFileNames={imageFiles.map((file) => file.name)}
-                    className="mt-1"
-                  />
-                  <div className="mt-2 flex flex-wrap gap-2">
-                    {images.map((imgUrl, index) => (
-                      <div
-                        key={`existing-${index}`}
-                        className="relative w-20 h-20"
-                      >
-                        <img
-                          src={imgUrl}
-                          alt="Product Image"
-                          className="w-full h-full object-cover rounded-md"
-                        />
-                        <XCircle
-                          className="absolute -top-2 -right-2 h-4 w-4 text-red-500 cursor-pointer"
-                          onClick={() =>
-                            setImages(images.filter((_, i) => i !== index))
-                          }
-                        />
-                      </div>
-                    ))}
-                    {imagePreviews.map((imgUrl, index) => (
-                      <div key={`new-${index}`} className="relative w-20 h-20">
-                        <img
-                          src={imgUrl}
-                          alt="New Product Image"
-                          className="w-full h-full object-cover rounded-md"
-                        />
-                        <XCircle
-                          className="absolute -top-2 -right-2 h-4 w-4 text-red-500 cursor-pointer"
-                          onClick={() => {
-                            const newImageFiles = imageFiles.filter(
-                              (_, i) => i !== index
-                            );
-                            const newImagePreviews = imagePreviews.filter(
-                              (_, i) => i !== index
-                            );
-                            setImageFiles(newImageFiles);
-                            setImagePreviews(newImagePreviews);
-                          }}
-                        />
-                      </div>
-                    ))}
-                  </div>
-                </div>
                 <div>
                   <Label htmlFor="category">Категория *</Label>
                   <Select
@@ -413,57 +377,152 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({
                     </SelectContent>
                   </Select>
                 </div>
-                <div>
-                  <Label>Размеры и количество</Label>
-                  {variants.map((variant, index) => (
-                    <div key={index} className="flex space-x-2 mt-1">
-                      <Select
-                        onValueChange={(value) =>
-                          handleVariantChange(index, "size", value)
-                        }
-                        value={variant.size}
-                      >
-                        <SelectTrigger className="flex-1 h-10 rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50">
-                          <SelectValue placeholder="Выберите размер" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {sizes.map((s) => (
-                            <SelectItem key={s.name} value={s.name}>
-                              {s.russian}
-                            </SelectItem>
+                <div className="space-y-2">
+                  <Label>Общие изображения (до 5)</Label>
+                  <p className="text-xs text-muted-foreground">Для всех цветов</p>
+                  <FileInput
+                    multiple
+                    accept="image/*"
+                    onFilesChange={(files) => handleGeneralImages(files)}
+                    selectedFileNames={generalImageFiles.map((f) => f.name)}
+                    className="mt-1"
+                  />
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {generalImages.map((url, i) => (
+                      <div key={i} className="relative">
+                        <img src={url} alt="" className="w-20 h-20 object-cover rounded-md" />
+                        <button
+                          type="button"
+                          className="absolute -top-2 -right-2 h-4 w-4 text-red-500"
+                          onClick={() => removeGeneralImage(i)}
+                        >
+                          <XCircle className="h-4 w-4" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <Label>Варианты по цветам</Label>
+                    <Button type="button" variant="outline" size="sm" onClick={handleAddColorVariation}>
+                      <PlusCircle className="h-4 w-4 mr-1" /> Добавить цвет
+                    </Button>
+                  </div>
+                  {colorVariations.map((cv, colorIndex) => (
+                    <Card key={colorIndex} className="p-3 border border-border/50">
+                      <div className="flex items-center justify-between gap-2 mb-2">
+                        <div className="flex items-center gap-2">
+                          <div
+                            className="w-5 h-5 rounded-full border"
+                            style={{ background: cv.color_hex?.startsWith("#") ? cv.color_hex : "#808080" }}
+                          />
+                          <Select
+                            value={cv.color_name || ""}
+                            onValueChange={(v) => handleColorSelect(colorIndex, v)}
+                          >
+                            <SelectTrigger className="w-[140px] h-8">
+                              <SelectValue placeholder="Цвет" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {colors.map((c) => (
+                                <SelectItem key={c.name} value={c.name}>
+                                  <div className="flex items-center gap-2">
+                                    <div
+                                      className="w-4 h-4 rounded-full border"
+                                      style={{ background: c.hex?.startsWith("#") ? c.hex : "#808080" }}
+                                    />
+                                    {c.russian}
+                                  </div>
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8"
+                          onClick={() => handleRemoveColorVariation(colorIndex)}
+                          disabled={colorVariations.length <= 1}
+                        >
+                          <XCircle className="h-4 w-4 text-muted-foreground" />
+                        </Button>
+                      </div>
+                      <div className="space-y-2">
+                        <Label className="text-xs">Изображения (до 5)</Label>
+                        <FileInput
+                          multiple
+                          accept="image/*"
+                          onFilesChange={(files) => handleColorVariationImages(colorIndex, files)}
+                          selectedFileNames={(colorVariationFiles[colorIndex] || []).map((f) => f.name)}
+                          className="mt-1"
+                        />
+                        <div className="mt-2 flex flex-wrap gap-2">
+                          {(cv.images || []).map((url, imgIdx) => (
+                            <div key={imgIdx} className="relative">
+                              <img src={url} alt="" className="w-20 h-20 object-cover rounded-md" />
+                              <button
+                                type="button"
+                                className="absolute -top-2 -right-2 h-4 w-4 text-red-500"
+                                onClick={() => removeColorVariationImage(colorIndex, imgIdx)}
+                              >
+                                <XCircle className="h-4 w-4" />
+                              </button>
+                            </div>
                           ))}
-                        </SelectContent>
-                      </Select>
-                      <Input
-                        type="number"
-                        placeholder="Количество"
-                        value={variant.stock_quantity}
-                        min="0"
-                        onChange={(e) => {
-                          const value = parseInt(e.target.value) || 0;
-                          if (value >= 0) {
-                            handleVariantChange(index, "stock_quantity", value);
-                          }
-                        }}
-                        className="w-24"
-                      />
-                      <Button
-                        type="button"
-                        onClick={() => handleRemoveVariant(index)}
-                        variant="outline"
-                        size="icon"
-                      >
-                        <XCircle className="h-4 w-4" />
-                      </Button>
-                    </div>
+                        </div>
+                      </div>
+                      <div>
+                        <Label className="text-xs">Размеры</Label>
+                        {(cv.variants || []).map((v, vIdx) => (
+                          <div key={vIdx} className="flex gap-2 mt-1 items-center">
+                            <Select
+                              value={v.size}
+                              onValueChange={(val) => handleVariantChange(colorIndex, vIdx, "size", val)}
+                            >
+                              <SelectTrigger className="flex-1 h-9">
+                                <SelectValue placeholder="Размер" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {sizes.map((s) => (
+                                  <SelectItem key={s.name} value={s.name}>{s.russian}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <Input
+                              type="number"
+                              min={0}
+                              value={v.stock_quantity}
+                              className="w-20"
+                              onChange={(e) =>
+                                handleVariantChange(colorIndex, vIdx, "stock_quantity", parseInt(e.target.value) || 0)
+                              }
+                            />
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              className="h-9 w-9"
+                              onClick={() => handleRemoveVariant(colorIndex, vIdx)}
+                            >
+                              <XCircle className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        ))}
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="mt-2"
+                          onClick={() => handleAddVariant(colorIndex)}
+                        >
+                          <PlusCircle className="h-4 w-4 mr-1" /> Размер
+                        </Button>
+                      </div>
+                    </Card>
                   ))}
-                  <Button
-                    type="button"
-                    onClick={handleAddVariant}
-                    className="mt-2 bg-button-custom hover:bg-button-custom/90 text-card-custom border-0"
-                  >
-                    <PlusCircle className="h-4 w-4 mr-2" /> Добавить размер
-                  </Button>
                 </div>
               </div>
             </div>

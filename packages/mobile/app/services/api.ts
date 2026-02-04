@@ -338,24 +338,36 @@ export interface OAuthLoginRequest {
   token: string;
 }
 
-// Product interfaces (keeping existing ones)
+// Product interfaces: product has color_variants (each with images and size/stock)
+export interface ProductVariantApi {
+  id?: string;
+  size: string;
+  stock_quantity: number;
+}
+
+export interface ProductColorVariantApi {
+  id?: string;
+  color_name: string;
+  color_hex: string;
+  images: string[];
+  variants: ProductVariantApi[];
+}
+
 export interface Product {
-  id: string; // Changed from number to string
+  id: string;
   name: string;
   description?: string;
   price: number;
-  images: string[]; // Changed to string[]
-  color?: string;
   material?: string;
   brand_id: number;
   category_id: string;
   styles: string[];
-  variants?: { size: string; stock_quantity: number; }[]; // Added variants
-  return_policy?: string; // NEW
-  brand_name?: string; // NEW
-  brand_return_policy?: string; // NEW
-  article_number?: string; // Article number for user-facing identification, search, and sharing
-  is_liked?: boolean; // Only for user-specific recommendations/favorites
+  color_variants: ProductColorVariantApi[];
+  brand_name?: string;
+  brand_return_policy?: string;
+  article_number?: string;
+  is_liked?: boolean;
+  general_images?: string[];
 }
 
 export interface Brand {
@@ -1014,9 +1026,8 @@ export interface Amount {
 }
 
 export interface ReceiptItem {
-  product_id: string;
-  //quantity: number;
-  size: string;
+  product_variant_id: string;
+  quantity: number;
 }
 
 export interface ReceiptCustomer {

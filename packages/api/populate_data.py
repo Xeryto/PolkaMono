@@ -1,6 +1,6 @@
 from sqlalchemy.orm import Session
 from database import SessionLocal
-from models import Brand, Style, Product, ProductStyle, Category, ProductVariant, User, Order, OrderItem, OrderStatus, Payment, UserProfile, UserShippingInfo, UserPreferences, Gender, PrivacyOption
+from models import Brand, Style, Product, ProductStyle, Category, ProductVariant, ProductColorVariant, User, Order, OrderItem, OrderStatus, Payment, UserProfile, UserShippingInfo, UserPreferences, Gender, PrivacyOption
 import uuid
 import re
 import random
@@ -92,6 +92,24 @@ def generate_article_number(brand_name: str, product_name: str) -> str:
     article_number = f"{brand_prefix}-{product_abbrev}-{random_suffix}"
     
     return article_number
+
+# Canonical color name -> hex (match frontend/mobile)
+COLOR_HEX = {
+    "Black": "#000000",
+    "Blue": "#0000FF",
+    "Brown": "#964B00",
+    "Green": "#008000",
+    "Grey": "#808080",
+    "Multi-Color": "#808080",
+    "Orange": "#FFA500",
+    "Pink": "#FFC0CB",
+    "Purple": "#800080",
+    "Red": "#FF0000",
+    "White": "#FFFFFF",
+    "Yellow": "#FFFF00",
+    "Beige": "#F5F5DC",
+    "Navy": "#000080",
+}
 
 def generate_order_item_sku(product_name: str, size: str, order_counter: int) -> str:
     """Generate SKU for an OrderItem (specific instance of a product variant in an order)"""
@@ -698,23 +716,33 @@ def populate_initial_data():
                     name=p_data["name"],
                     description=p_data["description"],
                     price=p_data["price"],
-                    images=p_data["images"],
                     brand_id=p_data["brand"].id,
                     category_id=p_data["category"].id,
-                    color=p_data["color"], # NEW
-                    material=p_data["material"], # NEW
-                    article_number=article_number,  # Auto-generated article number
+                    material=p_data["material"],
+                    article_number=article_number,
                 )
                 db.add(product)
-                db.flush() # Flush to get product.id
+                db.flush()
+
+                color_name = p_data.get("color", "Black")
+                color_hex = COLOR_HEX.get(color_name, "#808080")
+                color_variant = ProductColorVariant(
+                    product_id=product.id,
+                    color_name=color_name,
+                    color_hex=color_hex,
+                    images=p_data.get("images") or [],
+                    display_order=0,
+                )
+                db.add(color_variant)
+                db.flush()
 
                 for size in p_data["sizes"]:
-                    product_variant = ProductVariant(
-                        product_id=product.id,
+                    pv = ProductVariant(
+                        product_color_variant_id=color_variant.id,
                         size=size,
-                        stock_quantity=10 # Default stock quantity
+                        stock_quantity=10,
                     )
-                    db.add(product_variant)
+                    db.add(pv)
 
                 for style in p_data["styles"]:
                     product_style = ProductStyle(product_id=product.id, style_id=style.id)
@@ -810,19 +838,21 @@ def populate_initial_data():
             zara_product = db.query(Product).filter(Product.name == "Zara Flowy Midi Dress").first()
             
             if nike_product and adidas_product and zara_product:
-                # Get product variants
-                nike_variant_m = db.query(ProductVariant).filter(
-                    ProductVariant.product_id == nike_product.id,
-                    ProductVariant.size == "M"
-                ).first()
-                adidas_variant_s = db.query(ProductVariant).filter(
-                    ProductVariant.product_id == adidas_product.id,
-                    ProductVariant.size == "S"
-                ).first()
-                zara_variant_l = db.query(ProductVariant).filter(
-                    ProductVariant.product_id == zara_product.id,
-                    ProductVariant.size == "L"
-                ).first()
+                # Get product variants via color variant
+                def get_variant_for_product(product, size):
+                    cv = db.query(ProductColorVariant).filter(
+                        ProductColorVariant.product_id == product.id
+                    ).first()
+                    if not cv:
+                        return None
+                    return db.query(ProductVariant).filter(
+                        ProductVariant.product_color_variant_id == cv.id,
+                        ProductVariant.size == size,
+                    ).first()
+
+                nike_variant_m = get_variant_for_product(nike_product, "M")
+                adidas_variant_s = get_variant_for_product(adidas_product, "S")
+                zara_variant_l = get_variant_for_product(zara_product, "L")
 
                 # Get user profile and shipping info for orders
                 test_profile = db.query(UserProfile).filter(UserProfile.user_id == test_user.id).first()
@@ -982,10 +1012,7 @@ def populate_initial_data():
                 for order_data in additional_orders_data:
                     product = db.query(Product).filter(Product.name == order_data["product_name"]).first()
                     if product:
-                        variant = db.query(ProductVariant).filter(
-                            ProductVariant.product_id == product.id,
-                            ProductVariant.size == order_data["size"]
-                        ).first()
+                        variant = get_variant_for_product(product, order_data["size"])
                         
                         if variant:
                             # Check if order with this order_number already exists to avoid duplicates on re-run

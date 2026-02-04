@@ -68,6 +68,8 @@ dist/
 build/
 *.tgz
 *.tar.gz
+packages/mobile/ios/
+packages/mobile/android/
 
 SECURITY_ANALYSIS.md
 MOBILE_RESPONSIVE_DESIGN_ANALYSIS.md

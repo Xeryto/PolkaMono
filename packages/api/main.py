@@ -19,7 +19,7 @@ from slowapi.errors import RateLimitExceeded
 # Import our modules
 from config import settings
 from database import get_db, init_db
-from models import User, OAuthAccount, Brand, Style, UserBrand, UserStyle, Gender, FriendRequest, Friendship, FriendRequestStatus, Product, UserLikedProduct, UserSwipe, Category, Order, OrderItem, OrderStatus, ExclusiveAccessEmail, ProductVariant, ProductStyle, UserProfile, UserShippingInfo, UserPreferences, PrivacyOption
+from models import User, OAuthAccount, Brand, Style, UserBrand, UserStyle, Gender, FriendRequest, Friendship, FriendRequestStatus, Product, UserLikedProduct, UserSwipe, Category, Order, OrderItem, OrderStatus, ExclusiveAccessEmail, ProductVariant, ProductColorVariant, ProductStyle, UserProfile, UserShippingInfo, UserPreferences, PrivacyOption
 from auth_service import auth_service
 from oauth_service import oauth_service
 import payment_service
@@ -43,6 +43,35 @@ def get_size_order(size: str) -> int:
 def sort_variants_by_size(variants):
     """Sort variants by size order (XS to XL)"""
     return sorted(variants, key=lambda v: get_size_order(v.size))
+
+
+def product_to_schema(product, is_liked=None):
+    """Build schemas.Product from Product model with color_variants."""
+    return schemas.Product(
+        id=product.id,
+        name=product.name,
+        description=product.description,
+        price=product.price,
+        brand_id=product.brand_id,
+        category_id=product.category_id,
+        styles=[ps.style_id for ps in product.styles],
+        color_variants=[
+            schemas.ProductColorVariantSchema(
+                id=cv.id,
+                color_name=cv.color_name,
+                color_hex=cv.color_hex,
+                images=cv.images or [],
+                variants=[schemas.ProductVariantSchema(id=v.id, size=v.size, stock_quantity=v.stock_quantity) for v in sort_variants_by_size(cv.variants)],
+            )
+            for cv in product.color_variants
+        ],
+        material=product.material,
+        article_number=product.article_number,
+        brand_name=product.brand.name,
+        brand_return_policy=product.brand.return_policy,
+        is_liked=is_liked,
+        general_images=product.general_images or [],
+    )
 
 limiter = Limiter(key_func=get_remote_address)
 app = FastAPI(
@@ -309,9 +338,16 @@ async def get_brand_stats(
     """Get statistics for the authenticated brand user"""
     
     # 1. Get total amount sold
-    orders_with_brand_products = db.query(Order).join(OrderItem).join(ProductVariant, OrderItem.product_variant_id == ProductVariant.id).join(Product).filter(
-        Product.brand_id == current_brand_user.id
-    ).distinct().all()
+    orders_with_brand_products = (
+        db.query(Order)
+        .join(OrderItem)
+        .join(ProductVariant, OrderItem.product_variant_id == ProductVariant.id)
+        .join(ProductColorVariant, ProductVariant.product_color_variant_id == ProductColorVariant.id)
+        .join(Product, ProductColorVariant.product_id == Product.id)
+        .filter(Product.brand_id == current_brand_user.id)
+        .distinct()
+        .all()
+    )
 
     total_sold = 0.0
     for order in orders_with_brand_products:
@@ -1240,32 +1276,49 @@ async def create_product(
         brand_prefix = re.sub(r'[^A-Z0-9]', '', brand.name.upper())[:6]
         article_number = f"{brand_prefix}-{product_id_preview[:4]}-{''.join(random.choices(random_chars, k=4))}"
     
-    # Create product
+    # Create product (no images/color; those live on color_variants)
     product = Product(
         name=product_data.name,
         description=product_data.description,
         price=product_data.price,
-        images=product_data.images,
-        color=product_data.color,
         material=product_data.material,
         article_number=article_number,
         brand_id=product_data.brand_id,
-        category_id=product_data.category_id
+        category_id=product_data.category_id,
+        general_images=product_data.general_images or [],
     )
     db.add(product)
     db.commit()
     db.refresh(product)
 
-    # Add variants
-    for variant_data in product_data.variants:
-        variant = ProductVariant(
+    # Add color variants (each with its own images and size/stock variants)
+    for order_index, cv_data in enumerate(product_data.color_variants):
+        color_variant = ProductColorVariant(
             product_id=product.id,
-            size=variant_data.size,
-            stock_quantity=variant_data.stock_quantity
+            color_name=cv_data.color_name,
+            color_hex=cv_data.color_hex,
+            images=cv_data.images or [],
+            display_order=order_index,
         )
-        db.add(variant)
+        db.add(color_variant)
     db.commit()
     db.refresh(product)
+
+    for cv_data in product_data.color_variants:
+        color_variant = db.query(ProductColorVariant).filter(
+            ProductColorVariant.product_id == product.id,
+            ProductColorVariant.color_name == cv_data.color_name,
+        ).first()
+        if not color_variant:
+            continue
+        for v_data in cv_data.variants:
+            variant = ProductVariant(
+                product_color_variant_id=color_variant.id,
+                size=v_data.size,
+                stock_quantity=v_data.stock_quantity,
+            )
+            db.add(variant)
+    db.commit()
 
     # Add styles
     for style_id in product_data.styles:
@@ -1277,22 +1330,7 @@ async def create_product(
     db.commit()
     db.refresh(product)
 
-    return schemas.Product(
-        id=product.id,
-        name=product.name,
-        description=product.description,
-        price=product.price,
-        images=product.images,
-        color=product.color,
-        material=product.material,
-        article_number=product.article_number,
-        brand_id=product.brand_id,
-        category_id=product.category_id,
-        styles=[ps.style_id for ps in product.styles],
-        variants=[schemas.ProductVariantSchema(size=v.size, stock_quantity=v.stock_quantity) for v in sort_variants_by_size(product.variants)],
-        brand_name=brand.name,
-        brand_return_policy=brand.return_policy
-    )
+    return product_to_schema(product)
 
 @app.put("/api/v1/brands/products/{product_id}", response_model=schemas.Product)
 async def update_product(
@@ -1314,18 +1352,37 @@ async def update_product(
 
     # Update product fields
     for field, value in product_data.dict(exclude_unset=True).items():
-        if field == "variants":
-            # Handle variants separately
-            db.query(ProductVariant).filter(ProductVariant.product_id == product.id).delete()
-            for variant_data in value:
-                variant = ProductVariant(
+        if field == "color_variants":
+            # Replace all color variants (cascade deletes their size variants)
+            for cv in product.color_variants[:]:
+                db.delete(cv)
+            db.commit()
+            for order_index, cv_data in enumerate(value):
+                color_variant = ProductColorVariant(
                     product_id=product.id,
-                    size=variant_data["size"],
-                    stock_quantity=variant_data["stock_quantity"]
+                    color_name=cv_data["color_name"],
+                    color_hex=cv_data["color_hex"],
+                    images=cv_data.get("images") or [],
+                    display_order=order_index,
                 )
-                db.add(variant)
+                db.add(color_variant)
+            db.commit()
+            for cv_data in value:
+                color_variant = db.query(ProductColorVariant).filter(
+                    ProductColorVariant.product_id == product.id,
+                    ProductColorVariant.color_name == cv_data["color_name"],
+                ).first()
+                if not color_variant:
+                    continue
+                for v_data in cv_data.get("variants") or []:
+                    variant = ProductVariant(
+                        product_color_variant_id=color_variant.id,
+                        size=v_data["size"],
+                        stock_quantity=v_data["stock_quantity"],
+                    )
+                    db.add(variant)
+            db.commit()
         elif field == "styles":
-            # Handle styles separately
             db.query(ProductStyle).filter(ProductStyle.product_id == product.id).delete()
             for style_id in value:
                 style = db.query(Style).filter(Style.id == style_id).first()
@@ -1333,34 +1390,17 @@ async def update_product(
                     raise HTTPException(status_code=400, detail=f"Style with ID {style_id} not found")
                 product_style = ProductStyle(product_id=product.id, style_id=style_id)
                 db.add(product_style)
-        elif field == "images":
-            product.images = value
-        elif field == "color":
-            product.color = value
         elif field == "material":
             product.material = value
-        elif field not in ["sku"]: # Exclude sku as it's only for order items
+        elif field == "general_images":
+            product.general_images = value or []
+        elif field not in ["sku"]:
             setattr(product, field, value)
 
     db.commit()
     db.refresh(product)
 
-    return schemas.Product(
-        id=product.id,
-        name=product.name,
-        description=product.description,
-        price=product.price,
-        images=product.images,
-        color=product.color,
-        material=product.material,
-        article_number=product.article_number,
-        brand_id=product.brand_id,
-        category_id=product.category_id,
-        styles=[ps.style_id for ps in product.styles],
-        variants=[schemas.ProductVariantSchema(size=v.size, stock_quantity=v.stock_quantity) for v in sort_variants_by_size(product.variants)],
-        brand_name=brand.name,
-        brand_return_policy=brand.return_policy
-    )
+    return product_to_schema(product)
 
 @app.get("/api/v1/brands/products", response_model=List[schemas.Product])
 async def get_brand_products(
@@ -1369,26 +1409,7 @@ async def get_brand_products(
 ):
     """Get all products for the authenticated brand user"""
     products = db.query(Product).filter(Product.brand_id == current_user.id).all()
-
-    response_products = []
-    for product in products:
-        response_products.append(schemas.Product(
-            id=product.id,
-            name=product.name,
-            description=product.description,
-            price=product.price,
-            images=product.images, # Use images field
-            color=product.color,
-            material=product.material,
-            article_number=product.article_number,
-            brand_id=product.brand_id,
-            category_id=product.category_id,
-            styles=[ps.style_id for ps in product.styles],
-            variants=[schemas.ProductVariantSchema(size=v.size, stock_quantity=v.stock_quantity) for v in sort_variants_by_size(product.variants)],
-            brand_name=product.brand.name,
-            brand_return_policy=product.brand.return_policy
-        ))
-    return response_products
+    return [product_to_schema(p) for p in products]
 
 @app.get("/api/v1/brands/products/{product_id}", response_model=schemas.Product)
 async def get_brand_product_details(
@@ -1400,26 +1421,9 @@ async def get_brand_product_details(
     product = db.query(Product).filter(Product.id == product_id).first()
     if not product:
         raise HTTPException(status_code=404, detail="Товар не найден. Возможно, он был удален или перемещен.")
-
     if product.brand_id != current_user.id:
         raise HTTPException(status_code=403, detail="Product does not belong to your brand")
-
-    return schemas.Product(
-        id=product.id,
-        name=product.name,
-        description=product.description,
-        price=product.price,
-        images=product.images,
-        color=product.color,
-        material=product.material,
-        article_number=product.article_number,
-        brand_id=product.brand_id,
-        category_id=product.category_id,
-        styles=[ps.style_id for ps in product.styles],
-        variants=[schemas.ProductVariantSchema(size=v.size, stock_quantity=v.stock_quantity) for v in sort_variants_by_size(product.variants)],
-        brand_name=product.brand.name,
-        brand_return_policy=product.brand.return_policy
-    )
+    return product_to_schema(product)
 
     
 
@@ -1442,10 +1446,17 @@ async def update_order_tracking(
     brand_id_filter = 1 # Placeholder: replace with actual brand_id from current_user
     
     # Check if any item in the order belongs to the current brand
-    order_belongs_to_brand = db.query(OrderItem).join(ProductVariant).join(Product).filter(
-        OrderItem.order_id == order_id,
-        Product.brand_id == brand_id_filter
-    ).first()
+    order_belongs_to_brand = (
+        db.query(OrderItem)
+        .join(ProductVariant, OrderItem.product_variant_id == ProductVariant.id)
+        .join(ProductColorVariant, ProductVariant.product_color_variant_id == ProductColorVariant.id)
+        .join(Product, ProductColorVariant.product_id == Product.id)
+        .filter(
+            OrderItem.order_id == order_id,
+            Product.brand_id == brand_id_filter
+        )
+        .first()
+    )
 
     if not order_belongs_to_brand:
         raise HTTPException(status_code=403, detail="Order does not belong to your brand")
@@ -1824,25 +1835,7 @@ async def get_user_favorites(
     ).all()
 
     results = []
-    for product in liked_products:
-        results.append(schemas.Product(
-            id=product.id,
-            name=product.name,
-            description=product.description,
-            price=product.price,
-            images=product.images,
-            color=product.color,
-            material=product.material,
-            article_number=product.article_number,
-            brand_id=product.brand_id,
-            category_id=product.category_id,
-            styles=[ps.style_id for ps in product.styles],
-            variants=[schemas.ProductVariantSchema(size=v.size, stock_quantity=v.stock_quantity) for v in sort_variants_by_size(product.variants)],
-            brand_name=product.brand.name,
-            brand_return_policy=product.brand.return_policy,
-            is_liked=True
-        ))
-    return results
+    return [product_to_schema(p, is_liked=True) for p in liked_products]
 
 # Get Recent Swipes Endpoint
 @app.get("/api/v1/user/recent-swipes", response_model=List[schemas.Product])
@@ -1875,24 +1868,7 @@ async def get_recent_swipes(
     for product_id in product_ids:
         product = product_map.get(product_id)
         if product:
-            results.append(schemas.Product(
-                id=product.id,
-                name=product.name,
-                description=product.description,
-                price=product.price,
-                images=product.images,
-                color=product.color,
-                material=product.material,
-                article_number=product.article_number,
-                brand_id=product.brand_id,
-                category_id=product.category_id,
-                styles=[ps.style_id for ps in product.styles],
-                variants=[schemas.ProductVariantSchema(size=v.size, stock_quantity=v.stock_quantity) for v in sort_variants_by_size(product.variants)],
-                brand_name=product.brand.name,
-                brand_return_policy=product.brand.return_policy,
-                is_liked=product.id in liked_product_ids
-            ))
-    
+            results.append(product_to_schema(product, is_liked=product.id in liked_product_ids))
     return results
 
 # Item Recommendations Endpoints
@@ -1908,26 +1884,7 @@ async def get_recommendations_for_user(
     all_products = db.query(Product).join(Brand).order_by(func.random()).limit(limit).all() # Get random products
     liked_product_ids = {ulp.product_id for ulp in current_user.liked_products}
 
-    recommendations = []
-    for product in all_products:
-        recommendations.append(schemas.Product(
-            id=product.id,
-            name=product.name,
-            description=product.description,
-            price=product.price,
-            images=product.images,
-            color=product.color,
-            material=product.material,
-            article_number=product.article_number,
-            brand_id=product.brand_id,
-            category_id=product.category_id,
-            styles=[ps.style_id for ps in product.styles],
-            variants=[schemas.ProductVariantSchema(size=v.size, stock_quantity=v.stock_quantity) for v in sort_variants_by_size(product.variants)],
-            brand_name=product.brand.name,
-            brand_return_policy=product.brand.return_policy,
-            is_liked=product.id in liked_product_ids
-        ))
-    return recommendations
+    return [product_to_schema(p, is_liked=p.id in liked_product_ids) for p in all_products]
 
 @app.get("/api/v1/recommendations/for_friend/{friend_id}", response_model=List[schemas.Product])
 async def get_recommendations_for_friend(
@@ -1947,25 +1904,7 @@ async def get_recommendations_for_friend(
     liked_product_ids = {ulp.product_id for ulp in current_user.liked_products}
 
     recommendations = []
-    for product in all_products:
-        recommendations.append(schemas.Product(
-            id=product.id,
-            name=product.name,
-            description=product.description,
-            price=product.price,
-            images=product.images,
-            color=product.color,
-            material=product.material,
-            article_number=product.article_number,
-            brand_id=product.brand_id,
-            category_id=product.category_id,
-            styles=[ps.style_id for ps in product.styles],
-            variants=[schemas.ProductVariantSchema(size=v.size, stock_quantity=v.stock_quantity) for v in sort_variants_by_size(product.variants)],
-            brand_name=product.brand.name,
-            brand_return_policy=product.brand.return_policy,
-            is_liked=product.id in liked_product_ids
-        ))
-    return recommendations
+    return [product_to_schema(p, is_liked=p.id in liked_product_ids) for p in all_products]
 
 # In-memory cache for popular items with TTL
 _popular_items_cache: Optional[List[schemas.Product]] = None
@@ -2006,26 +1945,7 @@ async def get_popular_products(
     
     liked_product_ids = {ulp.product_id for ulp in current_user.liked_products}
     
-    results = []
-    for product in products:
-        results.append(schemas.Product(
-            id=product.id,
-            name=product.name,
-            description=product.description,
-            price=product.price,
-            images=product.images,
-            color=product.color,
-            material=product.material,
-            article_number=product.article_number,
-            brand_id=product.brand_id,
-            category_id=product.category_id,
-            styles=[ps.style_id for ps in product.styles],
-            variants=[schemas.ProductVariantSchema(size=v.size, stock_quantity=v.stock_quantity) for v in sort_variants_by_size(product.variants)],
-            brand_name=product.brand.name,
-            brand_return_policy=product.brand.return_policy,
-            is_liked=product.id in liked_product_ids
-        ))
-    
+    results = [product_to_schema(p, is_liked=p.id in liked_product_ids) for p in products]
     # Update cache
     _popular_items_cache = results
     _popular_items_cache_time = current_time
@@ -2072,25 +1992,7 @@ async def search_products(
     liked_product_ids = {ulp.product_id for ulp in current_user.liked_products}
 
     results = []
-    for product in products:
-        results.append(schemas.Product(
-            id=product.id,
-            name=product.name,
-            description=product.description,
-            price=product.price,
-            images=product.images,
-            color=product.color,
-            material=product.material,
-            article_number=product.article_number,
-            brand_id=product.brand_id,
-            category_id=product.category_id,
-            styles=[ps.style_id for ps in product.styles],
-            variants=[schemas.ProductVariantSchema(size=v.size, stock_quantity=v.stock_quantity) for v in sort_variants_by_size(product.variants)],
-            brand_name=product.brand.name,
-            brand_return_policy=product.brand.return_policy,
-            is_liked=product.id in liked_product_ids
-        ))
-    return results
+    return [product_to_schema(p, is_liked=p.id in liked_product_ids) for p in products]
 
 @app.get("/api/v1/products/{product_id}", response_model=schemas.Product)
 async def get_product_details(
@@ -2106,23 +2008,7 @@ async def get_product_details(
     # Check if user has liked this product
     is_liked = any(ulp.product_id == product.id for ulp in current_user.liked_products)
 
-    return schemas.Product(
-        id=product.id,
-        name=product.name,
-        description=product.description,
-        price=product.price,
-        images=product.images,
-        color=product.color,
-        material=product.material,
-        article_number=product.article_number,
-        brand_id=product.brand_id,
-        category_id=product.category_id,
-        styles=[ps.style_id for ps in product.styles],
-        variants=[schemas.ProductVariantSchema(size=v.size, stock_quantity=v.stock_quantity) for v in sort_variants_by_size(product.variants)],
-        brand_name=product.brand.name,
-        brand_return_policy=product.brand.return_policy,
-        is_liked=is_liked
-    )
+    return product_to_schema(product, is_liked=is_liked)
 
 # Friend System Endpoints
 @app.post("/api/v1/friends/request", response_model=MessageResponse)
@@ -2522,11 +2408,16 @@ async def get_orders(
     
     if is_brand:
         # For brands: Get orders containing products from this brand
-        orders_with_brand_products = db.query(Order).join(OrderItem).join(
-            ProductVariant, OrderItem.product_variant_id == ProductVariant.id
-        ).join(Product).filter(
-            Product.brand_id == current_user.id
-        ).distinct().all()
+        orders_with_brand_products = (
+            db.query(Order)
+            .join(OrderItem)
+            .join(ProductVariant, OrderItem.product_variant_id == ProductVariant.id)
+            .join(ProductColorVariant, ProductVariant.product_color_variant_id == ProductColorVariant.id)
+            .join(Product, ProductColorVariant.product_id == Product.id)
+            .filter(Product.brand_id == current_user.id)
+            .distinct()
+            .all()
+        )
         
         response = []
         for order in orders_with_brand_products:
@@ -2536,27 +2427,27 @@ async def get_orders(
                 if item.product_variant.product.brand_id == current_user.id:
                     product_variant = item.product_variant
                     product = product_variant.product
-                    
+                    cv = product_variant.color_variant
+                    imgs = cv.images or []
                     order_items.append(schemas.OrderItemResponse(
                         id=item.id,
                         name=product.name,
                         price=item.price,
                         size=product_variant.size,
-                        image=product.images[0] if product.images and len(product.images) > 0 else None,
+                        image=imgs[0] if imgs else None,
                         delivery=schemas.Delivery(
-                            cost=350.0, # Placeholder
-                            estimatedTime="1-3 дня", # Placeholder
+                            cost=350.0,
+                            estimatedTime="1-3 дня",
                             tracking_number=order.tracking_number
                         ),
-                        sku=item.sku,  # SKU from OrderItem (renamed from honest_sign)
-                        # Additional product details for main page compatibility
+                        sku=item.sku,
                         brand_name=product.brand.name if product.brand else None,
                         description=product.description,
-                        color=product.color,
+                        color=cv.color_name,
                         materials=product.material,
-                        images=product.images if product.images else [],
+                        images=imgs,
                         return_policy=product.brand.return_policy if product.brand else None,
-                        product_id=product.id  # Original product ID for swipe tracking
+                        product_id=product.id
                     ))
             
             # Only add order if it contains items from this brand
@@ -2592,27 +2483,27 @@ async def get_orders(
                 # Access product details via product_variant relationship
                 product_variant = item.product_variant
                 product = product_variant.product
-
+                cv = product_variant.color_variant
+                imgs = cv.images or []
                 order_items.append(schemas.OrderItemResponse(
                     id=item.id,
                     name=product.name,
                     price=item.price,
                     size=product_variant.size,
-                    image=product.images[0] if product.images and len(product.images) > 0 else None,
+                    image=imgs[0] if imgs else None,
                     delivery=schemas.Delivery(
-                        cost=350.0, # Placeholder
-                        estimatedTime="1-3 дня", # Placeholder
-                        tracking_number=order.tracking_number # Use order's tracking number
+                        cost=350.0,
+                        estimatedTime="1-3 дня",
+                        tracking_number=order.tracking_number
                     ),
-                    sku=item.sku,  # SKU from OrderItem (renamed from honest_sign)
-                    # Additional product details for main page compatibility
+                    sku=item.sku,
                     brand_name=product.brand.name if product.brand else None,
                     description=product.description,
-                    color=product.color,
+                    color=cv.color_name,
                     materials=product.material,
-                    images=product.images if product.images else [],
+                    images=imgs,
                     return_policy=product.brand.return_policy if product.brand else None,
-                    product_id=product.id  # Original product ID for swipe tracking
+                    product_id=product.id
                 ))
 
             response.append(schemas.OrderResponse(

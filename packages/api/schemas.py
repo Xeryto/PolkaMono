@@ -20,9 +20,8 @@ class Customer(BaseModel):
         return self
 
 class CartItem(BaseModel):
-    product_id: str
+    product_variant_id: str  # Identifies color + size (ProductVariant.id)
     quantity: int = 1
-    size: str
 
 class PaymentCreate(BaseModel):
     amount: Amount
@@ -111,56 +110,76 @@ class ExclusiveAccessSignupRequest(BaseModel):
     email: EmailStr
 
 class ProductVariantSchema(BaseModel):
+    id: Optional[str] = None  # Set in API response for cart/order
     size: str
     stock_quantity: int
-    
+
     @validator('stock_quantity')
     def validate_stock_quantity(cls, v):
         if v < 0:
             raise ValueError('Stock quantity cannot be negative')
         return v
 
+    class Config:
+        from_attributes = True
+
+
+class ProductColorVariantSchema(BaseModel):
+    id: Optional[str] = None
+    color_name: str
+    color_hex: str
+    images: List[str] = []
+    variants: List[ProductVariantSchema] = []
+
+    class Config:
+        from_attributes = True
+
+
+class ProductColorVariantCreate(BaseModel):
+    color_name: str = Field(..., max_length=50)
+    color_hex: str = Field(..., max_length=50)
+    images: List[str] = []
+    variants: List[ProductVariantSchema]
+
+
 class ProductCreateRequest(BaseModel):
     name: str = Field(..., max_length=255)
     description: Optional[str] = Field(None, max_length=1000)
     price: float
-    images: List[str] = [] # New field for multiple image URLs
     brand_id: int
     category_id: str = Field(..., max_length=50)
     styles: Optional[List[str]] = []
-    variants: List[ProductVariantSchema]
-    color: Optional[str] = Field(None, max_length=50)
+    color_variants: List[ProductColorVariantCreate]
     material: Optional[str] = Field(None, max_length=100)
-    article_number: Optional[str] = Field(None, max_length=50)  # Will be auto-generated if not provided
+    article_number: Optional[str] = Field(None, max_length=50)  # Auto-generated if not provided
+    general_images: Optional[List[str]] = None
 
 class ProductUpdateRequest(BaseModel):
     name: Optional[str] = Field(None, max_length=255)
     description: Optional[str] = Field(None, max_length=1000)
     price: Optional[float] = None
-    images: Optional[List[str]] = None # New field for multiple image URLs
     brand_id: Optional[int] = None
     category_id: Optional[str] = Field(None, max_length=50)
     styles: Optional[List[str]] = None
-    variants: Optional[List[ProductVariantSchema]] = None
-    color: Optional[str] = Field(None, max_length=50)
+    color_variants: Optional[List[ProductColorVariantCreate]] = None
     material: Optional[str] = Field(None, max_length=100)
+    general_images: Optional[List[str]] = None
 
 class Product(BaseModel):
-    id: Optional[str]
+    id: Optional[str] = None
     name: str
     price: float
-    images: List[str] = []
     brand_id: int
     category_id: str
     styles: List[str] = []
-    variants: List[ProductVariantSchema] = []
+    color_variants: List[ProductColorVariantSchema] = []
     description: Optional[str] = None
-    color: Optional[str] = None
     material: Optional[str] = None
-    article_number: Optional[str] = None  # User-facing article number for search and sharing
+    article_number: Optional[str] = None
     brand_name: Optional[str] = None
     brand_return_policy: Optional[str] = None
     is_liked: Optional[bool] = None
+    general_images: List[str] = []
 
     class Config:
         from_attributes = True

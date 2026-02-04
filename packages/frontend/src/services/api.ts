@@ -115,8 +115,17 @@ export interface BrandProfileUpdateRequest {
 }
 
 export interface ProductVariantSchema {
+  id?: string;
   size: string;
   stock_quantity: number;
+}
+
+export interface ProductColorVariantSchema {
+  id?: string;
+  color_name: string;
+  color_hex: string;
+  images: string[];
+  variants: ProductVariantSchema[];
 }
 
 export interface ProductResponse {
@@ -124,15 +133,21 @@ export interface ProductResponse {
   name: string;
   description?: string;
   price: number;
-  images: string[];
-  color?: string;
   material?: string;
   brand_id: number;
   category_id: string;
   styles: string[];
+  color_variants: ProductColorVariantSchema[];
+  article_number?: string;
+  is_liked?: boolean;
+  general_images?: string[];
+}
+
+export interface ProductColorVariantCreate {
+  color_name: string;
+  color_hex: string;
+  images: string[];
   variants: ProductVariantSchema[];
-  article_number?: string; // Article number (артикул) - auto-generated, read-only
-  is_liked?: boolean; // Only for user-specific recommendations/favorites
 }
 
 export interface OrderItemResponse {
@@ -259,17 +274,14 @@ export const createProduct = async (productData: {
   name: string;
   description?: string;
   price: number;
-  images: string[];
-  color?: string;
-  material?: string;
-  hashtags?: string[];
   brand_id: number;
   category_id: string;
   styles: string[];
-  variants: ProductVariantSchema[];
-  return_policy?: string;
-  // Note: SKU is only on OrderItems, not Products
-}, token: string, requestOptions?: RequestOptions): Promise<ProductResponse> => { // Add token parameter
+  color_variants: ProductColorVariantCreate[];
+  material?: string;
+  article_number?: string;
+  general_images?: string[];
+}, token: string, requestOptions?: RequestOptions): Promise<ProductResponse> => {
   return await apiRequest('/api/v1/brands/products', 'POST', productData, true, token, requestOptions);
 };
 
@@ -277,17 +289,13 @@ export const updateProduct = async (productId: string, productData: {
   name?: string;
   description?: string;
   price?: number;
-  images?: string[];
-  color?: string;
-  material?: string;
-  hashtags?: string[];
   brand_id?: number;
   category_id?: string;
   styles?: string[];
-  variants?: ProductVariantSchema[];
-  return_policy?: string;
-  // Note: SKU is only on OrderItems, not Products
-}, token: string): Promise<ProductResponse> => { // Add token parameter
+  color_variants?: ProductColorVariantCreate[];
+  material?: string;
+  general_images?: string[];
+}, token: string): Promise<ProductResponse> => {
   return await apiRequest(`/api/v1/brands/products/${productId}`, 'PUT', productData, true, token);
 };
 
