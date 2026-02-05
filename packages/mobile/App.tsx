@@ -14,7 +14,11 @@ import {
   Modal,
   Button,
 } from "react-native";
-import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
+import {
+  SafeAreaProvider,
+  SafeAreaView,
+  useSafeAreaInsets,
+} from "react-native-safe-area-context";
 import { NavigationContainer, useFocusEffect } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { LinearGradient } from "expo-linear-gradient";
@@ -259,7 +263,7 @@ function ScreenWrapper({
         isFocusedRef.current = false;
         setIsVisible(false);
       };
-    }, [])
+    }, []),
   );
 
   // Don't render anything when hidden to ensure clean unmount
@@ -468,6 +472,7 @@ function MainAppNavigator({
 }) {
   const navigationRef = React.useRef<any>(null);
   const [currentRoute, setCurrentRoute] = React.useState<string>("Home");
+  const insets = useSafeAreaInsets();
 
   return (
     <NavigationContainer
@@ -497,7 +502,7 @@ function MainAppNavigator({
         start={{ x: 0, y: 0.2 }}
         end={{ x: 1, y: 0.8 }}
       >
-        <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
+        <SafeAreaView style={styles.container} edges={["top"]}>
           <View style={styles.screenContainer}>
             <MainNavigator
               onLogout={onLogout}
@@ -507,8 +512,13 @@ function MainAppNavigator({
             />
           </View>
 
-          {/* Custom Bottom Tab Bar */}
-          <View style={styles.navbar}>
+          {/* Custom Bottom Tab Bar - extends to bottom, padding for home indicator */}
+          <View
+            style={[
+              styles.navbar,
+              { paddingBottom: Math.max(15, insets.bottom) },
+            ]}
+          >
             <NavButton
               onPress={() => {
                 navigationRef.current?.navigate("Cart");
@@ -589,7 +599,7 @@ export default function App() {
         if (global.cartStorage) {
           global.cartStorage = cartStorage.createCartStorage([]);
           console.log(
-            "App - Global cart storage reset due to session expiration"
+            "App - Global cart storage reset due to session expiration",
           );
         }
       } catch (error) {
@@ -618,11 +628,11 @@ export default function App() {
         "email_verification",
       ];
       const isOnAuthenticatedScreen = authenticatedPhases.includes(
-        currentPhaseRef.current
+        currentPhaseRef.current,
       );
 
       console.log(
-        `App - Token invalid, current phase: ${currentPhaseRef.current}, showing alert: ${isOnAuthenticatedScreen}`
+        `App - Token invalid, current phase: ${currentPhaseRef.current}, showing alert: ${isOnAuthenticatedScreen}`,
       );
 
       // Clear session immediately (don't wait for user to press OK)
@@ -650,11 +660,11 @@ export default function App() {
             onDismiss: () => {
               alertShowingRef.current = false;
             },
-          }
+          },
         );
       } else {
         console.log(
-          "App - User not on authenticated screen, navigating silently without alert"
+          "App - User not on authenticated screen, navigating silently without alert",
         );
         // Reset flag since we're not showing an alert
         alertShowingRef.current = false;
@@ -726,7 +736,7 @@ export default function App() {
 
   const navReducer = (
     state: AppNavState,
-    action: AppNavAction
+    action: AppNavAction,
   ): AppNavState => {
     switch (action.type) {
       case "SET_PHASE":
@@ -773,7 +783,7 @@ export default function App() {
 
     if (isAuthError) {
       console.log(
-        `Authentication error in ${context}, triggering session manager to show alert`
+        `Authentication error in ${context}, triggering session manager to show alert`,
       );
       // Use session manager to handle login required, which will show alert and clear data
       api.sessionManager.handleLoginRequired();
@@ -784,7 +794,7 @@ export default function App() {
   };
 
   const handleProfileCompletion = async (
-    completionStatus: api.ProfileCompletionStatus
+    completionStatus: api.ProfileCompletionStatus,
   ) => {
     if (
       !completionStatus.isComplete &&
@@ -827,7 +837,7 @@ export default function App() {
         setCartInitialized(true);
         console.log(
           "App - Cart initialized from storage with items:",
-          savedItems.length
+          savedItems.length,
         );
       } catch (error) {
         console.error("Error initializing cart:", error);
@@ -850,7 +860,7 @@ export default function App() {
 
       if (!isAuthenticated) {
         console.log(
-          "App - Unauthenticated at startup, clearing cart and going to Welcome."
+          "App - Unauthenticated at startup, clearing cart and going to Welcome.",
         );
         await cartStorage.clearCart();
         transitionTo("unauthenticated", "up");
@@ -950,7 +960,7 @@ export default function App() {
     } catch (error) {
       const authErrorHandled = await handleAuthError(
         error,
-        "getUserSelectedBrands"
+        "getUserSelectedBrands",
       );
       if (authErrorHandled) {
         return []; // Return default, but user will be logged out
@@ -967,7 +977,7 @@ export default function App() {
     } catch (error) {
       const authErrorHandled = await handleAuthError(
         error,
-        "getUserFavoriteStyles"
+        "getUserFavoriteStyles",
       );
       if (authErrorHandled) {
         return []; // Return default, but user will be logged out
@@ -1025,7 +1035,7 @@ export default function App() {
 
       if (!user.is_email_verified) {
         console.log(
-          "User email not verified after login, showing verification screen"
+          "User email not verified after login, showing verification screen",
         );
         dispatchNav({ type: "SET_OVERLAY", overlay: "up" });
         transitionTo("email_verification");
@@ -1040,20 +1050,20 @@ export default function App() {
         setProfileCompletionStatus(completionStatus);
         console.log(
           "Profile completion status after login:",
-          JSON.stringify(completionStatus)
+          JSON.stringify(completionStatus),
         );
       } catch (error) {
         console.error(
           "Error getting profile completion status after login:",
-          error
+          error,
         );
         console.error(
           "Error type:",
-          error instanceof Error ? error.constructor.name : typeof error
+          error instanceof Error ? error.constructor.name : typeof error,
         );
         console.error(
           "Error message:",
-          error instanceof Error ? error.message : String(error)
+          error instanceof Error ? error.message : String(error),
         );
         // If we can't get profile completion status, check email verification status
         // and assume user needs to complete onboarding
@@ -1139,7 +1149,7 @@ export default function App() {
 
       if (isNetworkError || isApiError) {
         console.log(
-          "Network/API error detected, showing error message and staying on current screen"
+          "Network/API error detected, showing error message and staying on current screen",
         );
         // Show error message to user but don't skip to main screen
         Alert.alert(
@@ -1163,7 +1173,7 @@ export default function App() {
                 transitionTo("main");
               },
             },
-          ]
+          ],
         );
         return; // Don't proceed to finally block yet
       }
@@ -1181,7 +1191,7 @@ export default function App() {
   const handleRegister = async (
     username: string,
     email: string,
-    password: string
+    password: string,
   ) => {
     // Prevent multiple simultaneous registration flows
     if (isAuthFlowInProgress) {
@@ -1218,7 +1228,7 @@ export default function App() {
         setProfileCompletionStatus(completionStatus);
         console.log(
           "Profile completion status after registration:",
-          JSON.stringify(completionStatus)
+          JSON.stringify(completionStatus),
         );
       } catch (error) {
         console.error("Error getting profile completion status:", error);
@@ -1272,7 +1282,7 @@ export default function App() {
     } catch (error) {
       console.error(
         "Error checking profile completion after registration:",
-        error
+        error,
       );
 
       // First check if this is an authentication error
@@ -1300,7 +1310,7 @@ export default function App() {
 
       if (isNetworkError || isApiError) {
         console.log(
-          "Network/API error detected during registration, showing error message and staying on current screen"
+          "Network/API error detected during registration, showing error message and staying on current screen",
         );
         // Show error message to user but don't skip to main screen
         Alert.alert(
@@ -1324,14 +1334,14 @@ export default function App() {
                 transitionTo("main");
               },
             },
-          ]
+          ],
         );
         return; // Don't proceed to finally block yet
       }
 
       // For other errors, proceed with normal registration flow
       console.log(
-        "Non-network error in registration flow, proceeding to main screen"
+        "Non-network error in registration flow, proceeding to main screen",
       );
       setComingFromSignup(false);
       dispatchNav({ type: "SET_OVERLAY", overlay: "down" });
@@ -1394,7 +1404,7 @@ export default function App() {
       const completionStatus = await api.getProfileCompletionStatus();
       console.log(
         "Profile completion status after gender update:",
-        JSON.stringify(completionStatus)
+        JSON.stringify(completionStatus),
       );
       const required = completionStatus.requiredScreens || [];
       if (required.includes("brand_selection")) {
@@ -1412,7 +1422,7 @@ export default function App() {
       // Check if this is an authentication error
       const authErrorHandled = await handleAuthError(
         error,
-        "handleConfirmationComplete"
+        "handleConfirmationComplete",
       );
       if (authErrorHandled) {
         return; // Auth error handled, user logged out
@@ -1450,7 +1460,7 @@ export default function App() {
       // Check if this is an authentication error
       const authErrorHandled = await handleAuthError(
         error,
-        "handleBrandSearchComplete"
+        "handleBrandSearchComplete",
       );
       if (authErrorHandled) {
         return; // Auth error handled, user logged out
@@ -1482,7 +1492,7 @@ export default function App() {
       // Check if this is an authentication error
       const authErrorHandled = await handleAuthError(
         error,
-        "handleStylesSelectionComplete"
+        "handleStylesSelectionComplete",
       );
       if (authErrorHandled) {
         return; // Auth error handled, user logged out
@@ -1505,7 +1515,7 @@ export default function App() {
     try {
       setIsAuthFlowInProgress(true);
       console.log(
-        "Email verification successful, checking profile completion..."
+        "Email verification successful, checking profile completion...",
       );
 
       // Show loading screen immediately to prevent UI flicker
@@ -1518,27 +1528,27 @@ export default function App() {
       // Check profile completion status with error handling
       let completionStatus;
       console.log(
-        "Attempting to get profile completion status after email verification..."
+        "Attempting to get profile completion status after email verification...",
       );
       try {
         completionStatus = await api.getProfileCompletionStatus();
         setProfileCompletionStatus(completionStatus);
         console.log(
           "Profile completion status after email verification:",
-          JSON.stringify(completionStatus)
+          JSON.stringify(completionStatus),
         );
       } catch (error) {
         console.error(
           "Error getting profile completion status after email verification:",
-          error
+          error,
         );
         console.error(
           "Error type:",
-          error instanceof Error ? error.constructor.name : typeof error
+          error instanceof Error ? error.constructor.name : typeof error,
         );
         console.error(
           "Error message:",
-          error instanceof Error ? error.message : String(error)
+          error instanceof Error ? error.message : String(error),
         );
         // If we can't get profile completion status, assume user needs to complete onboarding
         completionStatus = {
@@ -1589,13 +1599,13 @@ export default function App() {
     } catch (error) {
       console.error(
         "Error checking profile completion after email verification:",
-        error
+        error,
       );
 
       // First check if this is an authentication error
       const authErrorHandled = await handleAuthError(
         error,
-        "handleEmailVerificationSuccess"
+        "handleEmailVerificationSuccess",
       );
       if (authErrorHandled) {
         return; // Auth error handled, user logged out
@@ -1620,7 +1630,7 @@ export default function App() {
 
       if (isNetworkError || isApiError) {
         console.log(
-          "Network/API error detected after email verification, showing error message and staying on current screen"
+          "Network/API error detected after email verification, showing error message and staying on current screen",
         );
         // Show error message to user but don't skip to main screen
         Alert.alert(
@@ -1643,7 +1653,7 @@ export default function App() {
                 transitionTo("main");
               },
             },
-          ]
+          ],
         );
         return; // Don't proceed to finally block yet
       }
@@ -1665,7 +1675,7 @@ export default function App() {
 
   const handlePasswordResetVerificationSuccess = async (code: string) => {
     console.log(
-      "Password reset verification successful, showing reset form..."
+      "Password reset verification successful, showing reset form...",
     );
     setPasswordResetCode(code);
     transitionTo("password_reset");
@@ -1795,7 +1805,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   screenContainer: {
-    height: Platform.OS === "android" ? "88%" : "92%",
+    flex: 1,
     width: "100%",
   },
   navbar: {
@@ -1803,14 +1813,11 @@ const styles = StyleSheet.create({
     justifyContent: "space-around",
     alignItems: "center",
     backgroundColor: "rgba(205, 166, 122, 0.2)", // #CDA67A with 20% opacity
-    height: "12%",
-    position: "absolute",
-    bottom: 0,
-    left: 0,
-    right: 0,
+    minHeight: Dimensions.get("window").height * 0.1,
+    paddingTop: 10,
+    paddingBottom: 15,
     borderTopLeftRadius: 12,
     borderTopRightRadius: 12,
-    paddingBottom: 15,
   },
   navItem: {
     alignItems: "center",

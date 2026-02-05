@@ -7,6 +7,7 @@ import {
   Pressable,
   Image,
   Dimensions,
+  useWindowDimensions,
   TextInput,
   Platform,
   InteractionManager,
@@ -244,7 +245,7 @@ const UserActionButton = memo(
     );
 
     return <View style={buttonContainerStyle}>{otherButtons}</View>;
-  }
+  },
 );
 
 const Favorites = ({ navigation }: FavoritesProps) => {
@@ -264,7 +265,7 @@ const Favorites = ({ navigation }: FavoritesProps) => {
   const [friendItems, setFriendItems] = useState<FriendItem[]>([]);
   const [sentRequests, setSentRequests] = useState<api.FriendRequest[]>([]);
   const [receivedRequests, setReceivedRequests] = useState<api.FriendRequest[]>(
-    []
+    [],
   );
   const [isLoadingFriends, setIsLoadingFriends] = useState(true);
   const [searchResults, setSearchResults] = useState<FriendItem[]>([]);
@@ -377,8 +378,8 @@ const Favorites = ({ navigation }: FavoritesProps) => {
         setSavedItems(
           (favorites || []).map(
             (item: api.Product, i: number): CardItem =>
-              mapProductToCardItem(item, i)
-          )
+              mapProductToCardItem(item, i),
+          ),
         );
       } catch (error: any) {
         console.error("Error loading saved items:", error);
@@ -485,7 +486,7 @@ const Favorites = ({ navigation }: FavoritesProps) => {
       "Toggling view from",
       activeView,
       "to",
-      activeView === "friends" ? "saved" : "friends"
+      activeView === "friends" ? "saved" : "friends",
     );
     // Use InteractionManager to avoid UI thread blocking
     InteractionManager.runAfterInteractions(() => {
@@ -558,7 +559,7 @@ const Favorites = ({ navigation }: FavoritesProps) => {
           setSearchResults(searchUsersList);
         } else {
           console.log(
-            `Favorites - Ignoring stale search results (request ${currentRequestId} is not the latest ${searchRequestIdRef.current})`
+            `Favorites - Ignoring stale search results (request ${currentRequestId} is not the latest ${searchRequestIdRef.current})`,
           );
         }
       } catch (error) {
@@ -666,7 +667,7 @@ const Favorites = ({ navigation }: FavoritesProps) => {
   const handleNavigate = (
     screen: string,
     params?: any,
-    fromFavorites: boolean = false
+    fromFavorites: boolean = false,
   ) => {
     setIsMounted(false);
     // Use a shorter timeout on Android
@@ -695,7 +696,7 @@ const Favorites = ({ navigation }: FavoritesProps) => {
   const updateFriendItemStatus = (
     friendId: string,
     newStatus: FriendItem["status"],
-    requestId?: string
+    requestId?: string,
   ) => {
     setFriendItems((prev) =>
       prev.map((item) =>
@@ -705,15 +706,15 @@ const Favorites = ({ navigation }: FavoritesProps) => {
               status: newStatus,
               requestId: requestId || item.requestId,
             }
-          : item
-      )
+          : item,
+      ),
     );
   };
 
   const updateSearchItemStatus = (
     friendId: string,
     newStatus: FriendItem["status"],
-    requestId?: string
+    requestId?: string,
   ) => {
     setSearchResults((prev) =>
       prev.map((item) =>
@@ -723,8 +724,8 @@ const Favorites = ({ navigation }: FavoritesProps) => {
               status: newStatus,
               requestId: requestId || item.requestId,
             }
-          : item
-      )
+          : item,
+      ),
     );
   };
 
@@ -737,8 +738,8 @@ const Favorites = ({ navigation }: FavoritesProps) => {
     setFriendItems((prev) => [...prev, friend]);
     setSearchResults((prev) =>
       prev.map((item) =>
-        item.id === friend.id ? { ...item, status: "friend" as const } : item
-      )
+        item.id === friend.id ? { ...item, status: "friend" as const } : item,
+      ),
     );
   };
 
@@ -752,7 +753,7 @@ const Favorites = ({ navigation }: FavoritesProps) => {
 
       // Find the friend item that was accepted
       const acceptedItem = friendItems.find(
-        (item) => item.requestId === requestId
+        (item) => item.requestId === requestId,
       );
       if (acceptedItem) {
         // Update the item status to 'friend' and remove requestId
@@ -777,7 +778,7 @@ const Favorites = ({ navigation }: FavoritesProps) => {
 
       // Find and remove the rejected request
       const rejectedItem = friendItems.find(
-        (item) => item.requestId === requestId
+        (item) => item.requestId === requestId,
       );
       if (rejectedItem) {
         removeFriendFromLists(rejectedItem.id);
@@ -800,14 +801,14 @@ const Favorites = ({ navigation }: FavoritesProps) => {
 
       // Find the user in search results and update their status
       const searchItem = searchResults.find(
-        (item) => item.username === username
+        (item) => item.username === username,
       );
       if (searchItem) {
         // Update the search item with the new status and request ID if available
         updateSearchItemStatus(
           searchItem.id,
           "request_sent",
-          response.request_id
+          response.request_id,
         );
 
         // If we got a request ID, also add it to the main friends list
@@ -841,7 +842,7 @@ const Favorites = ({ navigation }: FavoritesProps) => {
 
       // Find the cancelled request and update its status instead of removing
       const cancelledItem = friendItems.find(
-        (item) => item.requestId === requestId
+        (item) => item.requestId === requestId,
       );
       if (cancelledItem) {
         // Update status to 'not_friend' instead of removing
@@ -936,7 +937,7 @@ const Favorites = ({ navigation }: FavoritesProps) => {
     return (
       <Animated.View
         entering={FadeInDown.duration(ANIMATION_DURATIONS.STANDARD).delay(
-          ANIMATION_DELAYS.STANDARD + index * ANIMATION_DELAYS.SMALL
+          ANIMATION_DELAYS.STANDARD + index * ANIMATION_DELAYS.SMALL,
         )}
         exiting={FadeOutDown.duration(ANIMATION_DURATIONS.MICRO)}
         style={styles.productItem}
@@ -980,7 +981,7 @@ const Favorites = ({ navigation }: FavoritesProps) => {
                   style={[styles.confirmButton, styles.confirmYesButton]}
                   onPress={() => {
                     Haptics.notificationAsync(
-                      Haptics.NotificationFeedbackType.Success
+                      Haptics.NotificationFeedbackType.Success,
                     );
                     removeFriend(item.id);
                     setMainShowConfirmDialog(false);
@@ -1045,7 +1046,7 @@ const Favorites = ({ navigation }: FavoritesProps) => {
   const renderRecommendedItem =
     (
       friend: FriendItem,
-      recommendedItems: CardItem[]
+      recommendedItems: CardItem[],
     ): ListRenderItem<CardItem> =>
     ({ item, index, separators }) => {
       // Simple static rendering for Android
@@ -1138,7 +1139,7 @@ const Favorites = ({ navigation }: FavoritesProps) => {
                   style={[styles.confirmButton, styles.confirmYesButton]}
                   onPress={() => {
                     Haptics.notificationAsync(
-                      Haptics.NotificationFeedbackType.Success
+                      Haptics.NotificationFeedbackType.Success,
                     );
                     removeFriend(item.id);
                     setSearchShowConfirmDialog(false);
@@ -1184,7 +1185,7 @@ const Favorites = ({ navigation }: FavoritesProps) => {
         } else {
           // Fall back to finding the request by username
           const sentRequest = sentRequests.find(
-            (request) => request.recipient?.username === item.username
+            (request) => request.recipient?.username === item.username,
           );
           if (sentRequest) {
             await cancelFriendRequest(sentRequest.id);
@@ -1313,12 +1314,15 @@ const Favorites = ({ navigation }: FavoritesProps) => {
   // Helper function to update user status in search results
   const setSearchUserStatus = (
     userId: string,
-    status: FriendItem["status"]
+    status: FriendItem["status"],
   ) => {
     setSearchMockUsers((prev) =>
-      prev.map((user) => (user.id === userId ? { ...user, status } : user))
+      prev.map((user) => (user.id === userId ? { ...user, status } : user)),
     );
   };
+
+  const { height: screenHeight } = useWindowDimensions();
+  const isSmallScreen = screenHeight < 700;
 
   if (!isMounted) return null;
 
@@ -1327,7 +1331,7 @@ const Favorites = ({ navigation }: FavoritesProps) => {
     <Animated.View
       style={styles.container}
       entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
-        ANIMATION_DELAYS.LARGE
+        ANIMATION_DELAYS.LARGE,
       )}
       exiting={FadeOutDown.duration(ANIMATION_DURATIONS.MICRO)}
     >
@@ -1348,6 +1352,8 @@ const Favorites = ({ navigation }: FavoritesProps) => {
             onRejectRequest={rejectFriendRequest}
             handleNavigate={handleNavigate}
             isLoadingFriends={isLoadingFriends}
+            isSmallScreen={isSmallScreen}
+            screenHeight={screenHeight}
           />
         </Animated.View>
 
@@ -1376,6 +1382,8 @@ const Favorites = ({ navigation }: FavoritesProps) => {
             trimmedQuery={trimmedQuery}
             isSearching={isSearching}
             minSearchLength={MIN_FRIEND_SEARCH_LENGTH}
+            isSmallScreen={isSmallScreen}
+            screenHeight={screenHeight}
           />
         </Animated.View>
 
@@ -1389,7 +1397,7 @@ const Favorites = ({ navigation }: FavoritesProps) => {
               recommendedItems={getRecommendationsForFriend(selectedFriend.id)}
               renderRecommendedItem={renderRecommendedItem(
                 selectedFriend,
-                getRecommendationsForFriend(selectedFriend.id)
+                getRecommendationsForFriend(selectedFriend.id),
               )}
               onRegenerate={handleRegenerateRecommendations}
               isRegenerating={isRegenerating}
@@ -1420,9 +1428,11 @@ interface MainContentProps {
   handleNavigate: (
     screen: string,
     params?: any,
-    fromFavorites?: boolean
+    fromFavorites?: boolean,
   ) => void;
   isLoadingFriends: boolean;
+  isSmallScreen?: boolean;
+  screenHeight?: number;
 }
 
 interface BottomBoxContentProps {
@@ -1436,7 +1446,7 @@ interface BottomBoxContentProps {
   handleNavigate: (
     screen: string,
     params?: any,
-    fromFavorites?: boolean
+    fromFavorites?: boolean,
   ) => void;
 }
 
@@ -1457,6 +1467,8 @@ interface SearchContentProps {
   trimmedQuery: string;
   isSearching: boolean;
   minSearchLength: number;
+  isSmallScreen?: boolean;
+  screenHeight?: number;
 }
 
 // Extracted component for main content to reduce render complexity
@@ -1474,7 +1486,24 @@ const MainContent = ({
   onRejectRequest,
   handleNavigate,
   isLoadingFriends,
+  isSmallScreen = false,
+  screenHeight,
 }: MainContentProps) => {
+  // Responsive box dimensions for iPhone SE and small screens
+  const h = screenHeight ?? height;
+  const topBoxStyle = isSmallScreen
+    ? {
+        height: h * 0.7,
+        top: h * 0.025,
+      }
+    : undefined;
+  const bottomBoxStyle = isSmallScreen
+    ? {
+        height: h * 0.8,
+        top: h * 0.025,
+      }
+    : undefined;
+
   return (
     <>
       {/* Top Box (Friends by default) */}
@@ -1482,9 +1511,10 @@ const MainContent = ({
         style={[
           styles.topBox,
           { backgroundColor: activeView === "friends" ? "#C8A688" : "#AE8F72" },
+          topBoxStyle,
         ]}
         entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
-          ANIMATION_DELAYS.LARGE
+          ANIMATION_DELAYS.LARGE,
         )}
         //exiting={FadeOutDown.duration(50)}
       >
@@ -1564,9 +1594,10 @@ const MainContent = ({
         style={[
           styles.bottomBox,
           { backgroundColor: activeView === "friends" ? "#AE8F72" : "#C8A688" },
+          bottomBoxStyle,
         ]}
         entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
-          ANIMATION_DELAYS.VERY_LARGE
+          ANIMATION_DELAYS.VERY_LARGE,
         )}
         //exiting={FadeOutDown.duration(50)}
       >
@@ -1647,7 +1678,13 @@ const SearchContent = ({
   trimmedQuery,
   isSearching,
   minSearchLength,
+  isSmallScreen = false,
+  screenHeight,
 }: SearchContentProps) => {
+  const h = screenHeight ?? height;
+  const searchResultsBoxStyle = isSmallScreen ? { height: h * 0.6 } : undefined;
+  const searchModeTopBoxStyle = isSmallScreen ? { height: h * 0.7 } : undefined;
+
   return (
     <>
       {/* Search Input */}
@@ -1682,9 +1719,9 @@ const SearchContent = ({
 
       {/* Search Results */}
       <Animated.View
-        style={styles.searchResultsBox}
+        style={[styles.searchResultsBox, searchResultsBoxStyle]}
         entering={FadeInDown.duration(ANIMATION_DURATIONS.MICRO).delay(
-          ANIMATION_DELAYS.STANDARD
+          ANIMATION_DELAYS.STANDARD,
         )}
         exiting={FadeOutDown.duration(ANIMATION_DURATIONS.MICRO)}
       >
@@ -1693,13 +1730,13 @@ const SearchContent = ({
             trimmedQuery.length === 0 ? (
               <Animated.View
                 entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
-                  ANIMATION_DELAYS.STANDARD
+                  ANIMATION_DELAYS.STANDARD,
                 )}
                 style={styles.emptyStateContainer}
               >
                 <Animated.View
                   entering={FadeInDown.duration(
-                    ANIMATION_DURATIONS.MEDIUM
+                    ANIMATION_DURATIONS.MEDIUM,
                   ).delay(ANIMATION_DELAYS.STANDARD)}
                   style={styles.emptyStateIcon}
                 >
@@ -1707,7 +1744,7 @@ const SearchContent = ({
                 </Animated.View>
                 <Animated.Text
                   entering={FadeInDown.duration(
-                    ANIMATION_DURATIONS.MEDIUM
+                    ANIMATION_DURATIONS.MEDIUM,
                   ).delay(ANIMATION_DELAYS.MEDIUM)}
                   style={styles.emptyStateTitle}
                 >
@@ -1715,7 +1752,7 @@ const SearchContent = ({
                 </Animated.Text>
                 <Animated.Text
                   entering={FadeInDown.duration(
-                    ANIMATION_DURATIONS.MEDIUM
+                    ANIMATION_DURATIONS.MEDIUM,
                   ).delay(ANIMATION_DELAYS.LARGE)}
                   style={styles.emptyStateDescription}
                 >
@@ -1725,13 +1762,13 @@ const SearchContent = ({
             ) : (
               <Animated.View
                 entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
-                  ANIMATION_DELAYS.STANDARD
+                  ANIMATION_DELAYS.STANDARD,
                 )}
                 style={styles.emptyStateContainer}
               >
                 <Animated.Text
                   entering={FadeInDown.duration(
-                    ANIMATION_DURATIONS.MEDIUM
+                    ANIMATION_DURATIONS.MEDIUM,
                   ).delay(ANIMATION_DELAYS.MEDIUM)}
                   style={styles.emptyStateDescription}
                 >
@@ -1747,7 +1784,7 @@ const SearchContent = ({
               <ActivityIndicator size="large" color="#CDA67A" />
               <Animated.Text
                 entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
-                  ANIMATION_DELAYS.SMALL
+                  ANIMATION_DELAYS.SMALL,
                 )}
                 style={styles.loadingText}
               >
@@ -1761,7 +1798,7 @@ const SearchContent = ({
             >
               <Animated.View
                 entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
-                  ANIMATION_DELAYS.STANDARD
+                  ANIMATION_DELAYS.STANDARD,
                 )}
                 style={styles.emptyStateIcon}
               >
@@ -1769,7 +1806,7 @@ const SearchContent = ({
               </Animated.View>
               <Animated.Text
                 entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
-                  ANIMATION_DELAYS.MEDIUM
+                  ANIMATION_DELAYS.MEDIUM,
                 )}
                 style={styles.noResultsText}
               >
@@ -1777,7 +1814,7 @@ const SearchContent = ({
               </Animated.Text>
               <Animated.Text
                 entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
-                  ANIMATION_DELAYS.LARGE
+                  ANIMATION_DELAYS.LARGE,
                 )}
                 style={styles.noResultsDescription}
               >
@@ -1803,15 +1840,16 @@ const SearchContent = ({
         </View>
       </Animated.View>
 
-      {/* Shrunken Top Box */}
+      {/* Shrunken Top Box - the box underneath search results */}
       <Animated.View
         style={[
           styles.topBox,
           styles.searchModeTopBox,
           { backgroundColor: "#C8A688" },
+          searchModeTopBoxStyle,
         ]}
         entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
-          ANIMATION_DELAYS.SMALL
+          ANIMATION_DELAYS.SMALL,
         )}
         exiting={FadeOutDown.duration(ANIMATION_DURATIONS.MICRO)}
       >
@@ -1992,18 +2030,18 @@ const FriendProfileView = React.memo(
           setIsLoadingFriendRecs((prev) => ({ ...prev, [friend.id]: true }));
           const recs = await apiWrapper.getFriendRecommendations(
             friend.id,
-            "FavoritesPage"
+            "FavoritesPage",
           );
           // Use utility function to ensure consistent mapping with article_number preservation
           const recommendedItems = (recs || []).map(
             (item: api.Product, index: number) =>
-              mapProductToCardItem(item, index)
+              mapProductToCardItem(item, index),
           );
           setCustomRecommendations(
             (prev: { [key: string]: RecommendedItem[] }) => ({
               ...prev,
               [friend.id]: recommendedItems,
-            })
+            }),
           );
         } catch (error: any) {
           console.error("Error loading friend recommendations:", error);
@@ -2011,7 +2049,7 @@ const FriendProfileView = React.memo(
             (prev: { [key: string]: RecommendedItem[] }) => ({
               ...prev,
               [friend.id]: [],
-            })
+            }),
           );
 
           // Show appropriate error message based on error type
@@ -2025,7 +2063,7 @@ const FriendProfileView = React.memo(
           } else {
             Alert.alert(
               "ошибка",
-              "не удалось загрузить рекомендации для друга"
+              "не удалось загрузить рекомендации для друга",
             );
           }
         } finally {
@@ -2062,7 +2100,7 @@ const FriendProfileView = React.memo(
 
         <Animated.View
           entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
-            ANIMATION_DELAYS.SMALL
+            ANIMATION_DELAYS.SMALL,
           )}
           style={styles.regenerateButtonWrapper}
         >
@@ -2121,7 +2159,7 @@ const FriendProfileView = React.memo(
         <Animated.View
           style={styles.roundedBox}
           entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
-            ANIMATION_DELAYS.STANDARD
+            ANIMATION_DELAYS.STANDARD,
           )}
           exiting={FadeOutDown.duration(ANIMATION_DURATIONS.MICRO)}
         >
@@ -2136,7 +2174,7 @@ const FriendProfileView = React.memo(
           <Animated.View
             style={styles.recommendationsContainer}
             entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
-              ANIMATION_DELAYS.MEDIUM
+              ANIMATION_DELAYS.MEDIUM,
             )}
           >
             {isRegenerating || isLoadingFriendRecs ? (
@@ -2169,14 +2207,14 @@ const FriendProfileView = React.memo(
               {isLoadingProfile
                 ? "загрузка..."
                 : profileError
-                ? friend.username
-                : friendProfile?.username || friend.username}
+                  ? friend.username
+                  : friendProfile?.username || friend.username}
             </Text>
           </Animated.View>
         </Animated.View>
       </Animated.View>
     );
-  }
+  },
 );
 
 // Friend Request Item Component
@@ -2539,8 +2577,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: Platform.OS === "ios" ? 45 : 50,
     backgroundColor: "#C8A688",
     borderRadius: 41,
-    paddingVertical: Platform.OS === "ios" ? 34 : 27,
     height: "100%",
+    justifyContent: "center",
+    alignItems: "center",
   },
   favoritesCancelButtonText: {
     fontFamily: "Igra Sans",
@@ -3040,7 +3079,7 @@ const FriendListItem = memo(
       <View style={styles.itemWrapper}>
         <Animated.View
           entering={FadeInDown.duration(ANIMATION_DURATIONS.STANDARD).delay(
-            ANIMATION_DELAYS.STANDARD + index * ANIMATION_DELAYS.SMALL
+            ANIMATION_DELAYS.STANDARD + index * ANIMATION_DELAYS.SMALL,
           )}
           exiting={FadeOutDown.duration(ANIMATION_DURATIONS.MICRO)}
         >
@@ -3076,7 +3115,7 @@ const FriendListItem = memo(
         </Animated.View>
       </View>
     );
-  }
+  },
 );
 
 // Now update renderFriendItem and renderSearchUser to use FriendListItem

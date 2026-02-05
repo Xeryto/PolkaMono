@@ -49,7 +49,7 @@ interface CartProps {
 
 const getItemDeliveryInfo = (
   itemId: string,
-  quantity: number
+  quantity: number,
 ): DeliveryInfo => {
   let cost = 350.0;
   let time = "1-3 дня";
@@ -188,7 +188,8 @@ const Cart = ({ navigation }: CartProps) => {
           quantity: item.quantity ?? 1,
           isLiked: item.isLiked,
           cartItemId:
-            item.cartItemId || `${item.id}-${item.size}-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
+            item.cartItemId ||
+            `${item.id}-${item.size}-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
           brand_name: item.brand_name,
           brand_return_policy: item.brand_return_policy ?? "",
           description: item.description ?? "",
@@ -218,15 +219,17 @@ const Cart = ({ navigation }: CartProps) => {
                 !prevItems.find(
                   (item) =>
                     item.cartItemId === newItem.cartItemId &&
-                    item.quantity === newItem.quantity
-                )
+                    item.quantity === newItem.quantity,
+                ),
             );
           if (!hasChanges) return prevItems;
           return items.map((newItem: any) => {
             const existingItem = prevItems.find(
-              (item) => item.cartItemId === newItem.cartItemId
+              (item) => item.cartItemId === newItem.cartItemId,
             );
-            const delivery = existingItem?.delivery ?? getItemDeliveryInfo(newItem.id, newItem.quantity ?? 1);
+            const delivery =
+              existingItem?.delivery ??
+              getItemDeliveryInfo(newItem.id, newItem.quantity ?? 1);
             return {
               ...newItem,
               delivery,
@@ -263,7 +266,7 @@ const Cart = ({ navigation }: CartProps) => {
     if (global.cartStorage) {
       global.cartStorage.removeItem(cartItemId);
       setCartItems((prevItems) =>
-        prevItems.filter((item) => item.cartItemId !== cartItemId)
+        prevItems.filter((item) => item.cartItemId !== cartItemId),
       );
     }
   };
@@ -278,7 +281,7 @@ const Cart = ({ navigation }: CartProps) => {
   const calculateRawTotal = () =>
     cartItems.reduce(
       (total, item) => total + item.price + item.delivery.cost,
-      0
+      0,
     );
   const calculateTotal = () => `${calculateRawTotal().toFixed(2)} ₽`;
 
@@ -343,7 +346,7 @@ const Cart = ({ navigation }: CartProps) => {
       if (!addressValidation.isValid) {
         const missingFieldsText = addressValidation.missingFields.join(", ");
         setPaymentError(
-          `для оформления заказа необходимо заполнить информацию о доставке: ${missingFieldsText}. пожалуйста, перейдите в настройки профиля.`
+          `для оформления заказа необходимо заполнить информацию о доставке: ${missingFieldsText}. пожалуйста, перейдите в настройки профиля.`,
         );
         setIsSubmitting(false);
         return;
@@ -373,15 +376,14 @@ const Cart = ({ navigation }: CartProps) => {
         items: receiptItems,
       };
 
-      const { confirmation_url, payment_id } = await api.createPayment(
-        paymentDetails
-      );
+      const { confirmation_url, payment_id } =
+        await api.createPayment(paymentDetails);
       if (!confirmation_url)
         throw new Error("Failed to retrieve confirmation URL.");
       await WebBrowser.openBrowserAsync(confirmation_url);
     } catch (error) {
       setPaymentError(
-        error instanceof Error ? error.message : "An unknown error occurred."
+        error instanceof Error ? error.message : "An unknown error occurred.",
       );
     } finally {
       setIsSubmitting(false);
@@ -393,7 +395,7 @@ const Cart = ({ navigation }: CartProps) => {
     if (global.cartStorage) {
       cartItems.forEach(
         (item) =>
-          item.cartItemId && global.cartStorage.removeItem(item.cartItemId)
+          item.cartItemId && global.cartStorage.removeItem(item.cartItemId),
       );
       setCartItems([]);
     }
@@ -428,7 +430,7 @@ const Cart = ({ navigation }: CartProps) => {
     <Animated.View
       style={styles.container}
       entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
-        ANIMATION_DELAYS.LARGE
+        ANIMATION_DELAYS.LARGE,
       )}
       exiting={FadeOutDown.duration(ANIMATION_DURATIONS.MICRO)}
     >
@@ -451,7 +453,7 @@ const Cart = ({ navigation }: CartProps) => {
           ) : cartItems.length === 0 ? (
             <Animated.View
               entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
-                ANIMATION_DELAYS.STANDARD
+                ANIMATION_DELAYS.STANDARD,
               )}
               style={styles.emptyCartContainer}
             >
@@ -473,9 +475,10 @@ const Cart = ({ navigation }: CartProps) => {
                   <Animated.View
                     key={item.cartItemId || `${item.id}-${item.size}-${index}`}
                     entering={FadeInDown.duration(
-                      ANIMATION_DURATIONS.MEDIUM
+                      ANIMATION_DURATIONS.MEDIUM,
                     ).delay(
-                      ANIMATION_DELAYS.STANDARD + index * ANIMATION_DELAYS.SMALL
+                      ANIMATION_DELAYS.STANDARD +
+                        index * ANIMATION_DELAYS.SMALL,
                     )}
                     style={styles.cartItem}
                   >
@@ -496,7 +499,7 @@ const Cart = ({ navigation }: CartProps) => {
                             {item.brand_name}
                           </Text>
                           <Text style={styles.itemPrice}>{`${item.price.toFixed(
-                            2
+                            2,
                           )} ₽`}</Text>
                           <Text style={styles.itemSize}>{item.size}</Text>
                           <View>
@@ -504,12 +507,20 @@ const Cart = ({ navigation }: CartProps) => {
                             <Text style={styles.deliveryText}>доставка</Text>
                           </View>
                           <View style={styles.deliveryInfoChangeable}>
-                            <Text style={styles.deliveryText}>
+                            <Text
+                              style={styles.deliveryText}
+                              numberOfLines={1}
+                              adjustsFontSizeToFit
+                            >
                               {item.delivery.estimatedTime}
                             </Text>
                             <Text
                               style={styles.deliveryText}
-                            >{`${item.delivery.cost.toFixed(2)} ₽`}</Text>
+                              numberOfLines={1}
+                              adjustsFontSizeToFit
+                            >
+                              {`${item.delivery.cost.toFixed(2)} ₽`}
+                            </Text>
                           </View>
                         </View>
                       </View>
@@ -556,7 +567,7 @@ const Cart = ({ navigation }: CartProps) => {
                 <Animated.View
                   style={styles.summaryContainer}
                   entering={FadeInDown.duration(
-                    ANIMATION_DURATIONS.MEDIUM
+                    ANIMATION_DURATIONS.MEDIUM,
                   ).delay(ANIMATION_DELAYS.LARGE)}
                 >
                   <View style={styles.horizontalLine} />
@@ -586,7 +597,7 @@ const Cart = ({ navigation }: CartProps) => {
                 )}
                 <Animated.View
                   entering={FadeInDown.duration(
-                    ANIMATION_DURATIONS.MEDIUM
+                    ANIMATION_DURATIONS.MEDIUM,
                   ).delay(ANIMATION_DELAYS.EXTENDED)}
                   style={{ width: "100%" }}
                 >
@@ -712,12 +723,14 @@ const styles = StyleSheet.create({
     position: "absolute",
     marginLeft: width * 0.22,
     bottom: 0,
+    width: width * 0.5,
   },
   deliveryText: {
     fontFamily: "IgraSans",
     fontSize: 14,
     color: "#000",
     marginBottom: 5,
+    flexShrink: 1,
   },
   rightContainer: {
     justifyContent: "center",

@@ -143,7 +143,7 @@ const AnimatedPrivacyText = ({
   const translateX = useSharedValue(0);
   const opacity = useSharedValue(1);
   const [displayLabel, setDisplayLabel] = useState(() =>
-    getPrivacyLabel(value)
+    getPrivacyLabel(value),
   );
   const prevValueRef = useRef<"nobody" | "friends" | "everyone">(value);
   const isAnimatingRef = useRef(false);
@@ -160,7 +160,7 @@ const AnimatedPrivacyText = ({
       setLastAnimatedValue(animatedValue);
       setAnimationComplete((prev) => prev + 1);
     },
-    []
+    [],
   );
 
   // Function to start animation - extracted to avoid dependency issues
@@ -203,7 +203,7 @@ const AnimatedPrivacyText = ({
                 withTiming(0, {
                   duration: ANIMATION_DURATIONS.MEDIUM,
                   easing: ReanimatedEasing.out(ReanimatedEasing.cubic),
-                })
+                }),
               );
 
               scale.value = withDelay(
@@ -211,7 +211,7 @@ const AnimatedPrivacyText = ({
                 withTiming(1, {
                   duration: ANIMATION_DURATIONS.MEDIUM,
                   easing: ReanimatedEasing.out(ReanimatedEasing.cubic),
-                })
+                }),
               );
 
               opacity.value = withDelay(
@@ -223,15 +223,15 @@ const AnimatedPrivacyText = ({
                   },
                   () => {
                     runOnJS(handleAnimationComplete)(targetValue);
-                  }
-                )
+                  },
+                ),
               );
-            }
+            },
           );
-        }
+        },
       );
     },
-    [handleAnimationComplete]
+    [handleAnimationComplete],
   );
 
   useEffect(() => {
@@ -347,7 +347,7 @@ const Settings = ({
   const phoneCountryCode = "+7"; // Fixed to Russian country code
   const [isLoadingShoppingInfo, setIsLoadingShoppingInfo] = useState(false);
   const [shoppingInfoError, setShoppingInfoError] = useState<string | null>(
-    null
+    null,
   );
   const [isSavingShoppingInfo, setIsSavingShoppingInfo] = useState(false);
   const [deliveryScreenView, setDeliveryScreenView] = useState<
@@ -356,7 +356,7 @@ const Settings = ({
 
   // Focus state for address fields
   const [focusedAddressField, setFocusedAddressField] = useState<string | null>(
-    null
+    null,
   );
 
   // Animated values for address label positions (0 = left, 1 = right)
@@ -395,7 +395,7 @@ const Settings = ({
   const [myInfoError, setMyInfoError] = useState<string | null>(null);
   const [isCheckingUsername, setIsCheckingUsername] = useState(false);
   const [usernameAvailable, setUsernameAvailable] = useState<boolean | null>(
-    null
+    null,
   );
   const [usernameError, setUsernameError] = useState("");
 
@@ -520,7 +520,7 @@ const Settings = ({
   const firstNameAnimatedStyle = useAnimatedStyle(() => {
     const translateX = calculateTranslateX(
       firstNameLabelPos.value,
-      firstNameLabelWidth.value || 30 // Fallback width for "Имя"
+      firstNameLabelWidth.value || 30, // Fallback width for "Имя"
     );
     return {
       transform: [{ translateX }],
@@ -530,7 +530,7 @@ const Settings = ({
   const lastNameAnimatedStyle = useAnimatedStyle(() => {
     const translateX = calculateTranslateX(
       lastNameLabelPos.value,
-      lastNameLabelWidth.value || 60 // Fallback width for "Фамилия"
+      lastNameLabelWidth.value || 60, // Fallback width for "Фамилия"
     );
     return {
       transform: [{ translateX }],
@@ -540,7 +540,7 @@ const Settings = ({
   const usernameAnimatedStyle = useAnimatedStyle(() => {
     const translateX = calculateTranslateX(
       usernameLabelPos.value,
-      usernameLabelWidth.value || 70 // Fallback width for "Никнейм"
+      usernameLabelWidth.value || 70, // Fallback width for "Никнейм"
     );
     return {
       transform: [{ translateX }],
@@ -550,7 +550,7 @@ const Settings = ({
   const emailAnimatedStyle = useAnimatedStyle(() => {
     const translateX = calculateTranslateX(
       emailLabelPos.value,
-      emailLabelWidth.value || 50 // Fallback width for "Email"
+      emailLabelWidth.value || 50, // Fallback width for "Email"
     );
     return {
       transform: [{ translateX }],
@@ -561,7 +561,7 @@ const Settings = ({
   const streetAnimatedStyle = useAnimatedStyle(() => {
     const translateX = calculateTranslateX(
       streetLabelPos.value,
-      streetLabelWidth.value || 50 // Fallback width for "улица"
+      streetLabelWidth.value || 50, // Fallback width for "улица"
     );
     return {
       transform: [{ translateX }],
@@ -571,7 +571,7 @@ const Settings = ({
   const houseNumberAnimatedStyle = useAnimatedStyle(() => {
     const translateX = calculateTranslateX(
       houseNumberLabelPos.value,
-      houseNumberLabelWidth.value || 80 // Fallback width for "номер дома"
+      houseNumberLabelWidth.value || 80, // Fallback width for "номер дома"
     );
     return {
       transform: [{ translateX }],
@@ -581,7 +581,7 @@ const Settings = ({
   const cityAnimatedStyle = useAnimatedStyle(() => {
     const translateX = calculateTranslateX(
       cityLabelPos.value,
-      cityLabelWidth.value || 40 // Fallback width for "город"
+      cityLabelWidth.value || 40, // Fallback width for "город"
     );
     return {
       transform: [{ translateX }],
@@ -591,7 +591,7 @@ const Settings = ({
   const apartmentNumberAnimatedStyle = useAnimatedStyle(() => {
     const translateX = calculateTranslateX(
       apartmentNumberLabelPos.value,
-      apartmentNumberLabelWidth.value || 120 // Fallback width for "номер квартиры"
+      apartmentNumberLabelWidth.value || 120, // Fallback width for "номер квартиры"
     );
     return {
       transform: [{ translateX }],
@@ -601,7 +601,7 @@ const Settings = ({
   const indexAnimatedStyle = useAnimatedStyle(() => {
     const translateX = calculateTranslateX(
       indexLabelPos.value,
-      indexLabelWidth.value || 50 // Fallback width for "индекс"
+      indexLabelWidth.value || 50, // Fallback width for "индекс"
     );
     return {
       transform: [{ translateX }],
@@ -612,7 +612,7 @@ const Settings = ({
   const phoneAnimatedStyle = useAnimatedStyle(() => {
     const translateX = calculateTranslateX(
       phoneLabelPos.value,
-      phoneLabelWidth.value || 60 // Fallback width for "телефон"
+      phoneLabelWidth.value || 60, // Fallback width for "телефон"
     );
     return {
       transform: [{ translateX }],
@@ -622,7 +622,7 @@ const Settings = ({
   const deliveryEmailAnimatedStyle = useAnimatedStyle(() => {
     const translateX = calculateTranslateX(
       deliveryEmailLabelPos.value,
-      deliveryEmailLabelWidth.value || 50 // Fallback width for "email"
+      deliveryEmailLabelWidth.value || 50, // Fallback width for "email"
     );
     return {
       transform: [{ translateX }],
@@ -728,7 +728,7 @@ const Settings = ({
       case "documents":
         return "ДОКУМЕНТЫ";
       case "delete_account":
-        return "УДАЛЕНИЕ АККАУНТА";
+        return "УДАЛЕНИЕ";
       default:
         return "НАСТРОЙКИ";
     }
@@ -785,7 +785,7 @@ const Settings = ({
         console.log("Settings - User profile loaded:", profile);
         console.log(
           "Settings - Profile favorite_brands:",
-          profile.favorite_brands
+          profile.favorite_brands,
         );
 
         // Set selected size from profile object
@@ -799,7 +799,7 @@ const Settings = ({
           setSelectedBrands(brandNames);
           console.log(
             "Settings - Loaded favorite brands from profile:",
-            brandNames
+            brandNames,
           );
         }
       } else {
@@ -817,13 +817,13 @@ const Settings = ({
         Alert.alert(
           "ошибка сервера",
           "проблема с сервером. попробуйте позже.",
-          [{ text: "OK" }]
+          [{ text: "OK" }],
         );
       } else {
         Alert.alert(
           "ошибка загрузки",
           "не удалось загрузить профиль пользователя.",
-          [{ text: "OK" }]
+          [{ text: "OK" }],
         );
       }
     } finally {
@@ -847,13 +847,13 @@ const Settings = ({
         Alert.alert(
           "ошибка сервера",
           "проблема с сервером. попробуйте позже.",
-          [{ text: "OK" }]
+          [{ text: "OK" }],
         );
       } else {
         Alert.alert(
           "Ошибка загрузки",
           "не удалось загрузить список брендов. попробуйте позже.",
-          [{ text: "OK" }]
+          [{ text: "OK" }],
         );
       }
     }
@@ -936,7 +936,7 @@ const Settings = ({
         } else {
           Alert.alert(
             "Ошибка",
-            "не удалось обновить размер. попробуйте позже."
+            "не удалось обновить размер. попробуйте позже.",
           );
         }
       }
@@ -961,7 +961,7 @@ const Settings = ({
       Alert.alert(
         "ошибка обновления",
         "не удалось обновить любимые бренды. попробуйте позже.",
-        [{ text: "OK" }]
+        [{ text: "OK" }],
       );
     }
   };
@@ -1069,7 +1069,7 @@ const Settings = ({
         setUsernameError("");
         try {
           const available = await api.checkUsernameAvailability(
-            username.trim()
+            username.trim(),
           );
           setUsernameAvailable(available);
           if (!available) {
@@ -1250,7 +1250,7 @@ const Settings = ({
         if (phoneDigits.length !== 10) {
           Alert.alert(
             "Ошибка",
-            "номер телефона должен содержать 10 цифр (без кода страны +7)."
+            "номер телефона должен содержать 10 цифр (без кода страны +7).",
           );
           return;
         }
@@ -1272,7 +1272,7 @@ const Settings = ({
       if (!shoppingInfo.fullName.trim()) {
         Alert.alert(
           "Ошибка",
-          "Пожалуйста, введите ваше полное имя для доставки."
+          "Пожалуйста, введите ваше полное имя для доставки.",
         );
         return;
       }
@@ -1292,7 +1292,7 @@ const Settings = ({
       if (phoneDigits.length !== 10) {
         Alert.alert(
           "Ошибка",
-          "номер телефона должен содержать 10 цифр (без кода страны +7)."
+          "номер телефона должен содержать 10 цифр (без кода страны +7).",
         );
         return;
       }
@@ -1453,7 +1453,7 @@ const Settings = ({
         } else {
           Alert.alert(
             "Ошибка",
-            "не удалось обновить выбор бренда. попробуйте позже."
+            "не удалось обновить выбор бренда. попробуйте позже.",
           );
         }
       }
@@ -1467,7 +1467,7 @@ const Settings = ({
   const filteredBrands =
     searchQuery.length > 0
       ? popularBrands.filter((brand) =>
-          brand.toLowerCase().includes(searchQuery.toLowerCase())
+          brand.toLowerCase().includes(searchQuery.toLowerCase()),
         )
       : popularBrands;
 
@@ -1660,7 +1660,7 @@ const Settings = ({
       <Animated.View
         style={styles.backButton}
         entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
-          ANIMATION_DELAYS.LARGE
+          ANIMATION_DELAYS.LARGE,
         )}
       >
         <TouchableOpacity onPress={() => setShowBrandSearch(false)}>
@@ -1671,7 +1671,7 @@ const Settings = ({
       {/* Selected brands bubbles */}
       <Animated.View
         entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
-          ANIMATION_DELAYS.EXTENDED
+          ANIMATION_DELAYS.EXTENDED,
         )}
         style={styles.selectedBubblesContainer}
       >
@@ -1691,7 +1691,7 @@ const Settings = ({
       {/* Search Container */}
       <Animated.View
         entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
-          ANIMATION_DELAYS.VERY_LARGE
+          ANIMATION_DELAYS.VERY_LARGE,
         )}
         style={styles.searchResultsContainer}
       >
@@ -1727,11 +1727,11 @@ const Settings = ({
       | "notifications"
       | "privacy"
       | "documents",
-    delay: number
+    delay: number,
   ) => (
     <Animated.View
       entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
-        ANIMATION_DELAYS.MEDIUM + delay
+        ANIMATION_DELAYS.MEDIUM + delay,
       )}
       style={styles.mainButtonContainer}
     >
@@ -1774,7 +1774,7 @@ const Settings = ({
         <Animated.View
           style={styles.backButton}
           entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
-            ANIMATION_DELAYS.LARGE
+            ANIMATION_DELAYS.LARGE,
           )}
         >
           <TouchableOpacity
@@ -1850,7 +1850,7 @@ const Settings = ({
             {/* Delete Account Button */}
             <Animated.View
               entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
-                ANIMATION_DELAYS.MEDIUM + 300
+                ANIMATION_DELAYS.MEDIUM + 300,
               )}
               style={styles.mainButtonContainer}
             >
@@ -1879,7 +1879,7 @@ const Settings = ({
           <Animated.View
             style={styles.backButton}
             entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
-              ANIMATION_DELAYS.LARGE
+              ANIMATION_DELAYS.LARGE,
             )}
           >
             <TouchableOpacity onPress={() => setActiveSection(null)}>
@@ -1890,7 +1890,7 @@ const Settings = ({
           {isLoadingShoppingInfo ? (
             <Animated.View
               entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
-                ANIMATION_DELAYS.VERY_LARGE
+                ANIMATION_DELAYS.VERY_LARGE,
               )}
               style={styles.shoppingFormContainer}
             >
@@ -1899,7 +1899,7 @@ const Settings = ({
           ) : shoppingInfoError ? (
             <Animated.View
               entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
-                ANIMATION_DELAYS.VERY_LARGE
+                ANIMATION_DELAYS.VERY_LARGE,
               )}
               style={styles.shoppingFormContainer}
             >
@@ -1914,7 +1914,7 @@ const Settings = ({
                 {/* Address Button */}
                 <Animated.View
                   entering={FadeInDown.duration(
-                    ANIMATION_DURATIONS.MEDIUM
+                    ANIMATION_DURATIONS.MEDIUM,
                   ).delay(ANIMATION_DELAYS.VERY_LARGE)}
                   style={styles.myInfoInputContainer}
                 >
@@ -1947,7 +1947,7 @@ const Settings = ({
                   addressParts.push(`д. ${shoppingInfo.houseNumber}`);
                   if (shoppingInfo.apartmentNumber) {
                     addressParts.push(
-                      `кв./офис ${shoppingInfo.apartmentNumber}`
+                      `кв./офис ${shoppingInfo.apartmentNumber}`,
                     );
                   }
                   addressParts.push(shoppingInfo.city);
@@ -1958,9 +1958,9 @@ const Settings = ({
                     return (
                       <Animated.View
                         entering={FadeInDown.duration(
-                          ANIMATION_DURATIONS.MEDIUM
+                          ANIMATION_DURATIONS.MEDIUM,
                         ).delay(
-                          ANIMATION_DELAYS.VERY_LARGE + ANIMATION_DELAYS.SMALL
+                          ANIMATION_DELAYS.VERY_LARGE + ANIMATION_DELAYS.SMALL,
                         )}
                         style={[
                           styles.myInfoInputContainer,
@@ -1979,7 +1979,7 @@ const Settings = ({
                 {/* Phone Number */}
                 <Animated.View
                   entering={FadeInDown.duration(
-                    ANIMATION_DURATIONS.MEDIUM
+                    ANIMATION_DURATIONS.MEDIUM,
                   ).delay(ANIMATION_DELAYS.VERY_LARGE + ANIMATION_DELAYS.SMALL)}
                   style={styles.myInfoInputContainer}
                 >
@@ -2066,9 +2066,9 @@ const Settings = ({
                 {/* Email */}
                 <Animated.View
                   entering={FadeInDown.duration(
-                    ANIMATION_DURATIONS.MEDIUM
+                    ANIMATION_DURATIONS.MEDIUM,
                   ).delay(
-                    ANIMATION_DELAYS.VERY_LARGE + ANIMATION_DELAYS.STANDARD
+                    ANIMATION_DELAYS.VERY_LARGE + ANIMATION_DELAYS.STANDARD,
                   )}
                   style={styles.myInfoInputContainer}
                 >
@@ -2167,7 +2167,7 @@ const Settings = ({
         <Animated.View
           style={styles.backButton}
           entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
-            ANIMATION_DELAYS.LARGE
+            ANIMATION_DELAYS.LARGE,
           )}
         >
           <TouchableOpacity
@@ -2194,7 +2194,7 @@ const Settings = ({
                   return (
                     <Animated.View
                       entering={FadeInDown.duration(
-                        ANIMATION_DURATIONS.MEDIUM
+                        ANIMATION_DURATIONS.MEDIUM,
                       ).delay(ANIMATION_DELAYS.VERY_LARGE)}
                       style={styles.myInfoInputContainer}
                     >
@@ -2255,9 +2255,9 @@ const Settings = ({
                   return (
                     <Animated.View
                       entering={FadeInDown.duration(
-                        ANIMATION_DURATIONS.MEDIUM
+                        ANIMATION_DURATIONS.MEDIUM,
                       ).delay(
-                        ANIMATION_DELAYS.VERY_LARGE + ANIMATION_DELAYS.SMALL
+                        ANIMATION_DELAYS.VERY_LARGE + ANIMATION_DELAYS.SMALL,
                       )}
                       style={styles.myInfoInputContainer}
                     >
@@ -2318,9 +2318,9 @@ const Settings = ({
                   return (
                     <Animated.View
                       entering={FadeInDown.duration(
-                        ANIMATION_DURATIONS.MEDIUM
+                        ANIMATION_DURATIONS.MEDIUM,
                       ).delay(
-                        ANIMATION_DELAYS.VERY_LARGE + ANIMATION_DELAYS.STANDARD
+                        ANIMATION_DELAYS.VERY_LARGE + ANIMATION_DELAYS.STANDARD,
                       )}
                       style={styles.myInfoInputContainer}
                     >
@@ -2380,9 +2380,9 @@ const Settings = ({
                   return (
                     <Animated.View
                       entering={FadeInDown.duration(
-                        ANIMATION_DURATIONS.MEDIUM
+                        ANIMATION_DURATIONS.MEDIUM,
                       ).delay(
-                        ANIMATION_DELAYS.VERY_LARGE + ANIMATION_DELAYS.EXTENDED
+                        ANIMATION_DELAYS.VERY_LARGE + ANIMATION_DELAYS.EXTENDED,
                       )}
                       style={styles.myInfoInputContainer}
                     >
@@ -2422,7 +2422,7 @@ const Settings = ({
                           value={shoppingInfo.apartmentNumber}
                           onFocus={() =>
                             setFocusedAddressFieldWithAnimation(
-                              "apartmentNumber"
+                              "apartmentNumber",
                             )
                           }
                           onBlur={() =>
@@ -2448,9 +2448,9 @@ const Settings = ({
                   return (
                     <Animated.View
                       entering={FadeInDown.duration(
-                        ANIMATION_DURATIONS.MEDIUM
+                        ANIMATION_DURATIONS.MEDIUM,
                       ).delay(
-                        ANIMATION_DELAYS.VERY_LARGE + ANIMATION_DELAYS.LARGE
+                        ANIMATION_DELAYS.VERY_LARGE + ANIMATION_DELAYS.LARGE,
                       )}
                       style={styles.myInfoInputContainer}
                     >
@@ -2550,7 +2550,7 @@ const Settings = ({
         <Animated.View
           style={styles.backButtonAlt}
           entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
-            ANIMATION_DELAYS.LARGE
+            ANIMATION_DELAYS.LARGE,
           )}
         >
           <TouchableOpacity onPress={() => setActiveSection(null)}>
@@ -2582,7 +2582,7 @@ const Settings = ({
 
         <Animated.View
           entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
-            ANIMATION_DELAYS.EXTENDED
+            ANIMATION_DELAYS.EXTENDED,
           )}
           style={{ marginTop: 20 }}
         >
@@ -2597,7 +2597,7 @@ const Settings = ({
 
       <Animated.View
         entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
-          ANIMATION_DELAYS.VERY_LARGE
+          ANIMATION_DELAYS.VERY_LARGE,
         )}
         style={styles.supportContainer}
       >
@@ -2633,7 +2633,7 @@ const Settings = ({
           return (
             <Animated.View
               entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
-                ANIMATION_DELAYS.VERY_LARGE
+                ANIMATION_DELAYS.VERY_LARGE,
               )}
               style={styles.myInfoInputContainer}
             >
@@ -2675,7 +2675,7 @@ const Settings = ({
           return (
             <Animated.View
               entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
-                ANIMATION_DELAYS.VERY_LARGE + ANIMATION_DELAYS.SMALL
+                ANIMATION_DELAYS.VERY_LARGE + ANIMATION_DELAYS.SMALL,
               )}
               style={styles.myInfoInputContainer}
             >
@@ -2730,7 +2730,7 @@ const Settings = ({
           return (
             <Animated.View
               entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
-                ANIMATION_DELAYS.VERY_LARGE + ANIMATION_DELAYS.STANDARD
+                ANIMATION_DELAYS.VERY_LARGE + ANIMATION_DELAYS.STANDARD,
               )}
               style={styles.myInfoInputContainer}
             >
@@ -2782,7 +2782,7 @@ const Settings = ({
           return (
             <Animated.View
               entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
-                ANIMATION_DELAYS.VERY_LARGE + ANIMATION_DELAYS.EXTENDED
+                ANIMATION_DELAYS.VERY_LARGE + ANIMATION_DELAYS.EXTENDED,
               )}
               style={styles.myInfoInputContainer}
             >
@@ -2862,7 +2862,7 @@ const Settings = ({
           return (
             <Animated.View
               entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
-                ANIMATION_DELAYS.VERY_LARGE + ANIMATION_DELAYS.VERY_LARGE
+                ANIMATION_DELAYS.VERY_LARGE + ANIMATION_DELAYS.VERY_LARGE,
               )}
               style={styles.myInfoInputContainer}
             >
@@ -2911,7 +2911,7 @@ const Settings = ({
         <Animated.View
           style={styles.backButton}
           entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
-            ANIMATION_DELAYS.LARGE
+            ANIMATION_DELAYS.LARGE,
           )}
         >
           <TouchableOpacity onPress={() => setActiveSection(null)}>
@@ -2922,7 +2922,7 @@ const Settings = ({
         {isLoadingMyInfo ? (
           <Animated.View
             entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
-              ANIMATION_DELAYS.VERY_LARGE
+              ANIMATION_DELAYS.VERY_LARGE,
             )}
             style={styles.shoppingFormContainer}
           >
@@ -2931,7 +2931,7 @@ const Settings = ({
         ) : myInfoError ? (
           <Animated.View
             entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
-              ANIMATION_DELAYS.VERY_LARGE
+              ANIMATION_DELAYS.VERY_LARGE,
             )}
             style={styles.shoppingFormContainer}
           >
@@ -3041,7 +3041,7 @@ const Settings = ({
     }) => (
       <Animated.View
         entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
-          item.delay
+          item.delay,
         )}
         style={styles.myInfoInputContainer}
       >
@@ -3093,7 +3093,7 @@ const Settings = ({
         <Animated.View
           style={styles.backButton}
           entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
-            ANIMATION_DELAYS.LARGE
+            ANIMATION_DELAYS.LARGE,
           )}
         >
           <TouchableOpacity onPress={() => setActiveSection(null)}>
@@ -3103,7 +3103,7 @@ const Settings = ({
 
         <Animated.View
           entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
-            ANIMATION_DELAYS.VERY_LARGE
+            ANIMATION_DELAYS.VERY_LARGE,
           )}
           style={styles.privacySectionTitle}
         >
@@ -3127,7 +3127,7 @@ const Settings = ({
       <Animated.View
         style={styles.backButton}
         entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
-          ANIMATION_DELAYS.LARGE
+          ANIMATION_DELAYS.LARGE,
         )}
       >
         <TouchableOpacity onPress={() => setActiveSection(null)}>
@@ -3138,12 +3138,16 @@ const Settings = ({
       <View style={styles.notificationsContainer}>
         <Animated.View
           entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
-            ANIMATION_DELAYS.VERY_LARGE
+            ANIMATION_DELAYS.VERY_LARGE,
           )}
           style={styles.notificationItemContainer}
         >
           <View style={styles.notificationItem}>
-            <Text style={styles.notificationItemText}>
+            <Text
+              style={styles.notificationItemText}
+              numberOfLines={1}
+              adjustsFontSizeToFit
+            >
               уведомления о заказах
             </Text>
             <View style={styles.switchContainer}>
@@ -3160,12 +3164,16 @@ const Settings = ({
 
         <Animated.View
           entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
-            ANIMATION_DELAYS.VERY_LARGE + ANIMATION_DELAYS.SMALL
+            ANIMATION_DELAYS.VERY_LARGE + ANIMATION_DELAYS.SMALL,
           )}
           style={styles.notificationItemContainer}
         >
           <View style={styles.notificationItem}>
-            <Text style={styles.notificationItemText}>
+            <Text
+              style={styles.notificationItemText}
+              numberOfLines={1}
+              adjustsFontSizeToFit
+            >
               маркетинговые уведомления
             </Text>
             <View style={styles.switchContainer}>
@@ -3188,7 +3196,7 @@ const Settings = ({
       <Animated.View
         style={styles.backButton}
         entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
-          ANIMATION_DELAYS.LARGE
+          ANIMATION_DELAYS.LARGE,
         )}
       >
         <TouchableOpacity onPress={() => setActiveSection(null)}>
@@ -3199,7 +3207,7 @@ const Settings = ({
       <View style={styles.deleteAccountScreenContainer}>
         <Animated.View
           entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
-            ANIMATION_DELAYS.EXTENDED
+            ANIMATION_DELAYS.EXTENDED,
           )}
           style={styles.deleteAccountQuestionContainer}
         >
@@ -3213,7 +3221,7 @@ const Settings = ({
         <View style={styles.deleteAccountButtonsContainer}>
           <Animated.View
             entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
-              ANIMATION_DELAYS.VERY_LARGE
+              ANIMATION_DELAYS.VERY_LARGE,
             )}
             style={styles.deleteAccountYesButtonContainer}
           >
@@ -3224,7 +3232,7 @@ const Settings = ({
                 // TODO: Implement account deletion
                 Alert.alert(
                   "уведомление",
-                  "функция удаления аккаунта будет доступна в ближайшее время."
+                  "функция удаления аккаунта будет доступна в ближайшее время.",
                 );
               }}
             >
@@ -3234,7 +3242,7 @@ const Settings = ({
 
           <Animated.View
             entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
-              ANIMATION_DELAYS.VERY_LARGE + ANIMATION_DELAYS.SMALL
+              ANIMATION_DELAYS.VERY_LARGE + ANIMATION_DELAYS.SMALL,
             )}
             style={styles.deleteAccountNoButtonContainer}
           >
@@ -3252,7 +3260,7 @@ const Settings = ({
 
         <Animated.View
           entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
-            ANIMATION_DELAYS.VERY_LARGE + ANIMATION_DELAYS.MEDIUM
+            ANIMATION_DELAYS.VERY_LARGE + ANIMATION_DELAYS.MEDIUM,
           )}
           style={styles.deleteAccountWarningContainer}
         >
@@ -3286,7 +3294,7 @@ const Settings = ({
             <Animated.View
               style={styles.backButton}
               entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
-                ANIMATION_DELAYS.LARGE
+                ANIMATION_DELAYS.LARGE,
               )}
             >
               <TouchableOpacity onPress={() => setActiveSection(null)}>
@@ -3522,6 +3530,8 @@ const styles = StyleSheet.create({
     fontSize: 20,
     color: "#000",
     flex: 1,
+    flexShrink: 1,
+    marginRight: 12,
   },
   switchContainer: {
     justifyContent: "center",
@@ -3571,7 +3581,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.25,
     shadowRadius: 4,
     elevation: 6,
-    height: height * 0.1,
+    minHeight: height * 0.1,
     justifyContent: "center",
     alignItems: "center",
   },

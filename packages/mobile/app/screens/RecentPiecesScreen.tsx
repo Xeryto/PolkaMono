@@ -394,7 +394,7 @@ const RecentPiecesScreen: React.FC<RecentPiecesScreenProps> = ({
           style={styles.backButton}
           onPress={() => {
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-            navigation.goBack();
+            navigation.navigate("Wall");
           }}
         >
           <BackIcon width={22} height={22} />
