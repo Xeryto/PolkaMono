@@ -1057,7 +1057,12 @@ const Search = ({ navigation }: SearchProps) => {
           style={styles.filtersContainer}
         >
           {/* Main Filter Buttons */}
-          <View style={styles.filterButtons}>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.filterButtons}
+            style={styles.filterButtonsScroll}
+          >
             {Object.keys(filterOptions).map((filterType) => (
               <Pressable
                 key={filterType}
@@ -1071,28 +1076,18 @@ const Search = ({ navigation }: SearchProps) => {
                 }
               >
                 <View style={styles.filterButtonContent}>
-                  <Text
-                    style={[
-                      styles.filterButtonText,
-                      isFilterSelected(filterType as keyof SelectedFilters) &&
-                        styles.filterButtonTextActive,
-                    ]}
-                  >
+                  <Text style={[styles.filterButtonText]}>
                     {selectedFilters[filterType as keyof SelectedFilters]}
                   </Text>
                   <AntDesign
                     name="caret-down"
                     size={12}
-                    style={[
-                      styles.filterIcon,
-                      isFilterSelected(filterType as keyof SelectedFilters) &&
-                        styles.filterIconActive,
-                    ]}
+                    style={styles.filterIcon}
                   />
                 </View>
               </Pressable>
             ))}
-          </View>
+          </ScrollView>
 
           {/* Options Dropdown */}
           {activeFilter && (
@@ -1347,37 +1342,42 @@ const styles = StyleSheet.create({
   },
   filtersContainer: {
     marginBottom: "5%",
-    width: "88%",
+    width: "100%",
     zIndex: 998,
     height: "5%",
     borderRadius: 41,
-    backgroundColor: "#F2ECE7",
+    // backgroundColor: "#F2ECE7",
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.25,
     shadowRadius: 4,
     elevation: 10,
   },
+  filterButtonsScroll: {
+    flexGrow: 0,
+    height: "100%",
+    minWidth: "88%",
+  },
   filterButtons: {
     flexDirection: "row",
-    justifyContent: "space-between",
-    //padding: 4,
-    height: "100%",
-    //marginHorizontal: -4
+    alignItems: "center",
+    paddingHorizontal: 4,
+    gap: 8,
+    justifyContent: "center",
+    width: "100%",
   },
   filterButton: {
-    //flex: 1,s
-    //paddingVertical: 4,
+    flexShrink: 0,
     paddingHorizontal: 20,
+    paddingVertical: 8,
     borderRadius: 41,
     //marginHorizontal: 4,
-    backgroundColor: "transparent",
     alignItems: "center",
     justifyContent: "center",
-    marginRight: -1,
+    backgroundColor: "#F2ECE7",
   },
   filterButtonActive: {
-    backgroundColor: "#CDA67A",
+    backgroundColor: "#DCC1A5",
   },
   filterButtonContent: {
     flexDirection: "row",
@@ -1405,7 +1405,7 @@ const styles = StyleSheet.create({
   optionsContainer: {
     position: "absolute",
     top: 0,
-    left: 0,
+    left: "6%",
     right: 0,
     backgroundColor: "#F2ECE7",
     borderRadius: 17,
@@ -1415,16 +1415,17 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 24,
     zIndex: 999,
+    width: "88%",
   },
   scrollView: {
-    padding: 4,
+    padding: 8,
     borderRadius: 17,
     width: "70%",
   },
   optionsHeader: {
     position: "absolute",
-    top: 4,
-    right: 4,
+    top: 8,
+    right: 8,
     zIndex: 1000,
     flexDirection: "row",
     alignItems: "center",
@@ -1433,7 +1434,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#CDA57A",
     paddingVertical: 20,
     paddingHorizontal: 25,
-    borderRadius: 41,
+    borderRadius: 17 - 8, // filter box borderRadius (17) minus padding (4)
   },
   okButtonText: {
     fontFamily: "Igra Sans",
@@ -1444,8 +1445,8 @@ const styles = StyleSheet.create({
   optionButton: {
     paddingVertical: 6,
     paddingHorizontal: 12,
-    borderRadius: 15,
-    marginVertical: 5,
+    borderRadius: 17 - 8,
+    marginBottom: 5,
   },
   optionButtonActive: {
     backgroundColor: "#CDA67A",

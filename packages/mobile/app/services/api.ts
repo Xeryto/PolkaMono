@@ -591,6 +591,12 @@ export const logoutUser = async (): Promise<void> => {
   }
 };
 
+/** Permanently delete the current user account (anonymizes PII, keeps orders). Clears session on success. */
+export const deleteAccount = async (): Promise<void> => {
+  await apiRequest('/api/v1/users/me', 'DELETE', undefined, true);
+  await sessionManager.clearSession();
+};
+
 export const refreshAuthToken = async (refreshToken: string): Promise<AuthResponse> => {
     return await apiRequest('/api/v1/auth/refresh', 'POST', {
         refresh_token: refreshToken
@@ -1113,20 +1119,35 @@ export interface OrderItem {
   product_id?: string; // Original product ID for swipe tracking
 }
 
-export interface Order {
+/** Order list item (no line items). */
+export interface OrderSummary {
   id: string;
   number: string;
   total_amount: number;
   currency: string;
-  date: string; // datetime is a string in JSON
+  date: string;
   status: string;
   tracking_number?: string;
   tracking_link?: string;
-  items: OrderItem[];
 }
 
-export const getOrders = async (): Promise<Order[]> => {
+/** Full order with line items (from GET /orders/{id}). */
+export interface Order extends OrderSummary {
+  items: OrderItem[];
+  delivery_full_name?: string;
+  delivery_email?: string;
+  delivery_phone?: string;
+  delivery_address?: string;
+  delivery_city?: string;
+  delivery_postal_code?: string;
+}
+
+export const getOrders = async (): Promise<OrderSummary[]> => {
   return await apiRequest('/api/v1/orders', 'GET');
+};
+
+export const getOrderById = async (orderId: string): Promise<Order> => {
+  return await apiRequest(`/api/v1/orders/${orderId}`, 'GET');
 };
 
 export const getProductDetails = async (productId: string): Promise<Product> => {
@@ -1271,7 +1292,6 @@ export const updateShoppingInfo = async (shippingInfo: {
 // Swipe Tracking
 export interface SwipeTrackingRequest {
   product_id: string;
-  swipe_direction: 'left' | 'right';
 }
 
 export const trackUserSwipe = async (swipeData: SwipeTrackingRequest): Promise<{ message: string }> => {

@@ -4,7 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import RedirectResponse
 from pydantic import BaseModel, validator, ValidationError
 from typing import Optional, List, Literal
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import func
 from datetime import datetime, timedelta
 import re
@@ -273,7 +273,7 @@ def get_current_user(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Пользователь не найден. Проверьте правильность учетных данных."
             )
-    
+
     return entity
 
 def get_current_brand_user(
@@ -328,7 +328,6 @@ class UserStatsResponse(BaseModel):
 
 class SwipeTrackingRequest(BaseModel):
     product_id: str
-    swipe_direction: Literal["left", "right"]
 
 @app.get("/api/v1/brands/stats", response_model=BrandStatsResponse)
 async def get_brand_stats(
@@ -381,10 +380,8 @@ async def get_user_stats(
         Order.status == OrderStatus.PAID
     ).scalar() or 0
     
-    # Calculate items swiped
-    items_swiped = db.query(func.count(UserSwipe.id)).filter(
-        UserSwipe.user_id == current_user.id
-    ).scalar() or 0
+    # Items swiped from denormalized counter (Option 2)
+    items_swiped = current_user.items_swiped or 0
     
     # Calculate total orders (all orders regardless of status)
     total_orders = db.query(func.count(Order.id)).filter(
@@ -417,14 +414,13 @@ async def track_user_swipe(
             detail="Product not found"
         )
     
-    # Create swipe record
+    # Create swipe record and increment counter (Option 2)
     user_swipe = UserSwipe(
         user_id=current_user.id,
         product_id=swipe_data.product_id,
-        swipe_direction=swipe_data.swipe_direction
     )
-    
     db.add(user_swipe)
+    current_user.items_swiped = (current_user.items_swiped or 0) + 1
     db.commit()
     
     return {"message": "Swipe tracked successfully"}
@@ -1165,6 +1161,69 @@ async def get_user_profile(current_user: User = Depends(get_current_user), db: S
             marketing_notifications=preferences.marketing_notifications
         ) if preferences else None
     )
+
+@app.delete("/api/v1/users/me", status_code=status.HTTP_200_OK)
+async def delete_my_account(
+    current_user: any = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Permanently delete current user account (users only). Soft-deletes and anonymizes PII; keeps orders for legal/financial records."""
+    if isinstance(current_user, Brand):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Удаление аккаунта бренда через этот endpoint недоступно.",
+        )
+    user = current_user
+    user_id = str(user.id)
+    now = datetime.utcnow()
+
+    # Remove related data (so no PII remains in join tables)
+    db.query(OAuthAccount).filter(OAuthAccount.user_id == user_id).delete()
+    db.query(UserBrand).filter(UserBrand.user_id == user_id).delete()
+    db.query(UserStyle).filter(UserStyle.user_id == user_id).delete()
+    db.query(UserLikedProduct).filter(UserLikedProduct.user_id == user_id).delete()
+    db.query(UserSwipe).filter(UserSwipe.user_id == user_id).delete()
+    user.items_swiped = 0
+    db.query(FriendRequest).filter(
+        (FriendRequest.sender_id == user_id) | (FriendRequest.recipient_id == user_id)
+    ).delete()
+    db.query(Friendship).filter(
+        (Friendship.user_id == user_id) | (Friendship.friend_id == user_id)
+    ).delete()
+
+    # Anonymize user (keep row for Order.user_id FK; unique email/username)
+    user.email = f"deleted_{user_id}@anonymized.local"
+    user.username = f"deleted_{user_id}"[:50]
+    user.password_hash = None
+    user.email_verification_code = None
+    user.email_verification_code_expires_at = None
+    user.password_reset_token = None
+    user.password_reset_expires = None
+    user.password_history = []
+    user.is_active = False
+    user.deleted_at = now
+
+    # Anonymize profile
+    profile = db.query(UserProfile).filter(UserProfile.user_id == user_id).first()
+    if profile:
+        profile.full_name = None
+        profile.gender = None
+        profile.selected_size = None
+        profile.avatar_url = None
+
+    # Anonymize shipping
+    shipping = db.query(UserShippingInfo).filter(UserShippingInfo.user_id == user_id).first()
+    if shipping:
+        shipping.delivery_email = None
+        shipping.phone = None
+        shipping.street = None
+        shipping.house_number = None
+        shipping.apartment_number = None
+        shipping.city = None
+        shipping.postal_code = None
+
+    db.commit()
+    return {"message": "Аккаунт успешно удалён."}
 
 @app.get("/api/v1/brands/profile", response_model=schemas.UserProfileResponse)
 async def get_brand_profile(current_user: Brand = Depends(get_current_brand_user), db: Session = Depends(get_db)):
@@ -2396,19 +2455,75 @@ async def create_payment_endpoint(
             detail=str(e)
         )
 
-@app.get("/api/v1/orders", response_model=List[schemas.OrderResponse])
+def _order_to_summary(order: Order) -> schemas.OrderSummaryResponse:
+    return schemas.OrderSummaryResponse(
+        id=order.id,
+        number=order.order_number,
+        total_amount=order.total_amount,
+        currency="RUB",
+        date=order.created_at,
+        status=order.status.value,
+        tracking_number=order.tracking_number,
+        tracking_link=order.tracking_link,
+    )
+
+
+def _order_to_full_response(order: Order) -> schemas.OrderResponse:
+    order_items = []
+    for item in order.items:
+        product_variant = item.product_variant
+        product = product_variant.product
+        cv = product_variant.color_variant
+        imgs = cv.images or []
+        order_items.append(schemas.OrderItemResponse(
+            id=item.id,
+            name=product.name,
+            price=item.price,
+            size=product_variant.size,
+            image=imgs[0] if imgs else None,
+            delivery=schemas.Delivery(
+                cost=350.0,
+                estimatedTime="1-3 дня",
+                tracking_number=order.tracking_number
+            ),
+            sku=item.sku,
+            brand_name=product.brand.name if product.brand else None,
+            description=product.description,
+            color=cv.color_name,
+            materials=product.material,
+            images=imgs,
+            return_policy=product.brand.return_policy if product.brand else None,
+            product_id=product.id
+        ))
+    return schemas.OrderResponse(
+        id=order.id,
+        number=order.order_number,
+        total_amount=order.total_amount,
+        currency="RUB",
+        date=order.created_at,
+        status=order.status.value,
+        tracking_number=order.tracking_number,
+        tracking_link=order.tracking_link,
+        items=order_items,
+        delivery_full_name=order.delivery_full_name,
+        delivery_email=order.delivery_email,
+        delivery_phone=order.delivery_phone,
+        delivery_address=order.delivery_address,
+        delivery_city=order.delivery_city,
+        delivery_postal_code=order.delivery_postal_code
+    )
+
+
+@app.get("/api/v1/orders", response_model=List[schemas.OrderSummaryResponse])
 async def get_orders(
-    current_user: any = Depends(get_current_user), # current_user can be User or Brand
+    current_user: any = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """Get all orders for the current user or brand"""
-    
-    # Check if current_user is a Brand or User
+    """Get order list (summaries only). Use GET /orders/{order_id} for full details."""
     is_brand = isinstance(current_user, Brand)
-    
+
     if is_brand:
-        # For brands: Get orders containing products from this brand
-        orders_with_brand_products = (
+        orders = (
             db.query(Order)
             .join(OrderItem)
             .join(ProductVariant, OrderItem.product_variant_id == ProductVariant.id)
@@ -2418,113 +2533,93 @@ async def get_orders(
             .distinct()
             .all()
         )
-        
-        response = []
-        for order in orders_with_brand_products:
-            order_items = []
-            for item in order.items:
-                # Only include items from this brand
-                if item.product_variant.product.brand_id == current_user.id:
-                    product_variant = item.product_variant
-                    product = product_variant.product
-                    cv = product_variant.color_variant
-                    imgs = cv.images or []
-                    order_items.append(schemas.OrderItemResponse(
-                        id=item.id,
-                        name=product.name,
-                        price=item.price,
-                        size=product_variant.size,
-                        image=imgs[0] if imgs else None,
-                        delivery=schemas.Delivery(
-                            cost=350.0,
-                            estimatedTime="1-3 дня",
-                            tracking_number=order.tracking_number
-                        ),
-                        sku=item.sku,
-                        brand_name=product.brand.name if product.brand else None,
-                        description=product.description,
-                        color=cv.color_name,
-                        materials=product.material,
-                        images=imgs,
-                        return_policy=product.brand.return_policy if product.brand else None,
-                        product_id=product.id
-                    ))
-            
-            # Only add order if it contains items from this brand
-            if order_items:
-                response.append(schemas.OrderResponse(
-                    id=order.id,
-                    number=order.order_number,
-                    total_amount=order.total_amount,
-                    currency="RUB",
-                    date=order.created_at.isoformat(),
-                    status=order.status.value,
-                    tracking_number=order.tracking_number,
-                    tracking_link=order.tracking_link,
-                    items=order_items,
-                    # Include delivery information stored at order creation time
-                    delivery_full_name=order.delivery_full_name,
-                    delivery_email=order.delivery_email,
-                    delivery_phone=order.delivery_phone,
-                    delivery_address=order.delivery_address,
-                    delivery_city=order.delivery_city,
-                    delivery_postal_code=order.delivery_postal_code
-                ))
-        return response
-    
     else:
-        # For regular users: Get orders placed by this user
         orders = db.query(Order).filter(Order.user_id == str(current_user.id)).all()
-        
-        response = []
-        for order in orders:
-            order_items = []
-            for item in order.items:
-                # Access product details via product_variant relationship
-                product_variant = item.product_variant
-                product = product_variant.product
-                cv = product_variant.color_variant
-                imgs = cv.images or []
-                order_items.append(schemas.OrderItemResponse(
-                    id=item.id,
-                    name=product.name,
-                    price=item.price,
-                    size=product_variant.size,
-                    image=imgs[0] if imgs else None,
-                    delivery=schemas.Delivery(
-                        cost=350.0,
-                        estimatedTime="1-3 дня",
-                        tracking_number=order.tracking_number
-                    ),
-                    sku=item.sku,
-                    brand_name=product.brand.name if product.brand else None,
-                    description=product.description,
-                    color=cv.color_name,
-                    materials=product.material,
-                    images=imgs,
-                    return_policy=product.brand.return_policy if product.brand else None,
-                    product_id=product.id
-                ))
 
-            response.append(schemas.OrderResponse(
-                id=order.id,
-                number=order.order_number,
-                total_amount=order.total_amount,
-                currency="RUB", # Assuming RUB as default currency
-                date=order.created_at.isoformat(),
-                status=order.status.value,
-                tracking_number=order.tracking_number,
-                tracking_link=order.tracking_link,
-                items=order_items,
-                # Include delivery information stored at order creation time
-                delivery_full_name=order.delivery_full_name,
-                delivery_email=order.delivery_email,
-                delivery_phone=order.delivery_phone,
-                delivery_address=order.delivery_address,
-                delivery_city=order.delivery_city,
-                delivery_postal_code=order.delivery_postal_code
+    return [_order_to_summary(o) for o in orders]
+
+
+_order_load = joinedload(Order.items).joinedload(OrderItem.product_variant).joinedload(
+    ProductVariant.color_variant
+).joinedload(ProductColorVariant.product).joinedload(Product.brand)
+
+
+@app.get("/api/v1/orders/{order_id}", response_model=schemas.OrderResponse)
+async def get_order_by_id(
+    order_id: str,
+    current_user: any = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Get full order details (items, delivery). Call after user taps an order in the list."""
+    order = (
+        db.query(Order)
+        .options(_order_load)
+        .filter(Order.id == order_id)
+        .first()
+    )
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+
+    is_brand = isinstance(current_user, Brand)
+    if is_brand:
+        # Brand may only see orders that contain at least one item from their brand
+        has_brand_item = any(
+            item.product_variant.product.brand_id == current_user.id
+            for item in order.items
+        )
+        if not has_brand_item:
+            raise HTTPException(status_code=404, detail="Order not found")
+        # Build response with only this brand's items
+        order_items = []
+        for item in order.items:
+            if item.product_variant.product.brand_id != current_user.id:
+                continue
+            product_variant = item.product_variant
+            product = product_variant.product
+            cv = product_variant.color_variant
+            imgs = cv.images or []
+            order_items.append(schemas.OrderItemResponse(
+                id=item.id,
+                name=product.name,
+                price=item.price,
+                size=product_variant.size,
+                image=imgs[0] if imgs else None,
+                delivery=schemas.Delivery(
+                    cost=350.0,
+                    estimatedTime="1-3 дня",
+                    tracking_number=order.tracking_number
+                ),
+                sku=item.sku,
+                brand_name=product.brand.name if product.brand else None,
+                description=product.description,
+                color=cv.color_name,
+                materials=product.material,
+                images=imgs,
+                return_policy=product.brand.return_policy if product.brand else None,
+                product_id=product.id
             ))
-        return response
+        return schemas.OrderResponse(
+            id=order.id,
+            number=order.order_number,
+            total_amount=order.total_amount,
+            currency="RUB",
+            date=order.created_at,
+            status=order.status.value,
+            tracking_number=order.tracking_number,
+            tracking_link=order.tracking_link,
+            items=order_items,
+            delivery_full_name=order.delivery_full_name,
+            delivery_email=order.delivery_email,
+            delivery_phone=order.delivery_phone,
+            delivery_address=order.delivery_address,
+            delivery_city=order.delivery_city,
+            delivery_postal_code=order.delivery_postal_code
+        )
+
+    # User: must own the order
+    if order.user_id != str(current_user.id):
+        raise HTTPException(status_code=404, detail="Order not found")
+    return _order_to_full_response(order)
 
 
 @app.post("/api/v1/payments/webhook")

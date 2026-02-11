@@ -95,6 +95,8 @@ const createLoadingCard = (): CardItem => ({
   materials: "",
   brand_return_policy: "",
   available_sizes: [],
+  color_variants: [],
+  selected_color_index: 0,
 });
 
 const ExpandableSection: React.FC<{ title: string; content: string }> = ({
@@ -147,18 +149,18 @@ const ExpandableSection: React.FC<{ title: string; content: string }> = ({
 // Fetch friend recommendations from the API
 const fetchMoreFriendCards = async (
   friendId: string,
-  count: number = 2
+  count: number = 2,
 ): Promise<CardItem[]> => {
   try {
     const products = await apiWrapper.getFriendRecommendations(
       friendId,
-      "FriendRecommendationsScreen"
+      "FriendRecommendationsScreen",
     );
     console.log("fetchMoreFriendCards - API returned products:", products);
 
     if (!products || !Array.isArray(products)) {
       console.error(
-        "fetchMoreFriendCards - API did not return a valid array of products."
+        "fetchMoreFriendCards - API did not return a valid array of products.",
       );
       return [];
     }
@@ -184,7 +186,7 @@ const fetchMoreFriendCards = async (
 
 const toggleLikeApi = async (
   productId: string,
-  setLiked: boolean
+  setLiked: boolean,
 ): Promise<boolean> => {
   try {
     const action = setLiked ? "like" : "unlike";
@@ -266,7 +268,7 @@ const FriendRecommendationsScreen = ({
   const longPressScale = useRef(new RNAnimated.Value(1)).current;
   const heartAnimationRef = useRef<RNAnimated.CompositeAnimation | null>(null);
   const longPressAnimationRef = useRef<RNAnimated.CompositeAnimation | null>(
-    null
+    null,
   );
 
   const [currentCardIndex, setCurrentCardIndex] = useState(0);
@@ -304,7 +306,7 @@ const FriendRecommendationsScreen = ({
     const fetchUserData = async () => {
       try {
         const userProfile = await apiWrapper.getCurrentUser(
-          "FriendRecommendationsScreen"
+          "FriendRecommendationsScreen",
         );
         if (userProfile) {
           setUserSelectedSize(userProfile.profile?.selected_size || null);
@@ -320,13 +322,11 @@ const FriendRecommendationsScreen = ({
 
   const SWIPE_THRESHOLD = screenHeight * 0.1;
 
-  const trackSwipe = async (productId: string, direction: "up" | "right") => {
+  const trackSwipe = async (productId: string, _direction?: "up" | "right") => {
     if (!productId) return;
     try {
-      const swipeDirection = direction === "up" ? "right" : "left";
       await api.trackSwipeWithOptimisticUpdate({
         product_id: productId,
-        swipe_direction: swipeDirection,
       });
     } catch (error) {
       console.error("Error tracking swipe:", error);
@@ -396,7 +396,7 @@ const FriendRecommendationsScreen = ({
 
       const contentOffsetX = event.nativeEvent.contentOffset.x;
       const currentIndex = Math.round(
-        contentOffsetX / imageCarouselWidthRef.current
+        contentOffsetX / imageCarouselWidthRef.current,
       );
 
       if (currentIndex >= 0) {
@@ -413,7 +413,7 @@ const FriendRecommendationsScreen = ({
         }
       }
     },
-    []
+    [],
   );
 
   const scrollToImageIndex = useCallback((index: number) => {
@@ -501,7 +501,7 @@ const FriendRecommendationsScreen = ({
           useNativeDriver: false,
         }).start();
       },
-    })
+    }),
   ).current;
 
   const panResponder = useRef(
@@ -556,7 +556,7 @@ const FriendRecommendationsScreen = ({
           useNativeDriver: false,
         }).start();
       },
-    })
+    }),
   ).current;
 
   const fadeOutIn = useCallback(() => {
@@ -630,7 +630,7 @@ const FriendRecommendationsScreen = ({
         }
       });
     },
-    [cards]
+    [cards],
   );
 
   const handleLongPress = useCallback(
@@ -639,7 +639,7 @@ const FriendRecommendationsScreen = ({
       toggleLike(index);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     },
-    [cards, toggleLike]
+    [cards, toggleLike],
   );
 
   const handleFlip = useCallback(() => {
@@ -654,7 +654,7 @@ const FriendRecommendationsScreen = ({
 
   const swipeCard = (
     direction: "up" | "right" = "up",
-    cardToSwipe?: CardItem
+    cardToSwipe?: CardItem,
   ) => {
     if (isAnimating) return;
 
@@ -725,7 +725,7 @@ const FriendRecommendationsScreen = ({
         setTimeout(() => setCurrentCardIndex(newIndex), 0);
 
         const cardsWithoutLoading = newCards.filter(
-          (c) => c.id !== LOADING_CARD_ID
+          (c) => c.id !== LOADING_CARD_ID,
         );
         if (cardsWithoutLoading.length < MIN_CARDS_THRESHOLD) {
           const hasLoadingCard = newCards.some((c) => c.id === LOADING_CARD_ID);
@@ -734,12 +734,12 @@ const FriendRecommendationsScreen = ({
           }
           fetchMoreFriendCards(
             friendId,
-            MIN_CARDS_THRESHOLD - cardsWithoutLoading.length + 1
+            MIN_CARDS_THRESHOLD - cardsWithoutLoading.length + 1,
           ).then((apiCards) => {
             if (apiCards.length > 0) {
               setCards((latestCards) => {
                 const filteredCards = latestCards.filter(
-                  (c) => c.id !== LOADING_CARD_ID
+                  (c) => c.id !== LOADING_CARD_ID,
                 );
                 const updatedCards = [...filteredCards, ...apiCards];
                 return updatedCards;
@@ -1121,7 +1121,7 @@ const FriendRecommendationsScreen = ({
                           handleSizeSelect(variant.size);
                         } else {
                           Haptics.impactAsync(
-                            Haptics.ImpactFeedbackStyle.Light
+                            Haptics.ImpactFeedbackStyle.Light,
                           );
                         }
                       }}
@@ -1169,7 +1169,7 @@ const FriendRecommendationsScreen = ({
                           handleSizeSelect(variant.size);
                         } else {
                           Haptics.impactAsync(
-                            Haptics.ImpactFeedbackStyle.Light
+                            Haptics.ImpactFeedbackStyle.Light,
                           );
                         }
                       }}
@@ -1223,7 +1223,7 @@ const FriendRecommendationsScreen = ({
       handleCancelSizeSelection,
       cards,
       imageScrollViewRef,
-    ]
+    ],
   );
 
   const renderBackOfCard = useCallback(
@@ -1273,7 +1273,7 @@ const FriendRecommendationsScreen = ({
         </View>
       );
     },
-    [handleFlip]
+    [handleFlip],
   );
 
   const renderCard = useCallback(
@@ -1365,7 +1365,7 @@ const FriendRecommendationsScreen = ({
       renderFrontOfCard,
       renderBackOfCard,
       panResponder,
-    ]
+    ],
   );
 
   useEffect(() => {
@@ -1376,13 +1376,13 @@ const FriendRecommendationsScreen = ({
       fetchTimer = setTimeout(() => {
         fetchMoreFriendCards(
           friendId,
-          MIN_CARDS_THRESHOLD - cardsWithoutLoading.length + 1
+          MIN_CARDS_THRESHOLD - cardsWithoutLoading.length + 1,
         )
           .then((apiCards) => {
             if (apiCards.length > 0) {
               setCards((prevCards) => {
                 const filteredCards = prevCards.filter(
-                  (c) => c.id !== LOADING_CARD_ID
+                  (c) => c.id !== LOADING_CARD_ID,
                 );
                 if (filteredCards.length >= MIN_CARDS_THRESHOLD) {
                   return prevCards;
@@ -1417,7 +1417,7 @@ const FriendRecommendationsScreen = ({
     <Animated.View
       style={[styles.container]}
       entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
-        ANIMATION_DELAYS.LARGE
+        ANIMATION_DELAYS.LARGE,
       )}
       exiting={FadeOutDown.duration(ANIMATION_DURATIONS.MICRO)}
     >

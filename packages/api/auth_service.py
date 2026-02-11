@@ -84,18 +84,27 @@ class AuthService:
     
     @staticmethod
     def get_user_by_email(db: Session, email: str) -> Optional[User]:
-        """Get user by email"""
-        return db.query(User).filter(User.email == email).first()
-    
+        """Get user by email (excludes deleted accounts)"""
+        return db.query(User).filter(
+            User.email == email,
+            User.deleted_at.is_(None),
+        ).first()
+
     @staticmethod
     def get_user_by_username(db: Session, username: str) -> Optional[User]:
-        """Get user by username"""
-        return db.query(User).filter(User.username == username).first()
-    
+        """Get user by username (excludes deleted accounts)"""
+        return db.query(User).filter(
+            User.username == username,
+            User.deleted_at.is_(None),
+        ).first()
+
     @staticmethod
     def get_user_by_id(db: Session, user_id: str) -> Optional[User]:
-        """Get user by ID"""
-        return db.query(User).filter(User.id == user_id).first()
+        """Get user by ID (excludes deleted accounts)"""
+        return db.query(User).filter(
+            User.id == user_id,
+            User.deleted_at.is_(None),
+        ).first()
     
     @staticmethod
     def get_oauth_account(db: Session, provider: str, provider_user_id: str) -> Optional[OAuthAccount]:

@@ -579,8 +579,8 @@ const MainPage = ({ navigation, route }: MainPageProps) => {
   const SWIPE_THRESHOLD = screenHeight * 0.1; // 10% of screen height
 
   // Track swipe for analytics with optimistic updates
-  const trackSwipe = async (productId: string, direction: "up" | "right") => {
-    console.log("MainPage - trackSwipe called with:", { productId, direction });
+  const trackSwipe = async (productId: string, _direction?: "up" | "right") => {
+    console.log("MainPage - trackSwipe called with:", { productId });
 
     if (!productId) {
       console.error("MainPage - Cannot track swipe: productId is missing");
@@ -588,18 +588,13 @@ const MainPage = ({ navigation, route }: MainPageProps) => {
     }
 
     try {
-      // Convert direction to API format
-      const swipeDirection = direction === "up" ? "right" : "left";
-
-      // Use optimistic tracking with rollback
       const result = await api.trackSwipeWithOptimisticUpdate({
         product_id: productId,
-        swipe_direction: swipeDirection,
       });
 
       if (result.success) {
         console.log(
-          `MainPage - Swipe tracked successfully: ${productId} - ${swipeDirection}, new count: ${result.newCount}`,
+          `MainPage - Swipe tracked successfully: ${productId}, new count: ${result.newCount}`,
         );
       } else {
         console.log(

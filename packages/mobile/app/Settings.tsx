@@ -3229,10 +3229,28 @@ const Settings = ({
               style={styles.deleteAccountYesButton}
               onPress={() => {
                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                // TODO: Implement account deletion
                 Alert.alert(
-                  "уведомление",
-                  "функция удаления аккаунта будет доступна в ближайшее время.",
+                  "удалить аккаунт?",
+                  "это действие нельзя отменить. все персональные данные будут удалены.",
+                  [
+                    { text: "отмена", style: "cancel" },
+                    {
+                      text: "удалить",
+                      style: "destructive",
+                      onPress: async () => {
+                        try {
+                          await api.deleteAccount();
+                          // Session is cleared; app will show welcome via session_cleared / login_required
+                        } catch (err: any) {
+                          const message =
+                            err?.message ||
+                            err?.detail ||
+                            (typeof err === "string" ? err : "не удалось удалить аккаунт.");
+                          Alert.alert("ошибка", message);
+                        }
+                      },
+                    },
+                  ]
                 );
               }}
             >

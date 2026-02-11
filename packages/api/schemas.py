@@ -64,6 +64,21 @@ class UpdateTrackingRequest(BaseModel):
     tracking_number: Optional[str] = None # Make optional for partial updates
     tracking_link: Optional[str] = None # NEW
 
+class OrderSummaryResponse(BaseModel):
+    """Lightweight order for list view (no items or delivery details)."""
+    id: str
+    number: str
+    total_amount: float
+    currency: str
+    date: datetime
+    status: str
+    tracking_number: Optional[str] = None
+    tracking_link: Optional[str] = None
+
+    class Config:
+        from_attributes = True
+
+
 class OrderResponse(BaseModel):
     id: str
     number: str
@@ -74,7 +89,7 @@ class OrderResponse(BaseModel):
     tracking_number: Optional[str] = None
     tracking_link: Optional[str] = None # NEW
     items: List[OrderItemResponse]
-    
+
     # Delivery information stored at order creation time
     delivery_full_name: Optional[str] = None
     delivery_email: Optional[str] = None

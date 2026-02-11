@@ -114,9 +114,11 @@ const Wall = ({ navigation, onLogout }: WallProps) => {
   >(null);
   const [settingsBottomText, setSettingsBottomText] = useState("НАСТРОЙКИ");
 
-  // Orders state
-  const [selectedOrder, setSelectedOrder] = useState<api.Order | null>(null);
-  const [orders, setOrders] = useState<api.Order[]>([]);
+  // Orders state: list is summaries only; full order loaded when user taps one
+  const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
+  const [orderDetail, setOrderDetail] = useState<api.Order | null>(null);
+  const [isLoadingOrderDetail, setIsLoadingOrderDetail] = useState(false);
+  const [orders, setOrders] = useState<api.OrderSummary[]>([]);
   const [isLoadingOrders, setIsLoadingOrders] = useState(false);
   const [orderError, setOrderError] = useState<string | null>(null);
   const [selectedSize, setSelectedSize] = useState("M");
@@ -223,10 +225,35 @@ const Wall = ({ navigation, onLogout }: WallProps) => {
   // Load orders when orders view is shown
   useEffect(() => {
     if (currentView === "orders") {
-      setSelectedOrder(null); // Reset selected order when viewing orders list
+      setSelectedOrderId(null);
+      setOrderDetail(null);
       loadOrders();
     }
   }, [currentView]);
+
+  // Load full order when user taps an order in the list
+  useEffect(() => {
+    if (!selectedOrderId) {
+      setOrderDetail(null);
+      return;
+    }
+    let cancelled = false;
+    setIsLoadingOrderDetail(true);
+    api
+      .getOrderById(selectedOrderId)
+      .then((data) => {
+        if (!cancelled) setOrderDetail(data);
+      })
+      .catch(() => {
+        if (!cancelled) setOrderError("не удалось загрузить заказ.");
+      })
+      .finally(() => {
+        if (!cancelled) setIsLoadingOrderDetail(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedOrderId]);
 
   const loadUserProfile = async () => {
     try {
@@ -789,7 +816,7 @@ const Wall = ({ navigation, onLogout }: WallProps) => {
           ANIMATION_DELAYS.LARGE,
         )}
       >
-        <TouchableOpacity onPress={() => setSelectedOrder(null)}>
+        <TouchableOpacity onPress={() => setSelectedOrderId(null)}>
           <BackIcon width={22} height={22} />
         </TouchableOpacity>
       </Animated.View>
@@ -800,11 +827,15 @@ const Wall = ({ navigation, onLogout }: WallProps) => {
         )}
         style={styles.orderDetailsContainer}
       >
+        {isLoadingOrderDetail || !orderDetail ? (
+          <Text style={styles.emptyStateText}>загрузка заказа...</Text>
+        ) : (
+          <>
         <ScrollView
           style={styles.orderItemsList}
           showsVerticalScrollIndicator={false}
         >
-          {selectedOrder?.items.map((item, index) => (
+          {orderDetail.items.map((item, index) => (
             <Animated.View
               key={item.id}
               entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
@@ -875,7 +906,7 @@ const Wall = ({ navigation, onLogout }: WallProps) => {
           style={styles.orderTotalContainer}
         >
           <Text style={styles.orderTotalText}>
-            ИТОГО {selectedOrder?.total_amount.toFixed(2)} ₽
+            ИТОГО {orderDetail.total_amount.toFixed(2)} ₽
           </Text>
         </Animated.View>
         <Animated.View
@@ -896,12 +927,14 @@ const Wall = ({ navigation, onLogout }: WallProps) => {
             <Text style={styles.orderStatusText}>оплачен</Text>
           </Animated.View>
         </Animated.View>
+          </>
+        )}
       </Animated.View>
     </View>
   );
 
   const renderOrdersContent = () => {
-    if (selectedOrder) {
+    if (selectedOrderId) {
       return renderOrderDetails();
     }
 
@@ -957,7 +990,7 @@ const Wall = ({ navigation, onLogout }: WallProps) => {
                   <View style={styles.orderBubble}>
                     <TouchableOpacity
                       style={styles.orderBubbleTouchArea}
-                      onPress={() => setSelectedOrder(order)}
+                      onPress={() => setSelectedOrderId(order.id)}
                     >
                       <Text
                         style={styles.orderNumber}
@@ -1268,8 +1301,11 @@ const Wall = ({ navigation, onLogout }: WallProps) => {
                   ? "АВАТАРКА"
                   : "СТЕНА"
                 : currentView === "orders"
-                  ? selectedOrder
-                    ? `ЗАКАЗ №${selectedOrder.number}`
+                  ? selectedOrderId
+                    ? (() => {
+                        const o = orders.find((ord) => ord.id === selectedOrderId);
+                        return o ? `ЗАКАЗ №${o.number}` : "ЗАКАЗ";
+                      })()
                     : "ЗАКАЗЫ"
                   : settingsBottomText;
             // Use smaller font for longer text like "УВЕДОМЛЕНИЯ" (11 chars)
