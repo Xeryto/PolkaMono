@@ -1,11 +1,11 @@
-from fastapi import FastAPI, HTTPException, Depends, status, Request
+from fastapi import FastAPI, HTTPException, Depends, status, Request, Query
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import RedirectResponse
 from pydantic import BaseModel, validator, ValidationError
 from typing import Optional, List, Literal
 from sqlalchemy.orm import Session, joinedload
-from sqlalchemy import func
+from sqlalchemy import func, or_
 from datetime import datetime, timedelta
 import re
 import json
@@ -2015,14 +2015,17 @@ async def get_popular_products(
 async def search_products(
     query: Optional[str] = None,
     category: Optional[str] = None,
+    categories: Optional[List[str]] = Query(default=None),
     brand: Optional[str] = None,
+    brands: Optional[List[str]] = Query(default=None),
     style: Optional[str] = None,
+    styles: Optional[List[str]] = Query(default=None),
     limit: int = 16,
     offset: int = 0,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """Search for products based on query and filters"""
+    """Search for products based on query and filters. Supports multiple values per filter (OR logic)."""
     products_query = db.query(Product).join(Brand)
 
     # Apply search query
@@ -2034,15 +2037,22 @@ async def search_products(
             (Product.article_number.ilike(search_pattern))  # Search by article number
         )
 
-    # Apply filters
-    if category and category != "Категория":
-        products_query = products_query.filter(Product.category_id == category)
+    # Apply filters - support both legacy single values and new multiple values
+    cat_values = categories if categories else ([category] if category and category != "Категория" else [])
+    if cat_values:
+        products_query = products_query.filter(Product.category_id.in_(cat_values))
 
-    if brand and brand != "Бренд":
-        products_query = products_query.filter(Brand.name.ilike(f"%{brand}%"))
+    brand_values = brands if brands else ([brand] if brand and brand != "Бренд" else [])
+    if brand_values:
+        products_query = products_query.filter(
+            or_(*[Brand.name.ilike(f"%{b}%") for b in brand_values])
+        )
 
-    if style and style != "Стиль":
-        products_query = products_query.join(ProductStyle).join(Style).filter(Style.name.ilike(f"%{style}%"))
+    style_values = styles if styles else ([style] if style and style != "Стиль" else [])
+    if style_values:
+        products_query = products_query.join(ProductStyle).join(Style).filter(
+            or_(*[Style.name.ilike(f"%{s}%") for s in style_values])
+        )
 
     # Apply pagination - use distinct() to prevent duplicate products when filtering by style
     products_query = products_query.distinct().offset(offset).limit(limit)

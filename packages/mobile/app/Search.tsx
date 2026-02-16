@@ -128,10 +128,16 @@ interface FilterOptions {
   style: string[];
 }
 
+const FILTER_LABELS = {
+  category: "категория",
+  brand: "бренд",
+  style: "стиль",
+} as const;
+
 interface SelectedFilters {
-  category: string;
-  brand: string;
-  style: string;
+  category: string[];
+  brand: string[];
+  style: string[];
 }
 
 // Minimum search query length before sending API request
@@ -141,9 +147,9 @@ const MIN_SEARCH_LENGTH = 2;
 const fetchMoreSearchResults = async (
   query: string = "",
   filters: SelectedFilters = {
-    category: "категория",
-    brand: "бренд",
-    style: "стиль",
+    category: [],
+    brand: [],
+    style: [],
   },
   count: number = 16,
   offset: number = 0,
@@ -153,11 +159,11 @@ const fetchMoreSearchResults = async (
     const trimmedQuery = query.trim();
     const hasValidQuery = trimmedQuery.length >= MIN_SEARCH_LENGTH;
 
-    // Check if any filter is actively selected (not default)
+    // Check if any filter is actively selected (has any selected options)
     const hasActiveFilters =
-      filters.category !== "категория" ||
-      filters.brand !== "бренд" ||
-      filters.style !== "стиль";
+      filters.category.length > 0 ||
+      filters.brand.length > 0 ||
+      filters.style.length > 0;
 
     // Don't make API call if query is too short and no active filters
     if (!hasValidQuery && !hasActiveFilters) {
@@ -175,12 +181,9 @@ const fetchMoreSearchResults = async (
     if (hasValidQuery) {
       params.query = trimmedQuery;
     }
-    if (filters.category && filters.category !== "категория")
-      params.category = filters.category;
-    if (filters.brand && filters.brand !== "бренд")
-      params.brand = filters.brand;
-    if (filters.style && filters.style !== "стиль")
-      params.style = filters.style;
+    if (filters.category.length > 0) params.categories = filters.category;
+    if (filters.brand.length > 0) params.brands = filters.brand;
+    if (filters.style.length > 0) params.styles = filters.style;
 
     const results = await apiWrapper.getProductSearchResults(
       params,
@@ -222,9 +225,9 @@ const Search = ({ navigation }: SearchProps) => {
     null,
   );
   const [selectedFilters, setSelectedFilters] = useState<SelectedFilters>({
-    category: "категория",
-    brand: "бренд",
-    style: "стиль",
+    category: [],
+    brand: [],
+    style: [],
   });
 
   // Initialize searchResults with persistent storage or default items
@@ -282,8 +285,8 @@ const Search = ({ navigation }: SearchProps) => {
         ]);
         setFilterOptions({
           brand: brands?.map((b: any) => b.name) || [],
-          style: styles?.map((s: any) => s.id) || [], // use id for search param
-          category: categories?.map((c: any) => c.id) || [], // use id for search param
+          style: styles?.map((s: any) => s.name) || [],
+          category: categories?.map((c: any) => c.id) || [], // API filters by category_id
         });
       } catch (error) {
         console.error("Error loading filter options:", error);
@@ -357,9 +360,9 @@ const Search = ({ navigation }: SearchProps) => {
     const trimmedQuery = searchQueryRef.current.trim();
     const hasValidQuery = trimmedQuery.length >= MIN_SEARCH_LENGTH;
     const hasActiveFilters =
-      selectedFiltersRef.current.category !== "категория" ||
-      selectedFiltersRef.current.brand !== "бренд" ||
-      selectedFiltersRef.current.style !== "стиль";
+      selectedFiltersRef.current.category.length > 0 ||
+      selectedFiltersRef.current.brand.length > 0 ||
+      selectedFiltersRef.current.style.length > 0;
 
     // Check if we're exiting search mode (was active, now not active)
     const wasSearchActive = prevIsSearchActiveRef.current;
@@ -441,28 +444,25 @@ const Search = ({ navigation }: SearchProps) => {
     filterType: keyof FilterOptions,
     option: string,
   ) => {
-    const defaultValues = {
-      category: "категория",
-      brand: "бренд",
-      style: "стиль",
-    };
-
-    setSelectedFilters((prev) => ({
-      ...prev,
-      [filterType]:
-        prev[filterType] === option ? defaultValues[filterType] : option,
-    }));
-    setActiveFilter(null);
+    setSelectedFilters((prev) => {
+      const current = prev[filterType];
+      const isSelected = current.includes(option);
+      return {
+        ...prev,
+        [filterType]: isSelected
+          ? current.filter((v) => v !== option)
+          : [...current, option],
+      };
+    });
   };
 
-  const isFilterSelected = (filterType: keyof SelectedFilters): boolean => {
-    const defaultValues = {
-      category: "категория",
-      brand: "бренд",
-      style: "стиль",
-    };
-    return selectedFilters[filterType] !== defaultValues[filterType];
-  };
+  const isFilterSelected = (filterType: keyof SelectedFilters): boolean =>
+    selectedFilters[filterType].length > 0;
+
+  const isOptionSelected = (
+    filterType: keyof SelectedFilters,
+    option: string,
+  ): boolean => selectedFilters[filterType].includes(option);
 
   // Handle item selection and removal
   const handleItemPress = (item: SearchItem, index: number) => {
@@ -528,9 +528,9 @@ const Search = ({ navigation }: SearchProps) => {
   const hasValidQuery = trimmedQuery.length >= MIN_SEARCH_LENGTH;
   const hasActiveQuery = trimmedQuery.length > 0;
   const hasActiveFilters =
-    selectedFilters.category !== "категория" ||
-    selectedFilters.brand !== "бренд" ||
-    selectedFilters.style !== "стиль";
+    selectedFilters.category.length > 0 ||
+    selectedFilters.brand.length > 0 ||
+    selectedFilters.style.length > 0;
 
   // The API already filters results by query (including article_number), so we don't need client-side filtering
   // Use searchResults directly as filteredResults since the API handles all filtering
@@ -615,15 +615,19 @@ const Search = ({ navigation }: SearchProps) => {
 
       // Check if any filter is actively selected (not default)
       const hasActiveFilters =
-        selectedFilters.category !== "категория" ||
-        selectedFilters.brand !== "бренд" ||
-        selectedFilters.style !== "стиль";
+        selectedFilters.category.length > 0 ||
+        selectedFilters.brand.length > 0 ||
+        selectedFilters.style.length > 0;
 
-      // Detect if filters changed (but search query didn't)
+      const arraysEqual = (a: string[], b: string[]) =>
+        a.length === b.length && a.every((v, i) => v === b[i]);
       const filtersChanged =
-        prevFiltersRef.current.category !== selectedFilters.category ||
-        prevFiltersRef.current.brand !== selectedFilters.brand ||
-        prevFiltersRef.current.style !== selectedFilters.style;
+        !arraysEqual(
+          prevFiltersRef.current.category,
+          selectedFilters.category,
+        ) ||
+        !arraysEqual(prevFiltersRef.current.brand, selectedFilters.brand) ||
+        !arraysEqual(prevFiltersRef.current.style, selectedFilters.style);
 
       const searchQueryChanged = prevSearchQueryRef.current !== searchQuery;
 
@@ -672,8 +676,8 @@ const Search = ({ navigation }: SearchProps) => {
         persistentSearchStorage.results = [];
       }
 
-      // Use minimal debounce (50ms) if only filters changed, otherwise use 800ms for query changes
-      const debounceDelay = filtersChanged && !searchQueryChanged ? 50 : 800;
+      // Debounce filter changes so selecting multiple options quickly doesn't trigger many requests
+      const debounceDelay = filtersChanged && !searchQueryChanged ? 400 : 800;
 
       // Add a delay to avoid fetching on every keystroke (or immediate for filter changes)
       const timer = setTimeout(() => {
@@ -683,16 +687,26 @@ const Search = ({ navigation }: SearchProps) => {
           currentTrimmedQuery.length >= MIN_SEARCH_LENGTH;
 
         // Re-check if filters changed (capture at timeout execution time)
+        const arraysEqualAtTimeout = (a: string[], b: string[]) =>
+          a.length === b.length && a.every((v, i) => v === b[i]);
         const filtersChangedAtTimeout =
-          prevFiltersRef.current.category !== selectedFilters.category ||
-          prevFiltersRef.current.brand !== selectedFilters.brand ||
-          prevFiltersRef.current.style !== selectedFilters.style;
+          !arraysEqualAtTimeout(
+            prevFiltersRef.current.category,
+            selectedFilters.category,
+          ) ||
+          !arraysEqualAtTimeout(
+            prevFiltersRef.current.brand,
+            selectedFilters.brand,
+          ) ||
+          !arraysEqualAtTimeout(
+            prevFiltersRef.current.style,
+            selectedFilters.style,
+          );
 
-        // Check if any filter is actively selected (not default)
         const currentHasActiveFilters =
-          selectedFilters.category !== "категория" ||
-          selectedFilters.brand !== "бренд" ||
-          selectedFilters.style !== "стиль";
+          selectedFilters.category.length > 0 ||
+          selectedFilters.brand.length > 0 ||
+          selectedFilters.style.length > 0;
 
         if (!currentHasValidQuery && !currentHasActiveFilters) {
           // Query is too short or empty - clear results and show empty search state
@@ -817,13 +831,7 @@ const Search = ({ navigation }: SearchProps) => {
 
     // Always update the search active ref at the end (after all checks)
     prevSearchActiveInEffectRef.current = isSearchActive;
-  }, [
-    searchQuery,
-    selectedFilters.category,
-    selectedFilters.brand,
-    selectedFilters.style,
-    isSearchActive,
-  ]);
+  }, [searchQuery, selectedFilters, isSearchActive]);
 
   // Load more search results (append next page) - called when user scrolls to bottom
   const loadMoreSearchResults = useCallback(async () => {
@@ -844,9 +852,9 @@ const Search = ({ navigation }: SearchProps) => {
     const trimmedQuery = searchQuery.trim();
     const hasValidQuery = trimmedQuery.length >= MIN_SEARCH_LENGTH;
     const hasActiveFilters =
-      selectedFilters.category !== "категория" ||
-      selectedFilters.brand !== "бренд" ||
-      selectedFilters.style !== "стиль";
+      selectedFilters.category.length > 0 ||
+      selectedFilters.brand.length > 0 ||
+      selectedFilters.style.length > 0;
 
     if (!hasValidQuery && !hasActiveFilters) {
       return;
@@ -919,9 +927,7 @@ const Search = ({ navigation }: SearchProps) => {
     hasMoreResults,
     isSearchActive,
     searchQuery,
-    selectedFilters.category,
-    selectedFilters.brand,
-    selectedFilters.style,
+    selectedFilters,
     searchOffset,
   ]); // Removed searchResults from deps
 
@@ -933,9 +939,9 @@ const Search = ({ navigation }: SearchProps) => {
     // Reset any active filters
     setActiveFilter(null);
     setSelectedFilters({
-      category: "категория",
-      brand: "бренд",
-      style: "стиль",
+      category: [],
+      brand: [],
+      style: [],
     });
 
     // Clear search results and reset pagination
@@ -1057,37 +1063,33 @@ const Search = ({ navigation }: SearchProps) => {
           style={styles.filtersContainer}
         >
           {/* Main Filter Buttons */}
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.filterButtons}
-            style={styles.filterButtonsScroll}
-          >
-            {Object.keys(filterOptions).map((filterType) => (
-              <Pressable
-                key={filterType}
-                style={[
-                  styles.filterButton,
-                  isFilterSelected(filterType as keyof SelectedFilters) &&
-                    styles.filterButtonActive,
-                ]}
-                onPress={() =>
-                  handleFilterPress(filterType as keyof FilterOptions)
-                }
-              >
-                <View style={styles.filterButtonContent}>
-                  <Text style={[styles.filterButtonText]}>
-                    {selectedFilters[filterType as keyof SelectedFilters]}
-                  </Text>
-                  <AntDesign
-                    name="caret-down"
-                    size={12}
-                    style={styles.filterIcon}
-                  />
-                </View>
-              </Pressable>
-            ))}
-          </ScrollView>
+          <View style={styles.filterButtons}>
+            {(Object.keys(filterOptions) as (keyof FilterOptions)[]).map(
+              (filterType) => (
+                <Pressable
+                  key={filterType}
+                  style={[
+                    styles.filterButton,
+                    isFilterSelected(filterType) && styles.filterButtonActive,
+                  ]}
+                  onPress={() =>
+                    handleFilterPress(filterType as keyof FilterOptions)
+                  }
+                >
+                  <View style={styles.filterButtonContent}>
+                    <Text style={[styles.filterButtonText]}>
+                      {FILTER_LABELS[filterType]}
+                    </Text>
+                    <AntDesign
+                      name="caret-down"
+                      size={12}
+                      style={styles.filterIcon}
+                    />
+                  </View>
+                </Pressable>
+              ),
+            )}
+          </View>
 
           {/* Options Dropdown */}
           {activeFilter && (
@@ -1110,9 +1112,10 @@ const Search = ({ navigation }: SearchProps) => {
                       key={option}
                       style={[
                         styles.optionButton,
-                        selectedFilters[
-                          activeFilter as keyof SelectedFilters
-                        ] === option && styles.optionButtonActive,
+                        isOptionSelected(
+                          activeFilter as keyof SelectedFilters,
+                          option,
+                        ) && styles.optionButtonActive,
                       ]}
                       onPress={() =>
                         handleOptionSelect(
@@ -1122,19 +1125,11 @@ const Search = ({ navigation }: SearchProps) => {
                       }
                     >
                       <View style={styles.optionButtonContent}>
-                        <Text
-                          style={[
-                            styles.optionButtonText,
-                            selectedFilters[
-                              activeFilter as keyof SelectedFilters
-                            ] === option && styles.optionButtonTextActive,
-                          ]}
-                        >
-                          {option}
-                        </Text>
-                        {selectedFilters[
-                          activeFilter as keyof SelectedFilters
-                        ] === option && (
+                        <Text style={[styles.optionButtonText]}>{option}</Text>
+                        {isOptionSelected(
+                          activeFilter as keyof SelectedFilters,
+                          option,
+                        ) && (
                           <AntDesign
                             name="check"
                             size={14}
@@ -1269,9 +1264,9 @@ const Search = ({ navigation }: SearchProps) => {
                   const hasValidQuery =
                     trimmedQuery.length >= MIN_SEARCH_LENGTH;
                   const hasActiveFilters =
-                    selectedFilters.category !== "Категория" ||
-                    selectedFilters.brand !== "Бренд" ||
-                    selectedFilters.style !== "Стиль";
+                    selectedFilters.category.length > 0 ||
+                    selectedFilters.brand.length > 0 ||
+                    selectedFilters.style.length > 0;
 
                   // Only load more if there's an active search (query or filters)
                   if (hasValidQuery || hasActiveFilters) {
@@ -1342,7 +1337,7 @@ const styles = StyleSheet.create({
   },
   filtersContainer: {
     marginBottom: "5%",
-    width: "100%",
+    width: "88%",
     zIndex: 998,
     height: "5%",
     borderRadius: 41,
@@ -1353,25 +1348,14 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 10,
   },
-  filterButtonsScroll: {
-    flexGrow: 0,
-    height: "100%",
-    minWidth: "88%",
-  },
   filterButtons: {
     flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 4,
-    gap: 8,
-    justifyContent: "center",
-    width: "100%",
+    justifyContent: "space-between",
+    height: "100%",
   },
   filterButton: {
-    flexShrink: 0,
     paddingHorizontal: 20,
-    paddingVertical: 8,
     borderRadius: 41,
-    //marginHorizontal: 4,
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: "#F2ECE7",
@@ -1405,7 +1389,6 @@ const styles = StyleSheet.create({
   optionsContainer: {
     position: "absolute",
     top: 0,
-    left: "6%",
     right: 0,
     backgroundColor: "#F2ECE7",
     borderRadius: 17,
@@ -1415,7 +1398,7 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 24,
     zIndex: 999,
-    width: "88%",
+    width: "100%",
   },
   scrollView: {
     padding: 8,
@@ -1465,7 +1448,7 @@ const styles = StyleSheet.create({
     color: "white",
   },
   optionCheckIcon: {
-    color: "white",
+    color: "black",
   },
   resultsContainer: {
     flex: 1,

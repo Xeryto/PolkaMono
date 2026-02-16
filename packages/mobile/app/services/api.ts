@@ -1156,17 +1156,17 @@ export const getProductDetails = async (productId: string): Promise<Product> => 
 
 export const getProductSearchResults = async (params: {
   query?: string;
-  category?: string;
-  brand?: string;
-  style?: string;
+  categories?: string[];
+  brands?: string[];
+  styles?: string[];
   limit?: number;
   offset?: number;
 }): Promise<Product[]> => {
   const searchParams = new URLSearchParams();
   if (params.query) searchParams.append('query', params.query);
-  if (params.category && params.category !== 'Категория') searchParams.append('category', params.category);
-  if (params.brand && params.brand !== 'Бренд') searchParams.append('brand', params.brand);
-  if (params.style && params.style !== 'Стиль') searchParams.append('style', params.style);
+  (params.categories || []).forEach((c) => searchParams.append('categories', c));
+  (params.brands || []).forEach((b) => searchParams.append('brands', b));
+  (params.styles || []).forEach((s) => searchParams.append('styles', s));
   if (params.limit) searchParams.append('limit', params.limit.toString());
   if (params.offset) searchParams.append('offset', params.offset.toString());
 
