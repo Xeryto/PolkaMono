@@ -1,6 +1,6 @@
 from sqlalchemy.orm import Session
 from database import SessionLocal
-from models import Brand, Style, Product, ProductStyle, Category, ProductVariant, ProductColorVariant, User, Order, OrderItem, OrderStatus, Payment, UserProfile, UserShippingInfo, UserPreferences, Gender, PrivacyOption
+from models import Brand, Style, Product, ProductStyle, Category, ProductVariant, ProductColorVariant, User, Order, OrderItem, OrderStatus, Payment, UserProfile, UserShippingInfo, UserPreferences, Gender, PrivacyOption, AuthAccount
 import uuid
 import re
 import random
@@ -134,7 +134,25 @@ def populate_initial_data():
         ]
         for b_data in brands_data:
             if not db.query(Brand).filter(Brand.name == b_data["name"]).first():
-                db.add(Brand(**b_data))
+                auth_account = AuthAccount(
+                    id=str(uuid.uuid4()),
+                    email=b_data["email"],
+                    password_hash=b_data["password_hash"],
+                    is_email_verified=True,
+                )
+                db.add(auth_account)
+                db.flush()
+                db.add(Brand(
+                    name=b_data["name"],
+                    auth_account_id=auth_account.id,
+                    slug=b_data["slug"],
+                    description=b_data["description"],
+                    return_policy=b_data["return_policy"],
+                    min_free_shipping=b_data["min_free_shipping"],
+                    shipping_price=float(b_data["shipping_price"]) if b_data.get("shipping_price") else None,
+                    shipping_provider=b_data["shipping_provider"],
+                    amount_withdrawn=b_data["amount_withdrawn"],
+                ))
         db.commit()
         print("Brands populated.")
 

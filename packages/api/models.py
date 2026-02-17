@@ -26,28 +26,44 @@ class FriendRequestStatus(str, Enum):
     REJECTED = "rejected"
     CANCELLED = "cancelled"
 
-class User(Base):
-    """User model"""
-    __tablename__ = "users"
+class AuthAccount(Base):
+    """Shared auth credentials and verification for users and brands"""
+    __tablename__ = "auth_accounts"
     __table_args__ = {"extend_existing": True}
-    
+
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
-    username = Column(String(50), unique=True, nullable=False, index=True)
     email = Column(String(255), unique=True, nullable=False, index=True)
-    password_hash = Column(String(255), nullable=True)  # Nullable for OAuth users
-    is_active = Column(Boolean, default=True)
+    password_hash = Column(String(255), nullable=True)  # Nullable for OAuth-only users
     is_email_verified = Column(Boolean, default=False)
     email_verification_code = Column(String(6), nullable=True)
     email_verification_code_expires_at = Column(DateTime, nullable=True)
     password_reset_token = Column(String, nullable=True)
     password_reset_expires = Column(DateTime, nullable=True)
-    password_history = Column(ARRAY(String), default=list)  # Store last 5 password hashes
+    password_history = Column(ARRAY(String), default=list)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    # Relationships (one account per user or per brand)
+    user = relationship("User", back_populates="auth_account", uselist=False, cascade="all, delete-orphan")
+    brand = relationship("Brand", back_populates="auth_account", uselist=False, cascade="all, delete-orphan")
+
+
+class User(Base):
+    """User model"""
+    __tablename__ = "users"
+    __table_args__ = {"extend_existing": True}
+
+    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    username = Column(String(50), unique=True, nullable=False, index=True)
+    auth_account_id = Column(String, ForeignKey("auth_accounts.id", ondelete="CASCADE"), nullable=False, unique=True, index=True)
+    is_active = Column(Boolean, default=True)
     deleted_at = Column(DateTime, nullable=True)  # Soft delete; when set, user is anonymized and access revoked
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     items_swiped = Column(Integer, default=0, nullable=False)  # Denormalized counter for stats (Option 2)
 
     # Relationships
+    auth_account = relationship("AuthAccount", back_populates="user", uselist=False, lazy="joined")
     oauth_accounts = relationship("OAuthAccount", back_populates="user", cascade="all, delete-orphan")
     favorite_brands = relationship("UserBrand", back_populates="user", cascade="all, delete-orphan")
     favorite_styles = relationship("UserStyle", back_populates="user", cascade="all, delete-orphan")
@@ -146,27 +162,23 @@ class Brand(Base):
     """Brand model"""
     __tablename__ = "brands"
     __table_args__ = {"extend_existing": True}
-    
+
     id = Column(Integer, primary_key=True, autoincrement=True)
     name = Column(String(100), unique=True, nullable=False)
-    email = Column(String(255), unique=True, nullable=False, index=True) # NEW
-    password_hash = Column(String(255), nullable=False) # NEW
+    auth_account_id = Column(String, ForeignKey("auth_accounts.id", ondelete="CASCADE"), nullable=False, unique=True, index=True)
     slug = Column(String(100), unique=True, nullable=False)
     logo = Column(String(500), nullable=True)
     description = Column(String(1000), nullable=True)
-    return_policy = Column(Text, nullable=True) # NEW
-    min_free_shipping = Column(Integer, nullable=True) # NEW
+    return_policy = Column(Text, nullable=True)
+    min_free_shipping = Column(Integer, nullable=True)
     shipping_price = Column(Float, nullable=True)
-    shipping_provider = Column(String(100), nullable=True) # NEW
+    shipping_provider = Column(String(100), nullable=True)
     amount_withdrawn = Column(Float, nullable=False, default=0.0)
-    # Email verification and password reset fields
-    email_verification_code = Column(String(6), nullable=True)
-    email_verification_code_expires_at = Column(DateTime, nullable=True)
-    password_reset_token = Column(String, nullable=True)
-    password_reset_expires = Column(DateTime, nullable=True)
-    password_history = Column(ARRAY(String), default=list)  # Store last 5 password hashes
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    # Relationships
+    auth_account = relationship("AuthAccount", back_populates="brand", uselist=False, lazy="joined")
 
 class Style(Base):
     """Style model"""

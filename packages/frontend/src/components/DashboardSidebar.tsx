@@ -38,8 +38,13 @@ export function DashboardSidebar({
   currentView,
   onViewChange,
 }: DashboardSidebarProps) {
-  const { state } = useSidebar();
+  const { state, isMobile, setOpenMobile } = useSidebar();
   const collapsed = state === "collapsed";
+
+  const handleViewChange = (view: DashboardView) => {
+    onViewChange(view);
+    if (isMobile) setOpenMobile(false);
+  };
 
   const handleLogout = () => {
     window.location.href = "/portal";
@@ -52,7 +57,7 @@ export function DashboardSidebar({
       } bg-card-custom border-r border-border/30`}
       collapsible="icon"
     >
-      <SidebarTrigger className="m-2 self-end" />
+      <SidebarTrigger className="m-2 self-end hidden md:flex" />
 
       <SidebarContent>
         <SidebarGroup>
@@ -61,7 +66,7 @@ export function DashboardSidebar({
               {menuItems.map((item) => (
                 <SidebarMenuItem key={item.id}>
                   <SidebarMenuButton
-                    onClick={() => onViewChange(item.id as DashboardView)}
+                    onClick={() => handleViewChange(item.id as DashboardView)}
                     className={`${
                       currentView === item.id
                         ? "sidebar-menu-button-active"

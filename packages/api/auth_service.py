@@ -3,7 +3,7 @@ Authentication service for user operations and OAuth integration
 """
 from typing import Optional, Dict, Any
 from sqlalchemy.orm import Session
-from models import User, OAuthAccount, UserProfile, Gender
+from models import User, OAuthAccount, UserProfile, Gender, AuthAccount
 from oauth_service import oauth_service
 from config import settings
 import bcrypt
@@ -55,20 +55,24 @@ class AuthService:
         gender: Optional[str] = None,
         selected_size: Optional[str] = None,
         avatar_url: Optional[str] = None,
-        is_email_verified: bool = False # Changed to is_email_verified
+        is_email_verified: bool = False,
     ) -> User:
         """Create a new user and optionally create UserProfile if profile data is provided"""
+        auth_account = AuthAccount(
+            id=str(uuid.uuid4()),
+            email=email,
+            password_hash=password_hash,
+            is_email_verified=is_email_verified,
+        )
+        db.add(auth_account)
+        db.flush()
         user = User(
             id=str(uuid.uuid4()),
             username=username,
-            email=email,
-            password_hash=password_hash,
-            is_email_verified=is_email_verified # Changed to is_email_verified
+            auth_account_id=auth_account.id,
         )
         db.add(user)
-        db.flush()  # Flush to get user.id before creating profile
-        
-        # Create UserProfile if any profile data is provided
+        db.flush()
         if any([gender, selected_size, avatar_url]):
             profile = UserProfile(
                 user_id=user.id,
@@ -77,7 +81,6 @@ class AuthService:
                 avatar_url=avatar_url
             )
             db.add(profile)
-        
         db.commit()
         db.refresh(user)
         return user
@@ -85,8 +88,8 @@ class AuthService:
     @staticmethod
     def get_user_by_email(db: Session, email: str) -> Optional[User]:
         """Get user by email (excludes deleted accounts)"""
-        return db.query(User).filter(
-            User.email == email,
+        return db.query(User).join(AuthAccount).filter(
+            AuthAccount.email == email,
             User.deleted_at.is_(None),
         ).first()
 
@@ -225,9 +228,9 @@ class AuthService:
             "user": {
                 "id": user.id,
                 "username": user.username,
-                "email": user.email,
+                "email": user.auth_account.email,
                 "avatar_url": avatar_url,
-                "is_email_verified": user.is_email_verified, # Use is_email_verified
+                "is_email_verified": user.auth_account.is_email_verified,
                 "created_at": user.created_at,
                 "updated_at": user.updated_at
             }
@@ -256,19 +259,21 @@ class AuthService:
         """Generate a cryptographically secure random token."""
         return secrets.token_urlsafe(length)
 
-    def create_verification_code(self, db: Session, user: User):
-        """Generate and store an email verification code for the user."""
+    def create_verification_code(self, db: Session, principal):
+        """Generate and store an email verification code (principal is User or Brand with auth_account)."""
         code = ''.join(secrets.choice('0123456789') for _ in range(6))
-        user.email_verification_code = code
-        user.email_verification_code_expires_at = datetime.utcnow() + timedelta(minutes=settings.EMAIL_VERIFICATION_CODE_EXPIRE_MINUTES)
+        acc = principal.auth_account
+        acc.email_verification_code = code
+        acc.email_verification_code_expires_at = datetime.utcnow() + timedelta(minutes=settings.EMAIL_VERIFICATION_CODE_EXPIRE_MINUTES)
         db.commit()
         return code
 
-    def create_password_reset_token(self, db: Session, user: User):
-        """Generate and store a password reset token for the user."""
+    def create_password_reset_token(self, db: Session, principal):
+        """Generate and store a password reset token (principal is User or Brand with auth_account)."""
         token = self._generate_secure_token()
-        user.password_reset_token = token
-        user.password_reset_expires = datetime.utcnow() + timedelta(minutes=15)
+        acc = principal.auth_account
+        acc.password_reset_token = token
+        acc.password_reset_expires = datetime.utcnow() + timedelta(minutes=15)
         db.commit()
         return token
 

@@ -19,7 +19,7 @@ from slowapi.errors import RateLimitExceeded
 # Import our modules
 from config import settings
 from database import get_db, init_db
-from models import User, OAuthAccount, Brand, Style, UserBrand, UserStyle, Gender, FriendRequest, Friendship, FriendRequestStatus, Product, UserLikedProduct, UserSwipe, Category, Order, OrderItem, OrderStatus, ExclusiveAccessEmail, ProductVariant, ProductColorVariant, ProductStyle, UserProfile, UserShippingInfo, UserPreferences, PrivacyOption
+from models import User, OAuthAccount, Brand, Style, UserBrand, UserStyle, Gender, FriendRequest, Friendship, FriendRequestStatus, Product, UserLikedProduct, UserSwipe, Category, Order, OrderItem, OrderStatus, ExclusiveAccessEmail, ProductVariant, ProductColorVariant, ProductStyle, UserProfile, UserShippingInfo, UserPreferences, PrivacyOption, AuthAccount
 from auth_service import auth_service
 from oauth_service import oauth_service
 import payment_service
@@ -302,7 +302,7 @@ async def get_brand_profile(
     return schemas.BrandResponse(
         id=brand.id,
         name=brand.name,
-        email=brand.email,
+        email=brand.auth_account.email,
         slug=brand.slug,
         logo=brand.logo,
         description=brand.description,
@@ -441,11 +441,11 @@ async def update_brand_profile(
         brand.name = brand_data.name
     if brand_data.email is not None:
         # Check if new email is already taken by another brand
-        if db.query(Brand).filter(Brand.email == brand_data.email, Brand.id != brand.id).first():
+        if db.query(AuthAccount).filter(AuthAccount.email == brand_data.email, AuthAccount.id != brand.auth_account_id).first():
             raise HTTPException(status_code=400, detail="Email already registered to another brand")
-        brand.email = brand_data.email
+        brand.auth_account.email = brand_data.email
     if brand_data.password is not None:
-        brand.password_hash = auth_service.hash_password(brand_data.password)
+        brand.auth_account.password_hash = auth_service.hash_password(brand_data.password)
     if brand_data.slug is not None:
         brand.slug = brand_data.slug
     if brand_data.logo is not None:
@@ -468,7 +468,7 @@ async def update_brand_profile(
     return schemas.BrandResponse(
         id=brand.id,
         name=brand.name,
-        email=brand.email,
+        email=brand.auth_account.email,
         slug=brand.slug,
         logo=brand.logo,
         description=brand.description,
@@ -526,7 +526,7 @@ async def register(user_data: UserCreate, db: Session = Depends(get_db)):
     # Send verification email
     code = auth_service.create_verification_code(db, user)
     mail_service.send_email(
-        to_email=user.email,
+        to_email=user.auth_account.email,
         subject="Verify your email address",
         html_content=f"Your email verification code is: <b>{code}</b>. It will expire in {settings.EMAIL_VERIFICATION_CODE_EXPIRE_MINUTES} minutes. Please enter this code in the app to verify your email."
     )
@@ -545,10 +545,10 @@ async def register(user_data: UserCreate, db: Session = Depends(get_db)):
         user=schemas.UserProfileResponse(
             id=user.id,
             username=user.username,
-            email=user.email,
+            email=user.auth_account.email,
             avatar_url=avatar_url,
             is_active=user.is_active,
-            is_email_verified=user.is_email_verified,
+            is_email_verified=user.auth_account.is_email_verified,
             created_at=user.created_at,
             updated_at=user.updated_at
         )
@@ -570,13 +570,13 @@ async def login(user_data: UserLogin, db: Session = Depends(get_db)):
             detail="Неверный формат идентификатора. Пожалуйста, введите действительный email или имя пользователя."
         )
     
-    if not user or not user.password_hash:
+    if not user or not user.auth_account.password_hash:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Неверные учетные данные. Проверьте правильность email/имени пользователя и пароля."
         )
     
-    if not auth_service.verify_password(user_data.password, user.password_hash):
+    if not auth_service.verify_password(user_data.password, user.auth_account.password_hash):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Неверный пароль. Проверьте правильность введенного пароля."
@@ -596,10 +596,10 @@ async def login(user_data: UserLogin, db: Session = Depends(get_db)):
         user=schemas.UserProfileResponse(
             id=user.id,
             username=user.username,
-            email=user.email,
+            email=user.auth_account.email,
             avatar_url=avatar_url,
             is_active=user.is_active,
-            is_email_verified=user.is_email_verified,
+            is_email_verified=user.auth_account.is_email_verified,
             created_at=user.created_at,
             updated_at=user.updated_at
         )
@@ -625,9 +625,8 @@ async def oauth_login(oauth_data: OAuthLogin, db: Session = Depends(get_db)):
 @app.post("/api/v1/brands/auth/login", response_model=AuthResponse) # Re-use AuthResponse for now, will adjust user field later
 async def brand_login(brand_data: schemas.BrandLogin, db: Session = Depends(get_db)):
     """Login brand user with email and password"""
-    brand = db.query(Brand).filter(Brand.email == brand_data.email).first()
-    
-    if not brand or not auth_service.verify_password(brand_data.password, brand.password_hash):
+    brand = db.query(Brand).join(AuthAccount).filter(AuthAccount.email == brand_data.email).first()
+    if not brand or not auth_service.verify_password(brand_data.password, brand.auth_account.password_hash):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Неверные учетные данные бренда. Проверьте правильность email и пароля."
@@ -647,7 +646,7 @@ async def brand_login(brand_data: schemas.BrandLogin, db: Session = Depends(get_
         user=schemas.UserProfileResponse( # Re-using UserProfileResponse, but it's a Brand
             id=str(brand.id), # Convert int ID to string for UserProfileResponse
             username=brand.name, # Use brand name as username
-            email=brand.email,
+            email=brand.auth_account.email,
             is_active=True, # Brands are always active for login
             is_email_verified=True, # Assuming brand emails are verified
             is_brand=True,
@@ -673,19 +672,16 @@ async def brand_forgot_password(request: Request, forgot_password_request: schem
     is_email = bool(re.match(email_pattern, identifier))
     
     if is_email:
-        brand = db.query(Brand).filter(Brand.email == identifier).first()
+        brand = db.query(Brand).join(AuthAccount).filter(AuthAccount.email == identifier).first()
     else:
-        # Treat as brand name
         brand = db.query(Brand).filter(Brand.name == identifier).first()
-    
     if not brand:
-        # Still return a success message to prevent enumeration
         return {"message": "If a brand account with that email or name exists, a password reset code has been sent."}
 
     # Create verification code for brand password reset
     code = auth_service.create_verification_code(db, brand)
     mail_service.send_email(
-        to_email=brand.email,
+        to_email=brand.auth_account.email,
         subject="Brand Password Reset Code",
         html_content=f"Your brand password reset code is: <b>{code}</b>. It will expire in {settings.EMAIL_VERIFICATION_CODE_EXPIRE_MINUTES} minutes. Please enter this code to reset your brand password."
     )
@@ -702,20 +698,16 @@ async def brand_validate_password_reset_code(validation_request: schemas.Validat
     is_email = bool(re.match(email_pattern, identifier))
     
     if is_email:
-        brand = db.query(Brand).filter(Brand.email == identifier).first()
+        brand = db.query(Brand).join(AuthAccount).filter(AuthAccount.email == identifier).first()
     else:
-        # Treat as brand name
         brand = db.query(Brand).filter(Brand.name == identifier).first()
-    
     if not brand:
         raise HTTPException(status_code=400, detail="Invalid brand email/name or code")
-
-    if brand.email_verification_code != validation_request.code:
+    acc = brand.auth_account
+    if acc.email_verification_code != validation_request.code:
         raise HTTPException(status_code=400, detail="Invalid brand email/name or code")
-
-    if brand.email_verification_code_expires_at < datetime.utcnow():
+    if acc.email_verification_code_expires_at < datetime.utcnow():
         raise HTTPException(status_code=400, detail="Verification code has expired")
-
     return {"message": "Code is valid"}
 
 @app.post("/api/v1/brands/auth/reset-password-with-code")
@@ -728,54 +720,34 @@ async def brand_reset_password_with_code(reset_password_request: schemas.ResetPa
     is_email = bool(re.match(email_pattern, identifier))
     
     if is_email:
-        brand = db.query(Brand).filter(Brand.email == identifier).first()
+        brand = db.query(Brand).join(AuthAccount).filter(AuthAccount.email == identifier).first()
     else:
-        # Treat as brand name
         brand = db.query(Brand).filter(Brand.name == identifier).first()
-    
     if not brand:
         raise HTTPException(status_code=400, detail="Invalid brand email/name or code")
-
-    if brand.email_verification_code != reset_password_request.code:
+    acc = brand.auth_account
+    if acc.email_verification_code != reset_password_request.code:
         raise HTTPException(status_code=400, detail="Invalid brand email/name or code")
-
-    if brand.email_verification_code_expires_at < datetime.utcnow():
+    if acc.email_verification_code_expires_at < datetime.utcnow():
         raise HTTPException(status_code=400, detail="Verification code has expired")
-
-    # Check if new password matches current password or is in password history
     new_password_hash = auth_service.hash_password(reset_password_request.new_password)
-    
-    # Check if new password is the same as current password
-    if brand.password_hash and auth_service.verify_password(reset_password_request.new_password, brand.password_hash):
+    if acc.password_hash and auth_service.verify_password(reset_password_request.new_password, acc.password_hash):
         raise HTTPException(status_code=400, detail="You cannot reuse your current password")
-    
-    # Check if new password matches any password in history
-    if brand.password_history:
-        for historical_hash in brand.password_history:
+    if acc.password_history:
+        for historical_hash in acc.password_history:
             if auth_service.verify_password(reset_password_request.new_password, historical_hash):
                 raise HTTPException(status_code=400, detail="You cannot reuse a previous password")
-    
-    # Store current password in history before updating
-    # Initialize password_history if it doesn't exist
-    if not brand.password_history:
-        brand.password_history = []
-    
-    # Add current password to history (if it exists)
-    if brand.password_hash:
-        brand.password_history.append(brand.password_hash)
-    
-    # Keep only last 5 passwords
-    if len(brand.password_history) > 5:
-        brand.password_history = brand.password_history[-5:]
-    
-    # Mark password_history as modified for SQLAlchemy
+    if not acc.password_history:
+        acc.password_history = []
+    if acc.password_hash:
+        acc.password_history.append(acc.password_hash)
+    if len(acc.password_history) > 5:
+        acc.password_history = acc.password_history[-5:]
     from sqlalchemy.orm.attributes import flag_modified
-    flag_modified(brand, 'password_history')
-    
-    # Reset the password
-    brand.password_hash = new_password_hash
-    brand.email_verification_code = None
-    brand.email_verification_code_expires_at = None
+    flag_modified(acc, 'password_history')
+    acc.password_hash = new_password_hash
+    acc.email_verification_code = None
+    acc.email_verification_code_expires_at = None
     db.commit()
 
     return {"message": "Brand password has been reset successfully."}
@@ -888,12 +860,11 @@ async def oauth_callback(provider: str, code: str, state: str, db: Session = Dep
 @app.post("/api/v1/auth/request-verification")
 @limiter.limit("5/minute")
 async def request_verification(request: Request, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    if current_user.is_email_verified:
+    if current_user.auth_account.is_email_verified:
         raise HTTPException(status_code=400, detail="Email already verified")
-
     code = auth_service.create_verification_code(db, current_user)
     mail_service.send_email(
-        to_email=current_user.email,
+        to_email=current_user.auth_account.email,
         subject="Verify your email address",
         html_content=f"Your email verification code is: <b>{code}</b>. It will expire in {settings.EMAIL_VERIFICATION_CODE_EXPIRE_MINUTES} minutes. Please enter this code in the app to verify your email."
     )
@@ -905,15 +876,14 @@ async def verify_email(verification_data: schemas.EmailVerificationRequest, db: 
     if not user:
         raise HTTPException(status_code=400, detail="Invalid email or code")
 
-    if user.email_verification_code != verification_data.code:
+    acc = user.auth_account
+    if acc.email_verification_code != verification_data.code:
         raise HTTPException(status_code=400, detail="Invalid email or code")
-
-    if user.email_verification_code_expires_at < datetime.utcnow():
+    if acc.email_verification_code_expires_at < datetime.utcnow():
         raise HTTPException(status_code=400, detail="Verification code has expired")
-
-    user.is_email_verified = True
-    user.email_verification_code = None
-    user.email_verification_code_expires_at = None
+    acc.is_email_verified = True
+    acc.email_verification_code = None
+    acc.email_verification_code_expires_at = None
     db.commit()
 
     return {"message": "Email verified successfully"}
@@ -941,7 +911,7 @@ async def forgot_password(request: Request, forgot_password_request: schemas.For
     # Create verification code instead of token for code-based reset
     code = auth_service.create_verification_code(db, user)
     mail_service.send_email(
-        to_email=user.email,
+        to_email=user.auth_account.email,
         subject="Password Reset Code",
         html_content=f"Your password reset code is: <b>{code}</b>. It will expire in {settings.EMAIL_VERIFICATION_CODE_EXPIRE_MINUTES} minutes. Please enter this code in the app to reset your password."
     )
@@ -950,48 +920,31 @@ async def forgot_password(request: Request, forgot_password_request: schemas.For
 
 @app.post("/api/v1/auth/reset-password")
 async def reset_password(reset_password_request: schemas.ResetPasswordRequest, db: Session = Depends(get_db)):
-    user = db.query(User).filter(User.password_reset_token == reset_password_request.token).first()
+    user = db.query(User).join(AuthAccount).filter(AuthAccount.password_reset_token == reset_password_request.token).first()
     if not user:
         raise HTTPException(status_code=400, detail="Invalid token")
-
-    if user.password_reset_expires < datetime.utcnow():
+    acc = user.auth_account
+    if acc.password_reset_expires < datetime.utcnow():
         raise HTTPException(status_code=400, detail="Token has expired")
-
-    # Check if new password matches current password or is in password history
     new_password_hash = auth_service.hash_password(reset_password_request.new_password)
-    
-    # Check if new password is the same as current password
-    if user.password_hash and auth_service.verify_password(reset_password_request.new_password, user.password_hash):
+    if acc.password_hash and auth_service.verify_password(reset_password_request.new_password, acc.password_hash):
         raise HTTPException(status_code=400, detail="You cannot reuse your current password")
-    
-    # Check if new password matches any password in history
-    if user.password_history:
-        for historical_hash in user.password_history:
+    if acc.password_history:
+        for historical_hash in acc.password_history:
             if auth_service.verify_password(reset_password_request.new_password, historical_hash):
                 raise HTTPException(status_code=400, detail="You cannot reuse a previous password")
-    
-    # Store current password in history before updating
-    # Initialize password_history if it doesn't exist
-    if not user.password_history:
-        user.password_history = []
-    
-    # Add current password to history (if it exists)
-    if user.password_hash:
-        user.password_history.append(user.password_hash)
-    
-    # Keep only last 5 passwords
-    if len(user.password_history) > 5:
-        user.password_history = user.password_history[-5:]
-    
-    # Mark password_history as modified for SQLAlchemy
+    if not acc.password_history:
+        acc.password_history = []
+    if acc.password_hash:
+        acc.password_history.append(acc.password_hash)
+    if len(acc.password_history) > 5:
+        acc.password_history = acc.password_history[-5:]
     from sqlalchemy.orm.attributes import flag_modified
-    flag_modified(user, 'password_history')
-
-    user.password_hash = new_password_hash
-    user.password_reset_token = None
-    user.password_reset_expires = None
+    flag_modified(acc, 'password_history')
+    acc.password_hash = new_password_hash
+    acc.password_reset_token = None
+    acc.password_reset_expires = None
     db.commit()
-
     return {"message": "Password has been reset successfully."}
 
 @app.post("/api/v1/auth/validate-password-reset-code")
@@ -1012,12 +965,11 @@ async def validate_password_reset_code(validation_request: schemas.ValidatePassw
     if not user:
         raise HTTPException(status_code=400, detail="Invalid username/email or code")
 
-    if user.email_verification_code != validation_request.code:
+    acc = user.auth_account
+    if acc.email_verification_code != validation_request.code:
         raise HTTPException(status_code=400, detail="Invalid username/email or code")
-
-    if user.email_verification_code_expires_at < datetime.utcnow():
+    if acc.email_verification_code_expires_at < datetime.utcnow():
         raise HTTPException(status_code=400, detail="Verification code has expired")
-
     return {"message": "Code is valid"}
 
 @app.post("/api/v1/auth/reset-password-with-code")
@@ -1038,48 +990,30 @@ async def reset_password_with_code(reset_password_request: schemas.ResetPassword
     if not user:
         raise HTTPException(status_code=400, detail="Invalid username/email or code")
 
-    if user.email_verification_code != reset_password_request.code:
+    acc = user.auth_account
+    if acc.email_verification_code != reset_password_request.code:
         raise HTTPException(status_code=400, detail="Invalid username/email or code")
-
-    if user.email_verification_code_expires_at < datetime.utcnow():
+    if acc.email_verification_code_expires_at < datetime.utcnow():
         raise HTTPException(status_code=400, detail="Verification code has expired")
-
-    # Check if new password matches current password or is in password history
     new_password_hash = auth_service.hash_password(reset_password_request.new_password)
-    
-    # Check if new password is the same as current password
-    if user.password_hash and auth_service.verify_password(reset_password_request.new_password, user.password_hash):
+    if acc.password_hash and auth_service.verify_password(reset_password_request.new_password, acc.password_hash):
         raise HTTPException(status_code=400, detail="You cannot reuse your current password")
-    
-    # Check if new password matches any password in history
-    if user.password_history:
-        for historical_hash in user.password_history:
+    if acc.password_history:
+        for historical_hash in acc.password_history:
             if auth_service.verify_password(reset_password_request.new_password, historical_hash):
                 raise HTTPException(status_code=400, detail="You cannot reuse a previous password")
-    
-    # Store current password in history before updating
-    # Initialize password_history if it doesn't exist
-    if not user.password_history:
-        user.password_history = []
-    
-    # Add current password to history (if it exists)
-    if user.password_hash:
-        user.password_history.append(user.password_hash)
-    
-    # Keep only last 5 passwords
-    if len(user.password_history) > 5:
-        user.password_history = user.password_history[-5:]
-    
-    # Mark password_history as modified for SQLAlchemy
+    if not acc.password_history:
+        acc.password_history = []
+    if acc.password_hash:
+        acc.password_history.append(acc.password_hash)
+    if len(acc.password_history) > 5:
+        acc.password_history = acc.password_history[-5:]
     from sqlalchemy.orm.attributes import flag_modified
-    flag_modified(user, 'password_history')
-    
-    # Reset the password
-    user.password_hash = new_password_hash
-    user.email_verification_code = None
-    user.email_verification_code_expires_at = None
+    flag_modified(acc, 'password_history')
+    acc.password_hash = new_password_hash
+    acc.email_verification_code = None
+    acc.email_verification_code_expires_at = None
     db.commit()
-
     return {"message": "Password has been reset successfully."}
 
 @app.post("/api/v1/auth/logout")
@@ -1120,9 +1054,9 @@ async def get_user_profile(current_user: User = Depends(get_current_user), db: S
     return schemas.UserProfileResponse(
         id=current_user.id,
         username=current_user.username,
-        email=current_user.email,
+        email=current_user.auth_account.email,
         is_active=current_user.is_active,
-        is_email_verified=current_user.is_email_verified,
+        is_email_verified=current_user.auth_account.is_email_verified,
         is_brand=False,  # Mark as regular user
         created_at=current_user.created_at,
         updated_at=current_user.updated_at,
@@ -1192,14 +1126,15 @@ async def delete_my_account(
     ).delete()
 
     # Anonymize user (keep row for Order.user_id FK; unique email/username)
-    user.email = f"deleted_{user_id}@anonymized.local"
+    acc = user.auth_account
+    acc.email = f"deleted_{user_id}@anonymized.local"
+    acc.password_hash = None
+    acc.email_verification_code = None
+    acc.email_verification_code_expires_at = None
+    acc.password_reset_token = None
+    acc.password_reset_expires = None
+    acc.password_history = []
     user.username = f"deleted_{user_id}"[:50]
-    user.password_hash = None
-    user.email_verification_code = None
-    user.email_verification_code_expires_at = None
-    user.password_reset_token = None
-    user.password_reset_expires = None
-    user.password_history = []
     user.is_active = False
     user.deleted_at = now
 
@@ -1233,7 +1168,7 @@ async def get_brand_profile(current_user: Brand = Depends(get_current_brand_user
     return schemas.UserProfileResponse(
         id=str(current_user.id),  # Convert integer to string
         username=current_user.name,  # Use brand name as username
-        email=current_user.email,
+        email=current_user.auth_account.email,
         is_active=True,  # Brands are always active
         is_email_verified=True,  # Assuming brand emails are verified
         is_brand=True,  # Mark as brand
@@ -1617,7 +1552,9 @@ async def update_user_profile(
     if profile_data.username is not None:
         current_user.username = profile_data.username
     if profile_data.email is not None:
-        current_user.email = profile_data.email
+        if db.query(AuthAccount).filter(AuthAccount.email == profile_data.email, AuthAccount.id != current_user.auth_account_id).first():
+            raise HTTPException(status_code=400, detail="Email already registered to another account")
+        current_user.auth_account.email = profile_data.email
     
     current_user.updated_at = datetime.utcnow()
     db.commit()
@@ -2090,7 +2027,7 @@ async def send_friend_request(
     # Find recipient by username or email
     recipient = None
     if '@' in request_data.recipient_identifier:
-        recipient = db.query(User).filter(User.email == request_data.recipient_identifier).first()
+        recipient = db.query(User).join(AuthAccount).filter(AuthAccount.email == request_data.recipient_identifier).first()
     else:
         recipient = db.query(User).filter(User.username == request_data.recipient_identifier).first()
     
@@ -2339,9 +2276,9 @@ async def search_users(
         )
     
     # Search by username or email (case insensitive)
-    users = db.query(User).filter(
-        (User.username.ilike(f"%{query}%") | User.email.ilike(f"%{query}%")) &
-        (User.id != current_user.id)  # Exclude current user
+    users = db.query(User).join(AuthAccount).filter(
+        (User.username.ilike(f"%{query}%") | AuthAccount.email.ilike(f"%{query}%")) &
+        (User.id != current_user.id)
     ).limit(20).all()
     
     result = []
@@ -2379,7 +2316,7 @@ async def search_users(
         result.append({
             "id": user.id,
             "username": user.username,
-            "email": user.email,
+            "email": user.auth_account.email,
             "avatar_url": avatar_url,
             "friend_status": friend_status
         })
