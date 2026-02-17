@@ -43,7 +43,7 @@ export function DashboardHeader() {
           </DropdownMenuTrigger>
           <DropdownMenuContent
             align="end"
-            className="bg-card-custom border-brown-light/30"
+            className="bg-[hsl(var(--card-custom))] border-brown-light/40 text-card-foreground shadow-lg"
           >
             <DropdownMenuLabel>Аккаунт бренда</DropdownMenuLabel>
             <DropdownMenuSeparator />

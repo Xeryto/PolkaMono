@@ -311,6 +311,10 @@ async def get_brand_profile(
         shipping_price=brand.shipping_price,
         shipping_provider=brand.shipping_provider,
         amount_withdrawn=brand.amount_withdrawn,
+        inn=brand.inn,
+        registration_address=brand.registration_address,
+        payout_account=brand.payout_account,
+        payout_account_locked=bool(brand.payout_account_locked),
         created_at=brand.created_at,
         updated_at=brand.updated_at
     )
@@ -460,11 +464,30 @@ async def update_brand_profile(
         brand.shipping_price = brand_data.shipping_price
     if brand_data.shipping_provider is not None:
         brand.shipping_provider = brand_data.shipping_provider
-    
+    requisites_updated = False
+    if brand_data.inn is not None:
+        brand.inn = brand_data.inn
+        requisites_updated = True
+    if brand_data.registration_address is not None:
+        brand.registration_address = brand_data.registration_address
+        requisites_updated = True
+    if brand_data.payout_account is not None:
+        if brand.payout_account_locked:
+            raise HTTPException(
+                status_code=400,
+                detail="Счёт для выплат заблокирован. Обратитесь в поддержку для изменения."
+            )
+        brand.payout_account = brand_data.payout_account
+        requisites_updated = True
+    if requisites_updated:
+        brand.payout_account_locked = 1  # Lock on every update of requisites
+    elif brand_data.payout_account_locked is not None:
+        brand.payout_account_locked = 1 if brand_data.payout_account_locked else 0
+
     brand.updated_at = datetime.utcnow()
     db.commit()
     db.refresh(brand)
-    
+
     return schemas.BrandResponse(
         id=brand.id,
         name=brand.name,
@@ -476,6 +499,11 @@ async def update_brand_profile(
         min_free_shipping=brand.min_free_shipping,
         shipping_price=brand.shipping_price,
         shipping_provider=brand.shipping_provider,
+        amount_withdrawn=brand.amount_withdrawn,
+        inn=brand.inn,
+        registration_address=brand.registration_address,
+        payout_account=brand.payout_account,
+        payout_account_locked=bool(brand.payout_account_locked),
         created_at=brand.created_at,
         updated_at=brand.updated_at
     )
@@ -1160,25 +1188,23 @@ async def delete_my_account(
     db.commit()
     return {"message": "Аккаунт успешно удалён."}
 
-@app.get("/api/v1/brands/profile", response_model=schemas.UserProfileResponse)
-async def get_brand_profile(current_user: Brand = Depends(get_current_brand_user), db: Session = Depends(get_db)):
-    """Get current brand's complete profile (brands only)"""
-    # For brands: Return brand profile in UserProfileResponse format
-    # Brands don't have profile/shipping/preferences, so return None for those
+@app.get("/api/v1/brands/me", response_model=schemas.UserProfileResponse)
+async def get_brand_profile_user_format(current_user: Brand = Depends(get_current_brand_user), db: Session = Depends(get_db)):
+    """Get current brand in unified UserProfileResponse format (e.g. for shared auth/header). Use GET /api/v1/brands/profile for full BrandResponse with requisites."""
     return schemas.UserProfileResponse(
-        id=str(current_user.id),  # Convert integer to string
-        username=current_user.name,  # Use brand name as username
+        id=str(current_user.id),
+        username=current_user.name,
         email=current_user.auth_account.email,
-        is_active=True,  # Brands are always active
-        is_email_verified=True,  # Assuming brand emails are verified
-        is_brand=True,  # Mark as brand
+        is_active=True,
+        is_email_verified=True,
+        is_brand=True,
         created_at=current_user.created_at,
         updated_at=current_user.updated_at,
-        favorite_brands=[],  # Brands don't have favorite brands
-        favorite_styles=[],  # Brands don't have favorite styles
-        profile=None,  # Brands don't have user profiles
-        shipping_info=None,  # Brands don't have shipping info
-        preferences=None  # Brands don't have preferences
+        favorite_brands=[],
+        favorite_styles=[],
+        profile=None,
+        shipping_info=None,
+        preferences=None
     )
 
 @app.post("/api/v1/brands/products", response_model=schemas.Product, status_code=status.HTTP_201_CREATED)

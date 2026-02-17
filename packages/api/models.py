@@ -174,6 +174,10 @@ class Brand(Base):
     shipping_price = Column(Float, nullable=True)
     shipping_provider = Column(String(100), nullable=True)
     amount_withdrawn = Column(Float, nullable=False, default=0.0)
+    inn = Column(String(20), nullable=True)
+    registration_address = Column(Text, nullable=True)
+    payout_account = Column(String(100), nullable=True)
+    payout_account_locked = Column(Integer, nullable=False, default=0)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 

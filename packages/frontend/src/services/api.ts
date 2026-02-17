@@ -86,6 +86,10 @@ export interface BrandResponse {
   shipping_price?: number;
   shipping_provider?: string;
   amount_withdrawn: number;
+  inn?: string;
+  registration_address?: string;
+  payout_account?: string;
+  payout_account_locked: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -112,6 +116,10 @@ export interface BrandProfileUpdateRequest {
   min_free_shipping?: number;
   shipping_price?: number;
   shipping_provider?: string;
+  inn?: string;
+  registration_address?: string;
+  payout_account?: string;
+  payout_account_locked?: boolean;
 }
 
 export interface ProductVariantSchema {
@@ -333,6 +341,11 @@ export const updateOrderTracking = async (orderId: string, trackingData: { track
 
 export const getOrders = async (token: string): Promise<OrderResponse[]> => { // Add token parameter
   return await apiRequest('/api/v1/orders', 'GET', undefined, true, token);
+};
+
+/** Fetch full order details (items, delivery). Use after user taps an order in the list. */
+export const getOrder = async (orderId: string, token: string): Promise<OrderResponse> => {
+  return await apiRequest(`/api/v1/orders/${orderId}`, 'GET', undefined, true, token);
 };
 
 // --- Brand Authentication & Profile ---

@@ -7,22 +7,52 @@ import {
   CardDescription,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { OrderDetailsPage } from "@/pages/OrderDetailsPage";
 import * as api from "@/services/api";
 import { OrderResponse } from "@/services/api";
 import { useToast } from "@/hooks/use-toast";
-import { useAuth } from "@/context/AuthContext"; // Import useAuth
+import { useAuth } from "@/context/AuthContext";
 import { formatCurrency } from "@/lib/currency";
 
 export function OrdersView() {
   const [orders, setOrders] = useState<OrderResponse[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [selectedOrder, setSelectedOrder] = useState<OrderResponse | null>(
-    null
-  );
+  const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
+  const [selectedOrder, setSelectedOrder] = useState<OrderResponse | null>(null);
+  const [isLoadingDetail, setIsLoadingDetail] = useState(false);
   const { toast } = useToast();
-  const { token } = useAuth(); // Get token from useAuth
+  const { token } = useAuth();
+
+  // Fetch full order when user clicks an order (list returns summaries without items)
+  useEffect(() => {
+    if (!selectedOrderId || !token) return;
+    let cancelled = false;
+    setIsLoadingDetail(true);
+    setSelectedOrder(null);
+    api
+      .getOrder(selectedOrderId, token)
+      .then((fullOrder) => {
+        if (!cancelled) setSelectedOrder(fullOrder);
+      })
+      .catch((err: any) => {
+        if (!cancelled) {
+          toast({
+            title: "Ошибка",
+            description: err.message || "Не удалось загрузить заказ.",
+            variant: "destructive",
+          });
+        }
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setIsLoadingDetail(false);
+          setSelectedOrderId(null);
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedOrderId, token, toast]);
 
   useEffect(() => {
     const fetchOrders = async () => {
@@ -68,12 +98,19 @@ export function OrdersView() {
     }
   };
 
-  if (selectedOrder) {
+  if (isLoadingDetail || selectedOrder) {
+    if (selectedOrder) {
+      return (
+        <OrderDetailsPage
+          order={selectedOrder}
+          onBack={() => setSelectedOrder(null)}
+        />
+      );
+    }
     return (
-      <OrderDetailsPage
-        order={selectedOrder}
-        onBack={() => setSelectedOrder(null)}
-      />
+      <div className="flex items-center justify-center py-12 text-muted-foreground">
+        Загрузка заказа...
+      </div>
     );
   }
 
@@ -99,7 +136,7 @@ export function OrdersView() {
                 <div
                   key={order.id}
                   className="flex items-center justify-between p-2 rounded-lg hover:bg-muted/50 cursor-pointer"
-                  onClick={() => setSelectedOrder(order)}
+                  onClick={() => setSelectedOrderId(order.id)}
                 >
                   <div>
                     <p className="font-medium text-foreground">

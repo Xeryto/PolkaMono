@@ -127,10 +127,70 @@ def populate_initial_data():
         default_password_hash = auth_service.hash_password("brandpassword123")
 
         brands_data = [
-            {"name": "Nike", "email": "nike@example.com", "password_hash": default_password_hash, "slug": "nike", "description": "Global leader in athletic footwear, apparel, equipment, accessories, and services.", "return_policy": "30-day free returns.", "min_free_shipping": 100, "shipping_price": "5.00", "shipping_provider": "FedEx", "amount_withdrawn": 0.0},
-            {"name": "Adidas", "email": "adidas@example.com", "password_hash": default_password_hash, "slug": "adidas", "description": "German multinational corporation, designs and manufactures shoes, clothing and accessories.", "return_policy": "20-day returns, customer pays shipping.", "min_free_shipping": 150, "shipping_price": "7.50", "shipping_provider": "UPS", "amount_withdrawn": 0.0},
-            {"name": "Zara", "email": "zara@example.com", "password_hash": default_password_hash, "slug": "zara", "description": "Spanish apparel retailer based in Arteixo, Galicia, Spain.", "return_policy": "14-day exchange only.", "min_free_shipping": 50, "shipping_price": "3.00", "shipping_provider": "DHL", "amount_withdrawn": 0.0},
-            {"name": "H&M", "email": "hm@example.com", "password_hash": default_password_hash, "slug": "h&m", "description": "Swedish multinational clothing-retail company known for its fast-fashion clothing for men, women, teenagers and children.", "return_policy": "No returns on sale items.", "min_free_shipping": 75, "shipping_price": "4.50", "shipping_provider": "USPS", "amount_withdrawn": 0.0}
+            {
+                "name": "Nike",
+                "email": "nike@example.com",
+                "password_hash": default_password_hash,
+                "slug": "nike",
+                "description": "Global leader in athletic footwear, apparel, equipment, accessories, and services.",
+                "return_policy": "30-day free returns.",
+                "min_free_shipping": 100,
+                "shipping_price": "5.00",
+                "shipping_provider": "FedEx",
+                "amount_withdrawn": 0.0,
+                "inn": "7707121282",
+                "registration_address": "г. Москва, ул. Ленина, д. 1",
+                "payout_account": "40702810000000000001",
+                "payout_account_locked": 1,
+            },
+            {
+                "name": "Adidas",
+                "email": "adidas@example.com",
+                "password_hash": default_password_hash,
+                "slug": "adidas",
+                "description": "German multinational corporation, designs and manufactures shoes, clothing and accessories.",
+                "return_policy": "20-day returns, customer pays shipping.",
+                "min_free_shipping": 150,
+                "shipping_price": "7.50",
+                "shipping_provider": "UPS",
+                "amount_withdrawn": 0.0,
+                "inn": "7707121283",
+                "registration_address": "г. Москва, ул. Тверская, д. 10",
+                "payout_account": "40702810000000000002",
+                "payout_account_locked": 1,
+            },
+            {
+                "name": "Zara",
+                "email": "zara@example.com",
+                "password_hash": default_password_hash,
+                "slug": "zara",
+                "description": "Spanish apparel retailer based in Arteixo, Galicia, Spain.",
+                "return_policy": "14-day exchange only.",
+                "min_free_shipping": 50,
+                "shipping_price": "3.00",
+                "shipping_provider": "DHL",
+                "amount_withdrawn": 0.0,
+                "inn": "7707121284",
+                "registration_address": "г. Москва, ул. Арбат, д. 5",
+                "payout_account": "40702810000000000003",
+                "payout_account_locked": 0,
+            },
+            {
+                "name": "H&M",
+                "email": "hm@example.com",
+                "password_hash": default_password_hash,
+                "slug": "h&m",
+                "description": "Swedish multinational clothing-retail company known for its fast-fashion clothing for men, women, teenagers and children.",
+                "return_policy": "No returns on sale items.",
+                "min_free_shipping": 75,
+                "shipping_price": "4.50",
+                "shipping_provider": "USPS",
+                "amount_withdrawn": 0.0,
+                "inn": "7707121285",
+                "registration_address": "г. Москва, ул. Кузнецкий мост, д. 7",
+                "payout_account": "40702810000000000004",
+                "payout_account_locked": 0,
+            },
         ]
         for b_data in brands_data:
             if not db.query(Brand).filter(Brand.name == b_data["name"]).first():
@@ -152,6 +212,10 @@ def populate_initial_data():
                     shipping_price=float(b_data["shipping_price"]) if b_data.get("shipping_price") else None,
                     shipping_provider=b_data["shipping_provider"],
                     amount_withdrawn=b_data["amount_withdrawn"],
+                    inn=b_data.get("inn"),
+                    registration_address=b_data.get("registration_address"),
+                    payout_account=b_data.get("payout_account"),
+                    payout_account_locked=b_data.get("payout_account_locked", 0),
                 ))
         db.commit()
         print("Brands populated.")
@@ -794,18 +858,22 @@ def populate_initial_data():
         db.commit()
         print("Products populated.")
         
-        # Create test user account with domain-specific data
+        # Create test user account with domain-specific data (User + AuthAccount)
         test_user_password_hash = auth_service.hash_password("123abc")
-        test_user_data = {
-            "username": "test",
-            "email": "test@example.com",
-            "password_hash": test_user_password_hash,
-            "is_email_verified": True
-        }
-        
         test_user = db.query(User).filter(User.username == "test").first()
         if not test_user:
-            test_user = User(**test_user_data)
+            test_auth_account = AuthAccount(
+                id=str(uuid.uuid4()),
+                email="test@example.com",
+                password_hash=test_user_password_hash,
+                is_email_verified=True,
+            )
+            db.add(test_auth_account)
+            db.flush()
+            test_user = User(
+                username="test",
+                auth_account_id=test_auth_account.id,
+            )
             db.add(test_user)
             db.flush()  # Flush to get user.id
             

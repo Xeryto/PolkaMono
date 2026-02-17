@@ -83,7 +83,7 @@ export function OrderDetailsPage({ order, onBack }: OrderDetailsPageProps) {
   ) => {
     // NEW Handler
     // Update the sku in the local order state
-    const updatedItems = order.items.map((item) =>
+    const updatedItems = (order.items ?? []).map((item) =>
       item.id === orderItemId ? { ...item, sku: newSKU } : item
     );
     // This requires the order prop to be mutable or to re-fetch the order
@@ -261,7 +261,7 @@ export function OrderDetailsPage({ order, onBack }: OrderDetailsPageProps) {
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            {order.items.map((item, index) => (
+            {(order.items ?? []).map((item, index) => (
               <div
                 key={index}
                 className="flex justify-between items-center cursor-pointer hover:bg-muted/50 p-2 rounded-lg"

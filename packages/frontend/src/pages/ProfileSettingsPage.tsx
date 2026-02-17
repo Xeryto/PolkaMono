@@ -1,27 +1,30 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   Card,
   CardContent,
   CardHeader,
   CardTitle,
-  CardDescription,
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { useToast } from "@/hooks/use-toast"; // NEW
-import * as api from "@/services/api"; // NEW
-import { BrandResponse, BrandProfileUpdateRequest } from "@/services/api"; // NEW
-import { useAuth } from "@/context/AuthContext"; // Import useAuth
+import { useToast } from "@/hooks/use-toast";
+import * as api from "@/services/api";
+import { BrandResponse, BrandProfileUpdateRequest } from "@/services/api";
+import { useAuth } from "@/context/AuthContext";
 import { formatCurrency } from "@/lib/currency";
+import { Lock } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
 
 export function ProfileSettingsPage() {
   const [isEditing, setIsEditing] = useState(false);
   const { token } = useAuth(); // Get token from useAuth
 
-  const [profile, setProfile] = useState<BrandResponse | null>(null); // Changed to BrandResponse
-  const [isLoading, setIsLoading] = useState(true); // NEW
-  const { toast } = useToast(); // NEW
+  const [profile, setProfile] = useState<BrandResponse | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const { toast } = useToast();
+  const wasPayoutLockedOnLoad = useRef<boolean | null>(null);
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -38,8 +41,9 @@ export function ProfileSettingsPage() {
 
       try {
         setIsLoading(true);
-        const fetchedProfile = await api.getBrandProfile(token); // Pass token
+        const fetchedProfile = await api.getBrandProfile(token);
         setProfile(fetchedProfile);
+        wasPayoutLockedOnLoad.current = fetchedProfile.payout_account_locked ?? false;
       } catch (error: any) {
         console.error("Failed to fetch brand profile:", error);
         toast({
@@ -70,22 +74,69 @@ export function ProfileSettingsPage() {
   const handleSave = async () => {
     if (!profile) return;
 
-    setIsLoading(true);
     if (!token) {
       toast({
-        title: "Error",
-        description:
-          "Токен аутентификации не найден. Пожалуйста, войдите в систему.",
+        title: "Ошибка",
+        description: "Токен аутентификации не найден. Пожалуйста, войдите в систему.",
         variant: "destructive",
       });
-      setIsLoading(false);
       return;
     }
+
+    const hasRequisites = [profile.inn, profile.registration_address, profile.payout_account].some(
+      (v) => (v ?? "").toString().trim() !== ""
+    );
+    const alreadyLocked = wasPayoutLockedOnLoad.current === true;
+    if (!alreadyLocked && hasRequisites && !profile.payout_account_locked) {
+      toast({
+        title: "Подтвердите сохранение реквизитов",
+        description:
+          "Вы заполнили ИНН, адрес или счёт для выплат. Отметьте галочку «Подтверждаю сохранение реквизитов» — после сохранения они будут заблокированы. Иначе реквизиты не будут сохранены.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const required = [
+      { v: profile.name?.trim(), label: "Название" },
+      { v: profile.email?.trim(), label: "Контактный Email" },
+      { v: profile.shipping_provider?.trim(), label: "Фирма доставки" },
+      { v: profile.return_policy?.trim(), label: "Политика возврата" },
+    ];
+    const missing = required.filter((r) => !r.v);
+    if (missing.length > 0) {
+      toast({
+        title: "Заполните обязательные поля",
+        description: missing.map((m) => m.label).join(", "),
+        variant: "destructive",
+      });
+      return;
+    }
+    const shipPrice = profile.shipping_price;
+    if (shipPrice != null && (typeof shipPrice !== "number" || shipPrice < 0)) {
+      toast({
+        title: "Ошибка",
+        description: "Цена доставки не может быть отрицательной.",
+        variant: "destructive",
+      });
+      return;
+    }
+    const minFree = profile.min_free_shipping;
+    if (minFree != null && (typeof minFree !== "number" || minFree < 0)) {
+      toast({
+        title: "Ошибка",
+        description: "Минимальная цена для бесплатной доставки не может быть отрицательной.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const sendingRequisites = !alreadyLocked && !!profile.payout_account_locked;
+    setIsLoading(true);
     try {
       const updatedProfile: BrandProfileUpdateRequest = {
         name: profile.name,
         email: profile.email,
-        // password: profile.password, // Password should be handled separately for security
         slug: profile.slug,
         logo: profile.logo,
         description: profile.description,
@@ -93,18 +144,22 @@ export function ProfileSettingsPage() {
         min_free_shipping: profile.min_free_shipping,
         shipping_price: profile.shipping_price,
         shipping_provider: profile.shipping_provider,
+        inn: sendingRequisites ? profile.inn : undefined,
+        registration_address: sendingRequisites ? profile.registration_address : undefined,
+        payout_account: sendingRequisites ? profile.payout_account : undefined,
+        payout_account_locked: sendingRequisites ? true : undefined,
       };
-      const response = await api.updateBrandProfile(updatedProfile, token); // Pass token
+      const response = await api.updateBrandProfile(updatedProfile, token);
       setProfile(response);
       setIsEditing(false);
       toast({
-        title: "Success",
+        title: "Успех",
         description: "Профиль бренда успешно обновлен!",
       });
     } catch (error: any) {
       console.error("Failed to update brand profile:", error);
       toast({
-        title: "Error",
+        title: "Ошибка",
         description: error.message || "Не удалось обновить профиль бренда.",
         variant: "destructive",
       });
@@ -160,6 +215,68 @@ export function ProfileSettingsPage() {
                     onChange={handleInputChange}
                     className="mt-1"
                   />
+                </div>
+                <div>
+                  <Label htmlFor="inn" className="text-sm font-medium text-muted-foreground">
+                    ИНН
+                  </Label>
+                  <Input
+                    id="inn"
+                    value={profile.inn ?? ""}
+                    onChange={handleInputChange}
+                    className="mt-1"
+                    placeholder="10 или 12 цифр"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="registration_address" className="text-sm font-medium text-muted-foreground">
+                    Адрес регистрации
+                  </Label>
+                  <Textarea
+                    id="registration_address"
+                    value={profile.registration_address ?? ""}
+                    onChange={handleInputChange}
+                    className="mt-1"
+                    placeholder="Юридический адрес"
+                    rows={2}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="payout_account" className="text-sm font-medium text-muted-foreground">
+                    Счёт, на который мы будем производить выплату
+                  </Label>
+                  <Input
+                    id="payout_account"
+                    value={profile.payout_account ?? ""}
+                    onChange={handleInputChange}
+                    className="mt-1"
+                    placeholder="Номер счёта (реквизиты)"
+                    disabled={profile.payout_account_locked}
+                  />
+                  {profile.payout_account_locked && (
+                    <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
+                      <Lock className="h-3 w-3" /> Счёт заблокирован. Изменения только через поддержку.
+                    </p>
+                  )}
+                  {!profile.payout_account_locked && (
+                    <div className="flex items-center space-x-2 mt-2">
+                      <Checkbox
+                        id="payout_account_locked"
+                        checked={profile.payout_account_locked}
+                        onCheckedChange={(checked) =>
+                          setProfile((prev) =>
+                            prev ? { ...prev, payout_account_locked: !!checked } : null
+                          )
+                        }
+                      />
+                      <Label
+                        htmlFor="payout_account_locked"
+                        className="text-sm font-normal cursor-pointer"
+                      >
+                        Подтверждаю сохранение реквизитов (ИНН, адрес, счёт). После сохранения они будут заблокированы.
+                      </Label>
+                    </div>
+                  )}
                 </div>
                 <div>
                   <label
@@ -245,6 +362,31 @@ export function ProfileSettingsPage() {
                     Контактный Email
                   </p>
                   <p className="text-lg">{profile.email}</p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">
+                    ИНН
+                  </p>
+                  <p className="text-lg">{profile.inn || "—"}</p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">
+                    Адрес регистрации
+                  </p>
+                  <p className="text-lg">{profile.registration_address || "—"}</p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">
+                    Счёт для выплат
+                  </p>
+                  <p className="text-lg flex items-center gap-2">
+                    {profile.payout_account || "—"}
+                    {profile.payout_account_locked && (
+                      <span className="text-xs text-muted-foreground flex items-center gap-1">
+                        <Lock className="h-3 w-3" /> заблокирован
+                      </span>
+                    )}
+                  </p>
                 </div>
                 <div>
                   <p className="text-sm font-medium text-muted-foreground">
