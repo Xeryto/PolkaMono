@@ -710,6 +710,7 @@ export default function App() {
 
   const [isInitialLoad, setIsInitialLoad] = useState(true);
   const [isAuthFlowInProgress, setIsAuthFlowInProgress] = useState(false);
+  const [isProfileStepSaving, setIsProfileStepSaving] = useState(false);
 
   type AppPhase =
     | "boot"
@@ -1409,99 +1410,97 @@ export default function App() {
       const required = completionStatus.requiredScreens || [];
       if (required.includes("brand_selection")) {
         transitionTo("profile_brands");
+        await yieldToReact();
       } else if (required.includes("style_selection")) {
         transitionTo("profile_styles");
+        await yieldToReact();
       } else {
         setComingFromSignup(true);
         dispatchNav({ type: "SET_OVERLAY", overlay: "down" });
         transitionTo("main");
+        await yieldToReact();
       }
     } catch (error) {
       console.error("Error updating gender:", error);
 
-      // Check if this is an authentication error
       const authErrorHandled = await handleAuthError(
         error,
         "handleConfirmationComplete",
       );
       if (authErrorHandled) {
-        return; // Auth error handled, user logged out
+        return;
       }
 
-      // For other errors, continue to next screen
-      transitionTo("profile_brands");
+      // Rethrow so child can show error and reset button
+      throw error;
     }
   };
 
+  // Yield so React can commit the phase change and unmount the child before our
+  // promise resolves; avoids the child briefly showing "continue" again.
+  const yieldToReact = () =>
+    new Promise<void>((resolve) => setTimeout(resolve, 0));
+
   // Handle brand search completion
   const handleBrandSearchComplete = async (brands: number[]) => {
+    setIsProfileStepSaving(true);
     console.log(`User selected brands: ${brands.join(", ")}`);
-
-    // Save the selected brands
     setSelectedBrands(brands);
 
     try {
-      // Update the user's profile with the selected brands
       await api.updateUserBrands(brands);
 
-      // Re-check profile completion status to see what's next
       const completionStatus = await api.getProfileCompletionStatus();
       const required = completionStatus.requiredScreens || [];
       if (required.includes("style_selection")) {
         transitionTo("profile_styles");
+        setIsProfileStepSaving(false);
+        await yieldToReact();
       } else {
         setComingFromSignup(true);
         dispatchNav({ type: "SET_OVERLAY", overlay: "down" });
         transitionTo("main");
+        setIsProfileStepSaving(false);
+        await yieldToReact();
       }
     } catch (error) {
       console.error("Error updating selected brands:", error);
-
-      // Check if this is an authentication error
+      setIsProfileStepSaving(false);
       const authErrorHandled = await handleAuthError(
         error,
         "handleBrandSearchComplete",
       );
       if (authErrorHandled) {
-        return; // Auth error handled, user logged out
+        return;
       }
-
-      // For other errors, continue to main screen
-      dispatchNav({ type: "SET_OVERLAY", overlay: "down" });
-      transitionTo("main");
+      throw error;
     }
   };
 
   // Handle styles selection completion
   const handleStylesSelectionComplete = async (styles: string[]) => {
+    setIsProfileStepSaving(true);
     console.log(`User selected styles: ${styles.join(", ")}`);
 
     try {
-      // Update the user's profile with the selected styles
       await api.updateUserStyles(styles);
 
-      // Styles saved - MainPage can fetch from API if needed
-
-      // Complete profile flow
       setComingFromSignup(true);
       dispatchNav({ type: "SET_OVERLAY", overlay: "down" });
       transitionTo("main");
+      setIsProfileStepSaving(false);
+      await yieldToReact();
     } catch (error) {
       console.error("Error updating favorite styles:", error);
-
-      // Check if this is an authentication error
+      setIsProfileStepSaving(false);
       const authErrorHandled = await handleAuthError(
         error,
         "handleStylesSelectionComplete",
       );
       if (authErrorHandled) {
-        return; // Auth error handled, user logged out
+        return;
       }
-
-      // For other errors, continue to main screen
-      setComingFromSignup(true);
-      dispatchNav({ type: "SET_OVERLAY", overlay: "down" });
-      transitionTo("main");
+      throw error;
     }
   };
 
@@ -1761,6 +1760,7 @@ export default function App() {
           <BrandSearchScreen
             initialBrands={selectedBrands}
             onComplete={handleBrandSearchComplete}
+            isSaving={isProfileStepSaving}
             onBack={() => {
               transitionTo("profile_confirm");
             }}
@@ -1771,6 +1771,7 @@ export default function App() {
           <StylesSelectionScreen
             gender={gender!}
             onComplete={handleStylesSelectionComplete}
+            isSaving={isProfileStepSaving}
             onBack={() => {
               transitionTo("profile_brands");
             }}

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState } from "react";
 import {
   View,
   Text,
@@ -8,33 +8,21 @@ import {
   Dimensions,
   Pressable,
   Alert,
+  ActivityIndicator,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
-import Animated, {
-  FadeIn,
-  FadeInDown,
-  useSharedValue,
-  useAnimatedStyle,
-  withTiming,
-  Easing,
-  FadeOutDown,
-  FadeOut,
-} from "react-native-reanimated";
+import Animated, { FadeInDown } from "react-native-reanimated";
+import * as Haptics from "expo-haptics";
 import Logo from "../components/svg/Logo";
 import BackIcon from "../components/svg/BackIcon";
-import * as api from "../services/api";
-import {
-  ANIMATION_DURATIONS,
-  ANIMATION_DELAYS,
-  ANIMATION_EASING,
-} from "../lib/animations";
+import { ANIMATION_DURATIONS, ANIMATION_DELAYS } from "../lib/animations";
 
 const { width, height } = Dimensions.get("window");
 
 interface ConfirmationScreenProps {
-  onComplete: (choice: "male" | "female") => void;
-  onBack?: () => void; // Optional back handler
+  onComplete: (choice: "male" | "female") => void | Promise<void>;
+  onBack?: () => void;
 }
 
 const LOGO_SIZE = Math.min(width, height) * 0.275; // 25% of the smallest dimension
@@ -48,17 +36,15 @@ const ConfirmationScreen: React.FC<ConfirmationScreenProps> = ({
   >(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Handle option selection with fade-out animation
   const handleOptionSelect = async (option: "male" | "female") => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     setSelectedOption(option);
     setIsSubmitting(true);
     try {
-      await api.updateUserProfileData({ gender: option });
-      onComplete(option);
+      await Promise.resolve(onComplete(option));
     } catch (error) {
-      Alert.alert("ошибка", "не удалось сохранить пол. попробуйте еще раз.");
-    } finally {
       setIsSubmitting(false);
+      Alert.alert("ошибка", "не удалось сохранить пол. попробуйте еще раз.");
     }
   };
 
@@ -90,88 +76,106 @@ const ConfirmationScreen: React.FC<ConfirmationScreenProps> = ({
             <BackIcon width={22} height={22} />
           </TouchableOpacity>
           <Animated.View style={styles.formContainerShadow}>
-            {/* Separate nested Animated.Views for different animation properties */}
-            <View style={[styles.formContainer]}>
+            <View style={styles.formContainer}>
+              {/* Main content: logo and buttons in a row with space-between */}
               <Animated.View
-                style={[
-                  {
-                    width: "100%",
-                    height: "100%",
-                    alignItems: "center",
-                    justifyContent: "space-around",
-                    flexDirection: "row",
-                  },
-                ]}
+                style={styles.formContentRow}
+                entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM)}
               >
                 <View style={styles.logoContainer}>
                   <Logo width={LOGO_SIZE} height={LOGO_SIZE} />
                 </View>
 
-                <Animated.View
-                  entering={FadeInDown.duration(
-                    ANIMATION_DURATIONS.MEDIUM
-                  ).delay(ANIMATION_DELAYS.SMALL)}
-                  style={styles.buttonShadow}
-                >
-                  <Pressable
-                    style={({ pressed }) => [
-                      styles.optionButton,
-                      selectedOption === "male" && styles.selectedButtonM,
-                      pressed && styles.buttonPressed,
-                      { backgroundColor: "#E0D6CC" },
+                <View style={styles.buttonsRow}>
+                  <Animated.View
+                    entering={FadeInDown.duration(
+                      ANIMATION_DURATIONS.MEDIUM,
+                    ).delay(ANIMATION_DELAYS.SMALL)}
+                    style={[
+                      styles.buttonShadow,
+                      isSubmitting &&
+                        selectedOption !== "male" &&
+                        styles.buttonDimmed,
                     ]}
-                    onPress={() => handleOptionSelect("male")}
-                    android_ripple={{
-                      color: "#CCA479",
-                      borderless: false,
-                      radius: 41,
-                    }}
-                    disabled={isSubmitting}
                   >
-                    <Text
-                      style={[
-                        styles.optionButtonTextM,
-                        selectedOption === "male" && styles.selectedButtonTextM,
+                    <Pressable
+                      style={({ pressed }) => [
+                        styles.optionButton,
+                        selectedOption === "male" && styles.selectedButtonM,
+                        pressed && styles.buttonPressed,
+                        { backgroundColor: "#E0D6CC" },
                       ]}
+                      onPress={() => handleOptionSelect("male")}
+                      android_ripple={{
+                        color: "#CCA479",
+                        borderless: false,
+                        radius: 41,
+                      }}
+                      disabled={isSubmitting}
                     >
-                      М
-                    </Text>
-                  </Pressable>
-                </Animated.View>
+                      <Text
+                        style={[
+                          styles.optionButtonTextM,
+                          selectedOption === "male" &&
+                            styles.selectedButtonTextM,
+                        ]}
+                      >
+                        М
+                      </Text>
+                    </Pressable>
+                  </Animated.View>
 
-                <Animated.View
-                  entering={FadeInDown.duration(
-                    ANIMATION_DURATIONS.MEDIUM
-                  ).delay(ANIMATION_DELAYS.SMALL)}
-                  style={styles.buttonShadow}
-                >
-                  <Pressable
-                    style={({ pressed }) => [
-                      styles.optionButton,
-                      selectedOption === "female" && styles.selectedButtonF,
-                      pressed && styles.buttonPressed,
-                      { backgroundColor: "#9A7859" },
+                  <Animated.View
+                    entering={FadeInDown.duration(
+                      ANIMATION_DURATIONS.MEDIUM,
+                    ).delay(ANIMATION_DELAYS.SMALL)}
+                    style={[
+                      styles.buttonShadow,
+                      isSubmitting &&
+                        selectedOption !== "female" &&
+                        styles.buttonDimmed,
                     ]}
-                    onPress={() => handleOptionSelect("female")}
-                    android_ripple={{
-                      color: "#CCA479",
-                      borderless: false,
-                      radius: 41,
-                    }}
-                    disabled={isSubmitting}
                   >
-                    <Text
-                      style={[
-                        styles.optionButtonTextF,
-                        selectedOption === "female" &&
-                          styles.selectedButtonTextF,
+                    <Pressable
+                      style={({ pressed }) => [
+                        styles.optionButton,
+                        selectedOption === "female" && styles.selectedButtonF,
+                        pressed && styles.buttonPressed,
+                        { backgroundColor: "#9A7859" },
                       ]}
+                      onPress={() => handleOptionSelect("female")}
+                      android_ripple={{
+                        color: "#CCA479",
+                        borderless: false,
+                        radius: 41,
+                      }}
+                      disabled={isSubmitting}
                     >
-                      Ж
-                    </Text>
-                  </Pressable>
-                </Animated.View>
+                      {selectedOption === "female" && isSubmitting ? (
+                        <ActivityIndicator size="small" color="#E0D6CC" />
+                      ) : (
+                        <Text
+                          style={[
+                            styles.optionButtonTextF,
+                            selectedOption === "female" &&
+                              styles.selectedButtonTextF,
+                          ]}
+                        >
+                          Ж
+                        </Text>
+                      )}
+                    </Pressable>
+                  </Animated.View>
+                </View>
               </Animated.View>
+
+              {/* Saving text at bottom of white box (absolute) */}
+              {isSubmitting && (
+                <View style={styles.savingContainer}>
+                  <ActivityIndicator size="small" color="#4A3120" />
+                  <Text style={styles.savingText}>сохранение...</Text>
+                </View>
+              )}
             </View>
           </Animated.View>
           <Animated.View style={styles.textContainer}>
@@ -239,6 +243,7 @@ const styles = StyleSheet.create({
   formContainer: {
     width: "100%",
     height: "100%",
+    flexDirection: "column",
     backgroundColor: "#F2ECE7",
     borderRadius: 41,
     ...Platform.select({
@@ -246,6 +251,13 @@ const styles = StyleSheet.create({
         overflow: "hidden",
       },
     }),
+  },
+  formContentRow: {
+    flex: 1,
+    width: "100%",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-around",
   },
   logoContainer: {
     alignItems: "center",
@@ -314,6 +326,36 @@ const styles = StyleSheet.create({
   },
   selectedButtonTextF: {
     color: "#E0D6CC",
+  },
+  buttonsRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-around",
+    width: "100%",
+  },
+  buttonDimmed: {
+    opacity: 0.5,
+  },
+  savingContainer: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 10,
+    paddingVertical: 20,
+    paddingBottom: 28,
+    borderTopWidth: 1,
+    borderTopColor: "rgba(106, 70, 47, 0.15)",
+    backgroundColor: "rgba(242, 236, 231, 0.98)",
+    borderRadius: 41,
+  },
+  savingText: {
+    fontFamily: "IgraSans",
+    fontSize: 20,
+    color: "#4A3120",
   },
   textContainer: {
     position: "absolute",

@@ -13,6 +13,7 @@ import {
   NativeSyntheticEvent,
   NativeScrollEvent,
   Alert,
+  ActivityIndicator,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
@@ -39,14 +40,16 @@ interface StyleOption {
 
 interface StylesSelectionScreenProps {
   gender: "male" | "female";
-  onComplete: (selectedStyles: string[]) => void;
-  onBack?: () => void; // Optional back handler
+  onComplete: (selectedStyles: string[]) => void | Promise<void>;
+  onBack?: () => void;
+  isSaving?: boolean;
 }
 
 const StylesSelectionScreen: React.FC<StylesSelectionScreenProps> = ({
   gender,
   onComplete,
   onBack,
+  isSaving = false,
 }) => {
   const [selectedStyles, setSelectedStyles] = useState<string[]>([]);
   const [showScrollHint, setShowScrollHint] = useState(true);
@@ -94,18 +97,18 @@ const StylesSelectionScreen: React.FC<StylesSelectionScreenProps> = ({
     });
   };
 
+  const showSaving = isSubmitting || isSaving;
+
   const handleContinue = async () => {
     setIsSubmitting(true);
     try {
-      await api.updateUserStyles(selectedStyles);
-      onComplete(selectedStyles);
+      await Promise.resolve(onComplete(selectedStyles));
     } catch (error) {
+      setIsSubmitting(false);
       Alert.alert(
         "ошибка",
         "не удалось сохранить любимые стили. попробуйте еще раз."
       );
-    } finally {
-      setIsSubmitting(false);
     }
   };
 
@@ -254,11 +257,21 @@ const StylesSelectionScreen: React.FC<StylesSelectionScreenProps> = ({
                 <TouchableOpacity
                   style={styles.continueButton}
                   onPress={handleContinue}
-                  disabled={isSubmitting}
+                  disabled={showSaving}
                 >
-                  <Text style={styles.continueButtonText}>
-                    {isSubmitting ? "сохранение..." : "продолжить"}
-                  </Text>
+                  {showSaving ? (
+                    <View style={styles.continueButtonLoading}>
+                      <ActivityIndicator
+                        size="small"
+                        color="#6A462F"
+                      />
+                      <Text style={styles.continueButtonText}>
+                        сохранение...
+                      </Text>
+                    </View>
+                  ) : (
+                    <Text style={styles.continueButtonText}>продолжить</Text>
+                  )}
                 </TouchableOpacity>
               </Animated.View>
             </Animated.View>
@@ -493,6 +506,11 @@ const styles = StyleSheet.create({
     fontFamily: "IgraSans",
     fontSize: 20,
     color: "#000",
+  },
+  continueButtonLoading: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
   },
   textContainer: {
     position: "absolute",
