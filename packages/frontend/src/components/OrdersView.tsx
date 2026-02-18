@@ -9,50 +9,19 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { OrderDetailsPage } from "@/pages/OrderDetailsPage";
 import * as api from "@/services/api";
-import { OrderResponse } from "@/services/api";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/context/AuthContext";
 import { formatCurrency } from "@/lib/currency";
+import { getOrderStatusLabel, getOrderStatusColor } from "@/lib/orderStatus";
 
 export function OrdersView() {
-  const [orders, setOrders] = useState<OrderResponse[]>([]);
+  const [orders, setOrders] = useState<api.OrderSummary[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
-  const [selectedOrder, setSelectedOrder] = useState<OrderResponse | null>(null);
+  const [selectedOrder, setSelectedOrder] = useState<api.OrderResponse | null>(null);
   const [isLoadingDetail, setIsLoadingDetail] = useState(false);
   const { toast } = useToast();
   const { token } = useAuth();
-
-  // Fetch full order when user clicks an order (list returns summaries without items)
-  useEffect(() => {
-    if (!selectedOrderId || !token) return;
-    let cancelled = false;
-    setIsLoadingDetail(true);
-    setSelectedOrder(null);
-    api
-      .getOrder(selectedOrderId, token)
-      .then((fullOrder) => {
-        if (!cancelled) setSelectedOrder(fullOrder);
-      })
-      .catch((err: any) => {
-        if (!cancelled) {
-          toast({
-            title: "Ошибка",
-            description: err.message || "Не удалось загрузить заказ.",
-            variant: "destructive",
-          });
-        }
-      })
-      .finally(() => {
-        if (!cancelled) {
-          setIsLoadingDetail(false);
-          setSelectedOrderId(null);
-        }
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [selectedOrderId, token, toast]);
 
   useEffect(() => {
     const fetchOrders = async () => {
@@ -83,27 +52,55 @@ export function OrdersView() {
       }
     };
     fetchOrders();
-  }, [token, toast]); // Add token and toast to dependency array
+  }, [token, toast]);
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "доставлен":
-        return "bg-green-900/20 text-green-300 border-green-700/30";
-      case "shipped":
-        return "bg-blue-900/20 text-blue-300 border-blue-700/30";
-      case "processing":
-        return "bg-yellow-900/20 text-yellow-300 border-yellow-700/30";
-      default:
-        return "bg-gray-900/20 text-gray-300 border-gray-700/30";
-    }
-  };
+  useEffect(() => {
+    if (!selectedOrderId || !token) return;
+    let cancelled = false;
+    setIsLoadingDetail(true);
+    setSelectedOrder(null);
+    api
+      .getOrder(selectedOrderId, token)
+      .then((order) => {
+        if (!cancelled) setSelectedOrder(order);
+      })
+      .catch((err) => {
+        if (!cancelled) {
+          toast({
+            title: "Ошибка",
+            description: err.message || "Не удалось загрузить заказ.",
+            variant: "destructive",
+          });
+        }
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setIsLoadingDetail(false);
+          setSelectedOrderId(null);
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedOrderId, token, toast]);
 
   if (isLoadingDetail || selectedOrder) {
     if (selectedOrder) {
       return (
         <OrderDetailsPage
           order={selectedOrder}
-          onBack={() => setSelectedOrder(null)}
+          onBack={() => {
+            setSelectedOrder(null);
+            setSelectedOrderId(null);
+          }}
+          onOrderUpdated={async () => {
+            if (token && selectedOrder) {
+              const updated = await api.getOrder(selectedOrder.id, token);
+              setSelectedOrder(updated);
+              const list = await api.getOrders(token);
+              setOrders(list);
+            }
+          }}
         />
       );
     }
@@ -156,10 +153,10 @@ export function OrdersView() {
                       {new Date(order.date).toLocaleDateString()}
                     </p>
                     <Badge
-                      className={getStatusColor(order.status)}
+                      className={getOrderStatusColor(order.status)}
                       variant="outline"
                     >
-                      {order.status}
+                      {getOrderStatusLabel(order.status)}
                     </Badge>
                   </div>
                 </div>

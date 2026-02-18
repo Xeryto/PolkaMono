@@ -158,6 +158,17 @@ export interface ProductColorVariantCreate {
   variants: ProductVariantSchema[];
 }
 
+export interface OrderSummary {
+  id: string;
+  number: string;
+  total_amount: number;
+  currency?: string;
+  date: string;
+  status: string;
+  tracking_number?: string;
+  tracking_link?: string;
+}
+
 export interface OrderItemResponse {
   id: string;
   name: string;
@@ -179,15 +190,52 @@ export interface OrderResponse {
   date: string;
   status: string;
   tracking_number?: string;
-  tracking_link?: string; // NEW
+  tracking_link?: string;
+  /** Order-level shipping (per brand). Do not sum item delivery.cost for totals. */
+  shipping_cost?: number;
   items: OrderItemResponse[];
-  // Delivery information stored at order creation time
   delivery_full_name?: string;
   delivery_email?: string;
   delivery_phone?: string;
   delivery_address?: string;
   delivery_city?: string;
   delivery_postal_code?: string;
+}
+
+/** One brand's order within a checkout (Ozon-style). */
+export interface OrderPartResponse {
+  id: string;
+  number: string;
+  brand_id: number;
+  brand_name?: string;
+  subtotal: number;
+  shipping_cost: number;
+  total_amount: number;
+  status: string;
+  tracking_number?: string;
+  tracking_link?: string;
+  items: OrderItemResponse[];
+}
+
+/** Full checkout with nested orders per brand (Ozon-style). */
+export interface CheckoutResponse {
+  id: string;
+  total_amount: number;
+  currency: string;
+  date: string;
+  orders: OrderPartResponse[];
+  delivery_full_name?: string;
+  delivery_email?: string;
+  delivery_phone?: string;
+  delivery_address?: string;
+  delivery_city?: string;
+  delivery_postal_code?: string;
+}
+
+export type OrderOrCheckoutResponse = OrderResponse | CheckoutResponse;
+
+export function isCheckoutResponse(r: OrderOrCheckoutResponse): r is CheckoutResponse {
+  return 'orders' in r && Array.isArray((r as CheckoutResponse).orders);
 }
 
 export interface StyleResponse {
@@ -385,17 +433,27 @@ export const updateOrderItemSKU = async (orderItemId: string, sku: string, token
   return await apiRequest(`/api/v1/brands/order-items/${orderItemId}/sku`, 'PUT', { sku: sku }, true, token);
 };
 
-export const updateOrderTracking = async (orderId: string, trackingData: { tracking_number?: string; tracking_link?: string }, token: string): Promise<any> => { // Add token parameter
+export const updateOrderTracking = async (orderId: string, trackingData: { tracking_number?: string; tracking_link?: string }, token: string): Promise<any> => {
   return await apiRequest(`/api/v1/brands/orders/${orderId}/tracking`, 'PUT', trackingData, true, token);
 };
 
-export const getOrders = async (token: string): Promise<OrderResponse[]> => { // Add token parameter
+/** Mark a SHIPPED order as RETURNED (brand received the returned item). Restores stock. */
+export const markOrderReturned = async (orderId: string, token: string): Promise<any> => {
+  return await apiRequest(`/api/v1/brands/orders/${orderId}/return`, 'PUT', undefined, true, token);
+};
+
+export const getOrders = async (token: string): Promise<OrderSummary[]> => {
   return await apiRequest('/api/v1/orders', 'GET', undefined, true, token);
 };
 
-/** Fetch full order details (items, delivery). Use after user taps an order in the list. */
+/** Fetch full order details for a brand (items, delivery). Use after brand taps an order in the dashboard list. */
 export const getOrder = async (orderId: string, token: string): Promise<OrderResponse> => {
   return await apiRequest(`/api/v1/orders/${orderId}`, 'GET', undefined, true, token);
+};
+
+/** Fetch full checkout details for the current user (nested orders per brand). Use when user taps an order in "my orders". */
+export const getCheckout = async (checkoutId: string, token: string): Promise<CheckoutResponse> => {
+  return await apiRequest(`/api/v1/checkouts/${checkoutId}`, 'GET', undefined, true, token);
 };
 
 // --- Brand Authentication & Profile ---

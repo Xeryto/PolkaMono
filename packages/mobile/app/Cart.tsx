@@ -27,6 +27,7 @@ import {
   retrieveUserProfile,
   getPaymentStatus,
   getShoppingInfo,
+  getBrands,
   sessionManager,
 } from "./services/api";
 import { CartItem, DeliveryInfo, Product } from "./types/product";
@@ -47,25 +48,68 @@ interface CartProps {
   navigation: SimpleNavigation;
 }
 
-const getItemDeliveryInfo = (
-  itemId: string,
-  quantity: number,
-): DeliveryInfo => {
-  let cost = 350.0;
-  let time = "1-3 дня";
-  const numericId = parseInt(itemId) || 0;
-  if (numericId % 3 === 0) {
-    cost = 250.0;
-    time = "2-4 дня";
-  } else if (numericId % 2 === 0) {
-    cost = 400.0;
-    time = "1 день";
+const DELIVERY_TIMES = ["1-3 дня", "2-4 дня", "1 день"];
+const DEFAULT_SHIPPING_PRICE = 350;
+
+/** Pick a random delivery time for display (placeholder, not from backend). */
+const getRandomDeliveryTime = (itemId: string): string => {
+  const hash = (parseInt(itemId, 10) || 0) % DELIVERY_TIMES.length;
+  return DELIVERY_TIMES[hash] ?? "1-3 дня";
+};
+
+/** Map brand id -> Brand (for shipping_price, min_free_shipping). */
+type BrandMap = Record<number, api.Brand>;
+
+/**
+ * Compute delivery info for cart items using brand profile data and free shipping policy.
+ * Shipping cost comes from brand.shipping_price; free shipping when brand subtotal >= min_free_shipping.
+ * Delivery time is a random placeholder.
+ */
+const computeDeliveryForItems = (
+  items: Array<{
+    brand_id?: number;
+    price: number;
+    quantity: number;
+    id: string;
+    cartItemId?: string;
+  }>,
+  brandsMap: BrandMap,
+): DeliveryInfo[] => {
+  // Per-brand: subtotal and shipping cost (0 if free shipping)
+  const brandSubtotals: Record<number, number> = {};
+  const brandShippingCosts: Record<number, number> = {};
+
+  for (const item of items) {
+    const bid = item.brand_id ?? 0;
+    const subtotal = item.price * (item.quantity ?? 1);
+    brandSubtotals[bid] = (brandSubtotals[bid] ?? 0) + subtotal;
   }
-  if (quantity > 1) {
-    const adjustedCost = Math.round(cost * (1 + (quantity - 1) * 0.1));
-    cost = adjustedCost;
+
+  for (const bid of Object.keys(brandSubtotals).map(Number)) {
+    const subtotal = brandSubtotals[bid];
+    const brand = brandsMap[bid];
+    const minFree = brand?.min_free_shipping;
+    const shippingPrice = brand?.shipping_price ?? DEFAULT_SHIPPING_PRICE;
+    if (minFree != null && subtotal >= minFree) {
+      brandShippingCosts[bid] = 0;
+    } else {
+      brandShippingCosts[bid] = shippingPrice;
+    }
   }
-  return { cost, estimatedTime: time };
+
+  // Allocate brand shipping to items proportionally, return in same order
+  return items.map((item) => {
+    const bid = item.brand_id ?? 0;
+    const subtotal = item.price * (item.quantity ?? 1);
+    const brandSubtotal = brandSubtotals[bid] ?? subtotal;
+    const brandShipping = brandShippingCosts[bid] ?? DEFAULT_SHIPPING_PRICE;
+    const allocatedCost =
+      brandSubtotal > 0 ? (subtotal / brandSubtotal) * brandShipping : 0;
+    return {
+      cost: Math.round(allocatedCost * 100) / 100,
+      estimatedTime: getRandomDeliveryTime(item.id),
+    };
+  });
 };
 
 interface CancelButtonProps {
@@ -136,11 +180,25 @@ const CartItemImage = ({ item }: { item: CartItem }) => {
 
 const Cart = ({ navigation }: CartProps) => {
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
+  const [brandsMap, setBrandsMap] = useState<BrandMap>({});
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showConfirmation, setShowConfirmation] = useState(false);
   const [paymentError, setPaymentError] = useState<string | null>(null);
   const { width } = Dimensions.get("window");
+
+  // Load brands for shipping_price and min_free_shipping
+  useEffect(() => {
+    getBrands()
+      .then((brands) => {
+        const map: BrandMap = {};
+        for (const b of brands) {
+          map[b.id] = b;
+        }
+        setBrandsMap(map);
+      })
+      .catch((e) => console.warn("Cart: failed to load brands", e));
+  }, []);
 
   useEffect(() => {
     const handleDeepLink = async (event: { url: string }) => {
@@ -179,7 +237,18 @@ const Cart = ({ navigation }: CartProps) => {
       }
       setIsLoading(true);
       const items = [...global.cartStorage.getItems()];
-      const itemsWithDelivery = items.map((item: any) => {
+      const rawItems = items.map((item: any) => ({
+        ...item,
+        id: item.id,
+        brand_id: item.brand_id,
+        price: item.price,
+        quantity: item.quantity ?? 1,
+        cartItemId:
+          item.cartItemId ||
+          `${item.id}-${item.size}-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
+      }));
+      const deliveries = computeDeliveryForItems(rawItems, brandsMap);
+      const itemsWithDelivery: CartItem[] = rawItems.map((item: any, idx: number) => {
         const newItem: CartItem = {
           ...item,
           id: item.id,
@@ -189,10 +258,9 @@ const Cart = ({ navigation }: CartProps) => {
           size: item.size,
           quantity: item.quantity ?? 1,
           isLiked: item.isLiked,
-          cartItemId:
-            item.cartItemId ||
-            `${item.id}-${item.size}-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
+          cartItemId: item.cartItemId,
           brand_name: item.brand_name,
+          brand_id: item.brand_id,
           brand_return_policy: item.brand_return_policy ?? "",
           description: item.description ?? "",
           materials: item.materials ?? "",
@@ -202,9 +270,9 @@ const Cart = ({ navigation }: CartProps) => {
           variants: item.variants,
           article_number: item.article_number,
           product_variant_id: item.product_variant_id,
+          delivery: deliveries[idx] ?? { cost: DEFAULT_SHIPPING_PRICE, estimatedTime: "1-3 дня" },
         };
-        const delivery = getItemDeliveryInfo(newItem.id, newItem.quantity!);
-        return { ...newItem, delivery } as CartItem;
+        return newItem;
       });
       setCartItems(itemsWithDelivery);
       setIsLoading(false);
@@ -225,24 +293,25 @@ const Cart = ({ navigation }: CartProps) => {
                 ),
             );
           if (!hasChanges) return prevItems;
-          return items.map((newItem: any) => {
-            const existingItem = prevItems.find(
-              (item) => item.cartItemId === newItem.cartItemId,
-            );
-            const delivery =
-              existingItem?.delivery ??
-              getItemDeliveryInfo(newItem.id, newItem.quantity ?? 1);
-            return {
-              ...newItem,
-              delivery,
-              product_variant_id: newItem.product_variant_id,
-            } as CartItem;
-          });
+          const rawItems = items.map((item: any) => ({
+            ...item,
+            id: item.id,
+            brand_id: item.brand_id,
+            price: item.price,
+            quantity: item.quantity ?? 1,
+            cartItemId: item.cartItemId,
+          }));
+          const deliveries = computeDeliveryForItems(rawItems, brandsMap);
+          return items.map((newItem: any, idx: number) => ({
+            ...newItem,
+            delivery: deliveries[idx] ?? { cost: DEFAULT_SHIPPING_PRICE, estimatedTime: "1-3 дня" },
+            product_variant_id: newItem.product_variant_id,
+          })) as CartItem[];
         });
       }
     }, 1000);
     return () => clearInterval(intervalId);
-  }, [global.cartStorage]);
+  }, [global.cartStorage, brandsMap]);
 
   // Listen for session events to clear cart when user logs out or session expires
   useEffect(() => {
@@ -282,7 +351,8 @@ const Cart = ({ navigation }: CartProps) => {
 
   const calculateRawTotal = () =>
     cartItems.reduce(
-      (total, item) => total + item.price + item.delivery.cost,
+      (total, item) =>
+        total + item.price * (item.quantity ?? 1) + item.delivery.cost,
       0,
     );
   const calculateTotal = () => `${calculateRawTotal().toFixed(2)} ₽`;
@@ -354,8 +424,7 @@ const Cart = ({ navigation }: CartProps) => {
         return;
       }
 
-      const currentUserProfile = await retrieveUserProfile();
-      console.log(cartItems[0]);
+      await retrieveUserProfile();
       const receiptItems = cartItems
         .filter((item) => item.product_variant_id)
         .map((item) => ({
@@ -368,21 +437,23 @@ const Cart = ({ navigation }: CartProps) => {
         return;
       }
 
-      const paymentDetails: api.PaymentCreateRequest = {
-        amount: {
-          value: totalAmount,
-          currency: "RUB",
-        },
-        description: `Order #${Math.floor(Math.random() * 1000)}`,
-        returnUrl: "polkamobile://payment-callback", // Generic base deep link
-        items: receiptItems,
-      };
+      // TEST MODE: Create order in database (no payment platform)
+      await api.createOrderTest(totalAmount, receiptItems);
 
-      const { confirmation_url, payment_id } =
-        await api.createPayment(paymentDetails);
-      if (!confirmation_url)
-        throw new Error("Failed to retrieve confirmation URL.");
-      await WebBrowser.openBrowserAsync(confirmation_url);
+      // Clear cart immediately after successful order (in-memory + persistent storage)
+      if (global.cartStorage) {
+        cartItems.forEach(
+          (item) =>
+            item.cartItemId && global.cartStorage.removeItem(item.cartItemId),
+        );
+        setCartItems([]);
+      }
+      setShowConfirmation(true);
+
+      // Payment platform calls (disabled in test mode):
+      // const paymentDetails: api.PaymentCreateRequest = { ... };
+      // const { confirmation_url } = await api.createPayment(paymentDetails);
+      // await WebBrowser.openBrowserAsync(confirmation_url);
     } catch (error) {
       setPaymentError(
         error instanceof Error ? error.message : "An unknown error occurred.",

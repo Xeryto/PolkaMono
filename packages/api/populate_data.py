@@ -1,6 +1,6 @@
 from sqlalchemy.orm import Session
 from database import SessionLocal
-from models import Brand, Style, Product, ProductStyle, Category, ProductVariant, ProductColorVariant, User, Order, OrderItem, OrderStatus, Payment, UserProfile, UserShippingInfo, UserPreferences, Gender, PrivacyOption, AuthAccount
+from models import Brand, Style, Product, ProductStyle, Category, ProductVariant, ProductColorVariant, User, Order, OrderItem, OrderStatus, Payment, UserProfile, UserShippingInfo, UserPreferences, Gender, PrivacyOption, AuthAccount, Checkout
 import uuid
 import re
 import random
@@ -961,22 +961,43 @@ def populate_initial_data():
                     delivery_address_parts.append(f"кв. {test_shipping.apartment_number}")
                 delivery_address = ", ".join(delivery_address_parts) if delivery_address_parts else None
                 
-                # Create Order 1: Nike sneakers
+                # Create Order 1: Nike sneakers (Ozon-style: Checkout -> Order -> OrderItem -> Payment)
                 if nike_variant_m:
-                    order1 = Order(
-                        order_number="ORD-001",
+                    subtotal1 = 150.00
+                    shipping1 = 0.0 if (nike_brand.min_free_shipping and subtotal1 >= nike_brand.min_free_shipping) else (float(nike_brand.shipping_price or 0))
+                    total1 = subtotal1 + shipping1
+
+                    checkout1 = Checkout(
+                        id=str(uuid.uuid4()),
                         user_id=test_user.id,
-                        total_amount=150.00,
-                        status=OrderStatus.PAID,
-                        tracking_number="TN123456789",
-                        tracking_link="https://track.example.com/TN123456789",
-                        # Store delivery information at order creation time
+                        total_amount=total1,
                         delivery_full_name=test_profile.full_name if test_profile else None,
                         delivery_email=test_shipping.delivery_email if test_shipping else None,
                         delivery_phone=test_shipping.phone if test_shipping else None,
                         delivery_address=delivery_address,
                         delivery_city=test_shipping.city if test_shipping else None,
                         delivery_postal_code=test_shipping.postal_code if test_shipping else None
+                    )
+                    db.add(checkout1)
+                    db.flush()
+
+                    order1 = Order(
+                        order_number="ORD-001",
+                        checkout_id=checkout1.id,
+                        brand_id=nike_brand.id,
+                        user_id=test_user.id,
+                        subtotal=subtotal1,
+                        shipping_cost=shipping1,
+                        total_amount=total1,
+                        status=OrderStatus.PAID,
+                        tracking_number="TN123456789",
+                        tracking_link="https://track.example.com/TN123456789",
+                        delivery_full_name=checkout1.delivery_full_name,
+                        delivery_email=checkout1.delivery_email,
+                        delivery_phone=checkout1.delivery_phone,
+                        delivery_address=checkout1.delivery_address,
+                        delivery_city=checkout1.delivery_city,
+                        delivery_postal_code=checkout1.delivery_postal_code
                     )
                     db.add(order1)
                     db.flush()
@@ -992,30 +1013,52 @@ def populate_initial_data():
 
                     payment1 = Payment(
                         id=str(uuid.uuid4()),
+                        checkout_id=checkout1.id,
                         order_id=order1.id,
-                        amount=150.00,
+                        amount=total1,
                         currency="RUB",
                         status="completed"
                     )
                     db.add(payment1)
                     print("Created Order 1: Nike Air Max 270")
 
-                # Create Order 2: Adidas sneakers
+                # Create Order 2: Adidas sneakers (Ozon-style)
                 if adidas_variant_s:
-                    order2 = Order(
-                        order_number="ORD-002",
+                    subtotal2 = 180.00
+                    shipping2 = 0.0 if (adidas_brand.min_free_shipping and subtotal2 >= adidas_brand.min_free_shipping) else (float(adidas_brand.shipping_price or 0))
+                    total2 = subtotal2 + shipping2
+
+                    checkout2 = Checkout(
+                        id=str(uuid.uuid4()),
                         user_id=test_user.id,
-                        total_amount=180.00,
-                        status=OrderStatus.PENDING,
-                        tracking_number=None,
-                        tracking_link=None,
-                        # Store delivery information at order creation time
+                        total_amount=total2,
                         delivery_full_name=test_profile.full_name if test_profile else None,
                         delivery_email=test_shipping.delivery_email if test_shipping else None,
                         delivery_phone=test_shipping.phone if test_shipping else None,
                         delivery_address=delivery_address,
                         delivery_city=test_shipping.city if test_shipping else None,
                         delivery_postal_code=test_shipping.postal_code if test_shipping else None
+                    )
+                    db.add(checkout2)
+                    db.flush()
+
+                    order2 = Order(
+                        order_number="ORD-002",
+                        checkout_id=checkout2.id,
+                        brand_id=adidas_brand.id,
+                        user_id=test_user.id,
+                        subtotal=subtotal2,
+                        shipping_cost=shipping2,
+                        total_amount=total2,
+                        status=OrderStatus.PENDING,
+                        tracking_number=None,
+                        tracking_link=None,
+                        delivery_full_name=checkout2.delivery_full_name,
+                        delivery_email=checkout2.delivery_email,
+                        delivery_phone=checkout2.delivery_phone,
+                        delivery_address=checkout2.delivery_address,
+                        delivery_city=checkout2.delivery_city,
+                        delivery_postal_code=checkout2.delivery_postal_code
                     )
                     db.add(order2)
                     db.flush()
@@ -1031,30 +1074,52 @@ def populate_initial_data():
 
                     payment2 = Payment(
                         id=str(uuid.uuid4()),
+                        checkout_id=checkout2.id,
                         order_id=order2.id,
-                        amount=180.00,
+                        amount=total2,
                         currency="RUB",
                         status="pending"
                     )
                     db.add(payment2)
                     print("Created Order 2: Adidas Ultraboost 22")
 
-                # Create Order 3: Zara dress
+                # Create Order 3: Zara dress (Ozon-style)
                 if zara_variant_l:
-                    order3 = Order(
-                        order_number="ORD-003",
+                    subtotal3 = 79.99
+                    shipping3 = 0.0 if (zara_brand.min_free_shipping and subtotal3 >= zara_brand.min_free_shipping) else (float(zara_brand.shipping_price or 0))
+                    total3 = subtotal3 + shipping3
+
+                    checkout3 = Checkout(
+                        id=str(uuid.uuid4()),
                         user_id=test_user.id,
-                        total_amount=79.99,
-                        status=OrderStatus.PAID,
-                        tracking_number="TN987654321",
-                        tracking_link="https://track.example.com/TN987654321",
-                        # Store delivery information at order creation time
+                        total_amount=total3,
                         delivery_full_name=test_profile.full_name if test_profile else None,
                         delivery_email=test_shipping.delivery_email if test_shipping else None,
                         delivery_phone=test_shipping.phone if test_shipping else None,
                         delivery_address=delivery_address,
                         delivery_city=test_shipping.city if test_shipping else None,
                         delivery_postal_code=test_shipping.postal_code if test_shipping else None
+                    )
+                    db.add(checkout3)
+                    db.flush()
+
+                    order3 = Order(
+                        order_number="ORD-003",
+                        checkout_id=checkout3.id,
+                        brand_id=zara_brand.id,
+                        user_id=test_user.id,
+                        subtotal=subtotal3,
+                        shipping_cost=shipping3,
+                        total_amount=total3,
+                        status=OrderStatus.PAID,
+                        tracking_number="TN987654321",
+                        tracking_link="https://track.example.com/TN987654321",
+                        delivery_full_name=checkout3.delivery_full_name,
+                        delivery_email=checkout3.delivery_email,
+                        delivery_phone=checkout3.delivery_phone,
+                        delivery_address=checkout3.delivery_address,
+                        delivery_city=checkout3.delivery_city,
+                        delivery_postal_code=checkout3.delivery_postal_code
                     )
                     db.add(order3)
                     db.flush()
@@ -1070,8 +1135,9 @@ def populate_initial_data():
 
                     payment3 = Payment(
                         id=str(uuid.uuid4()),
+                        checkout_id=checkout3.id,
                         order_id=order3.id,
-                        amount=79.99,
+                        amount=total3,
                         currency="RUB",
                         status="completed"
                     )
@@ -1111,13 +1177,15 @@ def populate_initial_data():
                             # Check if order with this order_number already exists to avoid duplicates on re-run
                             existing_order = db.query(Order).filter(Order.order_number == order_data["order_num"]).first()
                             if not existing_order:
-                                order = Order(
-                                    order_number=order_data["order_num"],
+                                brand = product.brand
+                                subtotal = order_data["price"]
+                                shipping = 0.0 if (brand.min_free_shipping and subtotal >= brand.min_free_shipping) else (float(brand.shipping_price or 0))
+                                total = subtotal + shipping
+
+                                checkout = Checkout(
+                                    id=str(uuid.uuid4()),
                                     user_id=test_user.id,
-                                    total_amount=order_data["price"],
-                                    status=OrderStatus.PAID,
-                                    tracking_number=f"TN{order_num_counter:09d}",
-                                    tracking_link=f"https://track.example.com/TN{order_num_counter:09d}",
+                                    total_amount=total,
                                     delivery_full_name=test_profile.full_name if test_profile else None,
                                     delivery_email=test_shipping.delivery_email if test_shipping else None,
                                     delivery_phone=test_shipping.phone if test_shipping else None,
@@ -1125,9 +1193,30 @@ def populate_initial_data():
                                     delivery_city=test_shipping.city if test_shipping else None,
                                     delivery_postal_code=test_shipping.postal_code if test_shipping else None
                                 )
+                                db.add(checkout)
+                                db.flush()
+
+                                order = Order(
+                                    order_number=order_data["order_num"],
+                                    checkout_id=checkout.id,
+                                    brand_id=brand.id,
+                                    user_id=test_user.id,
+                                    subtotal=subtotal,
+                                    shipping_cost=shipping,
+                                    total_amount=total,
+                                    status=OrderStatus.PAID,
+                                    tracking_number=f"TN{order_num_counter:09d}",
+                                    tracking_link=f"https://track.example.com/TN{order_num_counter:09d}",
+                                    delivery_full_name=checkout.delivery_full_name,
+                                    delivery_email=checkout.delivery_email,
+                                    delivery_phone=checkout.delivery_phone,
+                                    delivery_address=checkout.delivery_address,
+                                    delivery_city=checkout.delivery_city,
+                                    delivery_postal_code=checkout.delivery_postal_code
+                                )
                                 db.add(order)
                                 db.flush()
-                                
+
                                 order_item = OrderItem(
                                     order_id=order.id,
                                     product_variant_id=variant.id,
@@ -1136,11 +1225,12 @@ def populate_initial_data():
                                     sku=generate_order_item_sku(product.name, order_data["size"], order_num_counter)
                                 )
                                 db.add(order_item)
-                                
+
                                 payment = Payment(
                                     id=str(uuid.uuid4()),
+                                    checkout_id=checkout.id,
                                     order_id=order.id,
-                                    amount=order_data["price"],
+                                    amount=total,
                                     currency="RUB",
                                     status="completed"
                                 )

@@ -35,6 +35,18 @@ class PaymentCreate(BaseModel):
             raise ValueError('returnUrl must be a valid URL containing ://')
         return v
 
+
+class OrderTestCreate(BaseModel):
+    """Request body for test order creation (no payment gateway)."""
+    amount: Amount
+    description: str
+    items: List[CartItem]
+
+
+class OrderTestCreateResponse(BaseModel):
+    order_id: str
+
+
 class Delivery(BaseModel):
     cost: float
     estimatedTime: str
@@ -64,6 +76,11 @@ class UpdateTrackingRequest(BaseModel):
     tracking_number: Optional[str] = None # Make optional for partial updates
     tracking_link: Optional[str] = None # NEW
 
+# Order status: canonical values returned by API (lowercase).
+# Must stay in sync with OrderStatus enum in models.py and frontend/mobile libs.
+ORDER_STATUS_VALUES = ("pending", "paid", "shipped", "returned", "canceled")
+
+
 class OrderSummaryResponse(BaseModel):
     """Lightweight order for list view (no items or delivery details)."""
     id: str
@@ -71,7 +88,7 @@ class OrderSummaryResponse(BaseModel):
     total_amount: float
     currency: str
     date: datetime
-    status: str
+    status: str  # One of: pending, paid, shipped, returned, canceled
     tracking_number: Optional[str] = None
     tracking_link: Optional[str] = None
 
@@ -87,10 +104,42 @@ class OrderResponse(BaseModel):
     date: datetime
     status: str
     tracking_number: Optional[str] = None
-    tracking_link: Optional[str] = None # NEW
+    tracking_link: Optional[str] = None
+    shipping_cost: float = 0.0  # Order-level shipping (per brand); do not sum item delivery.cost
+    items: List[OrderItemResponse]
+    delivery_full_name: Optional[str] = None
+    delivery_email: Optional[str] = None
+    delivery_phone: Optional[str] = None
+    delivery_address: Optional[str] = None
+    delivery_city: Optional[str] = None
+    delivery_postal_code: Optional[str] = None
+
+    class Config:
+        from_attributes = True
+
+
+class OrderPartResponse(BaseModel):
+    """One brand's order within a checkout (for CheckoutResponse)."""
+    id: str
+    number: str
+    brand_id: int
+    brand_name: Optional[str] = None
+    subtotal: float
+    shipping_cost: float
+    total_amount: float
+    status: str
+    tracking_number: Optional[str] = None
+    tracking_link: Optional[str] = None
     items: List[OrderItemResponse]
 
-    # Delivery information stored at order creation time
+
+class CheckoutResponse(BaseModel):
+    """Full checkout (Ozon-style) with nested orders per brand."""
+    id: str
+    total_amount: float
+    currency: str
+    date: datetime
+    orders: List[OrderPartResponse]
     delivery_full_name: Optional[str] = None
     delivery_email: Optional[str] = None
     delivery_phone: Optional[str] = None

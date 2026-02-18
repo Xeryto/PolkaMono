@@ -379,6 +379,8 @@ export interface Brand {
   slug: string;
   logo: string;
   description: string;
+  shipping_price?: number;
+  min_free_shipping?: number;
 }
 
 export interface Style {
@@ -1128,6 +1130,21 @@ export const getPaymentStatus = async (paymentId: string): Promise<PaymentStatus
   return await apiRequest(`/api/v1/payments/status?payment_id=${paymentId}`, 'GET');
 };
 
+/** Create order in test mode (no payment gateway). Persists to DB. */
+export const createOrderTest = async (
+  amount: number,
+  items: ReceiptItem[]
+): Promise<{ order_id: string }> => {
+  return await apiRequest('/api/v1/orders/test', 'POST', {
+    amount: { value: amount, currency: 'RUB' },
+    description: `Order #${Math.floor(Math.random() * 1000)}`,
+    items: items.map((it) => ({
+      product_variant_id: it.product_variant_id,
+      quantity: it.quantity,
+    })),
+  });
+};
+
 // Order History
 
 // Get user's favorite products
@@ -1191,8 +1208,10 @@ export interface OrderSummary {
   tracking_link?: string;
 }
 
-/** Full order with line items (from GET /orders/{id}). */
+/** Full order with line items (from GET /orders/{id} for brand). */
 export interface Order extends OrderSummary {
+  /** Order-level shipping (per brand). Item delivery.cost is allocated share; sum equals this. */
+  shipping_cost?: number;
   items: OrderItem[];
   delivery_full_name?: string;
   delivery_email?: string;
@@ -1202,12 +1221,77 @@ export interface Order extends OrderSummary {
   delivery_postal_code?: string;
 }
 
+/** One brand's order within a checkout (Ozon-style). */
+export interface OrderPart {
+  id: string;
+  number: string;
+  brand_id: number;
+  brand_name?: string;
+  subtotal: number;
+  shipping_cost: number;
+  total_amount: number;
+  status: string;
+  tracking_number?: string;
+  tracking_link?: string;
+  items: OrderItem[];
+}
+
+/** Full checkout with nested orders per brand (Ozon-style, user view). */
+export interface CheckoutResponse {
+  id: string;
+  total_amount: number;
+  currency: string;
+  date: string;
+  orders: OrderPart[];
+  delivery_full_name?: string;
+  delivery_email?: string;
+  delivery_phone?: string;
+  delivery_address?: string;
+  delivery_city?: string;
+  delivery_postal_code?: string;
+}
+
+export type OrderOrCheckout = Order | CheckoutResponse;
+
+export function isCheckoutResponse(r: OrderOrCheckout): r is CheckoutResponse {
+  return "orders" in r && Array.isArray((r as CheckoutResponse).orders);
+}
+
+/** Order status values (API returns lowercase). See packages/api/models.py OrderStatus. */
+export const ORDER_STATUS = {
+  PENDING: "pending",
+  PAID: "paid",
+  SHIPPED: "shipped",
+  RETURNED: "returned",
+  CANCELED: "canceled",
+} as const;
+
+export function getOrderStatusLabel(status: string | undefined): string {
+  if (!status) return "неизвестно";
+  const s = String(status).toLowerCase();
+  switch (s) {
+    case "pending":
+      return "ожидание";
+    case "paid":
+      return "оплачен";
+    case "shipped":
+      return "отправлен";
+    case "returned":
+      return "возвращён";
+    case "canceled":
+      return "отменён";
+    default:
+      return "неизвестно";
+  }
+}
+
 export const getOrders = async (): Promise<OrderSummary[]> => {
   return await apiRequest('/api/v1/orders', 'GET');
 };
 
-export const getOrderById = async (orderId: string): Promise<Order> => {
-  return await apiRequest(`/api/v1/orders/${orderId}`, 'GET');
+/** Fetch full checkout details (user's order). List from getOrders() returns checkout ids; use this to load detail. */
+export const getOrderById = async (checkoutId: string): Promise<OrderOrCheckout> => {
+  return await apiRequest(`/api/v1/checkouts/${checkoutId}`, 'GET');
 };
 
 export const getProductDetails = async (productId: string): Promise<Product> => {

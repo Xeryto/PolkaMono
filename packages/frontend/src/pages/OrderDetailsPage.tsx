@@ -16,14 +16,21 @@ import { useToast } from "@/hooks/use-toast"; // NEW Import
 import { formatCurrency } from "@/lib/currency";
 import * as api from "@/services/api"; // Import api
 import { useAuth } from "@/context/AuthContext"; // Import useAuth
+import {
+  getOrderStatusLabel,
+  getOrderStatusColor,
+  ORDER_STATUS,
+} from "@/lib/orderStatus";
 
 interface OrderDetailsPageProps {
-  order: api.OrderResponse;
+  order: api.OrderResponse;  // Brand view: single order
   onBack: () => void;
+  onOrderUpdated?: () => void;
 }
 
-export function OrderDetailsPage({ order, onBack }: OrderDetailsPageProps) {
-  const [isModalOpen, setIsModalOpen] = useState(false); // NEW State
+export function OrderDetailsPage({ order, onBack, onOrderUpdated }: OrderDetailsPageProps) {
+  const [orderStatus, setOrderStatus] = useState(order.status);
+  const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedOrderItem, setSelectedOrderItem] =
     useState<api.OrderItemResponse | null>(null); // Explicitly type selectedOrderItem
   const [trackingNumberInput, setTrackingNumberInput] = useState(
@@ -41,6 +48,10 @@ export function OrderDetailsPage({ order, onBack }: OrderDetailsPageProps) {
   const { toast } = useToast(); // NEW
   const { token } = useAuth(); // Get token from useAuth
 
+  useEffect(() => {
+    setOrderStatus(order.status);
+  }, [order.status, order.id]);
+
   // Load delivery information from the order itself
   useEffect(() => {
     if (order) {
@@ -57,19 +68,6 @@ export function OrderDetailsPage({ order, onBack }: OrderDetailsPageProps) {
       setIsLoadingShoppingInfo(false);
     }
   }, [order]);
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "delivered":
-        return "bg-green-900/20 text-green-300 border-green-700/30";
-      case "shipped":
-        return "bg-blue-900/20 text-blue-300 border-blue-700/30";
-      case "processing":
-        return "bg-yellow-900/20 text-yellow-300 border-yellow-700/30";
-      default:
-        return "bg-gray-900/20 text-gray-300 border-gray-700/30";
-    }
-  };
 
   const handleItemClick = (item: any) => {
     // NEW Handler
@@ -116,6 +114,7 @@ export function OrderDetailsPage({ order, onBack }: OrderDetailsPageProps) {
         },
         token
       ); // Pass token
+      onOrderUpdated?.();
       toast({
         title: "Success",
         description: "Tracking information updated successfully.",
@@ -125,6 +124,28 @@ export function OrderDetailsPage({ order, onBack }: OrderDetailsPageProps) {
       toast({
         title: "Error",
         description: error.message || "Failed to update tracking information.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSavingTracking(false);
+    }
+  };
+
+  const handleMarkReturned = async () => {
+    if (!token) return;
+    setIsSavingTracking(true);
+    try {
+      await api.markOrderReturned(order.id, token);
+      setOrderStatus(ORDER_STATUS.RETURNED);
+      onOrderUpdated?.();
+      toast({
+        title: "Success",
+        description: "Order marked as returned. Stock has been restored.",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to mark order as returned.",
         variant: "destructive",
       });
     } finally {
@@ -254,9 +275,24 @@ export function OrderDetailsPage({ order, onBack }: OrderDetailsPageProps) {
             <div>
               <CardTitle>Заказ № {order.number}</CardTitle>
             </div>
-            <Badge className={getStatusColor(order.status)} variant="outline">
-              {order.status}
-            </Badge>
+            <div className="flex items-center gap-2">
+              <Badge
+                className={getOrderStatusColor(orderStatus)}
+                variant="outline"
+              >
+                {getOrderStatusLabel(orderStatus)}
+              </Badge>
+              {orderStatus === ORDER_STATUS.SHIPPED && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleMarkReturned}
+                  disabled={isSavingTracking}
+                >
+                  {isSavingTracking ? "Saving..." : "Mark as returned"}
+                </Button>
+              )}
+            </div>
           </div>
         </CardHeader>
         <CardContent>
