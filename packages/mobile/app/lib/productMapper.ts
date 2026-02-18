@@ -1,16 +1,14 @@
 /**
  * Utility functions for mapping API Product objects to CardItem objects.
  * Products have color_variants; CardItem shows one color at a time (selected_color_index).
+ * Products are required to have at least one image (general or per color); no default placeholders.
  */
 
 import * as api from '../services/api';
 import { CardItem, ColorVariant } from '../types/product';
 
-const fallbackImage = require('../assets/Vision.png');
-const vision2Image = require('../assets/Vision2.png');
-
 function mapImages(urls: string[]) {
-  if (!urls || urls.length === 0) return [fallbackImage, vision2Image];
+  if (!urls || urls.length === 0) return [];
   return urls.map((uri) => ({ uri }));
 }
 
@@ -35,7 +33,7 @@ export function mapProductToCardItem(product: api.Product, index?: number): Card
   const generalUrls = product.general_images || [];
   const colorUrls = selected?.images || [];
   const combinedUrls = [...generalUrls, ...colorUrls];
-  const images = combinedUrls.length > 0 ? mapImages(combinedUrls) : (selected ? mapImages(selected.images) : [fallbackImage, vision2Image]);
+  const images = mapImages(combinedUrls.length > 0 ? combinedUrls : (selected?.images || []));
   const variants = selected?.variants ?? [];
   const available_sizes = variants.map((v) => v.size);
   const color = selected?.color_name ?? '';
@@ -85,10 +83,7 @@ export function getCardItemForColorIndex(card: CardItem, colorIndex: number): {
   }
   const colorUrls = cv.images ?? [];
   const combined = [...generalUrls, ...colorUrls];
-  const images =
-    combined.length > 0
-      ? combined.map((uri) => ({ uri }))
-      : [fallbackImage, vision2Image];
+  const images = combined.length > 0 ? combined.map((uri) => ({ uri })) : [];
   const variants = cv.variants ?? [];
   return {
     images,

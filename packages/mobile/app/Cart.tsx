@@ -118,16 +118,18 @@ const CartItemImage = ({ item }: { item: CartItem }) => {
       : 1;
   return (
     <View style={styles.container}>
-      <Image
-        source={
-          item.images && item.images.length > 0
-            ? item.images[0]
-            : require("./assets/Vision.png")
-        }
-        style={[styles.itemImage, { aspectRatio }]}
-        resizeMode="contain"
-        onLoad={onImageLoad}
-      />
+      {item.images && item.images.length > 0 ? (
+        <Image
+          source={item.images[0]}
+          style={[styles.itemImage, { aspectRatio }]}
+          resizeMode="contain"
+          onLoad={onImageLoad}
+        />
+      ) : (
+        <View style={[styles.itemImage, styles.noProductImagePlaceholder]}>
+          <Text style={styles.noProductImageText}>Нет изображения</Text>
+        </View>
+      )}
     </View>
   );
 };
@@ -692,6 +694,17 @@ const styles = StyleSheet.create({
     position: "absolute",
     top: 0,
     left: 0,
+  },
+  noProductImagePlaceholder: {
+    backgroundColor: "rgba(0,0,0,0.06)",
+    justifyContent: "center",
+    alignItems: "center",
+    minHeight: 80,
+  },
+  noProductImageText: {
+    fontFamily: "IgraSans",
+    fontSize: 12,
+    color: "rgba(0,0,0,0.4)",
   },
   imageContainer: {
     width: "30%",

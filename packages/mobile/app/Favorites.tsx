@@ -921,7 +921,13 @@ const Favorites = ({ navigation }: FavoritesProps) => {
               handleNavigate("Home", item, true);
             }}
           >
-            <Image source={item.images[0]} style={styles.productItemImage} />
+            {item.images && item.images.length > 0 ? (
+              <Image source={item.images[0]} style={styles.productItemImage} />
+            ) : (
+              <View style={[styles.productItemImage, styles.noProductImagePlaceholder]}>
+                <Text style={styles.noProductImageText}>Нет изображения</Text>
+              </View>
+            )}
             <View style={styles.productItemInfo}>
               <Text style={styles.productItemName} numberOfLines={1}>
                 {item.brand_name}
@@ -950,7 +956,13 @@ const Favorites = ({ navigation }: FavoritesProps) => {
             handleNavigate("Home", item, true);
           }}
         >
-          <Image source={item.images[0]} style={styles.productItemImage} />
+          {item.images && item.images.length > 0 ? (
+              <Image source={item.images[0]} style={styles.productItemImage} />
+            ) : (
+              <View style={[styles.productItemImage, styles.noProductImagePlaceholder]}>
+                <Text style={styles.noProductImageText}>Нет изображения</Text>
+              </View>
+            )}
           <View style={styles.productItemInfo}>
             <Text style={styles.productItemName} numberOfLines={1}>
               {item.brand_name}
@@ -1069,10 +1081,16 @@ const Favorites = ({ navigation }: FavoritesProps) => {
                   });
                 }}
               >
-                <Image
-                  source={item.images[0]}
-                  style={styles.itemImage as ImageStyle}
-                />
+                {item.images && item.images.length > 0 ? (
+                  <Image
+                    source={item.images[0]}
+                    style={styles.itemImage as ImageStyle}
+                  />
+                ) : (
+                  <View style={[styles.itemImage, styles.noProductImagePlaceholder]}>
+                    <Text style={styles.noProductImageText}>Нет изображения</Text>
+                  </View>
+                )}
                 <View style={styles.itemInfo}>
                   <Text style={styles.itemName} numberOfLines={1}>
                     {item.brand_name}
@@ -1103,7 +1121,13 @@ const Favorites = ({ navigation }: FavoritesProps) => {
                 });
               }}
             >
-              <Image source={item.images[0]} style={styles.itemImage} />
+              {item.images && item.images.length > 0 ? (
+                <Image source={item.images[0]} style={styles.itemImage} />
+              ) : (
+                <View style={[styles.itemImage, styles.noProductImagePlaceholder]}>
+                  <Text style={styles.noProductImageText}>Нет изображения</Text>
+                </View>
+              )}
               <View style={styles.itemInfo}>
                 <Text style={styles.itemName} numberOfLines={1}>
                   {item.brand_name}
@@ -2508,6 +2532,18 @@ const styles = StyleSheet.create({
     width: "73%",
     height: "73%",
     resizeMode: "contain",
+  },
+  noProductImagePlaceholder: {
+    backgroundColor: "rgba(0,0,0,0.06)",
+    justifyContent: "center",
+    alignItems: "center",
+    width: "73%",
+    height: "73%",
+  },
+  noProductImageText: {
+    fontFamily: "IgraSans",
+    fontSize: 12,
+    color: "rgba(0,0,0,0.4)",
   },
   productItemInfo: {
     bottom: -5,

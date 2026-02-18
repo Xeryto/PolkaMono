@@ -1657,7 +1657,7 @@ const MainPage = ({ navigation, route }: MainPageProps) => {
                     );
                   })}
                 </ScrollView>
-              ) : (
+              ) : card.images.length > 0 ? (
                 <View style={styles.imagePressable}>
                   <Image
                     key={card.id + "-" + currentImageIndex}
@@ -1665,6 +1665,10 @@ const MainPage = ({ navigation, route }: MainPageProps) => {
                     style={styles.image}
                     resizeMode="contain"
                   />
+                </View>
+              ) : (
+                <View style={[styles.imagePressable, styles.imagePlaceholder]}>
+                  <Text style={styles.imagePlaceholderText}>Нет изображения</Text>
                 </View>
               )}
             </View>
@@ -1925,11 +1929,17 @@ const MainPage = ({ navigation, route }: MainPageProps) => {
             style={styles.cardBackHeader}
             {...headerPanResponder.panHandlers}
           >
-            <Image
-              source={card.images[0]}
-              style={styles.cardBackImage}
-              resizeMode="contain"
-            />
+            {card.images.length > 0 ? (
+              <Image
+                source={card.images[0]}
+                style={styles.cardBackImage}
+                resizeMode="contain"
+              />
+            ) : (
+              <View style={[styles.cardBackImage, styles.imagePlaceholder]}>
+                <Text style={styles.imagePlaceholderText}>Нет изображения</Text>
+              </View>
+            )}
             <Text style={styles.cardBackName}>{card.name}</Text>
           </View>
           <ScrollView
@@ -2557,6 +2567,16 @@ const styles = StyleSheet.create({
     height: "100%",
     justifyContent: "center",
     alignItems: "center",
+  },
+  imagePlaceholder: {
+    backgroundColor: "rgba(0,0,0,0.06)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  imagePlaceholderText: {
+    fontFamily: "IgraSans",
+    fontSize: 14,
+    color: "rgba(0,0,0,0.4)",
   },
   imageCarousel: {
     width: "100%",

@@ -165,8 +165,69 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({
       }
     }
 
+    const existingGeneralUrls = (generalImages || []).filter((u) => u.startsWith("http"));
+    const newGeneralCount = generalImageFiles?.length ?? 0;
+    const totalGeneral = existingGeneralUrls.length + newGeneralCount;
+    const totalPerColor = colorVariations.map(
+      (cv, i) => (cv.images || []).filter((u: string) => u.startsWith("http")).length + (colorVariationFiles?.[i]?.length ?? 0)
+    );
+    const hasGeneral = totalGeneral > 0;
+    const hasAtLeastOnePerColor = totalPerColor.length > 0 && totalPerColor.every((n) => n > 0);
+    if (!hasGeneral && !hasAtLeastOnePerColor) {
+      toast({
+        title: "Ошибка",
+        description: "Нужно хотя бы одно общее изображение или хотя бы одно изображение в каждом цвете.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsLoading(true);
     try {
+      const uploadOne = async (file: File): Promise<string> => {
+        const contentType = file.type || "image/jpeg";
+        const { upload_url, public_url } = await api.getProductImagePresignedUrl(
+          contentType,
+          token!,
+          file.name
+        );
+        await api.uploadFileToPresignedUrl(file, upload_url, contentType);
+        return public_url;
+      };
+
+      const existingGeneralUrls = (generalImages || []).filter((u) =>
+        u.startsWith("http")
+      );
+      const newGeneralUrls =
+        generalImageFiles.length > 0
+          ? await Promise.all(generalImageFiles.map(uploadOne))
+          : [];
+      const finalGeneralImages =
+        existingGeneralUrls.length + newGeneralUrls.length > 0
+          ? [...existingGeneralUrls, ...newGeneralUrls]
+          : undefined;
+
+      const colorVariantsWithUrls = await Promise.all(
+        colorVariations.map(async (cv, i) => {
+          const existingUrls = (cv.images || []).filter((u) =>
+            u.startsWith("http")
+          );
+          const newFiles = colorVariationFiles[i] || [];
+          const newUrls =
+            newFiles.length > 0
+              ? await Promise.all(newFiles.map(uploadOne))
+              : [];
+          return {
+            color_name: cv.color_name,
+            color_hex: cv.color_hex,
+            images: [...existingUrls, ...newUrls],
+            variants: (cv.variants || []).filter(
+              (v) => v.size.trim() && v.stock_quantity >= 0
+            ),
+          };
+        })
+      );
+
       await api.updateProduct(
         product.id,
         {
@@ -176,15 +237,10 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({
           material: selectedMaterials.join(", ") || undefined,
           styles: selectedStyles,
           category_id: selectedCategory,
-          color_variants: colorVariations.map((cv) => ({
-            color_name: cv.color_name,
-            color_hex: cv.color_hex,
-            images: cv.images || [],
-            variants: (cv.variants || []).filter((v) => v.size.trim() && v.stock_quantity >= 0),
-          })),
-          general_images: generalImages.length ? generalImages : undefined,
+          color_variants: colorVariantsWithUrls,
+          general_images: finalGeneralImages,
         },
-        token
+        token!
       );
       toast({
         title: "Успех",
