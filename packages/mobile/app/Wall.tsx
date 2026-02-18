@@ -48,7 +48,7 @@ import {
   getFadeOutDownAnimation,
 } from "./lib/animations";
 import AvatarEditScreen from "./screens/AvatarEditScreen";
-import MeAlt from "./components/svg/MeAlt";
+import AvatarImage from "./components/AvatarImage";
 import SettingsPage from "./Settings";
 import { Canvas, RoundedRect, Shadow } from "@shopify/react-native-skia";
 import { CardItem } from "./types/product";
@@ -1159,13 +1159,20 @@ const Wall = ({ navigation, onLogout }: WallProps) => {
         <AvatarEditScreen
           onBack={() => setShowAvatarEdit(false)}
           currentAvatar={userProfile?.profile?.avatar_url}
-          onSave={async (avatarUri: string) => {
+          currentAvatarFull={userProfile?.profile?.avatar_url_full}
+          currentAvatarCrop={userProfile?.profile?.avatar_crop}
+          currentAvatarTransform={userProfile?.profile?.avatar_transform}
+          onSave={async (
+            cropUri: string,
+            fullLocalUri?: string | null,
+            avatarCrop?: string,
+            avatarTransform?: string
+          ) => {
             try {
-              // Try to infer content type from the avatar URI; default to JPEG to preserve existing behavior.
               let contentType = "image/jpeg";
-              if (avatarUri) {
-                const match = avatarUri.match(/\.([a-zA-Z0-9]+)(?:[\?#]|$)/);
-                if (match && match[1]) {
+              if (cropUri) {
+                const match = cropUri.match(/\.([a-zA-Z0-9]+)(?:[\?#]|$)/);
+                if (match?.[1]) {
                   const ext = match[1].toLowerCase();
                   if (ext === "jpg" || ext === "jpeg") {
                     contentType = "image/jpeg";
@@ -1180,18 +1187,38 @@ const Wall = ({ navigation, onLogout }: WallProps) => {
                   }
                 }
               }
-              const { upload_url, public_url } = await api.getAvatarPresignedUrl(
+              const cropPresigned = await api.getAvatarPresignedUrl(contentType);
+              await api.uploadToPresignedUrl(
+                cropUri,
+                cropPresigned.upload_url,
                 contentType
               );
-              await api.uploadToPresignedUrl(avatarUri, upload_url, contentType);
-              await api.updateUserProfileData({ avatar_url: public_url });
+              let fullPublicUrl: string | undefined =
+                userProfile?.profile?.avatar_url_full;
+              if (fullLocalUri) {
+                const fullPresigned =
+                  await api.getAvatarPresignedUrl(contentType);
+                await api.uploadToPresignedUrl(
+                  fullLocalUri,
+                  fullPresigned.upload_url,
+                  contentType
+                );
+                fullPublicUrl = fullPresigned.public_url;
+              }
+              await api.updateUserProfileData({
+                avatar_url: cropPresigned.public_url,
+                ...(fullPublicUrl != null && { avatar_url_full: fullPublicUrl }),
+                avatar_crop: avatarCrop ?? undefined,
+                avatar_transform: avatarTransform ?? undefined,
+              });
               setShowAvatarEdit(false);
               loadUserProfile();
             } catch (err: any) {
               console.error("Avatar upload failed:", err);
               Alert.alert(
                 "Ошибка",
-                err?.message || "Не удалось загрузить фото. Проверьте настройки сервера."
+                err?.message ||
+                  "Не удалось загрузить фото. Проверьте настройки сервера."
               );
               throw err;
             }
@@ -1218,16 +1245,12 @@ const Wall = ({ navigation, onLogout }: WallProps) => {
           </Text>
           <View style={styles.profileImageWrapper}>
             <View style={styles.profileImageContainer}>
-              {userProfile?.profile?.avatar_url ? (
-                <Image
-                  source={{ uri: userProfile.profile.avatar_url }}
-                  style={styles.profileImage}
-                />
-              ) : (
-                <View style={[StyleSheet.absoluteFill, { justifyContent: "center", alignItems: "center" }]}>
-                  <MeAlt width={width * 0.25} height={width * 0.25} />
-                </View>
-              )}
+              <AvatarImage
+                avatarUrl={userProfile?.profile?.avatar_url}
+                avatarUrlFull={userProfile?.profile?.avatar_url_full}
+                avatarTransform={userProfile?.profile?.avatar_transform}
+                size={width * 0.25}
+              />
             </View>
             <TouchableOpacity
               style={styles.penIconButton}

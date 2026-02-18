@@ -89,7 +89,10 @@ class UserProfile(Base):
     full_name = Column(String(255), nullable=True)
     gender = Column(SQLEnum(Gender), nullable=True)
     selected_size = Column(String(10), nullable=True)
-    avatar_url = Column(String(500), nullable=True)
+    avatar_url = Column(String(500), nullable=True)  # Cropped display image URL
+    avatar_url_full = Column(String(500), nullable=True)  # Full-size source for re-editing
+    avatar_crop = Column(String(1000), nullable=True)  # JSON: normalized crop in full image (legacy)
+    avatar_transform = Column(String(500), nullable=True)  # JSON: { scale, translateXPercent, translateYPercent } device-independent
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     

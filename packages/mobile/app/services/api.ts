@@ -288,6 +288,9 @@ export interface UserProfile {
     gender?: 'male' | 'female';
     selected_size?: string;
     avatar_url?: string;
+    avatar_url_full?: string;
+    avatar_crop?: string;
+    avatar_transform?: string;
   };
   shipping_info?: {
     delivery_email?: string;
@@ -710,6 +713,9 @@ export interface ProfileData {
   gender?: 'male' | 'female';
   selected_size?: string;
   avatar_url?: string;
+  avatar_url_full?: string;
+  avatar_crop?: string;
+  avatar_transform?: string;
 }
 
 export const updateUserProfileData = async (
