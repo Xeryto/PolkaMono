@@ -28,6 +28,16 @@ from schemas import UserCreate, EmailVerificationRequest
 from mail_service import mail_service
 from storage_service import generate_key, generate_presigned_upload_url, is_configured as s3_configured
 
+# Constants for image upload validation
+ALLOWED_IMAGE_CONTENT_TYPES = {"image/jpeg", "image/png", "image/webp", "image/gif"}
+ALLOWED_IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp", ".gif"}
+CONTENT_TYPE_TO_EXTENSION = {
+    "image/jpeg": ".jpg",
+    "image/png": ".png",
+    "image/webp": ".webp",
+    "image/gif": ".gif",
+}
+
 # Size ordering utility
 def get_size_order(size: str) -> int:
     """Get the order index for size sorting (XS to XL)"""
@@ -44,6 +54,44 @@ def get_size_order(size: str) -> int:
 def sort_variants_by_size(variants):
     """Sort variants by size order (XS to XL)"""
     return sorted(variants, key=lambda v: get_size_order(v.size))
+
+
+def validate_image_content_type(content_type: str) -> None:
+    """Validate that content_type is an allowed image MIME type.
+    
+    Raises HTTPException with 400 status if validation fails.
+    """
+    normalized_content_type = (content_type or "").lower()
+    if normalized_content_type not in ALLOWED_IMAGE_CONTENT_TYPES:
+        allowed_types = ", ".join(sorted(ALLOWED_IMAGE_CONTENT_TYPES))
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Invalid content type. Allowed types: {allowed_types}.",
+        )
+
+
+def determine_file_extension(content_type: str, filename: Optional[str] = None) -> str:
+    """Determine appropriate file extension from content_type or filename.
+    
+    Returns extension with leading dot (e.g., '.jpg', '.png').
+    If filename is provided, validates that its extension is allowed.
+    Only the extension part is extracted from filename (no path components).
+    
+    This function should be called after validate_image_content_type() to ensure
+    content_type is valid. The .jpg default should be unreachable in normal flow.
+    """
+    if filename and "." in filename:
+        # Extract only the extension part (everything after the last dot)
+        # This is safe from path traversal as we only use the extension, not the full path
+        ext = "." + filename.rsplit(".", 1)[-1].lower()
+        # Validate that the filename extension is allowed
+        if ext in ALLOWED_IMAGE_EXTENSIONS:
+            return ext
+        # If extension is not allowed, fall through to use content_type
+    
+    normalized_content_type = (content_type or "").lower()
+    # Should be unreachable with invalid content_type after validate_image_content_type()
+    return CONTENT_TYPE_TO_EXTENSION.get(normalized_content_type, ".jpg")
 
 
 def product_to_schema(product, is_liked=None):
@@ -1192,27 +1240,11 @@ async def get_product_image_presigned_url(
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Image upload is not configured.")
 
     # Validate that the requested content type is an allowed image MIME type
-    allowed_content_types = {"image/jpeg", "image/png", "image/webp", "image/gif"}
-    content_type = (body.content_type or "").lower()
-    if content_type not in allowed_content_types:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid content type. Allowed types: image/jpeg, image/png, image/webp, image/gif.",
-        )
+    validate_image_content_type(body.content_type)
 
-    ext = ".jpg"
-    if body.filename and "." in body.filename:
-        ext = "." + body.filename.rsplit(".", 1)[-1].lower()
-    else:
-        if content_type == "image/png":
-            ext = ".png"
-        elif content_type == "image/webp":
-            ext = ".webp"
-        elif content_type == "image/gif":
-            ext = ".gif"
-
+    ext = determine_file_extension(body.content_type, body.filename)
     key = generate_key("products", ext)
-    upload_url, public_url = generate_presigned_upload_url(key, content_type)
+    upload_url, public_url = generate_presigned_upload_url(key, body.content_type)
     return schemas.PresignedUploadResponse(upload_url=upload_url, public_url=public_url, key=key)
 
 
@@ -1645,13 +1677,11 @@ async def get_avatar_presigned_url(
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Use brand upload for product images.")
     if not s3_configured():
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Image upload is not configured.")
-    ext = ".jpg"
-    if body.filename and "." in body.filename:
-        ext = "." + body.filename.rsplit(".", 1)[-1].lower()
-    elif "png" in (body.content_type or "").lower():
-        ext = ".png"
-    elif "webp" in (body.content_type or "").lower():
-        ext = ".webp"
+
+    # Validate that the requested content type is an allowed image MIME type
+    validate_image_content_type(body.content_type)
+
+    ext = determine_file_extension(body.content_type, body.filename)
     key = generate_key("avatars", ext, prefix=str(current_user.id))
     upload_url, public_url = generate_presigned_upload_url(key, body.content_type)
     return schemas.PresignedUploadResponse(upload_url=upload_url, public_url=public_url, key=key)
