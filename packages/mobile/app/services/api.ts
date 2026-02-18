@@ -379,6 +379,8 @@ export interface Brand {
   slug: string;
   logo: string;
   description: string;
+  shipping_price?: number;
+  min_free_shipping?: number;
 }
 
 export interface Style {
@@ -1128,6 +1130,21 @@ export const getPaymentStatus = async (paymentId: string): Promise<PaymentStatus
   return await apiRequest(`/api/v1/payments/status?payment_id=${paymentId}`, 'GET');
 };
 
+/** Create order in test mode (no payment gateway). Persists to DB. */
+export const createOrderTest = async (
+  amount: number,
+  items: ReceiptItem[]
+): Promise<{ order_id: string }> => {
+  return await apiRequest('/api/v1/orders/test', 'POST', {
+    amount: { value: amount, currency: 'RUB' },
+    description: `Order #${Math.floor(Math.random() * 1000)}`,
+    items: items.map((it) => ({
+      product_variant_id: it.product_variant_id,
+      quantity: it.quantity,
+    })),
+  });
+};
+
 // Order History
 
 // Get user's favorite products
@@ -1200,6 +1217,34 @@ export interface Order extends OrderSummary {
   delivery_address?: string;
   delivery_city?: string;
   delivery_postal_code?: string;
+}
+
+/** Order status values (API returns lowercase). See packages/api/models.py OrderStatus. */
+export const ORDER_STATUS = {
+  PENDING: "pending",
+  PAID: "paid",
+  SHIPPED: "shipped",
+  RETURNED: "returned",
+  CANCELED: "canceled",
+} as const;
+
+export function getOrderStatusLabel(status: string | undefined): string {
+  if (!status) return "неизвестно";
+  const s = String(status).toLowerCase();
+  switch (s) {
+    case "pending":
+      return "ожидание";
+    case "paid":
+      return "оплачен";
+    case "shipped":
+      return "отправлен";
+    case "returned":
+      return "возвращён";
+    case "canceled":
+      return "отменён";
+    default:
+      return "неизвестно";
+  }
 }
 
 export const getOrders = async (): Promise<OrderSummary[]> => {

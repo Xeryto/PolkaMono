@@ -925,7 +925,9 @@ const Wall = ({ navigation, onLogout }: WallProps) => {
             )}
             style={styles.orderStatus}
           >
-            <Text style={styles.orderStatusText}>оплачен</Text>
+            <Text style={styles.orderStatusText}>
+              {api.getOrderStatusLabel(orderDetail?.status)}
+            </Text>
           </Animated.View>
         </Animated.View>
           </>
@@ -1000,6 +1002,9 @@ const Wall = ({ navigation, onLogout }: WallProps) => {
                         minimumFontScale={0.5}
                       >
                         заказ №{order.number}
+                      </Text>
+                      <Text style={styles.orderStatusSubtext}>
+                        {api.getOrderStatusLabel(order.status)}
                       </Text>
                     </TouchableOpacity>
                     <TouchableOpacity
@@ -1885,6 +1890,12 @@ const styles = StyleSheet.create({
     fontFamily: "IgraSans",
     fontSize: 20,
     color: "#000",
+  },
+  orderStatusSubtext: {
+    fontFamily: "IgraSans",
+    fontSize: 14,
+    color: "#666",
+    marginTop: 2,
   },
   orderSummary: {
     fontFamily: "IgraSans",
