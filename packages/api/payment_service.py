@@ -252,8 +252,7 @@ def create_order_test(db: Session, user_id: str, amount: float, currency: str, d
         delivery_postal_code=delivery_postal_code,
     )
     db.add(checkout)
-    db.commit()
-    db.refresh(checkout)
+    db.flush()  # Get checkout.id without committing
 
     base_order_number = generate_order_number(db)
     total_checkout = 0.0
@@ -283,8 +282,7 @@ def create_order_test(db: Session, user_id: str, amount: float, currency: str, d
             delivery_postal_code=delivery_postal_code,
         )
         db.add(order)
-        db.commit()
-        db.refresh(order)
+        db.flush()  # Get order.id without committing
         if first_order_id is None:
             first_order_id = order.id
 
@@ -300,8 +298,6 @@ def create_order_test(db: Session, user_id: str, amount: float, currency: str, d
 
         update_order_status(db, order.id, OrderStatus.PAID)
 
-    db.commit()
-
     payment_model = PaymentModel(
         id=str(uuid.uuid4()),
         checkout_id=checkout.id,
@@ -310,6 +306,8 @@ def create_order_test(db: Session, user_id: str, amount: float, currency: str, d
         status="succeeded",
     )
     db.add(payment_model)
+    
+    # Commit all changes in a single transaction
     db.commit()
 
     return checkout.id
