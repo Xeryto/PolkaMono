@@ -281,21 +281,53 @@ const AvatarEditScreen: React.FC<AvatarEditScreenProps> = ({
       const resizeWidth = Math.max(cropSize, scaledWidth);
       const resizeHeight = Math.max(cropSize, scaledHeight);
 
-      // Map view (tx, ty, userScale) to resized crop rect. Display uses cover: image scaled by imageDisplaySize/min(origW,origH) and centered.
+      // Map view (tx, ty, userScale) to resized crop rect so the exported square matches the circle.
+      // Display: image in wrapper (IMAGE_DISPLAY_SIZE) with cover + center; wrapper has transform [translateX, translateY, scale].
       const tx = lastTranslate.current.x;
       const ty = lastTranslate.current.y;
       const userScale = lastScale.current;
       const minDim = Math.min(originalWidth, originalHeight);
-      let originX = (-tx * minDim / (userScale * imageDisplaySize) + (originalWidth - minDim) / 2) * resizeWidth / originalWidth;
-      let originY = (-ty * minDim / (userScale * imageDisplaySize) + (originalHeight - minDim) / 2) * resizeHeight / originalHeight;
-      originX = Math.max(0, Math.min(resizeWidth - cropSize, originX));
-      originY = Math.max(0, Math.min(resizeHeight - cropSize, originY));
+      
+      // View center in resized image coords (what the user sees as center of the circle)
+      const centerXResized =
+        resizeWidth / 2 -
+        (tx * minDim * resizeWidth) / (originalWidth * userScale * imageDisplaySize);
+      const centerYResized =
+        resizeHeight / 2 -
+        (ty * minDim * resizeHeight) / (originalHeight * userScale * imageDisplaySize);
+      
+      // Visible content size: wrapper is IMAGE_DISPLAY_SIZE, scaled by userScale, clipped by circle (CROP_SIZE).
+      // The scaled wrapper size is IMAGE_DISPLAY_SIZE * userScale.
+      // The circle diameter is CROP_SIZE.
+      // The visible square is the intersection: min(scaled wrapper, circle).
+      // In wrapper coords (before scaling): visible = min(IMAGE_DISPLAY_SIZE * userScale, CROP_SIZE) / userScale
+      // = min(IMAGE_DISPLAY_SIZE, CROP_SIZE / userScale)
+      const scaledWrapperSize = imageDisplaySize * userScale;
+      const visibleInWrapperCoords = Math.min(scaledWrapperSize, cropSize) / userScale;
+      
+      // Convert visible size from wrapper coords to resized image coords
+      // Wrapper shows image with cover: scale = imageDisplaySize/minDim
+      // So visible in original = visibleInWrapperCoords * minDim / imageDisplaySize
+      // In resized: visibleW = that * (resizeWidth/origW), visibleH = that * (resizeHeight/origH)
+      const visibleInResizedW =
+        (visibleInWrapperCoords * minDim * resizeWidth) / (imageDisplaySize * originalWidth);
+      const visibleInResizedH =
+        (visibleInWrapperCoords * minDim * resizeHeight) / (imageDisplaySize * originalHeight);
+      
+      // Always capture exactly the visible square, then scale to 600x600 so output matches what user sees.
+      const visibleSquare = Math.min(visibleInResizedW, visibleInResizedH);
+      const cropSquareSize = Math.max(1, Math.min(resizeWidth, resizeHeight, Math.round(visibleSquare)));
+      
+      let originX = centerXResized - cropSquareSize / 2;
+      let originY = centerYResized - cropSquareSize / 2;
+      originX = Math.max(0, Math.min(resizeWidth - cropSquareSize, originX));
+      originY = Math.max(0, Math.min(resizeHeight - cropSquareSize, originY));
 
       const cropRegion = {
         originX: Math.round(originX),
         originY: Math.round(originY),
-        width: cropSize,
-        height: cropSize,
+        width: cropSquareSize,
+        height: cropSquareSize,
       };
 
       // Higher-quality output: 600x600, 0.9 compression
@@ -321,8 +353,8 @@ const AvatarEditScreen: React.FC<AvatarEditScreenProps> = ({
       // Normalized crop in full image [0..1] for re-editing (pan out)
       const nOriginX = originX / resizeWidth;
       const nOriginY = originY / resizeHeight;
-      const nWidth = cropSize / resizeWidth;
-      const nHeight = cropSize / resizeHeight;
+      const nWidth = cropSquareSize / resizeWidth;
+      const nHeight = cropSquareSize / resizeHeight;
       const avatarCrop: AvatarCropJson = JSON.stringify({
         nOriginX,
         nOriginY,

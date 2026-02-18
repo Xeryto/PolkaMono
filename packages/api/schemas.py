@@ -413,6 +413,10 @@ class BrandUpdate(BaseModel):
     min_free_shipping: Optional[int] = None
     shipping_price: Optional[float] = None
     shipping_provider: Optional[str] = None
+    inn: Optional[str] = None
+    registration_address: Optional[str] = None
+    payout_account: Optional[str] = None
+    payout_account_locked: Optional[bool] = None
 
 class BrandResponse(BaseModel):
     id: int
@@ -426,6 +430,10 @@ class BrandResponse(BaseModel):
     shipping_price: Optional[float] = None
     shipping_provider: Optional[str] = None
     amount_withdrawn: float = 0.0
+    inn: Optional[str] = None
+    registration_address: Optional[str] = None
+    payout_account: Optional[str] = None
+    payout_account_locked: bool = False
     created_at: datetime
     updated_at: datetime
 

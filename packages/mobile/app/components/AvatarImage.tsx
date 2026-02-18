@@ -39,13 +39,26 @@ export default function AvatarImage({
     );
   }
 
-  // When we have full image + transform, apply device-independent transform so framing is consistent everywhere.
-  if (hasFullAndTransform) {
-    const { scale: s, translateX: tx, translateY: ty } = transformToPixels(
-      transform,
-      size,
-      size
+  // Prefer cropped avatar when present so the circle is always filled (crop is composed to fill 600x600).
+  // Use full + transform only when we have no crop (e.g. legacy or re-edit before save).
+  if (avatarUrl) {
+    return (
+      <View style={containerStyle}>
+        <Image
+          source={{ uri: avatarUrl }}
+          style={[styles.image, imageStyle]}
+          resizeMode="cover"
+        />
+      </View>
     );
+  }
+
+  if (hasFullAndTransform) {
+    const {
+      scale: s,
+      translateX: tx,
+      translateY: ty,
+    } = transformToPixels(transform, size, size);
     return (
       <View style={containerStyle}>
         <View
@@ -54,11 +67,7 @@ export default function AvatarImage({
             {
               width: size,
               height: size,
-              transform: [
-                { translateX: tx },
-                { translateY: ty },
-                { scale: s },
-              ],
+              transform: [{ translateX: tx }, { translateY: ty }, { scale: s }],
             },
           ]}
         >
@@ -72,12 +81,11 @@ export default function AvatarImage({
     );
   }
 
-  // Cropped avatar or full without transform: show as-is.
-  const uri = avatarUrl || avatarUrlFull!;
+  // Full image without transform (fallback)
   return (
     <View style={containerStyle}>
       <Image
-        source={{ uri }}
+        source={{ uri: avatarUrlFull! }}
         style={[styles.image, imageStyle]}
         resizeMode="cover"
       />

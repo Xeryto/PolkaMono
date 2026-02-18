@@ -231,6 +231,15 @@ export function AddNewItemPage() {
       });
       return;
     }
+    const priceNum = parseFloat(price);
+    if (Number.isNaN(priceNum) || priceNum < 0) {
+      toast({
+        title: "Ошибка",
+        description: "Цена не может быть отрицательной.",
+        variant: "destructive",
+      });
+      return;
+    }
 
     for (let i = 0; i < colorVariations.length; i++) {
       const cv = colorVariations[i];
@@ -249,6 +258,16 @@ export function AddNewItemPage() {
           variant: "destructive",
         });
         return;
+      }
+      for (const v of cv.variants) {
+        if (v.size.trim() && (v.stock_quantity < 0 || !Number.isInteger(v.stock_quantity))) {
+          toast({
+            title: "Ошибка",
+            description: `Количество по размеру не может быть отрицательным (цвет "${cv.colorName}").`,
+            variant: "destructive",
+          });
+          return;
+        }
       }
     }
 
@@ -310,7 +329,7 @@ export function AddNewItemPage() {
 
       const productData = {
         name,
-        price: parseFloat(price),
+        price: priceNum,
         description,
         material:
           selectedMaterials.length > 0

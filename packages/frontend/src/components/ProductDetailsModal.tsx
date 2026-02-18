@@ -119,7 +119,31 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({
       });
       return;
     }
+    if (!name.trim()) {
+      toast({ title: "Ошибка", description: "Заполните название товара.", variant: "destructive" });
+      return;
+    }
+    if (typeof price !== "number" || price < 0) {
+      toast({ title: "Ошибка", description: "Цена не может быть отрицательной.", variant: "destructive" });
+      return;
+    }
+    if (!description.trim()) {
+      toast({ title: "Ошибка", description: "Заполните описание.", variant: "destructive" });
+      return;
+    }
+    if (!selectedCategory) {
+      toast({ title: "Ошибка", description: "Выберите категорию.", variant: "destructive" });
+      return;
+    }
     for (const cv of colorVariations) {
+      if (!(cv.color_name || "").trim()) {
+        toast({
+          title: "Ошибка",
+          description: "У каждого варианта должен быть выбран цвет.",
+          variant: "destructive",
+        });
+        return;
+      }
       if (hasDuplicateSizes(cv.variants || [])) {
         toast({
           title: "Ошибка",
@@ -127,6 +151,17 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({
           variant: "destructive",
         });
         return;
+      }
+      for (const v of cv.variants || []) {
+        const q = v.stock_quantity;
+        if (v.size?.trim() && (typeof q !== "number" || q < 0 || !Number.isInteger(q))) {
+          toast({
+            title: "Ошибка",
+            description: `Количество не может быть отрицательным (цвет "${cv.color_name}").`,
+            variant: "destructive",
+          });
+          return;
+        }
       }
     }
 
