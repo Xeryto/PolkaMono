@@ -699,7 +699,8 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(0,0,0,0.06)",
     justifyContent: "center",
     alignItems: "center",
-    minHeight: 80,
+    width: "73%",
+    height: "73%",
   },
   noProductImageText: {
     fontFamily: "IgraSans",
