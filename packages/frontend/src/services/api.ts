@@ -325,6 +325,11 @@ const apiRequest = async (
 
 // --- API Functions ---
 
+// Exclusive access signup (landing page, no auth)
+export const exclusiveAccessSignup = async (email: string): Promise<{ message: string }> => {
+  return await apiRequest('/api/v1/exclusive-access-signup', 'POST', { email }, false);
+};
+
 // Product related
 export const createProduct = async (productData: {
   name: string;

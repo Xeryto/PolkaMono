@@ -9,6 +9,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
+import { exclusiveAccessSignup } from "@/services/api";
 
 const Landing = () => {
   const [email, setEmail] = useState("");
@@ -18,17 +19,24 @@ const Landing = () => {
   const handleExclusiveSignup = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
-
-    // Mock API call to /api/v1/exclusive-access-signup
-    setTimeout(() => {
+    try {
+      await exclusiveAccessSignup(email.trim());
       toast({
         title: "Запрос на доступ",
         description:
           "Вы добавлены в наш список эксклюзивного доступа. Мы скоро свяжемся с вами.",
       });
       setEmail("");
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Не удалось отправить запрос. Попробуйте позже.";
+      toast({
+        title: "Ошибка",
+        description: message,
+        variant: "destructive",
+      });
+    } finally {
       setIsSubmitting(false);
-    }, 1000);
+    }
   };
 
   return (
