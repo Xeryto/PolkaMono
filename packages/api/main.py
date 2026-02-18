@@ -78,7 +78,8 @@ def get_extension_from_content_type(content_type: str, filename: Optional[str] =
     elif normalized_content_type == "image/gif":
         return ".gif"
     
-    return ".jpg"  # Default fallback
+    # Fallback for edge cases (should be unreachable after validate_image_content_type)
+    return ".jpg"
 
 
 def product_to_schema(product, is_liked=None):
