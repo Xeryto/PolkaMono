@@ -924,7 +924,12 @@ const Favorites = ({ navigation }: FavoritesProps) => {
             {item.images && item.images.length > 0 ? (
               <Image source={item.images[0]} style={styles.productItemImage} />
             ) : (
-              <View style={[styles.productItemImage, styles.noProductImagePlaceholder]}>
+              <View
+                style={[
+                  styles.productItemImage,
+                  styles.noProductImagePlaceholder,
+                ]}
+              >
                 <Text style={styles.noProductImageText}>Нет изображения</Text>
               </View>
             )}
@@ -957,12 +962,17 @@ const Favorites = ({ navigation }: FavoritesProps) => {
           }}
         >
           {item.images && item.images.length > 0 ? (
-              <Image source={item.images[0]} style={styles.productItemImage} />
-            ) : (
-              <View style={[styles.productItemImage, styles.noProductImagePlaceholder]}>
-                <Text style={styles.noProductImageText}>Нет изображения</Text>
-              </View>
-            )}
+            <Image source={item.images[0]} style={styles.productItemImage} />
+          ) : (
+            <View
+              style={[
+                styles.productItemImage,
+                styles.noProductImagePlaceholder,
+              ]}
+            >
+              <Text style={styles.noProductImageText}>Нет изображения</Text>
+            </View>
+          )}
           <View style={styles.productItemInfo}>
             <Text style={styles.productItemName} numberOfLines={1}>
               {item.brand_name}
@@ -1087,8 +1097,12 @@ const Favorites = ({ navigation }: FavoritesProps) => {
                     style={styles.itemImage as ImageStyle}
                   />
                 ) : (
-                  <View style={[styles.itemImage, styles.noProductImagePlaceholder]}>
-                    <Text style={styles.noProductImageText}>Нет изображения</Text>
+                  <View
+                    style={[styles.itemImage, styles.noProductImagePlaceholder]}
+                  >
+                    <Text style={styles.noProductImageText}>
+                      Нет изображения
+                    </Text>
                   </View>
                 )}
                 <View style={styles.itemInfo}>
@@ -1124,7 +1138,9 @@ const Favorites = ({ navigation }: FavoritesProps) => {
               {item.images && item.images.length > 0 ? (
                 <Image source={item.images[0]} style={styles.itemImage} />
               ) : (
-                <View style={[styles.itemImage, styles.noProductImagePlaceholder]}>
+                <View
+                  style={[styles.itemImage, styles.noProductImagePlaceholder]}
+                >
                   <Text style={styles.noProductImageText}>Нет изображения</Text>
                 </View>
               )}
@@ -1735,7 +1751,7 @@ const SearchContent = ({
               onPress={toggleSearch}
               style={styles.favoritesCancelButton}
             >
-              <Text style={styles.favoritesCancelButtonText}>Отмена</Text>
+              <Text style={styles.favoritesCancelButtonText}>отмена</Text>
             </TouchableOpacity>
           </Animated.View>
         </View>
@@ -2607,7 +2623,7 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
   },
   favoritesCancelButtonContainer: {
-    marginRight: -15,
+    marginRight: -16,
   },
   favoritesCancelButton: {
     paddingHorizontal: Platform.OS === "ios" ? 45 : 50,

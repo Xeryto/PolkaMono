@@ -194,7 +194,9 @@ class ProductUpdateRequest(BaseModel):
 
     @model_validator(mode='after')
     def require_at_least_one_image_if_provided(self):
-        if self.general_images is not None or self.color_variants is not None:
+        # Only validate if BOTH general_images and color_variants are provided in the update.
+        # For partial updates, we cannot validate without knowing the existing product state.
+        if self.general_images is not None and self.color_variants is not None:
             has_general = self.general_images and len(self.general_images) > 0
             has_one_per_color = (
                 self.color_variants
