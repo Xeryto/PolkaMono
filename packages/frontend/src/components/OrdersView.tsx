@@ -7,23 +7,22 @@ import {
   CardDescription,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { OrderDetailsPage } from "@/pages/OrderDetailsPage";
 import * as api from "@/services/api";
 import { OrderResponse } from "@/services/api";
 import { useToast } from "@/hooks/use-toast";
-import { useAuth } from "@/context/AuthContext"; // Import useAuth
+import { useAuth } from "@/context/AuthContext";
 import { formatCurrency } from "@/lib/currency";
 import { getOrderStatusLabel, getOrderStatusColor } from "@/lib/orderStatus";
 
 export function OrdersView() {
   const [orders, setOrders] = useState<OrderResponse[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [selectedOrder, setSelectedOrder] = useState<OrderResponse | null>(
-    null,
-  );
+  const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
+  const [selectedOrder, setSelectedOrder] = useState<OrderResponse | null>(null);
+  const [isLoadingDetail, setIsLoadingDetail] = useState(false);
   const { toast } = useToast();
-  const { token } = useAuth(); // Get token from useAuth
+  const { token } = useAuth();
 
   useEffect(() => {
     const fetchOrders = async () => {
@@ -54,14 +53,42 @@ export function OrdersView() {
       }
     };
     fetchOrders();
-  }, [token, toast]); // Add token and toast to dependency array
+  }, [token, toast]);
+
+  useEffect(() => {
+    if (!selectedOrderId || !token) return;
+    let cancelled = false;
+    setIsLoadingDetail(true);
+    setSelectedOrder(null);
+    api.getOrder(selectedOrderId, token)
+      .then((order) => { if (!cancelled) setSelectedOrder(order); })
+      .catch((err) => {
+        if (!cancelled) {
+          toast({
+            title: "Ошибка",
+            description: err.message || "Не удалось загрузить заказ.",
+            variant: "destructive",
+          });
+        }
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setIsLoadingDetail(false);
+          setSelectedOrderId(null);
+        }
+      });
+    return () => { cancelled = true; };
+  }, [selectedOrderId, token, toast]);
 
   if (isLoadingDetail || selectedOrder) {
     if (selectedOrder) {
       return (
         <OrderDetailsPage
           order={selectedOrder}
-          onBack={() => setSelectedOrder(null)}
+          onBack={() => {
+            setSelectedOrder(null);
+            setSelectedOrderId(null);
+          }}
           onOrderUpdated={async () => {
             if (token && selectedOrder) {
               const updated = await api.getOrder(selectedOrder.id, token);
@@ -102,7 +129,7 @@ export function OrdersView() {
                 <div
                   key={order.id}
                   className="flex items-center justify-between p-2 rounded-lg hover:bg-muted/50 cursor-pointer"
-                  onClick={() => setSelectedOrder(order)}
+                  onClick={() => setSelectedOrderId(order.id)}
                 >
                   <div>
                     <p className="font-medium text-foreground">

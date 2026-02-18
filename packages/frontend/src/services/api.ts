@@ -386,8 +386,12 @@ export const markOrderReturned = async (orderId: string, token: string): Promise
   return await apiRequest(`/api/v1/brands/orders/${orderId}/return`, 'PUT', undefined, true, token);
 };
 
-export const getOrders = async (token: string): Promise<OrderResponse[]> => { // Add token parameter
+export const getOrders = async (token: string): Promise<OrderResponse[]> => {
   return await apiRequest('/api/v1/orders', 'GET', undefined, true, token);
+};
+
+export const getOrder = async (orderId: string, token: string): Promise<OrderResponse> => {
+  return await apiRequest(`/api/v1/orders/${orderId}`, 'GET', undefined, true, token);
 };
 
 // --- Brand Authentication & Profile ---
