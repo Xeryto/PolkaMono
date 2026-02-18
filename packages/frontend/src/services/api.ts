@@ -377,8 +377,13 @@ export const updateOrderItemSKU = async (orderItemId: string, sku: string, token
   return await apiRequest(`/api/v1/brands/order-items/${orderItemId}/sku`, 'PUT', { sku: sku }, true, token);
 };
 
-export const updateOrderTracking = async (orderId: string, trackingData: { tracking_number?: string; tracking_link?: string }, token: string): Promise<any> => { // Add token parameter
+export const updateOrderTracking = async (orderId: string, trackingData: { tracking_number?: string; tracking_link?: string }, token: string): Promise<any> => {
   return await apiRequest(`/api/v1/brands/orders/${orderId}/tracking`, 'PUT', trackingData, true, token);
+};
+
+/** Mark a SHIPPED order as RETURNED (brand received the returned item). Restores stock. */
+export const markOrderReturned = async (orderId: string, token: string): Promise<any> => {
+  return await apiRequest(`/api/v1/brands/orders/${orderId}/return`, 'PUT', undefined, true, token);
 };
 
 export const getOrders = async (token: string): Promise<OrderResponse[]> => { // Add token parameter

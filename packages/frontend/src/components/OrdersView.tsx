@@ -14,12 +14,13 @@ import { OrderResponse } from "@/services/api";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/context/AuthContext"; // Import useAuth
 import { formatCurrency } from "@/lib/currency";
+import { getOrderStatusLabel, getOrderStatusColor } from "@/lib/orderStatus";
 
 export function OrdersView() {
   const [orders, setOrders] = useState<OrderResponse[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedOrder, setSelectedOrder] = useState<OrderResponse | null>(
-    null
+    null,
   );
   const { toast } = useToast();
   const { token } = useAuth(); // Get token from useAuth
@@ -55,25 +56,27 @@ export function OrdersView() {
     fetchOrders();
   }, [token, toast]); // Add token and toast to dependency array
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "доставлен":
-        return "bg-green-900/20 text-green-300 border-green-700/30";
-      case "shipped":
-        return "bg-blue-900/20 text-blue-300 border-blue-700/30";
-      case "processing":
-        return "bg-yellow-900/20 text-yellow-300 border-yellow-700/30";
-      default:
-        return "bg-gray-900/20 text-gray-300 border-gray-700/30";
+  if (isLoadingDetail || selectedOrder) {
+    if (selectedOrder) {
+      return (
+        <OrderDetailsPage
+          order={selectedOrder}
+          onBack={() => setSelectedOrder(null)}
+          onOrderUpdated={async () => {
+            if (token && selectedOrder) {
+              const updated = await api.getOrder(selectedOrder.id, token);
+              setSelectedOrder(updated);
+              const list = await api.getOrders(token);
+              setOrders(list);
+            }
+          }}
+        />
+      );
     }
-  };
-
-  if (selectedOrder) {
     return (
-      <OrderDetailsPage
-        order={selectedOrder}
-        onBack={() => setSelectedOrder(null)}
-      />
+      <div className="flex items-center justify-center py-12 text-muted-foreground">
+        Загрузка заказа...
+      </div>
     );
   }
 
@@ -119,10 +122,10 @@ export function OrdersView() {
                       {new Date(order.date).toLocaleDateString()}
                     </p>
                     <Badge
-                      className={getStatusColor(order.status)}
+                      className={getOrderStatusColor(order.status)}
                       variant="outline"
                     >
-                      {order.status}
+                      {getOrderStatusLabel(order.status)}
                     </Badge>
                   </div>
                 </div>

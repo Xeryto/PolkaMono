@@ -1,7 +1,7 @@
 """
 Database models for PolkaAPI
 """
-from sqlalchemy import Column, String, Boolean, DateTime, Text, ForeignKey, Integer, Enum as SQLEnum, UniqueConstraint, Float, Index
+from sqlalchemy import Column, String, Boolean, DateTime, Text, ForeignKey, Integer, Enum as SQLEnum, UniqueConstraint, Float, Index, TypeDecorator
 from sqlalchemy.dialects.postgresql import ARRAY
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
@@ -397,9 +397,47 @@ class Friendship(Base):
 Style.products = relationship("ProductStyle", back_populates="style", cascade="all, delete-orphan")
 
 class OrderStatus(str, Enum):
+    """Canonical order status. Values are lowercase; API returns these strings.
+    Keep in sync with packages/shared orderStatus.ts and schemas.ORDER_STATUS_VALUES."""
     PENDING = "pending"
     PAID = "paid"
+    SHIPPED = "shipped"
+    RETURNED = "returned"
     CANCELED = "canceled"
+
+
+# PostgreSQL orderstatus enum has mixed values: PENDING, PAID, CANCELED (uppercase)
+# and shipped, returned (lowercase, added by migration). Map accordingly.
+_ORDER_STATUS_TO_DB = {
+    OrderStatus.PENDING: "PENDING",
+    OrderStatus.PAID: "PAID",
+    OrderStatus.SHIPPED: "shipped",
+    OrderStatus.RETURNED: "returned",
+    OrderStatus.CANCELED: "CANCELED",
+}
+
+
+class OrderStatusType(TypeDecorator):
+    """Binds OrderStatus to PostgreSQL orderstatus enum (mixed case: see _ORDER_STATUS_TO_DB)."""
+    impl = String(20)
+    cache_ok = True
+
+    def process_bind_param(self, value, dialect):
+        if value is None:
+            return None
+        if isinstance(value, OrderStatus):
+            return _ORDER_STATUS_TO_DB[value]
+        return value
+
+    def process_result_value(self, value, dialect):
+        if value is None:
+            return None
+        s = str(value)
+        try:
+            return OrderStatus[s]  # uppercase e.g. PAID
+        except KeyError:
+            return OrderStatus(s.lower())  # lowercase e.g. shipped
+
 
 class Order(Base):
     __tablename__ = "orders"
@@ -408,7 +446,7 @@ class Order(Base):
     order_number = Column(String, unique=True, nullable=False)
     user_id = Column(String, ForeignKey("users.id", ondelete="RESTRICT"), nullable=False)
     total_amount = Column(Float, nullable=False)
-    status = Column(SQLEnum(OrderStatus), default=OrderStatus.PENDING, nullable=False)
+    status = Column(OrderStatusType, default=OrderStatus.PENDING, nullable=False)
     tracking_number = Column(String(255), nullable=True) # Existing
     tracking_link = Column(String(500), nullable=True) # NEW: Link to tracking page
     

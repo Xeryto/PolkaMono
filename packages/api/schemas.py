@@ -35,6 +35,18 @@ class PaymentCreate(BaseModel):
             raise ValueError('returnUrl must be a valid URL containing ://')
         return v
 
+
+class OrderTestCreate(BaseModel):
+    """Request body for test order creation (no payment gateway)."""
+    amount: Amount
+    description: str
+    items: List[CartItem]
+
+
+class OrderTestCreateResponse(BaseModel):
+    order_id: str
+
+
 class Delivery(BaseModel):
     cost: float
     estimatedTime: str
@@ -64,6 +76,11 @@ class UpdateTrackingRequest(BaseModel):
     tracking_number: Optional[str] = None # Make optional for partial updates
     tracking_link: Optional[str] = None # NEW
 
+# Order status: canonical values returned by API (lowercase).
+# Must stay in sync with OrderStatus enum in models.py and frontend/mobile libs.
+ORDER_STATUS_VALUES = ("pending", "paid", "shipped", "returned", "canceled")
+
+
 class OrderSummaryResponse(BaseModel):
     """Lightweight order for list view (no items or delivery details)."""
     id: str
@@ -71,7 +88,7 @@ class OrderSummaryResponse(BaseModel):
     total_amount: float
     currency: str
     date: datetime
-    status: str
+    status: str  # One of: pending, paid, shipped, returned, canceled
     tracking_number: Optional[str] = None
     tracking_link: Optional[str] = None
 
@@ -85,7 +102,7 @@ class OrderResponse(BaseModel):
     total_amount: float
     currency: str
     date: datetime
-    status: str
+    status: str  # One of: pending, paid, shipped, returned, canceled
     tracking_number: Optional[str] = None
     tracking_link: Optional[str] = None # NEW
     items: List[OrderItemResponse]

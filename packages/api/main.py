@@ -186,6 +186,8 @@ class BrandResponse(BaseModel):
     slug: str
     logo: Optional[str] = None
     description: Optional[str] = None
+    shipping_price: Optional[float] = None
+    min_free_shipping: Optional[int] = None
 
 
 class CategoryResponse(BaseModel):
@@ -423,10 +425,10 @@ async def get_user_stats(
 ):
     """Get statistics for the authenticated user"""
     
-    # Calculate items purchased (from completed orders)
+    # Calculate items purchased (from PAID or SHIPPED orders; RETURNED excluded)
     items_purchased = db.query(func.count(OrderItem.id)).join(Order).filter(
         Order.user_id == current_user.id,
-        Order.status == OrderStatus.PAID
+        Order.status.in_([OrderStatus.PAID, OrderStatus.SHIPPED])
     ).scalar() or 0
     
     # Items swiped from denormalized counter (Option 2)
@@ -1499,20 +1501,15 @@ async def get_brand_product_details(
 async def update_order_tracking(
     order_id: str,
     tracking_data: schemas.UpdateTrackingRequest,
-    current_user: User = Depends(get_current_brand_user),
+    current_user: Brand = Depends(get_current_brand_user),
     db: Session = Depends(get_db)
 ):
-    """Update tracking number for a specific order belonging to the authenticated brand user"""
+    """Update tracking number and link for an order. Once both are set and order is PAID, status becomes SHIPPED."""
     order = db.query(Order).filter(Order.id == order_id).first()
     if not order:
         raise HTTPException(status_code=404, detail="Заказ не найден. Проверьте правильность номера заказа.")
 
-    # Verify that the order belongs to a product from the current brand user
-    # This logic needs to be refined based on how brands are linked to orders.
-    # For now, assuming brand_id = 1 for testing.
-    brand_id_filter = 1 # Placeholder: replace with actual brand_id from current_user
-    
-    # Check if any item in the order belongs to the current brand
+    brand_id_filter = int(current_user.id)
     order_belongs_to_brand = (
         db.query(OrderItem)
         .join(ProductVariant, OrderItem.product_variant_id == ProductVariant.id)
@@ -1529,11 +1526,59 @@ async def update_order_tracking(
         raise HTTPException(status_code=403, detail="Order does not belong to your brand")
 
     if tracking_data.tracking_number is not None:
-        order.tracking_number = tracking_data.tracking_number
+        order.tracking_number = tracking_data.tracking_number.strip() or None
     if tracking_data.tracking_link is not None:
-        order.tracking_link = tracking_data.tracking_link
+        order.tracking_link = tracking_data.tracking_link.strip() or None
+
+    # Transition to SHIPPED when tracking is complete and order was PAID
+    if (
+        order.status == OrderStatus.PAID
+        and order.tracking_number
+        and order.tracking_link
+    ):
+        payment_service.update_order_status(db, order.id, OrderStatus.SHIPPED)
+
     db.commit()
     return {"message": "Tracking information updated successfully"}
+
+
+@app.put("/api/v1/brands/orders/{order_id}/return", response_model=MessageResponse)
+async def mark_order_returned(
+    order_id: str,
+    current_user: Brand = Depends(get_current_brand_user),
+    db: Session = Depends(get_db)
+):
+    """Mark an order as RETURNED after the brand has received the returned item. Only SHIPPED orders can be returned."""
+    order = db.query(Order).filter(Order.id == order_id).first()
+    if not order:
+        raise HTTPException(status_code=404, detail="Заказ не найден.")
+
+    brand_id_filter = int(current_user.id)
+    order_belongs_to_brand = (
+        db.query(OrderItem)
+        .join(ProductVariant, OrderItem.product_variant_id == ProductVariant.id)
+        .join(ProductColorVariant, ProductVariant.product_color_variant_id == ProductColorVariant.id)
+        .join(Product, ProductColorVariant.product_id == Product.id)
+        .filter(
+            OrderItem.order_id == order_id,
+            Product.brand_id == brand_id_filter
+        )
+        .first()
+    )
+
+    if not order_belongs_to_brand:
+        raise HTTPException(status_code=403, detail="Order does not belong to your brand")
+
+    if order.status != OrderStatus.SHIPPED:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Only SHIPPED orders can be marked as returned. Current status: {order.status.value}",
+        )
+
+    payment_service.update_order_status(db, order.id, OrderStatus.RETURNED)
+    db.commit()
+    return {"message": "Order marked as returned. Stock has been restored."}
+
 
 class UpdateOrderItemSKURequest(BaseModel):
     sku: str
@@ -1550,15 +1595,11 @@ async def update_order_item_sku(
     if not order_item:
         raise HTTPException(status_code=404, detail="Order item not found")
 
-    # Verify that the order item belongs to a product from the current brand user
-    brand_id_filter = current_user.id
-    
-    product = db.query(Product).join(ProductVariant).filter(
-        ProductVariant.id == order_item.product_variant_id,
-        Product.brand_id == brand_id_filter
-    ).first()
-
-    if not product:
+    variant = db.query(ProductVariant).filter(ProductVariant.id == order_item.product_variant_id).first()
+    if not variant:
+        raise HTTPException(status_code=404, detail="Product variant not found")
+    product = variant.product
+    if not product or product.brand_id != int(current_user.id):
         raise HTTPException(status_code=403, detail="Order item does not belong to your brand")
 
     if order_item.sku:
@@ -1797,7 +1838,9 @@ async def get_brands(db: Session = Depends(get_db)):
             name=brand.name,
             slug=brand.slug,
             logo=brand.logo,
-            description=brand.description
+            description=brand.description,
+            shipping_price=brand.shipping_price,
+            min_free_shipping=brand.min_free_shipping,
         ) for brand in brands
     ]
 
@@ -2562,6 +2605,32 @@ def _order_to_full_response(order: Order) -> schemas.OrderResponse:
         delivery_city=order.delivery_city,
         delivery_postal_code=order.delivery_postal_code
     )
+
+
+@app.post("/api/v1/orders/test", response_model=schemas.OrderTestCreateResponse)
+async def create_order_test_endpoint(
+    order_data: schemas.OrderTestCreate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Create an order in test mode (no payment gateway). For development/testing."""
+    if isinstance(current_user, Brand):
+        raise HTTPException(status_code=403, detail="Brands cannot create orders")
+    try:
+        order_id = payment_service.create_order_test(
+            db=db,
+            user_id=str(current_user.id),
+            amount=order_data.amount.value,
+            currency=order_data.amount.currency,
+            description=order_data.description,
+            items=order_data.items,
+        )
+        return schemas.OrderTestCreateResponse(order_id=order_id)
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e),
+        )
 
 
 @app.get("/api/v1/orders", response_model=List[schemas.OrderSummaryResponse])

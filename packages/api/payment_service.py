@@ -9,7 +9,7 @@ from yookassa import Configuration, Payment
 from dotenv import load_dotenv
 import os
 from sqlalchemy.orm import Session
-from models import Order, OrderItem, Payment as PaymentModel, OrderStatus, Product, ProductVariant, User
+from models import Order, OrderItem, Payment as PaymentModel, OrderStatus, Product, ProductVariant, User, UserProfile, UserShippingInfo
 import models
 import ipaddress
 
@@ -121,6 +121,95 @@ def create_payment(db: Session, user_id: str, amount: float, currency: str, desc
 
     return payment.confirmation.confirmation_url
 
+
+def _build_delivery_address(shipping_info) -> str | None:
+    """Build delivery address string from UserShippingInfo."""
+    if not shipping_info:
+        return None
+    parts = []
+    if shipping_info.street:
+        parts.append(shipping_info.street)
+    if shipping_info.house_number:
+        parts.append(f"д. {shipping_info.house_number}")
+    if shipping_info.apartment_number:
+        parts.append(f"кв. {shipping_info.apartment_number}")
+    return ", ".join(parts) if parts else None
+
+
+def create_order_test(db: Session, user_id: str, amount: float, currency: str, description: str, items: List[schemas.CartItem]) -> str:
+    """
+    Create an order without payment gateway (test mode). Persists order, order items,
+    deducts stock, creates Payment with status 'succeeded', sets order to PAID.
+    Returns order id.
+    """
+    order_number = generate_order_number(db)
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise Exception(f"User with id {user_id} not found")
+
+    profile = db.query(UserProfile).filter(UserProfile.user_id == user_id).first()
+    shipping_info = db.query(UserShippingInfo).filter(UserShippingInfo.user_id == user_id).first()
+    delivery_address = _build_delivery_address(shipping_info)
+
+    order = Order(
+        user_id=user_id,
+        order_number=order_number,
+        total_amount=float(amount),
+        status=OrderStatus.PENDING,
+        delivery_full_name=profile.full_name if profile else None,
+        delivery_email=shipping_info.delivery_email if shipping_info else (user.auth_account.email if user.auth_account else None),
+        delivery_phone=shipping_info.phone if shipping_info else None,
+        delivery_address=delivery_address,
+        delivery_city=shipping_info.city if shipping_info else None,
+        delivery_postal_code=shipping_info.postal_code if shipping_info else None,
+    )
+    db.add(order)
+    db.commit()
+    db.refresh(order)
+
+    for idx, item in enumerate(items):
+        variant = db.query(ProductVariant).filter(ProductVariant.id == item.product_variant_id).first()
+        if not variant:
+            raise Exception(f"Product variant with id {item.product_variant_id} not found")
+        product = variant.product
+        if not product:
+            raise Exception(f"Product not found for variant {item.product_variant_id}")
+
+        if variant.stock_quantity < item.quantity:
+            raise Exception(
+                f"Insufficient stock for product {product.name} in size {variant.size}. "
+                f"Available: {variant.stock_quantity}, Requested: {item.quantity}"
+            )
+
+        variant.stock_quantity -= item.quantity
+        # SKU left null - brands submit via dashboard
+
+        order_item = OrderItem(
+            order_id=order.id,
+            product_variant_id=variant.id,
+            quantity=item.quantity,
+            price=product.price,
+        )
+        db.add(order_item)
+
+    db.commit()
+
+    payment_model = PaymentModel(
+        id=str(uuid.uuid4()),
+        order_id=order.id,
+        amount=float(amount),
+        currency=currency,
+        status="succeeded",
+    )
+    db.add(payment_model)
+    db.commit()
+
+    update_order_status(db, order.id, OrderStatus.PAID)
+    db.commit()
+
+    return order.id
+
+
 def get_payment(payment_id: str):
     return Payment.find_one(payment_id)
 
@@ -148,7 +237,7 @@ def update_order_status(db: Session, order_id: str, status: OrderStatus):
                 for item in order.items:
                     variant = db.query(ProductVariant).filter(ProductVariant.id == item.product_variant_id).first()
                     if variant:
-                        product = db.query(Product).filter(Product.id == variant.product_id).first()
+                        product = variant.product
                         if product:
                             # Use getattr to handle missing quantity field gracefully (defaults to 1)
                             quantity = getattr(item, 'quantity', 1)
@@ -164,7 +253,7 @@ def update_order_status(db: Session, order_id: str, status: OrderStatus):
                 for item in order.items:
                     variant = db.query(ProductVariant).filter(ProductVariant.id == item.product_variant_id).first()
                     if variant:
-                        product = db.query(Product).filter(Product.id == variant.product_id).first()
+                        product = variant.product
                         if product:
                             # Use getattr to handle missing quantity field gracefully (defaults to 1)
                             quantity = getattr(item, 'quantity', 1)
@@ -172,17 +261,17 @@ def update_order_status(db: Session, order_id: str, status: OrderStatus):
                             print(f"Decremented purchase_count for product {product.id} by {quantity} (new count: {product.purchase_count})")
                 # Note: Popular items cache will refresh via TTL (5 minutes)
         
-        # If order is being cancelled, restore stock quantities
-        if status == OrderStatus.CANCELED and old_status != OrderStatus.CANCELED:
-            print(f"Restoring stock for cancelled order {order_id}")
+        # If order is being cancelled or returned, restore stock quantities
+        if status in (OrderStatus.CANCELED, OrderStatus.RETURNED) and old_status not in (OrderStatus.CANCELED, OrderStatus.RETURNED):
+            action = "cancelled" if status == OrderStatus.CANCELED else "returned"
+            print(f"Restoring stock for {action} order {order_id}")
             for item in order.items:
-                # Find the product variant and restore stock
                 variant = db.query(ProductVariant).filter(ProductVariant.id == item.product_variant_id).first()
                 if variant:
-                    quantity = getattr(item, 'quantity', 1)  # Handle missing quantity field
+                    quantity = getattr(item, 'quantity', 1)
                     variant.stock_quantity += quantity
                     print(f"Restored {quantity} units to product variant {variant.id}")
-        
+
         order.status = status
         # db.commit() # Removed commit from here - commit is done by caller
         print(f"Order {order_id} status updated to {order.status.value}")
