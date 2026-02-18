@@ -23,7 +23,7 @@ import {
 } from "@/lib/orderStatus";
 
 interface OrderDetailsPageProps {
-  order: api.OrderResponse;
+  order: api.OrderResponse;  // Brand view: single order
   onBack: () => void;
   onOrderUpdated?: () => void;
 }

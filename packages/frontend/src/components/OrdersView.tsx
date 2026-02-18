@@ -16,10 +16,10 @@ import { formatCurrency } from "@/lib/currency";
 import { getOrderStatusLabel, getOrderStatusColor } from "@/lib/orderStatus";
 
 export function OrdersView() {
-  const [orders, setOrders] = useState<OrderResponse[]>([]);
+  const [orders, setOrders] = useState<api.OrderSummary[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
-  const [selectedOrder, setSelectedOrder] = useState<OrderResponse | null>(null);
+  const [selectedOrder, setSelectedOrder] = useState<api.OrderOrCheckoutResponse | null>(null);
   const [isLoadingDetail, setIsLoadingDetail] = useState(false);
   const { toast } = useToast();
   const { token } = useAuth();
@@ -81,7 +81,7 @@ export function OrdersView() {
   }, [selectedOrderId, token, toast]);
 
   if (isLoadingDetail || selectedOrder) {
-    if (selectedOrder) {
+    if (selectedOrder && !api.isCheckoutResponse(selectedOrder)) {
       return (
         <OrderDetailsPage
           order={selectedOrder}

@@ -19,7 +19,7 @@ from slowapi.errors import RateLimitExceeded
 # Import our modules
 from config import settings
 from database import get_db, init_db
-from models import User, OAuthAccount, Brand, Style, UserBrand, UserStyle, Gender, FriendRequest, Friendship, FriendRequestStatus, Product, UserLikedProduct, UserSwipe, Category, Order, OrderItem, OrderStatus, ExclusiveAccessEmail, ProductVariant, ProductColorVariant, ProductStyle, UserProfile, UserShippingInfo, UserPreferences, PrivacyOption, AuthAccount
+from models import User, OAuthAccount, Brand, Style, UserBrand, UserStyle, Gender, FriendRequest, Friendship, FriendRequestStatus, Product, UserLikedProduct, UserSwipe, Category, Checkout, Order, OrderItem, OrderStatus, ExclusiveAccessEmail, ProductVariant, ProductColorVariant, ProductStyle, UserProfile, UserShippingInfo, UserPreferences, PrivacyOption, AuthAccount
 from auth_service import auth_service
 from oauth_service import oauth_service
 import payment_service
@@ -429,19 +429,22 @@ async def get_user_stats(
 ):
     """Get statistics for the authenticated user"""
     
-    # Calculate items purchased (from PAID or SHIPPED orders; RETURNED excluded)
+    # Items purchased: from PAID/SHIPPED orders (via Order.user_id or Checkout)
     items_purchased = db.query(func.count(OrderItem.id)).join(Order).filter(
-        Order.user_id == current_user.id,
-        Order.status.in_([OrderStatus.PAID, OrderStatus.SHIPPED])
+        Order.user_id == str(current_user.id),
+        Order.status.in_([OrderStatus.PAID, OrderStatus.SHIPPED]),
     ).scalar() or 0
-    
-    # Items swiped from denormalized counter (Option 2)
+
     items_swiped = current_user.items_swiped or 0
-    
-    # Calculate total orders (all orders regardless of status)
-    total_orders = db.query(func.count(Order.id)).filter(
-        Order.user_id == current_user.id
+
+    # Total orders: Checkouts (purchases) for user, fallback to Order count for legacy
+    total_orders = db.query(func.count(Checkout.id)).filter(
+        Checkout.user_id == str(current_user.id)
     ).scalar() or 0
+    if total_orders == 0:
+        total_orders = db.query(func.count(Order.id)).filter(
+            Order.user_id == str(current_user.id)
+        ).scalar() or 0
     
     # Calculate account age in days
     account_age_days = (datetime.utcnow() - current_user.created_at).days
@@ -2587,6 +2590,84 @@ def _order_to_summary(order: Order) -> schemas.OrderSummaryResponse:
     )
 
 
+def _checkout_to_summary(checkout: Checkout) -> schemas.OrderSummaryResponse:
+    first_order = next((o for o in checkout.orders), None)
+    number = first_order.order_number if first_order else str(checkout.id)[:8]
+    status = first_order.status.value if first_order else "pending"
+    tracking = first_order.tracking_number if first_order and len(checkout.orders) == 1 else None
+    tracking_link = first_order.tracking_link if first_order and len(checkout.orders) == 1 else None
+    return schemas.OrderSummaryResponse(
+        id=checkout.id,
+        number=number,
+        total_amount=checkout.total_amount,
+        currency="RUB",
+        date=checkout.created_at,
+        status=status,
+        tracking_number=tracking,
+        tracking_link=tracking_link,
+    )
+
+
+def _build_order_item_response(item: OrderItem) -> schemas.OrderItemResponse:
+    product_variant = item.product_variant
+    product = product_variant.product
+    cv = product_variant.color_variant
+    imgs = cv.images or []
+    return schemas.OrderItemResponse(
+        id=item.id,
+        name=product.name,
+        price=item.price,
+        size=product_variant.size,
+        image=imgs[0] if imgs else None,
+        delivery=schemas.Delivery(
+            cost=item.order.shipping_cost or 0,
+            estimatedTime="1-3 дня",
+            tracking_number=item.order.tracking_number,
+        ),
+        sku=item.sku,
+        brand_name=product.brand.name if product.brand else None,
+        description=product.description,
+        color=cv.color_name,
+        materials=product.material,
+        images=imgs,
+        return_policy=product.brand.return_policy if product.brand else None,
+        product_id=product.id,
+    )
+
+
+def _checkout_to_full_response(checkout: Checkout) -> schemas.CheckoutResponse:
+    order_parts = []
+    for order in checkout.orders:
+        items = [_build_order_item_response(item) for item in order.items]
+        brand = order.brand
+        order_parts.append(schemas.OrderPartResponse(
+            id=order.id,
+            number=order.order_number,
+            brand_id=order.brand_id,
+            brand_name=brand.name if brand else None,
+            subtotal=order.subtotal or 0,
+            shipping_cost=order.shipping_cost or 0,
+            total_amount=order.total_amount,
+            status=order.status.value,
+            tracking_number=order.tracking_number,
+            tracking_link=order.tracking_link,
+            items=items,
+        ))
+    return schemas.CheckoutResponse(
+        id=checkout.id,
+        total_amount=checkout.total_amount,
+        currency="RUB",
+        date=checkout.created_at,
+        orders=order_parts,
+        delivery_full_name=checkout.delivery_full_name,
+        delivery_email=checkout.delivery_email,
+        delivery_phone=checkout.delivery_phone,
+        delivery_address=checkout.delivery_address,
+        delivery_city=checkout.delivery_city,
+        delivery_postal_code=checkout.delivery_postal_code,
+    )
+
+
 def _order_to_full_response(order: Order) -> schemas.OrderResponse:
     order_items = []
     for item in order.items:
@@ -2614,6 +2695,7 @@ def _order_to_full_response(order: Order) -> schemas.OrderResponse:
             return_policy=product.brand.return_policy if product.brand else None,
             product_id=product.id
         ))
+    fn, em, ph, addr, city, pc = _order_delivery(order)
     return schemas.OrderResponse(
         id=order.id,
         number=order.order_number,
@@ -2624,12 +2706,12 @@ def _order_to_full_response(order: Order) -> schemas.OrderResponse:
         tracking_number=order.tracking_number,
         tracking_link=order.tracking_link,
         items=order_items,
-        delivery_full_name=order.delivery_full_name,
-        delivery_email=order.delivery_email,
-        delivery_phone=order.delivery_phone,
-        delivery_address=order.delivery_address,
-        delivery_city=order.delivery_city,
-        delivery_postal_code=order.delivery_postal_code
+        delivery_full_name=fn,
+        delivery_email=em,
+        delivery_phone=ph,
+        delivery_address=addr,
+        delivery_city=city,
+        delivery_postal_code=pc,
     )
 
 
@@ -2643,7 +2725,7 @@ async def create_order_test_endpoint(
     if isinstance(current_user, Brand):
         raise HTTPException(status_code=403, detail="Brands cannot create orders")
     try:
-        order_id = payment_service.create_order_test(
+        checkout_id = payment_service.create_order_test(
             db=db,
             user_id=str(current_user.id),
             amount=order_data.amount.value,
@@ -2651,7 +2733,7 @@ async def create_order_test_endpoint(
             description=order_data.description,
             items=order_data.items,
         )
-        return schemas.OrderTestCreateResponse(order_id=order_id)
+        return schemas.OrderTestCreateResponse(order_id=checkout_id)
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -2664,12 +2746,13 @@ async def get_orders(
     current_user: any = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """Get order list (summaries only). Use GET /orders/{order_id} for full details."""
+    """Get order list. Users see Checkouts; brands see their Orders."""
     is_brand = isinstance(current_user, Brand)
 
     if is_brand:
         orders = (
             db.query(Order)
+            .options(joinedload(Order.items).joinedload(OrderItem.product_variant))
             .join(OrderItem)
             .join(ProductVariant, OrderItem.product_variant_id == ProductVariant.id)
             .join(ProductColorVariant, ProductVariant.product_color_variant_id == ProductColorVariant.id)
@@ -2678,41 +2761,57 @@ async def get_orders(
             .distinct()
             .all()
         )
+        return [_order_to_summary(o) for o in orders]
     else:
-        orders = db.query(Order).filter(Order.user_id == str(current_user.id)).all()
+        checkouts = (
+            db.query(Checkout)
+            .options(joinedload(Checkout.orders))
+            .filter(Checkout.user_id == str(current_user.id))
+            .order_by(Checkout.created_at.desc())
+            .all()
+        )
+        return [_checkout_to_summary(c) for c in checkouts]
 
-    return [_order_to_summary(o) for o in orders]
+
+_order_load = (
+    joinedload(Order.checkout),
+    joinedload(Order.items)
+    .joinedload(OrderItem.product_variant)
+    .joinedload(ProductVariant.color_variant)
+    .joinedload(ProductColorVariant.product)
+    .joinedload(Product.brand),
+)
 
 
-_order_load = joinedload(Order.items).joinedload(OrderItem.product_variant).joinedload(
-    ProductVariant.color_variant
-).joinedload(ProductColorVariant.product).joinedload(Product.brand)
+def _order_delivery(order: Order):
+    """Delivery fields for OrderResponse; fall back to checkout when order has none (legacy)."""
+    c = order.checkout
+    return (
+        order.delivery_full_name or (c.delivery_full_name if c else None),
+        order.delivery_email or (c.delivery_email if c else None),
+        order.delivery_phone or (c.delivery_phone if c else None),
+        order.delivery_address or (c.delivery_address if c else None),
+        order.delivery_city or (c.delivery_city if c else None),
+        order.delivery_postal_code or (c.delivery_postal_code if c else None),
+    )
 
 
-@app.get("/api/v1/orders/{order_id}", response_model=schemas.OrderResponse)
+@app.get("/api/v1/orders/{order_id}")
 async def get_order_by_id(
     order_id: str,
     current_user: any = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """Get full order details (items, delivery). Call after user taps an order in the list."""
-    order = (
-        db.query(Order)
-        .options(_order_load)
-        .filter(Order.id == order_id)
-        .first()
-    )
-    if not order:
-        raise HTTPException(status_code=404, detail="Order not found")
-
+    """Get full order/checkout details. Users: id is checkout_id; Brands: id is order_id."""
     is_brand = isinstance(current_user, Brand)
     if is_brand:
-        # Brand may only see orders that contain at least one item from their brand
-        has_brand_item = any(
-            item.product_variant.product.brand_id == current_user.id
-            for item in order.items
+        order = (
+            db.query(Order)
+            .options(*_order_load)
+            .filter(Order.id == order_id)
+            .first()
         )
-        if not has_brand_item:
+        if not order or order.brand_id != current_user.id:
             raise HTTPException(status_code=404, detail="Order not found")
         # Build response with only this brand's items
         order_items = []
@@ -2743,6 +2842,7 @@ async def get_order_by_id(
                 return_policy=product.brand.return_policy if product.brand else None,
                 product_id=product.id
             ))
+        fn, em, ph, addr, city, pc = _order_delivery(order)
         return schemas.OrderResponse(
             id=order.id,
             number=order.order_number,
@@ -2753,18 +2853,26 @@ async def get_order_by_id(
             tracking_number=order.tracking_number,
             tracking_link=order.tracking_link,
             items=order_items,
-            delivery_full_name=order.delivery_full_name,
-            delivery_email=order.delivery_email,
-            delivery_phone=order.delivery_phone,
-            delivery_address=order.delivery_address,
-            delivery_city=order.delivery_city,
-            delivery_postal_code=order.delivery_postal_code
+            delivery_full_name=fn,
+            delivery_email=em,
+            delivery_phone=ph,
+            delivery_address=addr,
+            delivery_city=city,
+            delivery_postal_code=pc,
         )
 
-    # User: must own the order
-    if order.user_id != str(current_user.id):
-        raise HTTPException(status_code=404, detail="Order not found")
-    return _order_to_full_response(order)
+    # User: id is checkout_id
+    checkout = (
+        db.query(Checkout)
+        .options(
+            joinedload(Checkout.orders).joinedload(Order.items).joinedload(OrderItem.product_variant).joinedload(ProductVariant.color_variant).joinedload(ProductColorVariant.product).joinedload(Product.brand),
+        )
+        .filter(Checkout.id == order_id, Checkout.user_id == str(current_user.id))
+        .first()
+    )
+    if checkout:
+        return _checkout_to_full_response(checkout)
+    raise HTTPException(status_code=404, detail="Order not found")
 
 
 @app.post("/api/v1/payments/webhook")

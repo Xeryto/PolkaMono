@@ -439,6 +439,15 @@ const Cart = ({ navigation }: CartProps) => {
 
       // TEST MODE: Create order in database (no payment platform)
       await api.createOrderTest(totalAmount, receiptItems);
+
+      // Clear cart immediately after successful order (in-memory + persistent storage)
+      if (global.cartStorage) {
+        cartItems.forEach(
+          (item) =>
+            item.cartItemId && global.cartStorage.removeItem(item.cartItemId),
+        );
+        setCartItems([]);
+      }
       setShowConfirmation(true);
 
       // Payment platform calls (disabled in test mode):

@@ -102,12 +102,43 @@ class OrderResponse(BaseModel):
     total_amount: float
     currency: str
     date: datetime
-    status: str  # One of: pending, paid, shipped, returned, canceled
+    status: str
     tracking_number: Optional[str] = None
-    tracking_link: Optional[str] = None # NEW
+    tracking_link: Optional[str] = None
+    items: List[OrderItemResponse]
+    delivery_full_name: Optional[str] = None
+    delivery_email: Optional[str] = None
+    delivery_phone: Optional[str] = None
+    delivery_address: Optional[str] = None
+    delivery_city: Optional[str] = None
+    delivery_postal_code: Optional[str] = None
+
+    class Config:
+        from_attributes = True
+
+
+class OrderPartResponse(BaseModel):
+    """One brand's order within a checkout (for CheckoutResponse)."""
+    id: str
+    number: str
+    brand_id: int
+    brand_name: Optional[str] = None
+    subtotal: float
+    shipping_cost: float
+    total_amount: float
+    status: str
+    tracking_number: Optional[str] = None
+    tracking_link: Optional[str] = None
     items: List[OrderItemResponse]
 
-    # Delivery information stored at order creation time
+
+class CheckoutResponse(BaseModel):
+    """Full checkout (Ozon-style) with nested orders per brand."""
+    id: str
+    total_amount: float
+    currency: str
+    date: datetime
+    orders: List[OrderPartResponse]
     delivery_full_name: Optional[str] = None
     delivery_email: Optional[str] = None
     delivery_phone: Optional[str] = None

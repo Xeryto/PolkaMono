@@ -9,7 +9,19 @@ from yookassa import Configuration, Payment
 from dotenv import load_dotenv
 import os
 from sqlalchemy.orm import Session
-from models import Order, OrderItem, Payment as PaymentModel, OrderStatus, Product, ProductVariant, User, UserProfile, UserShippingInfo
+from models import (
+    Brand,
+    Checkout,
+    Order,
+    OrderItem,
+    Payment as PaymentModel,
+    OrderStatus,
+    Product,
+    ProductVariant,
+    User,
+    UserProfile,
+    UserShippingInfo,
+)
 import models
 import ipaddress
 
@@ -37,11 +49,30 @@ def verify_webhook_ip(ip: str) -> bool:
             return True
     return False
 
-def generate_order_number(db: Session) -> str:
+DEFAULT_SHIPPING_PRICE = 350.0
+
+
+def generate_order_number(db: Session, suffix: str = "") -> str:
+    """Generate unique order number. Use suffix for sub-orders (e.g. '-1', '-2')."""
     while True:
-        order_number = ''.join(random.choices(string.digits, k=5))
+        base = ''.join(random.choices(string.digits, k=5))
+        order_number = f"{base}{suffix}" if suffix else base
         if not db.query(Order).filter(Order.order_number == order_number).first():
             return order_number
+
+
+def _compute_shipping_for_brand(
+    db: Session, brand_id: int, subtotal: float
+) -> float:
+    """Compute shipping cost for a brand from profile. Free if subtotal >= min_free_shipping."""
+    brand = db.query(Brand).filter(Brand.id == brand_id).first()
+    if not brand:
+        return DEFAULT_SHIPPING_PRICE
+    min_free = brand.min_free_shipping
+    shipping_price = brand.shipping_price or DEFAULT_SHIPPING_PRICE
+    if min_free is not None and subtotal >= min_free:
+        return 0.0
+    return float(shipping_price)
 
 def create_payment(db: Session, user_id: str, amount: float, currency: str, description: str, return_url: str, items: List[schemas.CartItem]):
     idempotence_key = str(uuid.uuid4())
@@ -136,67 +167,144 @@ def _build_delivery_address(shipping_info) -> str | None:
     return ", ".join(parts) if parts else None
 
 
+def _validate_delivery_info(profile, shipping_info, user) -> None:
+    """
+    Raise if required delivery information is missing.
+    Required: full_name (profile), phone, street, city, delivery_email (shipping or auth email).
+    """
+    missing = []
+    if not (profile and profile.full_name and str(profile.full_name).strip()):
+        missing.append("полное имя")
+    if not (shipping_info and shipping_info.phone and str(shipping_info.phone).strip()):
+        missing.append("телефон")
+    if not (shipping_info and shipping_info.street and str(shipping_info.street).strip()):
+        missing.append("улица")
+    if not (shipping_info and shipping_info.city and str(shipping_info.city).strip()):
+        missing.append("город")
+    email = None
+    if shipping_info and shipping_info.delivery_email:
+        email = str(shipping_info.delivery_email).strip()
+    if not email and user and user.auth_account and user.auth_account.email:
+        email = str(user.auth_account.email).strip()
+    if not email:
+        missing.append("email для доставки")
+    if missing:
+        raise Exception(
+            "Для оформления заказа необходимо заполнить информацию о доставке: "
+            + ", ".join(missing)
+            + ". Пожалуйста, перейдите в настройки профиля."
+        )
+
+
 def create_order_test(db: Session, user_id: str, amount: float, currency: str, description: str, items: List[schemas.CartItem]) -> str:
     """
-    Create an order without payment gateway (test mode). Persists order, order items,
-    deducts stock, creates Payment with status 'succeeded', sets order to PAID.
-    Returns order id.
+    Create checkout + orders (Ozon-style: one Order per brand) without payment gateway (test mode).
+    Persists Checkout, Orders, OrderItems, deducts stock, creates Payment, sets all orders PAID.
+    Returns checkout_id (primary identifier for the purchase).
     """
-    order_number = generate_order_number(db)
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
         raise Exception(f"User with id {user_id} not found")
 
     profile = db.query(UserProfile).filter(UserProfile.user_id == user_id).first()
     shipping_info = db.query(UserShippingInfo).filter(UserShippingInfo.user_id == user_id).first()
+    _validate_delivery_info(profile, shipping_info, user)
+
     delivery_address = _build_delivery_address(shipping_info)
 
-    order = Order(
-        user_id=user_id,
-        order_number=order_number,
-        total_amount=float(amount),
-        status=OrderStatus.PENDING,
-        delivery_full_name=profile.full_name if profile else None,
-        delivery_email=shipping_info.delivery_email if shipping_info else (user.auth_account.email if user.auth_account else None),
-        delivery_phone=shipping_info.phone if shipping_info else None,
-        delivery_address=delivery_address,
-        delivery_city=shipping_info.city if shipping_info else None,
-        delivery_postal_code=shipping_info.postal_code if shipping_info else None,
-    )
-    db.add(order)
-    db.commit()
-    db.refresh(order)
-
-    for idx, item in enumerate(items):
+    # Group items by brand and validate stock
+    brand_items: dict[int, list[tuple[ProductVariant, int, float]]] = {}
+    for item in items:
         variant = db.query(ProductVariant).filter(ProductVariant.id == item.product_variant_id).first()
         if not variant:
             raise Exception(f"Product variant with id {item.product_variant_id} not found")
         product = variant.product
         if not product:
             raise Exception(f"Product not found for variant {item.product_variant_id}")
-
         if variant.stock_quantity < item.quantity:
             raise Exception(
                 f"Insufficient stock for product {product.name} in size {variant.size}. "
                 f"Available: {variant.stock_quantity}, Requested: {item.quantity}"
             )
+        bid = product.brand_id
+        if bid not in brand_items:
+            brand_items[bid] = []
+        brand_items[bid].append((variant, item.quantity, product.price))
 
-        variant.stock_quantity -= item.quantity
-        # SKU left null - brands submit via dashboard
+    # Build delivery values once (already validated)
+    delivery_full_name = (profile.full_name and profile.full_name.strip()) or None
+    delivery_email = (shipping_info.delivery_email and shipping_info.delivery_email.strip()) if shipping_info else None
+    if not delivery_email and user.auth_account and user.auth_account.email:
+        delivery_email = user.auth_account.email.strip()
+    delivery_phone = (shipping_info.phone and shipping_info.phone.strip()) if shipping_info else None
+    delivery_city = (shipping_info.city and shipping_info.city.strip()) if shipping_info else None
+    delivery_postal_code = (shipping_info.postal_code and shipping_info.postal_code.strip()) if shipping_info else None
 
-        order_item = OrderItem(
-            order_id=order.id,
-            product_variant_id=variant.id,
-            quantity=item.quantity,
-            price=product.price,
+    # Create Checkout (and denormalize delivery onto Orders so brand view shows it)
+    checkout = Checkout(
+        user_id=user_id,
+        total_amount=float(amount),
+        delivery_full_name=delivery_full_name,
+        delivery_email=delivery_email,
+        delivery_phone=delivery_phone,
+        delivery_address=delivery_address,
+        delivery_city=delivery_city,
+        delivery_postal_code=delivery_postal_code,
+    )
+    db.add(checkout)
+    db.commit()
+    db.refresh(checkout)
+
+    base_order_number = generate_order_number(db)
+    total_checkout = 0.0
+    first_order_id = None
+
+    for idx, (brand_id, brand_item_list) in enumerate(brand_items.items()):
+        subtotal = sum(qty * price for _, qty, price in brand_item_list)
+        shipping_cost = _compute_shipping_for_brand(db, brand_id, subtotal)
+        order_total = subtotal + shipping_cost
+        total_checkout += order_total
+
+        order_number = f"{base_order_number}-{idx + 1}" if len(brand_items) > 1 else base_order_number
+        order = Order(
+            checkout_id=checkout.id,
+            brand_id=brand_id,
+            order_number=order_number,
+            user_id=user_id,
+            subtotal=subtotal,
+            shipping_cost=shipping_cost,
+            total_amount=order_total,
+            status=OrderStatus.PENDING,
+            delivery_full_name=delivery_full_name,
+            delivery_email=delivery_email,
+            delivery_phone=delivery_phone,
+            delivery_address=delivery_address,
+            delivery_city=delivery_city,
+            delivery_postal_code=delivery_postal_code,
         )
-        db.add(order_item)
+        db.add(order)
+        db.commit()
+        db.refresh(order)
+        if first_order_id is None:
+            first_order_id = order.id
+
+        for variant, qty, price in brand_item_list:
+            variant.stock_quantity -= qty
+            order_item = OrderItem(
+                order_id=order.id,
+                product_variant_id=variant.id,
+                quantity=qty,
+                price=price,
+            )
+            db.add(order_item)
+
+        update_order_status(db, order.id, OrderStatus.PAID)
 
     db.commit()
 
     payment_model = PaymentModel(
         id=str(uuid.uuid4()),
-        order_id=order.id,
+        checkout_id=checkout.id,
         amount=float(amount),
         currency=currency,
         status="succeeded",
@@ -204,10 +312,7 @@ def create_order_test(db: Session, user_id: str, amount: float, currency: str, d
     db.add(payment_model)
     db.commit()
 
-    update_order_status(db, order.id, OrderStatus.PAID)
-    db.commit()
-
-    return order.id
+    return checkout.id
 
 
 def get_payment(payment_id: str):

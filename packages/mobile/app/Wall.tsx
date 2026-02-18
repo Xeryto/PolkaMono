@@ -117,7 +117,7 @@ const Wall = ({ navigation, onLogout }: WallProps) => {
 
   // Orders state: list is summaries only; full order loaded when user taps one
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
-  const [orderDetail, setOrderDetail] = useState<api.Order | null>(null);
+  const [orderDetail, setOrderDetail] = useState<api.OrderOrCheckout | null>(null);
   const [isLoadingOrderDetail, setIsLoadingOrderDetail] = useState(false);
   const [orders, setOrders] = useState<api.OrderSummary[]>([]);
   const [isLoadingOrders, setIsLoadingOrders] = useState(false);
@@ -836,7 +836,10 @@ const Wall = ({ navigation, onLogout }: WallProps) => {
           style={styles.orderItemsList}
           showsVerticalScrollIndicator={false}
         >
-          {orderDetail.items.map((item, index) => (
+          {(api.isCheckoutResponse(orderDetail)
+            ? orderDetail.orders.flatMap((o) => o.items)
+            : orderDetail.items
+          ).map((item, index) => (
             <Animated.View
               key={item.id}
               entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
@@ -926,7 +929,11 @@ const Wall = ({ navigation, onLogout }: WallProps) => {
             style={styles.orderStatus}
           >
             <Text style={styles.orderStatusText}>
-              {api.getOrderStatusLabel(orderDetail?.status)}
+              {api.getOrderStatusLabel(
+                api.isCheckoutResponse(orderDetail)
+                  ? orderDetail.orders[0]?.status
+                  : orderDetail.status,
+              )}
             </Text>
           </Animated.View>
         </Animated.View>

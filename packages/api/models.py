@@ -400,6 +400,28 @@ class Friendship(Base):
 # Add products relationship to Style model
 Style.products = relationship("ProductStyle", back_populates="style", cascade="all, delete-orphan")
 
+
+class Checkout(Base):
+    """Ozon-style: one Checkout per payment session. Groups Orders (one per brand)."""
+    __tablename__ = "checkouts"
+
+    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    user_id = Column(String, ForeignKey("users.id", ondelete="RESTRICT"), nullable=False)
+    total_amount = Column(Float, nullable=False)
+    delivery_full_name = Column(String(255), nullable=True)
+    delivery_email = Column(String(255), nullable=True)
+    delivery_phone = Column(String(20), nullable=True)
+    delivery_address = Column(Text, nullable=True)
+    delivery_city = Column(String(100), nullable=True)
+    delivery_postal_code = Column(String(20), nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    user = relationship("User")
+    orders = relationship("Order", back_populates="checkout", cascade="all, delete-orphan")
+    payment = relationship("Payment", back_populates="checkout", uselist=False, cascade="all, delete-orphan")
+
+
 class OrderStatus(str, Enum):
     """Canonical order status. Values are lowercase; API returns these strings.
     Keep in sync with packages/shared orderStatus.ts and schemas.ORDER_STATUS_VALUES."""
@@ -444,30 +466,39 @@ class OrderStatusType(TypeDecorator):
 
 
 class Order(Base):
+    """Ozon-style: one Order per brand within a Checkout. Has its own tracking and status."""
     __tablename__ = "orders"
 
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    checkout_id = Column(String, ForeignKey("checkouts.id", ondelete="CASCADE"), nullable=True)  # Nullable for migration
+    brand_id = Column(Integer, ForeignKey("brands.id", ondelete="RESTRICT"), nullable=True)  # Nullable for migration
     order_number = Column(String, unique=True, nullable=False)
-    user_id = Column(String, ForeignKey("users.id", ondelete="RESTRICT"), nullable=False)
+    user_id = Column(String, ForeignKey("users.id", ondelete="RESTRICT"), nullable=True)  # Denorm for legacy/queries
+    subtotal = Column(Float, nullable=True)  # Items only; nullable for migration
+    shipping_cost = Column(Float, nullable=True)  # Per-brand delivery; nullable for migration
     total_amount = Column(Float, nullable=False)
     status = Column(OrderStatusType, default=OrderStatus.PENDING, nullable=False)
-    tracking_number = Column(String(255), nullable=True) # Existing
-    tracking_link = Column(String(500), nullable=True) # NEW: Link to tracking page
-    
-    # Delivery information stored at order creation time
+    tracking_number = Column(String(255), nullable=True)
+    tracking_link = Column(String(500), nullable=True)
+    # Legacy delivery fields (for pre-Checkout orders; new orders get from checkout)
     delivery_full_name = Column(String(255), nullable=True)
     delivery_email = Column(String(255), nullable=True)
     delivery_phone = Column(String(20), nullable=True)
     delivery_address = Column(Text, nullable=True)
     delivery_city = Column(String(100), nullable=True)
     delivery_postal_code = Column(String(20), nullable=True)
-    
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
+    checkout = relationship("Checkout", back_populates="orders")
+    brand = relationship("Brand")
     user = relationship("User")
     items = relationship("OrderItem", back_populates="order", cascade="all, delete-orphan")
-    payment = relationship("Payment", back_populates="order", uselist=False)
+
+class OrderItemStatus(str, Enum):
+    FULFILLED = "fulfilled"
+    RETURNED = "returned"
+
 
 class OrderItem(Base):
     __tablename__ = "order_items"
@@ -475,25 +506,28 @@ class OrderItem(Base):
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
     order_id = Column(String, ForeignKey("orders.id", ondelete="CASCADE"), nullable=False)
     product_variant_id = Column(String, ForeignKey("product_variants.id", ondelete="RESTRICT"), nullable=False)
-    quantity = Column(Integer, nullable=False, default=1) # Quantity of items purchased
+    quantity = Column(Integer, nullable=False, default=1)
     price = Column(Float, nullable=False)
-    sku = Column(String(255), unique=True, nullable=True) # Stock Keeping Unit - unique identifier for each ordered item instance
+    sku = Column(String(255), unique=True, nullable=True)
+    status = Column(String(20), default="fulfilled", nullable=False)  # fulfilled | returned
 
     order = relationship("Order", back_populates="items")
-    product_variant = relationship("ProductVariant") # Changed relationship name
+    product_variant = relationship("ProductVariant")
 
 class Payment(Base):
     __tablename__ = "payments"
 
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
-    order_id = Column(String, ForeignKey("orders.id", ondelete="CASCADE"), nullable=False)
+    order_id = Column(String, ForeignKey("orders.id", ondelete="CASCADE"), nullable=True)  # Legacy; nullable for migration
+    checkout_id = Column(String, ForeignKey("checkouts.id", ondelete="CASCADE"), nullable=True)  # Ozon-style
     amount = Column(Float, nullable=False)
     currency = Column(String(10), nullable=False)
     status = Column(String(50), nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
-    order = relationship("Order", back_populates="payment") 
+    order = relationship("Order", foreign_keys=[order_id])
+    checkout = relationship("Checkout", back_populates="payment") 
 
 class ExclusiveAccessEmail(Base):
     __tablename__ = "exclusive_access_emails"

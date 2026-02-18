@@ -1208,7 +1208,7 @@ export interface OrderSummary {
   tracking_link?: string;
 }
 
-/** Full order with line items (from GET /orders/{id}). */
+/** Full order with line items (from GET /orders/{id} for brand). */
 export interface Order extends OrderSummary {
   items: OrderItem[];
   delivery_full_name?: string;
@@ -1217,6 +1217,42 @@ export interface Order extends OrderSummary {
   delivery_address?: string;
   delivery_city?: string;
   delivery_postal_code?: string;
+}
+
+/** One brand's order within a checkout (Ozon-style). */
+export interface OrderPart {
+  id: string;
+  number: string;
+  brand_id: number;
+  brand_name?: string;
+  subtotal: number;
+  shipping_cost: number;
+  total_amount: number;
+  status: string;
+  tracking_number?: string;
+  tracking_link?: string;
+  items: OrderItem[];
+}
+
+/** Full checkout with nested orders per brand (Ozon-style, user view). */
+export interface CheckoutResponse {
+  id: string;
+  total_amount: number;
+  currency: string;
+  date: string;
+  orders: OrderPart[];
+  delivery_full_name?: string;
+  delivery_email?: string;
+  delivery_phone?: string;
+  delivery_address?: string;
+  delivery_city?: string;
+  delivery_postal_code?: string;
+}
+
+export type OrderOrCheckout = Order | CheckoutResponse;
+
+export function isCheckoutResponse(r: OrderOrCheckout): r is CheckoutResponse {
+  return "orders" in r && Array.isArray((r as CheckoutResponse).orders);
 }
 
 /** Order status values (API returns lowercase). See packages/api/models.py OrderStatus. */
@@ -1251,7 +1287,7 @@ export const getOrders = async (): Promise<OrderSummary[]> => {
   return await apiRequest('/api/v1/orders', 'GET');
 };
 
-export const getOrderById = async (orderId: string): Promise<Order> => {
+export const getOrderById = async (orderId: string): Promise<OrderOrCheckout> => {
   return await apiRequest(`/api/v1/orders/${orderId}`, 'GET');
 };
 
