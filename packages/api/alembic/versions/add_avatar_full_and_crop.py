@@ -1,7 +1,7 @@
 """Add avatar_url_full and avatar_crop to user_profiles
 
 Revision ID: avatar_full_crop
-Revises: add_brand_inn_payout
+Revises: auth_accounts_shared
 Create Date: 2026-02-18
 
 """
@@ -10,7 +10,7 @@ import sqlalchemy as sa
 from sqlalchemy import inspect
 
 revision = 'avatar_full_crop'
-down_revision = 'add_brand_inn_payout'
+down_revision = 'auth_accounts_shared'
 branch_labels = None
 depends_on = None
 
