@@ -1185,7 +1185,7 @@ async def get_brand_profile(current_user: Brand = Depends(get_current_brand_user
 @app.post("/api/v1/brands/upload/presigned-url", response_model=schemas.PresignedUploadResponse)
 async def get_product_image_presigned_url(
     body: schemas.PresignedUploadRequest,
-    current_user: User = Depends(get_current_brand_user),
+    current_user: Brand = Depends(get_current_brand_user),
 ):
     """Get a presigned URL to upload a product image. Upload with PUT to upload_url, then use public_url in product general_images or color_variant.images."""
     if not s3_configured():
