@@ -28,6 +28,16 @@ from schemas import UserCreate, EmailVerificationRequest
 from mail_service import mail_service
 from storage_service import generate_key, generate_presigned_upload_url, is_configured as s3_configured
 
+# Constants for image upload validation
+ALLOWED_IMAGE_CONTENT_TYPES = {"image/jpeg", "image/png", "image/webp", "image/gif"}
+ALLOWED_IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp", ".gif"}
+CONTENT_TYPE_TO_EXTENSION = {
+    "image/jpeg": ".jpg",
+    "image/png": ".png",
+    "image/webp": ".webp",
+    "image/gif": ".gif",
+}
+
 # Size ordering utility
 def get_size_order(size: str) -> int:
     """Get the order index for size sorting (XS to XL)"""
@@ -51,12 +61,12 @@ def validate_image_content_type(content_type: str) -> None:
     
     Raises HTTPException with 400 status if validation fails.
     """
-    allowed_content_types = {"image/jpeg", "image/png", "image/webp", "image/gif"}
     normalized_content_type = (content_type or "").lower()
-    if normalized_content_type not in allowed_content_types:
+    if normalized_content_type not in ALLOWED_IMAGE_CONTENT_TYPES:
+        allowed_types = ", ".join(sorted(ALLOWED_IMAGE_CONTENT_TYPES))
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid content type. Allowed types: image/jpeg, image/png, image/webp, image/gif.",
+            detail=f"Invalid content type. Allowed types: {allowed_types}.",
         )
 
 
@@ -64,22 +74,17 @@ def get_extension_from_content_type(content_type: str, filename: Optional[str] =
     """Get file extension from content_type or filename.
     
     Returns extension with leading dot (e.g., '.jpg', '.png').
+    If filename is provided, validates that its extension is allowed.
     """
     if filename and "." in filename:
-        return "." + filename.rsplit(".", 1)[-1].lower()
+        ext = "." + filename.rsplit(".", 1)[-1].lower()
+        # Validate that the filename extension is allowed
+        if ext in ALLOWED_IMAGE_EXTENSIONS:
+            return ext
+        # If extension is not allowed, fall through to use content_type
     
     normalized_content_type = (content_type or "").lower()
-    if normalized_content_type == "image/jpeg":
-        return ".jpg"
-    elif normalized_content_type == "image/png":
-        return ".png"
-    elif normalized_content_type == "image/webp":
-        return ".webp"
-    elif normalized_content_type == "image/gif":
-        return ".gif"
-    
-    # Fallback for edge cases (should be unreachable after validate_image_content_type)
-    return ".jpg"
+    return CONTENT_TYPE_TO_EXTENSION.get(normalized_content_type, ".jpg")
 
 
 def product_to_schema(product, is_liked=None):
