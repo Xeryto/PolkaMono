@@ -1,4 +1,4 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import {
   View,
   Text,
@@ -21,6 +21,11 @@ import Me from "../components/svg/Me";
 import { ANIMATION_DURATIONS, ANIMATION_DELAYS } from "../lib/animations";
 import * as Haptics from "expo-haptics";
 import MeAlt from "../components/svg/MeAlt";
+import {
+  parseAvatarTransform,
+  pixelsToTransform,
+  transformToPixels,
+} from "../types/avatar";
 
 const { width, height } = Dimensions.get("window");
 
@@ -28,19 +33,34 @@ const { width, height } = Dimensions.get("window");
 const CROP_SIZE = width * 0.75;
 const IMAGE_DISPLAY_SIZE = width * 0.85;
 
+// Normalized crop in full image [0..1]: { nOriginX, nOriginY, nWidth, nHeight }
+export type AvatarCropJson = string;
+
 interface AvatarEditScreenProps {
   onBack: () => void;
   currentAvatar?: string | null;
-  onSave: (avatarUri: string) => void | Promise<void>;
+  currentAvatarFull?: string | null;
+  currentAvatarCrop?: string | null;
+  /** Device-independent transform JSON: { scale, translateXPercent, translateYPercent } */
+  currentAvatarTransform?: string | null;
+  onSave: (
+    avatarUrl: string,
+    avatarUrlFull?: string | null,
+    avatarCrop?: AvatarCropJson,
+    avatarTransform?: string
+  ) => void | Promise<void>;
 }
 
 const AvatarEditScreen: React.FC<AvatarEditScreenProps> = ({
   onBack,
   currentAvatar,
+  currentAvatarFull,
+  currentAvatarCrop,
+  currentAvatarTransform,
   onSave,
 }) => {
   const [selectedImage, setSelectedImage] = useState<string | null>(
-    currentAvatar || null
+    currentAvatarFull || currentAvatar || null
   );
   const [isLoading, setIsLoading] = useState(false);
   const scale = useRef(new RNAnimated.Value(1)).current;
@@ -49,8 +69,26 @@ const AvatarEditScreen: React.FC<AvatarEditScreenProps> = ({
   const lastScale = useRef(1);
   const lastTranslate = useRef({ x: 0, y: 0 });
 
-  const cropSize = CROP_SIZE; // Size of the crop area (circular)
-  const imageDisplaySize = IMAGE_DISPLAY_SIZE; // Display size of the image
+  const cropSize = CROP_SIZE;
+  const imageDisplaySize = IMAGE_DISPLAY_SIZE;
+  const containerWidth = cropSize;
+  const containerHeight = cropSize;
+
+  // Restore pan/zoom from device-independent transform (recompute pixels from container size).
+  useEffect(() => {
+    const transform = parseAvatarTransform(currentAvatarTransform);
+    if (!selectedImage || !transform || selectedImage !== (currentAvatarFull || currentAvatar || null)) return;
+    const { scale: s, translateX: tx, translateY: ty } = transformToPixels(
+      transform,
+      containerWidth,
+      containerHeight
+    );
+    lastScale.current = s;
+    lastTranslate.current = { x: tx, y: ty };
+    scale.setValue(s);
+    translateX.setValue(tx);
+    translateY.setValue(ty);
+  }, [currentAvatarFull, currentAvatar, currentAvatarTransform, selectedImage]);
 
   const pickImage = async () => {
     try {
@@ -215,7 +253,8 @@ const AvatarEditScreen: React.FC<AvatarEditScreenProps> = ({
 
       // ImageManipulator only accepts local URIs; download remote (e.g. existing S3 avatar) to cache first
       let imageUriForProcessing = selectedImage;
-      if (selectedImage.startsWith("http://") || selectedImage.startsWith("https://")) {
+      const isRemote = selectedImage.startsWith("http://") || selectedImage.startsWith("https://");
+      if (isRemote) {
         const localUri = `${FileSystem.cacheDirectory}avatar-edit-${Date.now()}.jpg`;
         await FileSystem.downloadAsync(selectedImage, localUri);
         imageUriForProcessing = localUri;
@@ -242,16 +281,13 @@ const AvatarEditScreen: React.FC<AvatarEditScreenProps> = ({
       const resizeWidth = Math.max(cropSize, scaledWidth);
       const resizeHeight = Math.max(cropSize, scaledHeight);
 
-      // Use user's pan/zoom (position) when computing crop region
+      // Map view (tx, ty, userScale) to resized crop rect. Display uses cover: image scaled by imageDisplaySize/min(origW,origH) and centered.
       const tx = lastTranslate.current.x;
       const ty = lastTranslate.current.y;
       const userScale = lastScale.current;
-      const displayW = imageDisplaySize * userScale;
-      const displayH = imageDisplaySize * userScale;
-      const scaleX = resizeWidth / displayW;
-      const scaleY = resizeHeight / displayH;
-      let originX = resizeWidth / 2 - cropSize / 2 + tx * scaleX;
-      let originY = resizeHeight / 2 - cropSize / 2 + ty * scaleY;
+      const minDim = Math.min(originalWidth, originalHeight);
+      let originX = (-tx * minDim / (userScale * imageDisplaySize) + (originalWidth - minDim) / 2) * resizeWidth / originalWidth;
+      let originY = (-ty * minDim / (userScale * imageDisplaySize) + (originalHeight - minDim) / 2) * resizeHeight / originalHeight;
       originX = Math.max(0, Math.min(resizeWidth - cropSize, originX));
       originY = Math.max(0, Math.min(resizeHeight - cropSize, originY));
 
@@ -262,6 +298,7 @@ const AvatarEditScreen: React.FC<AvatarEditScreenProps> = ({
         height: cropSize,
       };
 
+      // Higher-quality output: 600x600, 0.9 compression
       const manipulatedImage = await ImageManipulator.manipulateAsync(
         imageUriForProcessing,
         [
@@ -275,14 +312,56 @@ const AvatarEditScreen: React.FC<AvatarEditScreenProps> = ({
             crop: cropRegion,
           },
           {
-            resize: { width: 300, height: 300 },
+            resize: { width: 600, height: 600 },
           },
         ],
-        { compress: 0.8, format: ImageManipulator.SaveFormat.JPEG }
+        { compress: 0.9, format: ImageManipulator.SaveFormat.JPEG }
       );
 
+      // Normalized crop in full image [0..1] for re-editing (pan out)
+      const nOriginX = originX / resizeWidth;
+      const nOriginY = originY / resizeHeight;
+      const nWidth = cropSize / resizeWidth;
+      const nHeight = cropSize / resizeHeight;
+      const avatarCrop: AvatarCropJson = JSON.stringify({
+        nOriginX,
+        nOriginY,
+        nWidth,
+        nHeight,
+      });
+
+      // Device-independent transform for restore and for display on all screens
+      const normalizedTransform = pixelsToTransform(
+        userScale,
+        tx,
+        ty,
+        containerWidth,
+        containerHeight
+      );
+      const avatarTransform = JSON.stringify(normalizedTransform);
+
+      const maxEdge = 1200;
+      let fullLocalUri: string | null = null;
+      if (
+        !isRemote &&
+        (imageUriForProcessing.startsWith("file://") || imageUriForProcessing.startsWith("file:"))
+      ) {
+        const { width: ow, height: oh } = imageInfo;
+        const scaleFull = ow > oh ? maxEdge / ow : maxEdge / oh;
+        const w = scaleFull >= 1 ? ow : Math.round(ow * scaleFull);
+        const h = scaleFull >= 1 ? oh : Math.round(oh * scaleFull);
+        const resized = await ImageManipulator.manipulateAsync(
+          imageUriForProcessing,
+          [{ resize: { width: w, height: h } }],
+          { compress: 0.9, format: ImageManipulator.SaveFormat.JPEG }
+        );
+        fullLocalUri = resized.uri;
+      }
+
       saveCalled = true;
-      await Promise.resolve(onSave(manipulatedImage.uri));
+      await Promise.resolve(
+        onSave(manipulatedImage.uri, fullLocalUri, avatarCrop, avatarTransform)
+      );
     } catch (error) {
       console.error("Error saving avatar:", error);
       setIsLoading(false);

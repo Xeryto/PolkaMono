@@ -42,6 +42,7 @@ import CancelIcon from "./components/svg/CancelThinIcon";
 import CancelThickIcon from "./components/svg/CancelThickIcon";
 import PlusIcon from "./components/svg/PlusBlackIcon";
 import CheckIcon from "./components/svg/CheckIcon";
+import AvatarImage from "./components/AvatarImage";
 import { LinearGradient } from "expo-linear-gradient";
 import * as Haptics from "expo-haptics";
 import * as api from "./services/api";
@@ -1252,9 +1253,9 @@ const Favorites = ({ navigation }: FavoritesProps) => {
             disabled={item.status !== "friend"}
           >
             <View style={styles.imageContainer}>
-              <Image
-                source={require("./assets/Vision.png")}
-                style={styles.userImage as ImageStyle}
+              <AvatarImage
+                avatarUrl={item.avatar_url}
+                size={width * 0.2}
               />
             </View>
             <View style={styles.userInfo}>
@@ -3142,9 +3143,9 @@ const FriendListItem = memo(
               disabled={item.status !== "friend"}
             >
               <View style={styles.imageContainer}>
-                <Image
-                  source={require("./assets/Vision.png")}
-                  style={styles.userImage}
+                <AvatarImage
+                  avatarUrl={item.avatar_url}
+                  size={width * 0.2}
                 />
               </View>
               <View style={styles.userInfo}>

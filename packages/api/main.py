@@ -1153,7 +1153,10 @@ async def get_user_profile(current_user: User = Depends(get_current_user), db: S
             full_name=profile.full_name,
             gender=profile.gender.value if profile.gender else None,
             selected_size=profile.selected_size,
-            avatar_url=profile.avatar_url
+            avatar_url=profile.avatar_url,
+            avatar_url_full=profile.avatar_url_full,
+            avatar_crop=profile.avatar_crop,
+            avatar_transform=profile.avatar_transform,
         ) if profile else None,
         shipping_info=schemas.ShippingInfoResponse(
             delivery_email=shipping_info.delivery_email,
@@ -1222,6 +1225,9 @@ async def delete_my_account(
         profile.gender = None
         profile.selected_size = None
         profile.avatar_url = None
+        profile.avatar_url_full = None
+        profile.avatar_crop = None
+        profile.avatar_transform = None
 
     # Anonymize shipping
     shipping = db.query(UserShippingInfo).filter(UserShippingInfo.user_id == user_id).first()
@@ -1680,16 +1686,25 @@ async def update_user_profile_data(
         profile.selected_size = profile_data.selected_size
     if profile_data.avatar_url is not None:
         profile.avatar_url = profile_data.avatar_url
-    
+    if profile_data.avatar_url_full is not None:
+        profile.avatar_url_full = profile_data.avatar_url_full
+    if profile_data.avatar_crop is not None:
+        profile.avatar_crop = profile_data.avatar_crop
+    if profile_data.avatar_transform is not None:
+        profile.avatar_transform = profile_data.avatar_transform
+
     profile.updated_at = datetime.utcnow()
     db.commit()
     db.refresh(profile)
-    
+
     return schemas.ProfileResponse(
         full_name=profile.full_name,
         gender=profile.gender.value if profile.gender else None,
         selected_size=profile.selected_size,
-        avatar_url=profile.avatar_url
+        avatar_url=profile.avatar_url,
+        avatar_url_full=profile.avatar_url_full,
+        avatar_crop=profile.avatar_crop,
+        avatar_transform=profile.avatar_transform,
     )
 
 

@@ -237,13 +237,19 @@ class ProfileUpdateRequest(BaseModel):
     gender: Optional[str] = None
     selected_size: Optional[str] = Field(None, max_length=10)
     avatar_url: Optional[str] = Field(None, max_length=500)
+    avatar_url_full: Optional[str] = Field(None, max_length=500)
+    avatar_crop: Optional[str] = Field(None, max_length=1000)
+    avatar_transform: Optional[str] = Field(None, max_length=500)
 
 class ProfileResponse(BaseModel):
     full_name: Optional[str] = None
     gender: Optional[str] = None
     selected_size: Optional[str] = None
     avatar_url: Optional[str] = None
-    
+    avatar_url_full: Optional[str] = None
+    avatar_crop: Optional[str] = None
+    avatar_transform: Optional[str] = None
+
     class Config:
         from_attributes = True
 
