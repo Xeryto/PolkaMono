@@ -1664,6 +1664,8 @@ async def update_user_profile_data(
         profile.avatar_url_full = profile_data.avatar_url_full
     if profile_data.avatar_crop is not None:
         profile.avatar_crop = profile_data.avatar_crop
+    if profile_data.avatar_transform is not None:
+        profile.avatar_transform = profile_data.avatar_transform
 
     profile.updated_at = datetime.utcnow()
     db.commit()
