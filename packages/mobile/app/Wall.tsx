@@ -1161,7 +1161,25 @@ const Wall = ({ navigation, onLogout }: WallProps) => {
           currentAvatar={userProfile?.profile?.avatar_url}
           onSave={async (avatarUri: string) => {
             try {
-              const contentType = "image/jpeg";
+              // Try to infer content type from the avatar URI; default to JPEG to preserve existing behavior.
+              let contentType = "image/jpeg";
+              if (avatarUri) {
+                const match = avatarUri.match(/\.([a-zA-Z0-9]+)(?:[\?#]|$)/);
+                if (match && match[1]) {
+                  const ext = match[1].toLowerCase();
+                  if (ext === "jpg" || ext === "jpeg") {
+                    contentType = "image/jpeg";
+                  } else if (ext === "png") {
+                    contentType = "image/png";
+                  } else if (ext === "webp") {
+                    contentType = "image/webp";
+                  } else if (ext === "gif") {
+                    contentType = "image/gif";
+                  } else if (ext === "heic" || ext === "heif") {
+                    contentType = "image/heic";
+                  }
+                }
+              }
               const { upload_url, public_url } = await api.getAvatarPresignedUrl(
                 contentType
               );
