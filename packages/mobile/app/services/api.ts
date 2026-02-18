@@ -749,8 +749,26 @@ export const uploadToPresignedUrl = async (
   uploadUrl: string,
   contentType: string
 ): Promise<void> => {
-  const response = await fetch(localUri);
-  const blob = await response.blob();
+  let blob: Blob;
+  try {
+    const response = await fetch(localUri);
+    if (!response.ok) {
+      const text = await response.text().catch(() => '');
+      throw new ApiError(
+        `Failed to read local file: ${response.status} ${text || response.statusText}`,
+        response.status
+      );
+    }
+    blob = await response.blob();
+  } catch (error: any) {
+    if (error instanceof ApiError) {
+      throw error;
+    }
+    throw new ApiError(
+      `Failed to read local file: ${error?.message ?? 'Unknown error'}`,
+      0
+    );
+  }
   const putResponse = await fetch(uploadUrl, {
     method: 'PUT',
     headers: { 'Content-Type': contentType },
