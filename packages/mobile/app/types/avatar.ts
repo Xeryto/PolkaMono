@@ -11,7 +11,7 @@ export type NormalizedAvatarTransform = {
 
 const SCALE_MIN = 1;
 const SCALE_MAX = 3;
-const TRANSLATE_PERCENT_CLAMP = 0.5;
+const TRANSLATE_PERCENT_CLAMP = 1;
 
 export function clampNormalizedTransform(
   t: NormalizedAvatarTransform
