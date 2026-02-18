@@ -261,8 +261,53 @@ export function AddNewItemPage() {
       return;
     }
 
+    const hasGeneralImages = generalImageFiles.length > 0;
+    const hasOnePerColor = colorVariations.every((cv) => cv.imageFiles.length > 0);
+    if (!hasGeneralImages && !hasOnePerColor) {
+      toast({
+        title: "Ошибка",
+        description: "Добавьте хотя бы одно общее изображение или хотя бы одно изображение в каждом цвете.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsLoading(true);
     try {
+      // Upload images to S3 via presigned URLs
+      const uploadOne = async (file: File): Promise<string> => {
+        const contentType = file.type || "image/jpeg";
+        const { upload_url, public_url } = await api.getProductImagePresignedUrl(
+          contentType,
+          token,
+          file.name
+        );
+        await api.uploadFileToPresignedUrl(file, upload_url, contentType);
+        return public_url;
+      };
+
+      const generalImageUrls =
+        generalImageFiles.length > 0
+          ? await Promise.all(generalImageFiles.map(uploadOne))
+          : [];
+
+      const colorVariantsWithUrls = await Promise.all(
+        colorVariations.map(async (cv) => {
+          const imageUrls =
+            cv.imageFiles.length > 0
+              ? await Promise.all(cv.imageFiles.map(uploadOne))
+              : [];
+          return {
+            color_name: cv.colorName,
+            color_hex: cv.colorHex,
+            images: imageUrls,
+            variants: cv.variants.filter(
+              (v) => v.size.trim() && v.stock_quantity >= 0
+            ),
+          };
+        })
+      );
+
       const productData = {
         name,
         price: parseFloat(price),
@@ -274,15 +319,9 @@ export function AddNewItemPage() {
         brand_id: 1,
         category_id: selectedCategory,
         styles: selectedStyle ? [selectedStyle] : [],
-        color_variants: colorVariations.map((cv) => ({
-          color_name: cv.colorName,
-          color_hex: cv.colorHex,
-          images: cv.images,
-          variants: cv.variants.filter(
-            (v) => v.size.trim() && v.stock_quantity >= 0,
-          ),
-        })),
-        general_images: generalImages.length > 0 ? generalImages : undefined,
+        color_variants: colorVariantsWithUrls,
+        general_images:
+          generalImageUrls.length > 0 ? generalImageUrls : undefined,
       };
 
       await api.createProduct(productData, token);

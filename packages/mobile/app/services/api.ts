@@ -726,6 +726,42 @@ export const updateUserProfileData = async (
   return response;
 };
 
+// S3 presigned upload (avatars, product images)
+export interface PresignedUploadResponse {
+  upload_url: string;
+  public_url: string;
+  key: string;
+}
+
+export const getAvatarPresignedUrl = async (
+  contentType: string,
+  filename?: string
+): Promise<PresignedUploadResponse> => {
+  return await apiRequest('/api/v1/user/upload/presigned-url', 'POST', {
+    content_type: contentType,
+    filename,
+  }, true, { timeout: 15000 });
+};
+
+/** Upload a local file (e.g. file:// URI from image picker) to S3 via presigned URL. */
+export const uploadToPresignedUrl = async (
+  localUri: string,
+  uploadUrl: string,
+  contentType: string
+): Promise<void> => {
+  const response = await fetch(localUri);
+  const blob = await response.blob();
+  const putResponse = await fetch(uploadUrl, {
+    method: 'PUT',
+    headers: { 'Content-Type': contentType },
+    body: blob,
+  });
+  if (!putResponse.ok) {
+    const text = await putResponse.text();
+    throw new ApiError(`Upload failed: ${putResponse.status} ${text}`, putResponse.status);
+  }
+};
+
 // Update user preferences (privacy and notifications)
 export interface UserPreferences {
   size_privacy?: 'nobody' | 'friends' | 'everyone';

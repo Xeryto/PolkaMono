@@ -1,5 +1,5 @@
 from pydantic import BaseModel, EmailStr, validator, model_validator, Field
-from typing import List, Optional
+from typing import List, Optional, Literal
 from datetime import datetime
 import re
 from models import Gender, PrivacyOption # Import enums
@@ -169,6 +169,18 @@ class ProductCreateRequest(BaseModel):
     article_number: Optional[str] = Field(None, max_length=50)  # Auto-generated if not provided
     general_images: Optional[List[str]] = None
 
+    @model_validator(mode='after')
+    def require_at_least_one_image(self):
+        has_general = self.general_images and len(self.general_images) > 0
+        has_one_per_color = (
+            self.color_variants
+            and all(cv.images and len(cv.images) > 0 for cv in self.color_variants)
+        )
+        if not has_general and not has_one_per_color:
+            raise ValueError('At least one image is required: add general_images and/or at least one image per color variant.')
+        return self
+
+
 class ProductUpdateRequest(BaseModel):
     name: Optional[str] = Field(None, max_length=255)
     description: Optional[str] = Field(None, max_length=1000)
@@ -179,6 +191,19 @@ class ProductUpdateRequest(BaseModel):
     color_variants: Optional[List[ProductColorVariantCreate]] = None
     material: Optional[str] = Field(None, max_length=100)
     general_images: Optional[List[str]] = None
+
+    @model_validator(mode='after')
+    def require_at_least_one_image_if_provided(self):
+        if self.general_images is not None or self.color_variants is not None:
+            has_general = self.general_images and len(self.general_images) > 0
+            has_one_per_color = (
+                self.color_variants
+                and all(cv.images and len(cv.images) > 0 for cv in self.color_variants)
+            )
+            if not has_general and not has_one_per_color:
+                raise ValueError('At least one image is required: add general_images and/or at least one image per color variant.')
+        return self
+
 
 class Product(BaseModel):
     id: Optional[str] = None
@@ -410,3 +435,15 @@ class UserCreate(BaseModel):
         if not any(c.isalpha() for c in v) or not any(c.isdigit() for c in v):
             raise ValueError('Password must contain both letters and numbers')
         return v
+
+
+class PresignedUploadRequest(BaseModel):
+    """Request a presigned URL for direct S3 upload (avatar or product image)."""
+    content_type: str = Field(..., description="e.g. image/jpeg, image/png")
+    filename: Optional[str] = Field(None, description="Optional original filename for extension")
+
+
+class PresignedUploadResponse(BaseModel):
+    upload_url: str
+    public_url: str
+    key: str
