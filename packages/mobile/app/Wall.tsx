@@ -1193,6 +1193,7 @@ const Wall = ({ navigation, onLogout }: WallProps) => {
                 "Ошибка",
                 err?.message || "Не удалось загрузить фото. Проверьте настройки сервера."
               );
+              throw err;
             }
           }}
         />

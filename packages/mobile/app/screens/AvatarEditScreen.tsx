@@ -10,10 +10,12 @@ import {
   Platform,
   PanResponder,
   Animated as RNAnimated,
+  ActivityIndicator,
 } from "react-native";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import * as ImagePicker from "expo-image-picker";
 import * as ImageManipulator from "expo-image-manipulator";
+import * as FileSystem from "expo-file-system/legacy";
 import BackIcon from "../components/svg/BackIcon";
 import Me from "../components/svg/Me";
 import { ANIMATION_DURATIONS, ANIMATION_DELAYS } from "../lib/animations";
@@ -29,7 +31,7 @@ const IMAGE_DISPLAY_SIZE = width * 0.85;
 interface AvatarEditScreenProps {
   onBack: () => void;
   currentAvatar?: string | null;
-  onSave: (avatarUri: string) => void;
+  onSave: (avatarUri: string) => void | Promise<void>;
 }
 
 const AvatarEditScreen: React.FC<AvatarEditScreenProps> = ({
@@ -206,15 +208,24 @@ const AvatarEditScreen: React.FC<AvatarEditScreenProps> = ({
       return;
     }
 
+    let saveCalled = false;
     try {
       setIsLoading(true);
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+
+      // ImageManipulator only accepts local URIs; download remote (e.g. existing S3 avatar) to cache first
+      let imageUriForProcessing = selectedImage;
+      if (selectedImage.startsWith("http://") || selectedImage.startsWith("https://")) {
+        const localUri = `${FileSystem.cacheDirectory}avatar-edit-${Date.now()}.jpg`;
+        await FileSystem.downloadAsync(selectedImage, localUri);
+        imageUriForProcessing = localUri;
+      }
 
       // Get original image dimensions
       const imageInfo = await new Promise<{ width: number; height: number }>(
         (resolve, reject) => {
           Image.getSize(
-            selectedImage,
+            imageUriForProcessing,
             (width, height) => resolve({ width, height }),
             (error) => reject(error)
           );
@@ -223,34 +234,36 @@ const AvatarEditScreen: React.FC<AvatarEditScreenProps> = ({
 
       const { width: originalWidth, height: originalHeight } = imageInfo;
 
-      // Calculate scale to ensure image covers the crop circle (minimum dimension must cover cropSize)
-      // We want to crop a square that's at least cropSize, ensuring the circle is always filled
+      // Scale to fill crop circle
       const minDimension = Math.min(originalWidth, originalHeight);
       const scaleToFill = cropSize / minDimension;
       const scaledWidth = originalWidth * scaleToFill;
       const scaledHeight = originalHeight * scaleToFill;
-
-      // Calculate crop region from center of scaled image
-      // Crop a square from the center that ensures the circle is filled
-      const cropDimension = Math.min(scaledWidth, scaledHeight);
-      const cropOriginX = (scaledWidth - cropDimension) / 2;
-      const cropOriginY = (scaledHeight - cropDimension) / 2;
-
-      // First resize to ensure we have enough pixels, then crop
       const resizeWidth = Math.max(cropSize, scaledWidth);
       const resizeHeight = Math.max(cropSize, scaledHeight);
 
-      // Crop from center to ensure circle is filled
+      // Use user's pan/zoom (position) when computing crop region
+      const tx = lastTranslate.current.x;
+      const ty = lastTranslate.current.y;
+      const userScale = lastScale.current;
+      const displayW = imageDisplaySize * userScale;
+      const displayH = imageDisplaySize * userScale;
+      const scaleX = resizeWidth / displayW;
+      const scaleY = resizeHeight / displayH;
+      let originX = resizeWidth / 2 - cropSize / 2 + tx * scaleX;
+      let originY = resizeHeight / 2 - cropSize / 2 + ty * scaleY;
+      originX = Math.max(0, Math.min(resizeWidth - cropSize, originX));
+      originY = Math.max(0, Math.min(resizeHeight - cropSize, originY));
+
       const cropRegion = {
-        originX: Math.max(0, (resizeWidth - cropSize) / 2),
-        originY: Math.max(0, (resizeHeight - cropSize) / 2),
+        originX: Math.round(originX),
+        originY: Math.round(originY),
         width: cropSize,
         height: cropSize,
       };
 
-      // Manipulate image: resize first to ensure minimum size, then crop center square
       const manipulatedImage = await ImageManipulator.manipulateAsync(
-        selectedImage,
+        imageUriForProcessing,
         [
           {
             resize: {
@@ -268,12 +281,14 @@ const AvatarEditScreen: React.FC<AvatarEditScreenProps> = ({
         { compress: 0.8, format: ImageManipulator.SaveFormat.JPEG }
       );
 
-      onSave(manipulatedImage.uri);
+      saveCalled = true;
+      await Promise.resolve(onSave(manipulatedImage.uri));
     } catch (error) {
-      console.error("Error processing image:", error);
-      Alert.alert("ошибка", "не удалось обработать изображение.");
-    } finally {
+      console.error("Error saving avatar:", error);
       setIsLoading(false);
+      if (!saveCalled) {
+        Alert.alert("ошибка", "не удалось обработать изображение.");
+      }
     }
   };
 
@@ -285,7 +300,7 @@ const AvatarEditScreen: React.FC<AvatarEditScreenProps> = ({
           ANIMATION_DELAYS.LARGE
         )}
       >
-        <TouchableOpacity onPress={onBack}>
+        <TouchableOpacity onPress={onBack} disabled={isLoading}>
           <BackIcon width={22} height={22} />
         </TouchableOpacity>
       </Animated.View>
@@ -324,7 +339,11 @@ const AvatarEditScreen: React.FC<AvatarEditScreenProps> = ({
           </View>
         </View>
 
-        <TouchableOpacity style={styles.pickImageButton} onPress={pickImage}>
+        <TouchableOpacity
+          style={[styles.pickImageButton, isLoading && styles.buttonDisabled]}
+          onPress={pickImage}
+          disabled={isLoading}
+        >
           <Text style={styles.pickImageButtonText}>
             {selectedImage ? "изменить фото" : "выбрать фото"}
           </Text>
@@ -332,19 +351,25 @@ const AvatarEditScreen: React.FC<AvatarEditScreenProps> = ({
 
         <View style={styles.buttonContainer}>
           <TouchableOpacity
-            style={styles.confirmButton}
+            style={[styles.confirmButton, isLoading && styles.buttonDisabled]}
             onPress={handleConfirm}
             disabled={!selectedImage || isLoading}
           >
-            <Text
-              style={[
-                styles.confirmButtonText,
-                (!selectedImage || isLoading) &&
-                  styles.confirmButtonDisabledText,
-              ]}
-            >
-              {isLoading ? "сохранение..." : "подтвердить"}
-            </Text>
+            {isLoading ? (
+              <View style={styles.confirmButtonLoading}>
+                <ActivityIndicator size="small" color="#4A3120" />
+                <Text style={styles.confirmButtonText}>сохранение...</Text>
+              </View>
+            ) : (
+              <Text
+                style={[
+                  styles.confirmButtonText,
+                  !selectedImage && styles.confirmButtonDisabledText,
+                ]}
+              >
+                подтвердить
+              </Text>
+            )}
           </TouchableOpacity>
         </View>
       </Animated.View>
@@ -480,6 +505,14 @@ const styles = StyleSheet.create({
     fontFamily: "IgraSans",
     fontSize: 20,
     color: "#000",
+  },
+  confirmButtonLoading: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
+  buttonDisabled: {
+    opacity: 0.7,
   },
   confirmButtonDisabledText: {
     color: "#000",
