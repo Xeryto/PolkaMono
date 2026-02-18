@@ -1645,13 +1645,26 @@ async def get_avatar_presigned_url(
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Use brand upload for product images.")
     if not s3_configured():
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Image upload is not configured.")
+
+    # Validate that the requested content type is an allowed image MIME type
+    allowed_content_types = {"image/jpeg", "image/png", "image/webp", "image/gif"}
+    content_type = (body.content_type or "").lower()
+    if content_type not in allowed_content_types:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid content type. Allowed types: image/jpeg, image/png, image/webp, image/gif.",
+        )
+
     ext = ".jpg"
     if body.filename and "." in body.filename:
         ext = "." + body.filename.rsplit(".", 1)[-1].lower()
-    elif "png" in (body.content_type or "").lower():
-        ext = ".png"
-    elif "webp" in (body.content_type or "").lower():
-        ext = ".webp"
+    else:
+        if content_type == "image/png":
+            ext = ".png"
+        elif content_type == "image/webp":
+            ext = ".webp"
+        elif content_type == "image/gif":
+            ext = ".gif"
     key = generate_key("avatars", ext, prefix=str(current_user.id))
     upload_url, public_url = generate_presigned_upload_url(key, body.content_type)
     return schemas.PresignedUploadResponse(upload_url=upload_url, public_url=public_url, key=key)
