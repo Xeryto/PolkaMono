@@ -1210,6 +1210,8 @@ export interface OrderSummary {
 
 /** Full order with line items (from GET /orders/{id} for brand). */
 export interface Order extends OrderSummary {
+  /** Order-level shipping (per brand). Item delivery.cost is allocated share; sum equals this. */
+  shipping_cost?: number;
   items: OrderItem[];
   delivery_full_name?: string;
   delivery_email?: string;
@@ -1287,8 +1289,9 @@ export const getOrders = async (): Promise<OrderSummary[]> => {
   return await apiRequest('/api/v1/orders', 'GET');
 };
 
-export const getOrderById = async (orderId: string): Promise<OrderOrCheckout> => {
-  return await apiRequest(`/api/v1/orders/${orderId}`, 'GET');
+/** Fetch full checkout details (user's order). List from getOrders() returns checkout ids; use this to load detail. */
+export const getOrderById = async (checkoutId: string): Promise<OrderOrCheckout> => {
+  return await apiRequest(`/api/v1/checkouts/${checkoutId}`, 'GET');
 };
 
 export const getProductDetails = async (productId: string): Promise<Product> => {

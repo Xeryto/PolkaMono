@@ -9,7 +9,6 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { OrderDetailsPage } from "@/pages/OrderDetailsPage";
 import * as api from "@/services/api";
-import { OrderResponse } from "@/services/api";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/context/AuthContext";
 import { formatCurrency } from "@/lib/currency";
@@ -19,7 +18,7 @@ export function OrdersView() {
   const [orders, setOrders] = useState<api.OrderSummary[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
-  const [selectedOrder, setSelectedOrder] = useState<api.OrderOrCheckoutResponse | null>(null);
+  const [selectedOrder, setSelectedOrder] = useState<api.OrderResponse | null>(null);
   const [isLoadingDetail, setIsLoadingDetail] = useState(false);
   const { toast } = useToast();
   const { token } = useAuth();
@@ -60,8 +59,11 @@ export function OrdersView() {
     let cancelled = false;
     setIsLoadingDetail(true);
     setSelectedOrder(null);
-    api.getOrder(selectedOrderId, token)
-      .then((order) => { if (!cancelled) setSelectedOrder(order); })
+    api
+      .getOrder(selectedOrderId, token)
+      .then((order) => {
+        if (!cancelled) setSelectedOrder(order);
+      })
       .catch((err) => {
         if (!cancelled) {
           toast({
@@ -77,11 +79,13 @@ export function OrdersView() {
           setSelectedOrderId(null);
         }
       });
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [selectedOrderId, token, toast]);
 
   if (isLoadingDetail || selectedOrder) {
-    if (selectedOrder && !api.isCheckoutResponse(selectedOrder)) {
+    if (selectedOrder) {
       return (
         <OrderDetailsPage
           order={selectedOrder}

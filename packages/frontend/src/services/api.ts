@@ -191,6 +191,8 @@ export interface OrderResponse {
   status: string;
   tracking_number?: string;
   tracking_link?: string;
+  /** Order-level shipping (per brand). Do not sum item delivery.cost for totals. */
+  shipping_cost?: number;
   items: OrderItemResponse[];
   delivery_full_name?: string;
   delivery_email?: string;
@@ -444,9 +446,14 @@ export const getOrders = async (token: string): Promise<OrderSummary[]> => {
   return await apiRequest('/api/v1/orders', 'GET', undefined, true, token);
 };
 
-/** Fetch full order details (items, delivery). Use after user taps an order in the list. */
-export const getOrder = async (orderId: string, token: string): Promise<OrderOrCheckoutResponse> => {
+/** Fetch full order details for a brand (items, delivery). Use after brand taps an order in the dashboard list. */
+export const getOrder = async (orderId: string, token: string): Promise<OrderResponse> => {
   return await apiRequest(`/api/v1/orders/${orderId}`, 'GET', undefined, true, token);
+};
+
+/** Fetch full checkout details for the current user (nested orders per brand). Use when user taps an order in "my orders". */
+export const getCheckout = async (checkoutId: string, token: string): Promise<CheckoutResponse> => {
+  return await apiRequest(`/api/v1/checkouts/${checkoutId}`, 'GET', undefined, true, token);
 };
 
 // --- Brand Authentication & Profile ---

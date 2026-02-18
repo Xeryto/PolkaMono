@@ -2608,7 +2608,27 @@ def _checkout_to_summary(checkout: Checkout) -> schemas.OrderSummaryResponse:
     )
 
 
-def _build_order_item_response(item: OrderItem) -> schemas.OrderItemResponse:
+def _allocated_shipping_for_order(order: Order) -> list:
+    """Allocate order.shipping_cost across items by line total. Returns list of floats, one per item."""
+    total = order.shipping_cost or 0
+    if total == 0 or not order.items:
+        return [0.0] * len(order.items) if order.items else []
+    subtotal = order.subtotal or sum(item.price * getattr(item, "quantity", 1) for item in order.items)
+    if subtotal <= 0:
+        per_item = total / len(order.items)
+        return [per_item] * len(order.items)
+    allocated = []
+    for item in order.items:
+        line = item.price * getattr(item, "quantity", 1)
+        allocated.append(round(total * (line / subtotal), 2))
+    # Fix rounding: ensure sum equals total by adjusting last item
+    diff = total - sum(allocated)
+    if allocated and diff != 0:
+        allocated[-1] = round(allocated[-1] + diff, 2)
+    return allocated
+
+
+def _build_order_item_response(item: OrderItem, allocated_shipping: float = 0.0) -> schemas.OrderItemResponse:
     product_variant = item.product_variant
     product = product_variant.product
     cv = product_variant.color_variant
@@ -2620,7 +2640,7 @@ def _build_order_item_response(item: OrderItem) -> schemas.OrderItemResponse:
         size=product_variant.size,
         image=imgs[0] if imgs else None,
         delivery=schemas.Delivery(
-            cost=item.order.shipping_cost or 0,
+            cost=allocated_shipping,
             estimatedTime="1-3 дня",
             tracking_number=item.order.tracking_number,
         ),
@@ -2638,7 +2658,11 @@ def _build_order_item_response(item: OrderItem) -> schemas.OrderItemResponse:
 def _checkout_to_full_response(checkout: Checkout) -> schemas.CheckoutResponse:
     order_parts = []
     for order in checkout.orders:
-        items = [_build_order_item_response(item) for item in order.items]
+        allocated = _allocated_shipping_for_order(order)
+        items = [
+            _build_order_item_response(item, allocated[i] if i < len(allocated) else 0.0)
+            for i, item in enumerate(order.items)
+        ]
         brand = order.brand
         order_parts.append(schemas.OrderPartResponse(
             id=order.id,
@@ -2669,32 +2693,13 @@ def _checkout_to_full_response(checkout: Checkout) -> schemas.CheckoutResponse:
 
 
 def _order_to_full_response(order: Order) -> schemas.OrderResponse:
+    allocated = _allocated_shipping_for_order(order)
     order_items = []
-    for item in order.items:
-        product_variant = item.product_variant
-        product = product_variant.product
-        cv = product_variant.color_variant
-        imgs = cv.images or []
-        order_items.append(schemas.OrderItemResponse(
-            id=item.id,
-            name=product.name,
-            price=item.price,
-            size=product_variant.size,
-            image=imgs[0] if imgs else None,
-            delivery=schemas.Delivery(
-                cost=350.0,
-                estimatedTime="1-3 дня",
-                tracking_number=order.tracking_number
-            ),
-            sku=item.sku,
-            brand_name=product.brand.name if product.brand else None,
-            description=product.description,
-            color=cv.color_name,
-            materials=product.material,
-            images=imgs,
-            return_policy=product.brand.return_policy if product.brand else None,
-            product_id=product.id
-        ))
+    for i, item in enumerate(order.items):
+        allocated_cost = allocated[i] if i < len(allocated) else 0.0
+        order_items.append(
+            _build_order_item_response(item, allocated_cost)
+        )
     fn, em, ph, addr, city, pc = _order_delivery(order)
     return schemas.OrderResponse(
         id=order.id,
@@ -2705,6 +2710,7 @@ def _order_to_full_response(order: Order) -> schemas.OrderResponse:
         status=order.status.value,
         tracking_number=order.tracking_number,
         tracking_link=order.tracking_link,
+        shipping_cost=order.shipping_cost or 0,
         items=order_items,
         delivery_full_name=fn,
         delivery_email=em,
@@ -2796,83 +2802,76 @@ def _order_delivery(order: Order):
     )
 
 
-@app.get("/api/v1/orders/{order_id}")
+@app.get("/api/v1/orders/{order_id}", response_model=schemas.OrderResponse)
 async def get_order_by_id(
     order_id: str,
     current_user: any = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
-    """Get full order/checkout details. Users: id is checkout_id; Brands: id is order_id."""
-    is_brand = isinstance(current_user, Brand)
-    if is_brand:
-        order = (
-            db.query(Order)
-            .options(*_order_load)
-            .filter(Order.id == order_id)
-            .first()
-        )
-        if not order or order.brand_id != current_user.id:
-            raise HTTPException(status_code=404, detail="Order not found")
-        # Build response with only this brand's items
-        order_items = []
-        for item in order.items:
-            if item.product_variant.product.brand_id != current_user.id:
-                continue
-            product_variant = item.product_variant
-            product = product_variant.product
-            cv = product_variant.color_variant
-            imgs = cv.images or []
-            order_items.append(schemas.OrderItemResponse(
-                id=item.id,
-                name=product.name,
-                price=item.price,
-                size=product_variant.size,
-                image=imgs[0] if imgs else None,
-                delivery=schemas.Delivery(
-                    cost=350.0,
-                    estimatedTime="1-3 дня",
-                    tracking_number=order.tracking_number
-                ),
-                sku=item.sku,
-                brand_name=product.brand.name if product.brand else None,
-                description=product.description,
-                color=cv.color_name,
-                materials=product.material,
-                images=imgs,
-                return_policy=product.brand.return_policy if product.brand else None,
-                product_id=product.id
-            ))
-        fn, em, ph, addr, city, pc = _order_delivery(order)
-        return schemas.OrderResponse(
-            id=order.id,
-            number=order.order_number,
-            total_amount=order.total_amount,
-            currency="RUB",
-            date=order.created_at,
-            status=order.status.value,
-            tracking_number=order.tracking_number,
-            tracking_link=order.tracking_link,
-            items=order_items,
-            delivery_full_name=fn,
-            delivery_email=em,
-            delivery_phone=ph,
-            delivery_address=addr,
-            delivery_city=city,
-            delivery_postal_code=pc,
-        )
+    """Get full order details for a brand (items, delivery). Caller must be a brand; order must belong to that brand."""
+    if not isinstance(current_user, Brand):
+        raise HTTPException(status_code=403, detail="Only brands can fetch order by order id")
+    order = (
+        db.query(Order)
+        .options(*_order_load)
+        .filter(Order.id == order_id)
+        .first()
+    )
+    if not order or order.brand_id != current_user.id:
+        raise HTTPException(status_code=404, detail="Order not found")
+    allocated = _allocated_shipping_for_order(order)
+    order_items = []
+    for idx, item in enumerate(order.items):
+        if item.product_variant.product.brand_id != current_user.id:
+            continue
+        allocated_cost = allocated[idx] if idx < len(allocated) else 0.0
+        order_items.append(_build_order_item_response(item, allocated_cost))
+    fn, em, ph, addr, city, pc = _order_delivery(order)
+    return schemas.OrderResponse(
+        id=order.id,
+        number=order.order_number,
+        total_amount=order.total_amount,
+        currency="RUB",
+        date=order.created_at,
+        status=order.status.value,
+        tracking_number=order.tracking_number,
+        tracking_link=order.tracking_link,
+        shipping_cost=order.shipping_cost or 0,
+        items=order_items,
+        delivery_full_name=fn,
+        delivery_email=em,
+        delivery_phone=ph,
+        delivery_address=addr,
+        delivery_city=city,
+        delivery_postal_code=pc,
+    )
 
-    # User: id is checkout_id
+
+@app.get("/api/v1/checkouts/{checkout_id}", response_model=schemas.CheckoutResponse)
+async def get_checkout_by_id(
+    checkout_id: str,
+    current_user: any = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Get full checkout details for the current user (nested orders per brand). Caller must be a user (not a brand)."""
+    if isinstance(current_user, Brand):
+        raise HTTPException(status_code=403, detail="Brands must use GET /api/v1/orders/{order_id} for their orders")
     checkout = (
         db.query(Checkout)
         .options(
-            joinedload(Checkout.orders).joinedload(Order.items).joinedload(OrderItem.product_variant).joinedload(ProductVariant.color_variant).joinedload(ProductColorVariant.product).joinedload(Product.brand),
+            joinedload(Checkout.orders)
+            .joinedload(Order.items)
+            .joinedload(OrderItem.product_variant)
+            .joinedload(ProductVariant.color_variant)
+            .joinedload(ProductColorVariant.product)
+            .joinedload(Product.brand),
         )
-        .filter(Checkout.id == order_id, Checkout.user_id == str(current_user.id))
+        .filter(Checkout.id == checkout_id, Checkout.user_id == str(current_user.id))
         .first()
     )
-    if checkout:
-        return _checkout_to_full_response(checkout)
-    raise HTTPException(status_code=404, detail="Order not found")
+    if not checkout:
+        raise HTTPException(status_code=404, detail="Checkout not found")
+    return _checkout_to_full_response(checkout)
 
 
 @app.post("/api/v1/payments/webhook")
