@@ -9,7 +9,7 @@ from alembic import op
 
 
 revision = "add_order_shipped_returned"
-down_revision = "avatar_transform"
+down_revision = "add_brand_inn_payout"
 branch_labels = None
 depends_on = None
 
