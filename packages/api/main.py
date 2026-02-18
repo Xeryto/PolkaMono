@@ -1204,7 +1204,9 @@ async def get_product_image_presigned_url(
     if body.filename and "." in body.filename:
         ext = "." + body.filename.rsplit(".", 1)[-1].lower()
     else:
-        if content_type == "image/png":
+        if content_type == "image/jpeg":
+            ext = ".jpg"
+        elif content_type == "image/png":
             ext = ".png"
         elif content_type == "image/webp":
             ext = ".webp"
@@ -1659,7 +1661,9 @@ async def get_avatar_presigned_url(
     if body.filename and "." in body.filename:
         ext = "." + body.filename.rsplit(".", 1)[-1].lower()
     else:
-        if content_type == "image/png":
+        if content_type == "image/jpeg":
+            ext = ".jpg"
+        elif content_type == "image/png":
             ext = ".png"
         elif content_type == "image/webp":
             ext = ".webp"
