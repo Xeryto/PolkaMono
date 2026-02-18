@@ -996,13 +996,7 @@ const Search = ({ navigation }: SearchProps) => {
             style={styles.imageContainer}
             onPress={() => handleItemPress(item, index)}
           >
-            {item.images && item.images.length > 0 ? (
-              <Image source={item.images[0]} style={styles.itemImage} />
-            ) : (
-              <View style={[styles.itemImage, styles.noProductImagePlaceholder]}>
-                <Text style={styles.noProductImageText}>Нет изображения</Text>
-              </View>
-            )}
+            <Image source={item.images[0]} style={styles.itemImage} />
             <View style={styles.itemInfo}>
               <Text style={styles.itemName} numberOfLines={1}>
                 {item.brand_name}
@@ -1497,18 +1491,6 @@ const styles = StyleSheet.create({
     width: "73%",
     height: "73%",
     resizeMode: "contain",
-  },
-  noProductImagePlaceholder: {
-    backgroundColor: "rgba(0,0,0,0.06)",
-    justifyContent: "center",
-    alignItems: "center",
-    width: "73%",
-    height: "73%",
-  },
-  noProductImageText: {
-    fontFamily: "IgraSans",
-    fontSize: 12,
-    color: "rgba(0,0,0,0.4)",
   },
   itemInfo: {
     // position: 'absolute',

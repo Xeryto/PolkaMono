@@ -26,7 +26,6 @@ import payment_service
 import schemas
 from schemas import UserCreate, EmailVerificationRequest
 from mail_service import mail_service
-from storage_service import generate_key, generate_presigned_upload_url, is_configured as s3_configured
 
 # Size ordering utility
 def get_size_order(size: str) -> int:
@@ -1208,26 +1207,6 @@ async def get_brand_profile_user_format(current_user: Brand = Depends(get_curren
         preferences=None
     )
 
-@app.post("/api/v1/brands/upload/presigned-url", response_model=schemas.PresignedUploadResponse)
-async def get_product_image_presigned_url(
-    body: schemas.PresignedUploadRequest,
-    current_user: User = Depends(get_current_brand_user),
-):
-    """Get a presigned URL to upload a product image. Upload with PUT to upload_url, then use public_url in product general_images or color_variant.images."""
-    if not s3_configured():
-        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Image upload is not configured.")
-    ext = ".jpg"
-    if body.filename and "." in body.filename:
-        ext = "." + body.filename.rsplit(".", 1)[-1].lower()
-    elif "png" in (body.content_type or "").lower():
-        ext = ".png"
-    elif "webp" in (body.content_type or "").lower():
-        ext = ".webp"
-    key = generate_key("products", ext)
-    upload_url, public_url = generate_presigned_upload_url(key, body.content_type)
-    return schemas.PresignedUploadResponse(upload_url=upload_url, public_url=public_url, key=key)
-
-
 @app.post("/api/v1/brands/products", response_model=schemas.Product, status_code=status.HTTP_201_CREATED)
 async def create_product(
     product_data: schemas.ProductCreateRequest,
@@ -1645,29 +1624,6 @@ async def update_user_profile_data(
         selected_size=profile.selected_size,
         avatar_url=profile.avatar_url
     )
-
-
-@app.post("/api/v1/user/upload/presigned-url", response_model=schemas.PresignedUploadResponse)
-async def get_avatar_presigned_url(
-    body: schemas.PresignedUploadRequest,
-    current_user: User = Depends(get_current_user),
-):
-    """Get a presigned URL to upload an avatar image. Upload with PUT to upload_url, then set profile avatar_url to public_url."""
-    if isinstance(current_user, Brand):
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Use brand upload for product images.")
-    if not s3_configured():
-        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Image upload is not configured.")
-    ext = ".jpg"
-    if body.filename and "." in body.filename:
-        ext = "." + body.filename.rsplit(".", 1)[-1].lower()
-    elif "png" in (body.content_type or "").lower():
-        ext = ".png"
-    elif "webp" in (body.content_type or "").lower():
-        ext = ".webp"
-    key = generate_key("avatars", ext, prefix=str(current_user.id))
-    upload_url, public_url = generate_presigned_upload_url(key, body.content_type)
-    return schemas.PresignedUploadResponse(upload_url=upload_url, public_url=public_url, key=key)
-
 
 @app.put("/api/v1/user/shipping", response_model=schemas.ShippingInfoResponse)
 async def update_user_shipping_info(

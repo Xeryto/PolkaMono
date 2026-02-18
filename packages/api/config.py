@@ -119,14 +119,6 @@ class Settings:
     UNISENDER_FROM_NAME: Optional[str] = os.getenv("UNISENDER_FROM_NAME")
     UNISENDER_LIST_ID: Optional[str] = os.getenv("UNISENDER_LIST_ID")
 
-    # AWS S3 (images: avatars, product images)
-    AWS_ACCESS_KEY_ID: Optional[str] = os.getenv("AWS_ACCESS_KEY_ID")
-    AWS_SECRET_ACCESS_KEY: Optional[str] = os.getenv("AWS_SECRET_ACCESS_KEY")
-    AWS_REGION: str = os.getenv("AWS_REGION", "us-east-1")
-    S3_BUCKET_NAME: Optional[str] = os.getenv("S3_BUCKET_NAME")
-    # Optional: CloudFront or custom domain for public URLs (if not set, uses bucket URL)
-    S3_PUBLIC_BASE_URL: Optional[str] = os.getenv("S3_PUBLIC_BASE_URL")
-
 # Create settings instance
 settings = Settings()
 
