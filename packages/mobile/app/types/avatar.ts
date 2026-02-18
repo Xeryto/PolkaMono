@@ -36,9 +36,9 @@ export function parseAvatarTransform(
   try {
     const t = JSON.parse(json) as NormalizedAvatarTransform;
     if (
-      typeof t.scale === "number" &&
-      typeof t.translateXPercent === "number" &&
-      typeof t.translateYPercent === "number"
+      Number.isFinite(t.scale) &&
+      Number.isFinite(t.translateXPercent) &&
+      Number.isFinite(t.translateYPercent)
     ) {
       return clampNormalizedTransform(t);
     }
