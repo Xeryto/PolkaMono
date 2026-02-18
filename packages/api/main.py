@@ -70,13 +70,19 @@ def validate_image_content_type(content_type: str) -> None:
         )
 
 
-def get_extension_from_content_type(content_type: str, filename: Optional[str] = None) -> str:
-    """Get file extension from content_type or filename.
+def determine_file_extension(content_type: str, filename: Optional[str] = None) -> str:
+    """Determine appropriate file extension from content_type or filename.
     
     Returns extension with leading dot (e.g., '.jpg', '.png').
     If filename is provided, validates that its extension is allowed.
+    Only the extension part is extracted from filename (no path components).
+    
+    This function should be called after validate_image_content_type() to ensure
+    content_type is valid. The .jpg default should be unreachable in normal flow.
     """
     if filename and "." in filename:
+        # Extract only the extension part (everything after the last dot)
+        # This is safe from path traversal as we only use the extension, not the full path
         ext = "." + filename.rsplit(".", 1)[-1].lower()
         # Validate that the filename extension is allowed
         if ext in ALLOWED_IMAGE_EXTENSIONS:
@@ -84,6 +90,7 @@ def get_extension_from_content_type(content_type: str, filename: Optional[str] =
         # If extension is not allowed, fall through to use content_type
     
     normalized_content_type = (content_type or "").lower()
+    # Should be unreachable with invalid content_type after validate_image_content_type()
     return CONTENT_TYPE_TO_EXTENSION.get(normalized_content_type, ".jpg")
 
 
@@ -1235,7 +1242,7 @@ async def get_product_image_presigned_url(
     # Validate that the requested content type is an allowed image MIME type
     validate_image_content_type(body.content_type)
 
-    ext = get_extension_from_content_type(body.content_type, body.filename)
+    ext = determine_file_extension(body.content_type, body.filename)
     key = generate_key("products", ext)
     upload_url, public_url = generate_presigned_upload_url(key, body.content_type)
     return schemas.PresignedUploadResponse(upload_url=upload_url, public_url=public_url, key=key)
@@ -1674,7 +1681,7 @@ async def get_avatar_presigned_url(
     # Validate that the requested content type is an allowed image MIME type
     validate_image_content_type(body.content_type)
 
-    ext = get_extension_from_content_type(body.content_type, body.filename)
+    ext = determine_file_extension(body.content_type, body.filename)
     key = generate_key("avatars", ext, prefix=str(current_user.id))
     upload_url, public_url = generate_presigned_upload_url(key, body.content_type)
     return schemas.PresignedUploadResponse(upload_url=upload_url, public_url=public_url, key=key)
