@@ -1007,7 +1007,7 @@ const FriendRecommendationsScreen = ({
                     );
                   })}
                 </ScrollView>
-              ) : (
+              ) : card.images.length > 0 ? (
                 <View style={styles.imagePressable}>
                   <Image
                     key={card.id + "-" + currentImageIndex}
@@ -1015,6 +1015,10 @@ const FriendRecommendationsScreen = ({
                     style={styles.image}
                     resizeMode="contain"
                   />
+                </View>
+              ) : (
+                <View style={[styles.imagePressable, styles.imagePlaceholder]}>
+                  <Text style={styles.imagePlaceholderText}>Нет изображения</Text>
                 </View>
               )}
             </RNAnimated.View>
@@ -1237,11 +1241,17 @@ const FriendRecommendationsScreen = ({
             style={styles.cardBackHeader}
             {...headerPanResponder.panHandlers}
           >
-            <Image
-              source={card.images[0]}
-              style={styles.cardBackImage}
-              resizeMode="contain"
-            />
+            {card.images.length > 0 ? (
+              <Image
+                source={card.images[0]}
+                style={styles.cardBackImage}
+                resizeMode="contain"
+              />
+            ) : (
+              <View style={[styles.cardBackImage, styles.imagePlaceholder]}>
+                <Text style={styles.imagePlaceholderText}>Нет изображения</Text>
+              </View>
+            )}
             <Text style={styles.cardBackName}>{card.name}</Text>
           </View>
           <ScrollView
@@ -1891,6 +1901,16 @@ const styles = StyleSheet.create({
     height: 80,
     marginRight: 10,
     borderRadius: 10,
+  },
+  imagePlaceholder: {
+    backgroundColor: "rgba(0,0,0,0.06)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  imagePlaceholderText: {
+    fontFamily: "IgraSans",
+    fontSize: 14,
+    color: "rgba(0,0,0,0.4)",
   },
   cardBackName: {
     fontFamily: "IgraSans",

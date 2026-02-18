@@ -330,6 +330,56 @@ export const uploadProductImages = async (productId: string, formData: FormData,
   return await handleApiResponse(response);
 };
 
+/** S3 presigned upload: get URL from API then PUT file to S3. Use public_url in product or profile. */
+export interface PresignedUploadResponse {
+  upload_url: string;
+  public_url: string;
+  key: string;
+}
+
+export const getProductImagePresignedUrl = async (
+  contentType: string,
+  token: string,
+  filename?: string
+): Promise<PresignedUploadResponse> => {
+  return await apiRequest('/api/v1/brands/upload/presigned-url', 'POST', { content_type: contentType, filename }, true, token);
+};
+
+export const getAvatarPresignedUrl = async (
+  contentType: string,
+  token: string,
+  filename?: string
+): Promise<PresignedUploadResponse> => {
+  return await apiRequest('/api/v1/user/upload/presigned-url', 'POST', { content_type: contentType, filename }, true, token);
+};
+
+/** Upload a file to S3 using a presigned PUT URL. */
+export const uploadFileToPresignedUrl = async (
+  file: File,
+  uploadUrl: string,
+  contentType: string
+): Promise<void> => {
+  let response: Response;
+  try {
+    response = await fetch(uploadUrl, {
+      method: 'PUT',
+      headers: { 'Content-Type': contentType },
+      body: file,
+    });
+  } catch (err: any) {
+    // Network error or CORS block (browser often reports as "failed to fetch")
+    const msg = err?.message || '';
+    const hint = msg.toLowerCase().includes('fetch') || msg.toLowerCase().includes('cors')
+      ? ' Add your frontend origin (e.g. http://localhost:5173) to the S3 bucket CORS AllowedOrigins.'
+      : '';
+    throw new ApiError(`Image upload failed: ${msg}${hint}`, 0);
+  }
+  if (!response.ok) {
+    const text = await response.text();
+    throw new ApiError(`Upload failed: ${response.status} ${text}`, response.status);
+  }
+};
+
 // Order related
 export const updateOrderItemSKU = async (orderItemId: string, sku: string, token: string): Promise<any> => { // Add token parameter
   return await apiRequest(`/api/v1/brands/order-items/${orderItemId}/sku`, 'PUT', { sku: sku }, true, token);

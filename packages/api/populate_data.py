@@ -93,6 +93,12 @@ def generate_article_number(brand_name: str, product_name: str) -> str:
     
     return article_number
 
+# Default product image URLs (S3) for populated products
+S3_PRODUCT_IMAGES = [
+    "https://polka-bucket.s3.us-east-2.amazonaws.com/products/77abff9dc7274e578c7968e60ec0bd7b.png",
+    "https://polka-bucket.s3.us-east-2.amazonaws.com/products/230d4547cde2454c8d4e1130700559c1.png",
+]
+
 # Canonical color name -> hex (match frontend/mobile)
 COLOR_HEX = {
     "Black": "#000000",
@@ -802,6 +808,7 @@ def populate_initial_data():
                     category_id=p_data["category"].id,
                     material=p_data["material"],
                     article_number=article_number,
+                    general_images=S3_PRODUCT_IMAGES,
                 )
                 db.add(product)
                 db.flush()
@@ -812,7 +819,7 @@ def populate_initial_data():
                     product_id=product.id,
                     color_name=color_name,
                     color_hex=color_hex,
-                    images=p_data.get("images") or [],
+                    images=S3_PRODUCT_IMAGES,
                     display_order=0,
                 )
                 db.add(color_variant)

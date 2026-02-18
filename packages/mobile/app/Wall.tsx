@@ -48,6 +48,7 @@ import {
   getFadeOutDownAnimation,
 } from "./lib/animations";
 import AvatarEditScreen from "./screens/AvatarEditScreen";
+import MeAlt from "./components/svg/MeAlt";
 import SettingsPage from "./Settings";
 import { Canvas, RoundedRect, Shadow } from "@shopify/react-native-skia";
 import { CardItem } from "./types/product";
@@ -1158,9 +1159,41 @@ const Wall = ({ navigation, onLogout }: WallProps) => {
         <AvatarEditScreen
           onBack={() => setShowAvatarEdit(false)}
           currentAvatar={userProfile?.profile?.avatar_url}
-          onSave={(avatarUri: string) => {
-            setShowAvatarEdit(false);
-            loadUserProfile();
+          onSave={async (avatarUri: string) => {
+            try {
+              // Try to infer content type from the avatar URI; default to JPEG to preserve existing behavior.
+              let contentType = "image/jpeg";
+              if (avatarUri) {
+                const match = avatarUri.match(/\.([a-zA-Z0-9]+)(?:[\?#]|$)/);
+                if (match && match[1]) {
+                  const ext = match[1].toLowerCase();
+                  if (ext === "jpg" || ext === "jpeg") {
+                    contentType = "image/jpeg";
+                  } else if (ext === "png") {
+                    contentType = "image/png";
+                  } else if (ext === "webp") {
+                    contentType = "image/webp";
+                  } else if (ext === "gif") {
+                    contentType = "image/gif";
+                  } else if (ext === "heic" || ext === "heif") {
+                    contentType = "image/heic";
+                  }
+                }
+              }
+              const { upload_url, public_url } = await api.getAvatarPresignedUrl(
+                contentType
+              );
+              await api.uploadToPresignedUrl(avatarUri, upload_url, contentType);
+              await api.updateUserProfileData({ avatar_url: public_url });
+              setShowAvatarEdit(false);
+              loadUserProfile();
+            } catch (err: any) {
+              console.error("Avatar upload failed:", err);
+              Alert.alert(
+                "Ошибка",
+                err?.message || "Не удалось загрузить фото. Проверьте настройки сервера."
+              );
+            }
           }}
         />
       );
@@ -1184,10 +1217,16 @@ const Wall = ({ navigation, onLogout }: WallProps) => {
           </Text>
           <View style={styles.profileImageWrapper}>
             <View style={styles.profileImageContainer}>
-              <Image
-                source={require("./assets/Vision.png")}
-                style={styles.profileImage}
-              />
+              {userProfile?.profile?.avatar_url ? (
+                <Image
+                  source={{ uri: userProfile.profile.avatar_url }}
+                  style={styles.profileImage}
+                />
+              ) : (
+                <View style={[StyleSheet.absoluteFill, { justifyContent: "center", alignItems: "center" }]}>
+                  <MeAlt width={width * 0.25} height={width * 0.25} />
+                </View>
+              )}
             </View>
             <TouchableOpacity
               style={styles.penIconButton}
