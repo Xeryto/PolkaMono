@@ -1248,25 +1248,6 @@ async def delete_my_account(
     db.commit()
     return {"message": "Аккаунт успешно удалён."}
 
-@app.get("/api/v1/brands/me", response_model=schemas.UserProfileResponse)
-async def get_brand_profile_user_format(current_user: Brand = Depends(get_current_brand_user), db: Session = Depends(get_db)):
-    """Get current brand in unified UserProfileResponse format (e.g. for shared auth/header). Use GET /api/v1/brands/profile for full BrandResponse with requisites."""
-    return schemas.UserProfileResponse(
-        id=str(current_user.id),
-        username=current_user.name,
-        email=current_user.auth_account.email,
-        is_active=True,
-        is_email_verified=True,
-        is_brand=True,
-        created_at=current_user.created_at,
-        updated_at=current_user.updated_at,
-        favorite_brands=[],
-        favorite_styles=[],
-        profile=None,
-        shipping_info=None,
-        preferences=None
-    )
-
 @app.post("/api/v1/brands/upload/presigned-url", response_model=schemas.PresignedUploadResponse)
 async def get_product_image_presigned_url(
     body: schemas.PresignedUploadRequest,
