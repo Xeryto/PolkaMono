@@ -71,6 +71,8 @@ build/
 packages/mobile/ios/
 packages/mobile/android/
 
+.planning/
+
 SECURITY_ANALYSIS.md
 MOBILE_RESPONSIVE_DESIGN_ANALYSIS.md
 packages/api/docs/DATABASE_AND_MODELS_ANALYSIS.md
