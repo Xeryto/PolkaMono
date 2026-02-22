@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import {
   View,
   Text,
@@ -27,6 +27,8 @@ import {
   ANIMATION_DELAYS,
   ANIMATION_EASING,
 } from "../lib/animations";
+import { useTheme } from "../lib/ThemeContext";
+import type { ThemeColors } from "../lib/theme";
 const { width, height } = Dimensions.get("window");
 const LOGO_SIZE = Math.min(width, height) * 0.275;
 const ITEM_WIDTH = width * 0.5; // Style item width slightly wider than 50%
@@ -51,6 +53,9 @@ const StylesSelectionScreen: React.FC<StylesSelectionScreenProps> = ({
   onBack,
   isSaving = false,
 }) => {
+  const { theme } = useTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
+
   const [selectedStyles, setSelectedStyles] = useState<string[]>([]);
   const [showScrollHint, setShowScrollHint] = useState(true);
   const [stylesOptions, setStylesOptions] = useState<any[]>([]);
@@ -165,7 +170,7 @@ const StylesSelectionScreen: React.FC<StylesSelectionScreenProps> = ({
 
   return (
     <LinearGradient
-      colors={["#FAE9CF", "#CCA479", "#CDA67A", "#6A462F"]}
+      colors={theme.gradients.main as any}
       locations={[0, 0.34, 0.5, 0.87]}
       style={styles.container}
       start={{ x: 0, y: 0.2 }}
@@ -177,7 +182,7 @@ const StylesSelectionScreen: React.FC<StylesSelectionScreenProps> = ({
           entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM)}
         >
           <LinearGradient
-            colors={["rgba(205, 166, 122, 0.5)", "transparent"]}
+            colors={[theme.surface.gradientOverlay, "transparent"]}
             start={{ x: 0.1, y: 1 }}
             end={{ x: 0.9, y: 0.3 }}
             locations={[0.05, 1]}
@@ -263,7 +268,7 @@ const StylesSelectionScreen: React.FC<StylesSelectionScreenProps> = ({
                     <View style={styles.continueButtonLoading}>
                       <ActivityIndicator
                         size="small"
-                        color="#6A462F"
+                        color={theme.text.tertiary}
                       />
                       <Text style={styles.continueButtonText}>
                         сохранение...
@@ -285,25 +290,26 @@ const StylesSelectionScreen: React.FC<StylesSelectionScreenProps> = ({
   );
 };
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  safeArea: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    paddingTop: Platform.OS === "ios" ? 0 : 30,
-  },
-  roundedBox: {
-    width: "88%",
-    height: "95%",
-    borderRadius: 41,
-    backgroundColor: "rgba(205, 166, 122, 0)",
-    position: "relative",
-    borderWidth: 3,
-    borderColor: "rgba(205, 166, 122, 0.4)",
-  },
+const createStyles = (theme: ThemeColors) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+    },
+    safeArea: {
+      flex: 1,
+      justifyContent: "center",
+      alignItems: "center",
+      paddingTop: Platform.OS === "ios" ? 0 : 30,
+    },
+    roundedBox: {
+      width: "88%",
+      height: "95%",
+      borderRadius: 41,
+      backgroundColor: "rgba(205, 166, 122, 0)",
+      position: "relative",
+      borderWidth: 3,
+      borderColor: theme.border.default,
+    },
   gradientBackground: {
     borderRadius: 37,
     position: "absolute",
@@ -328,7 +334,7 @@ const styles = StyleSheet.create({
     borderRadius: 41,
     ...Platform.select({
       ios: {
-        shadowColor: "#000",
+        shadowColor: theme.shadow.default,
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.2,
         shadowRadius: 8,
@@ -341,7 +347,7 @@ const styles = StyleSheet.create({
   formContainer: {
     width: "100%",
     height: "100%",
-    backgroundColor: "#F2ECE7",
+    backgroundColor: theme.background.primary,
     borderRadius: 41,
     padding: 21,
     alignItems: "center",
@@ -363,7 +369,7 @@ const styles = StyleSheet.create({
   counterText: {
     fontFamily: "IgraSans",
     fontSize: 14,
-    color: "#000",
+    color: theme.text.primary,
     textAlign: "center",
   },
   scrollHintContainer: {
@@ -379,7 +385,7 @@ const styles = StyleSheet.create({
     fontFamily: "IgraSans",
     fontSize: 14,
     lineHeight: 26,
-    color: "#000",
+    color: theme.text.primary,
     flexDirection: "row",
     alignItems: "center",
   },
@@ -408,10 +414,10 @@ const styles = StyleSheet.create({
     height: height * 0.125,
     marginHorizontal: 5,
     borderRadius: 41,
-    backgroundColor: "#E0D6CC",
+    backgroundColor: theme.background.input,
     ...Platform.select({
       ios: {
-        shadowColor: "#000",
+        shadowColor: theme.shadow.default,
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.25,
         shadowRadius: 4,
@@ -425,7 +431,7 @@ const styles = StyleSheet.create({
     opacity: 0.8,
   },
   selectedStyleItem: {
-    backgroundColor: "#9A7859",
+    backgroundColor: theme.gender.female,
   },
   buttonPressed: {
     opacity: 0.8,
@@ -439,17 +445,17 @@ const styles = StyleSheet.create({
   styleName: {
     fontFamily: "IgraSans",
     fontSize: 20,
-    color: "#000",
+    color: theme.text.primary,
     textAlign: "center",
     marginBottom: 4,
   },
   styleNameSelected: {
-    color: "#E0D6CC",
+    color: theme.gender.femaleText,
   },
   styleDescription: {
     fontFamily: "REM",
     fontSize: 10,
-    color: "#4A3120",
+    color: theme.text.secondary,
     textAlign: "center",
     opacity: 0.8,
   },
@@ -460,12 +466,12 @@ const styles = StyleSheet.create({
     width: 20,
     height: 20,
     borderRadius: 10,
-    backgroundColor: "#4A3120",
+    backgroundColor: theme.button.primary,
     justifyContent: "center",
     alignItems: "center",
   },
   checkmark: {
-    color: "#FFF",
+    color: theme.text.inverse,
     fontSize: 14,
   },
   selectedCount: {
@@ -475,7 +481,7 @@ const styles = StyleSheet.create({
   selectedCountText: {
     fontFamily: "REM",
     fontSize: 14,
-    color: "#4A3120",
+    color: theme.text.secondary,
     textAlign: "center",
   },
   buttonContainer: {
@@ -484,14 +490,14 @@ const styles = StyleSheet.create({
   },
   continueButton: {
     marginTop: height * 0.05,
-    backgroundColor: "#E0D6CC",
+    backgroundColor: theme.background.input,
     borderRadius: 41,
     paddingVertical: 16,
     paddingHorizontal: 25,
     alignItems: "center",
     ...Platform.select({
       ios: {
-        shadowColor: "#000",
+        shadowColor: theme.shadow.default,
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.25,
         shadowRadius: 4,
@@ -505,7 +511,7 @@ const styles = StyleSheet.create({
   continueButtonText: {
     fontFamily: "IgraSans",
     fontSize: 20,
-    color: "#000",
+    color: theme.text.primary,
   },
   continueButtonLoading: {
     flexDirection: "row",
@@ -521,7 +527,7 @@ const styles = StyleSheet.create({
   text: {
     fontFamily: "IgraSans",
     fontSize: 38,
-    color: "#fff",
+    color: theme.text.inverse,
   },
   loadingContainer: {
     flex: 1,
@@ -532,8 +538,8 @@ const styles = StyleSheet.create({
   loadingText: {
     fontFamily: "IgraSans",
     fontSize: 20,
-    color: "#000",
+    color: theme.text.primary,
   },
-});
+  });
 
 export default StylesSelectionScreen;

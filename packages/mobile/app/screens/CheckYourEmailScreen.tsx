@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useMemo } from "react";
 import {
   View,
   Text,
@@ -15,6 +15,8 @@ import {
   ANIMATION_DELAYS,
   ANIMATION_EASING,
 } from "../lib/animations";
+import { useTheme } from "../lib/ThemeContext";
+import type { ThemeColors } from "../lib/theme";
 
 const { width, height } = Dimensions.get("window");
 
@@ -29,6 +31,9 @@ const CheckYourEmailScreen: React.FC<CheckYourEmailScreenProps> = ({
   onBackToLogin,
   onResendEmail,
 }) => {
+  const { theme } = useTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
+
   const [isResending, setIsResending] = React.useState(false);
 
   const handleResendEmail = async () => {
@@ -41,7 +46,7 @@ const CheckYourEmailScreen: React.FC<CheckYourEmailScreenProps> = ({
   };
   return (
     <LinearGradient
-      colors={["#FAE9CF", "#CCA479", "#CDA67A", "#6A462F"]}
+      colors={theme.gradients.main as any}
       locations={[0, 0.34, 0.5, 0.87]}
       style={styles.container}
       start={{ x: 0, y: 0.2 }}
@@ -95,77 +100,78 @@ const CheckYourEmailScreen: React.FC<CheckYourEmailScreenProps> = ({
   );
 };
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  safeArea: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  contentContainer: {
-    width: "90%",
-    backgroundColor: "#F2ECE7",
-    borderRadius: 41,
-    padding: 24,
-    alignItems: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 5,
-  },
-  logoContainer: {
-    alignItems: "center",
-    justifyContent: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 8,
-    marginBottom: 40,
-  },
-  title: {
-    fontFamily: "IgraSans",
-    fontSize: 24,
-    color: "#4A3120",
-    marginBottom: 20,
-  },
-  subtitle: {
-    fontFamily: "REM",
-    fontSize: 16,
-    color: "#6A462F",
-    textAlign: "center",
-    marginBottom: 40,
-    paddingHorizontal: 20,
-  },
-  backButton: {
-    alignItems: "center",
-    width: "100%",
-    marginTop: 10,
-  },
-  resendButton: {
-    alignItems: "center",
-    width: "100%",
-  },
-  buttonView: {
-    backgroundColor: "#4A3120",
-    borderRadius: 41,
-    paddingVertical: 22,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 5,
-    width: "100%",
-    alignItems: "center",
-  },
-  buttonText: {
-    fontFamily: "IgraSans",
-    fontSize: 20,
-    color: "#F2ECE7",
-  },
-});
+const createStyles = (theme: ThemeColors) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+    },
+    safeArea: {
+      flex: 1,
+      justifyContent: "center",
+      alignItems: "center",
+    },
+    contentContainer: {
+      width: "90%",
+      backgroundColor: theme.background.primary,
+      borderRadius: 41,
+      padding: 24,
+      alignItems: "center",
+      shadowColor: theme.shadow.default,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.25,
+      shadowRadius: 4,
+      elevation: 5,
+    },
+    logoContainer: {
+      alignItems: "center",
+      justifyContent: "center",
+      shadowColor: theme.shadow.default,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.25,
+      shadowRadius: 4,
+      elevation: 8,
+      marginBottom: 40,
+    },
+    title: {
+      fontFamily: "IgraSans",
+      fontSize: 24,
+      color: theme.text.secondary,
+      marginBottom: 20,
+    },
+    subtitle: {
+      fontFamily: "REM",
+      fontSize: 16,
+      color: theme.text.tertiary,
+      textAlign: "center",
+      marginBottom: 40,
+      paddingHorizontal: 20,
+    },
+    backButton: {
+      alignItems: "center",
+      width: "100%",
+      marginTop: 10,
+    },
+    resendButton: {
+      alignItems: "center",
+      width: "100%",
+    },
+    buttonView: {
+      backgroundColor: theme.button.primary,
+      borderRadius: 41,
+      paddingVertical: 22,
+      shadowColor: theme.shadow.default,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.25,
+      shadowRadius: 4,
+      elevation: 5,
+      width: "100%",
+      alignItems: "center",
+    },
+    buttonText: {
+      fontFamily: "IgraSans",
+      fontSize: 20,
+      color: theme.button.primaryText,
+    },
+  });
 
 export default CheckYourEmailScreen;

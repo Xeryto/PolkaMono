@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import {
   View,
   Text,
@@ -28,6 +28,8 @@ import {
   ANIMATION_DELAYS,
   ANIMATION_EASING,
 } from "../lib/animations";
+import { useTheme } from "../lib/ThemeContext";
+import type { ThemeColors } from "../lib/theme";
 
 const { width, height } = Dimensions.get("window");
 
@@ -39,6 +41,9 @@ interface SignupScreenProps {
 const LOGO_SIZE = Math.min(width, height) * 0.3; // 25% of the smallest dimension
 
 const SignupScreen: React.FC<SignupScreenProps> = ({ onSignup, onBack }) => {
+  const { theme } = useTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
+
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -294,7 +299,7 @@ const SignupScreen: React.FC<SignupScreenProps> = ({ onSignup, onBack }) => {
 
   return (
     <LinearGradient
-      colors={["#FAE9CF", "#CCA479", "#CDA67A", "#6A462F"]}
+      colors={theme.gradients.main as any}
       locations={[0, 0.34, 0.5, 0.87]}
       style={styles.container}
       start={{ x: 0, y: 0.2 }}
@@ -346,7 +351,7 @@ const SignupScreen: React.FC<SignupScreenProps> = ({ onSignup, onBack }) => {
                       isCheckingUsername ? styles.inputChecking : null,
                     ]}
                     placeholder="ник"
-                    placeholderTextColor="rgba(0, 0, 0, 1)"
+                    placeholderTextColor={theme.text.placeholderDark}
                     autoCapitalize="none"
                     value={username}
                     onChangeText={(text) => {
@@ -357,7 +362,7 @@ const SignupScreen: React.FC<SignupScreenProps> = ({ onSignup, onBack }) => {
                   {isCheckingUsername && (
                     <ActivityIndicator
                       size="small"
-                      color="#FFA500"
+                      color={theme.status.checking}
                       style={styles.statusIndicator}
                     />
                   )}
@@ -392,7 +397,7 @@ const SignupScreen: React.FC<SignupScreenProps> = ({ onSignup, onBack }) => {
                       isCheckingEmail ? styles.inputChecking : null,
                     ]}
                     placeholder="email"
-                    placeholderTextColor="rgba(0, 0, 0, 1)"
+                    placeholderTextColor={theme.text.placeholderDark}
                     autoCapitalize="none"
                     autoComplete="email"
                     keyboardType="email-address"
@@ -405,7 +410,7 @@ const SignupScreen: React.FC<SignupScreenProps> = ({ onSignup, onBack }) => {
                   {isCheckingEmail && (
                     <ActivityIndicator
                       size="small"
-                      color="#FFA500"
+                      color={theme.status.checking}
                       style={styles.statusIndicator}
                     />
                   )}
@@ -438,7 +443,7 @@ const SignupScreen: React.FC<SignupScreenProps> = ({ onSignup, onBack }) => {
                       errors.password ? styles.inputError : null,
                     ]}
                     placeholder="пароль"
-                    placeholderTextColor="rgba(0, 0, 0, 1)"
+                    placeholderTextColor={theme.text.placeholderDark}
                     secureTextEntry
                     value={password}
                     onChangeText={setPassword}
@@ -462,7 +467,7 @@ const SignupScreen: React.FC<SignupScreenProps> = ({ onSignup, onBack }) => {
                       errors.confirmPassword ? styles.inputError : null,
                     ]}
                     placeholder="повторите пароль"
-                    placeholderTextColor="rgba(0, 0, 0, 1)"
+                    placeholderTextColor={theme.text.placeholderDark}
                     secureTextEntry
                     value={confirmPassword}
                     onChangeText={setConfirmPassword}
@@ -614,273 +619,275 @@ const SignupScreen: React.FC<SignupScreenProps> = ({ onSignup, onBack }) => {
   );
 };
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  safeArea: {
-    flex: 1,
-  },
-  keyboardView: {
-    flex: 1,
-  },
-  scrollContainer: {
-    flexGrow: 1,
-    justifyContent: "center",
-    padding: 24,
-  },
-  formContainer: {
-    width: "100%",
-    height: "100%",
-    backgroundColor: "#F2ECE7",
-    borderRadius: 41,
-    padding: 24,
-    justifyContent: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 5,
-    //overflow: 'hidden',
-  },
-  backButton: {
-    position: "absolute",
-    top: 16,
-    left: 16,
-    zIndex: 10,
-    width: 40,
-    height: 40,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  backButtonText: {
-    fontFamily: "REM",
-    fontSize: 16,
-    color: "#000",
-  },
-  inputContainer: {
-    borderRadius: 41,
-    overflow: "hidden",
-    backgroundColor: "#E0D6CC",
-  },
-  inputShadow: {
-    borderRadius: 41,
-    backgroundColor: "transparent",
-    shadowColor: "#000",
-    shadowOffset: {
-      width: 0,
-      height: 4,
+const createStyles = (theme: ThemeColors) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
     },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 8,
-    marginBottom: 20,
-  },
-  input: {
-    borderRadius: 41,
-    paddingHorizontal: 16,
-    paddingVertical: 20,
-    fontFamily: "IgraSans",
-    fontSize: 14,
-    ...Platform.select({
-      android: {
-        overflow: "hidden",
+    safeArea: {
+      flex: 1,
+    },
+    keyboardView: {
+      flex: 1,
+    },
+    scrollContainer: {
+      flexGrow: 1,
+      justifyContent: "center",
+      padding: 24,
+    },
+    formContainer: {
+      width: "100%",
+      height: "100%",
+      backgroundColor: theme.background.primary,
+      borderRadius: 41,
+      padding: 24,
+      justifyContent: "center",
+      shadowColor: theme.shadow.default,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.25,
+      shadowRadius: 4,
+      elevation: 5,
+      //overflow: 'hidden',
+    },
+    backButton: {
+      position: "absolute",
+      top: 16,
+      left: 16,
+      zIndex: 10,
+      width: 40,
+      height: 40,
+      justifyContent: "center",
+      alignItems: "center",
+    },
+    backButtonText: {
+      fontFamily: "REM",
+      fontSize: 16,
+      color: theme.text.primary,
+    },
+    inputContainer: {
+      borderRadius: 41,
+      overflow: "hidden",
+      backgroundColor: theme.background.input,
+    },
+    inputShadow: {
+      borderRadius: 41,
+      backgroundColor: "transparent",
+      shadowColor: theme.shadow.default,
+      shadowOffset: {
+        width: 0,
+        height: 4,
       },
-    }),
-  },
-  inputError: {
-    borderColor: "rgba(255, 100, 100, 0.7)",
-    borderWidth: 1,
-  },
-  inputSuccess: {
-    borderColor: "rgba(0, 170, 0, 0.7)",
-    borderWidth: 1,
-  },
-  inputChecking: {
-    borderColor: "rgba(255, 165, 0, 0.7)",
-    borderWidth: 1,
-  },
-  statusIndicator: {
-    position: "absolute",
-    right: 15,
-    top: "50%",
-    transform: [{ translateY: -10 }],
-  },
-  statusText: {
-    fontFamily: "IgraSans",
-    fontSize: 10,
-    position: "absolute",
-    right: 15,
-    top: "50%",
-    transform: [{ translateY: -5 }],
-  },
-  statusTextSuccess: {
-    color: "#00AA00",
-  },
-  statusTextError: {
-    color: "#FF0000",
-  },
-  statusTextChecking: {
-    color: "#FFA500",
-  },
-  errorText: {
-    fontFamily: "REM",
-    fontSize: 12,
-    color: "#FF6464",
-    marginTop: 4,
-    marginLeft: 16,
-  },
-  errorContainer: {
-    backgroundColor: "rgba(255, 100, 100, 0.2)",
-    padding: 10,
-    borderRadius: 10,
-    marginBottom: 20,
-  },
-  errorGeneralText: {
-    fontFamily: "REM",
-    fontSize: 14,
-    color: "#FF6464",
-    textAlign: "center",
-  },
-  signupButton: {
-    backgroundColor: "#4A3120",
-    borderRadius: 41,
-    paddingVertical: 22,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 5,
-    width: "100%",
-    alignItems: "center",
-  },
-  signupButtonDisabled: {
-    backgroundColor: "rgba(205, 166, 122, 0.4)",
-  },
-  signupButtonText: {
-    fontFamily: "IgraSans",
-    fontSize: 20,
-    color: "#F2ECE7",
-  },
-  termsContainer: {
-    marginTop: 15,
-    alignItems: "center",
-  },
-  termsRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    width: "80%",
-    paddingHorizontal: 5,
-  },
-  termsText: {
-    fontFamily: "IgraSans",
-    fontSize: 10,
-    color: "rgba(0, 0, 0, 0.8)",
-    textAlign: "center",
-    flex: 1,
-    marginHorizontal: 10,
-  },
-  termsLink: {
-    fontFamily: "IgraSans",
-    fontSize: 10,
-    color: "#000",
-    textDecorationLine: "underline",
-  },
-  checkboxContainer: {
-    padding: 5,
-  },
-  logoContainer: {
-    alignItems: "center",
-    justifyContent: "flex-start",
-    marginBottom: 30,
-    shadowColor: "#000",
-    shadowOffset: {
-      width: 0,
-      height: 4,
+      shadowOpacity: 0.25,
+      shadowRadius: 4,
+      elevation: 8,
+      marginBottom: 20,
     },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 8,
-  },
-  socialContainer: {
-    marginTop: 20,
-    //marginBottom: 10,
-    flexDirection: "row",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  vkButton: {
-    width: 69,
-    height: 69,
-    borderRadius: 41,
-    backgroundColor: "#E0D6CC",
-    justifyContent: "center",
-    alignItems: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 5,
-    //overflow: 'hidden',
-  },
-  // Modal styles
-  modalContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
-    padding: 20,
-  },
-  modalContent: {
-    width: "90%",
-    maxHeight: "80%",
-    backgroundColor: "#F2ECE7",
-    borderRadius: 20,
-    padding: 20,
-    alignItems: "center",
-    shadowColor: "#000",
-    shadowOffset: {
-      width: 0,
-      height: 2,
+    input: {
+      borderRadius: 41,
+      paddingHorizontal: 16,
+      paddingVertical: 20,
+      fontFamily: "IgraSans",
+      fontSize: 14,
+      color: theme.text.primary,
+      ...Platform.select({
+        android: {
+          overflow: "hidden",
+        },
+      }),
     },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 5,
-  },
-  modalTitle: {
-    fontFamily: "IgraSans",
-    fontSize: 18,
-    color: "#4A3120",
-    marginBottom: 15,
-  },
-  modalScroll: {
-    width: "100%",
-    marginBottom: 15,
-  },
-  modalText: {
-    fontFamily: "REM",
-    fontSize: 14,
-    color: "#333",
-    lineHeight: 20,
-  },
-  modalSubtitle: {
-    fontFamily: "IgraSans",
-    fontSize: 16,
-    color: "#4A3120",
-    fontWeight: "bold",
-  },
-  modalCloseButton: {
-    backgroundColor: "#4A3120",
-    paddingVertical: 10,
-    paddingHorizontal: 20,
-    borderRadius: 20,
-  },
-  modalCloseButtonText: {
-    fontFamily: "IgraSans",
-    fontSize: 16,
-    color: "#F2ECE7",
-  },
-});
+    inputError: {
+      borderColor: theme.border.error,
+      borderWidth: 1,
+    },
+    inputSuccess: {
+      borderColor: theme.border.success,
+      borderWidth: 1,
+    },
+    inputChecking: {
+      borderColor: theme.border.checking,
+      borderWidth: 1,
+    },
+    statusIndicator: {
+      position: "absolute",
+      right: 15,
+      top: "50%",
+      transform: [{ translateY: -10 }],
+    },
+    statusText: {
+      fontFamily: "IgraSans",
+      fontSize: 10,
+      position: "absolute",
+      right: 15,
+      top: "50%",
+      transform: [{ translateY: -5 }],
+    },
+    statusTextSuccess: {
+      color: theme.status.success,
+    },
+    statusTextError: {
+      color: theme.status.error,
+    },
+    statusTextChecking: {
+      color: theme.status.checking,
+    },
+    errorText: {
+      fontFamily: "REM",
+      fontSize: 12,
+      color: theme.status.errorText,
+      marginTop: 4,
+      marginLeft: 16,
+    },
+    errorContainer: {
+      backgroundColor: theme.status.errorBackground,
+      padding: 10,
+      borderRadius: 10,
+      marginBottom: 20,
+    },
+    errorGeneralText: {
+      fontFamily: "REM",
+      fontSize: 14,
+      color: theme.status.errorText,
+      textAlign: "center",
+    },
+    signupButton: {
+      backgroundColor: theme.button.primary,
+      borderRadius: 41,
+      paddingVertical: 22,
+      shadowColor: theme.shadow.default,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.25,
+      shadowRadius: 4,
+      elevation: 5,
+      width: "100%",
+      alignItems: "center",
+    },
+    signupButtonDisabled: {
+      backgroundColor: theme.button.disabled,
+    },
+    signupButtonText: {
+      fontFamily: "IgraSans",
+      fontSize: 20,
+      color: theme.button.primaryText,
+    },
+    termsContainer: {
+      marginTop: 15,
+      alignItems: "center",
+    },
+    termsRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      width: "80%",
+      paddingHorizontal: 5,
+    },
+    termsText: {
+      fontFamily: "IgraSans",
+      fontSize: 10,
+      color: theme.text.secondary,
+      textAlign: "center",
+      flex: 1,
+      marginHorizontal: 10,
+    },
+    termsLink: {
+      fontFamily: "IgraSans",
+      fontSize: 10,
+      color: theme.text.primary,
+      textDecorationLine: "underline",
+    },
+    checkboxContainer: {
+      padding: 5,
+    },
+    logoContainer: {
+      alignItems: "center",
+      justifyContent: "flex-start",
+      marginBottom: 30,
+      shadowColor: theme.shadow.default,
+      shadowOffset: {
+        width: 0,
+        height: 4,
+      },
+      shadowOpacity: 0.25,
+      shadowRadius: 4,
+      elevation: 8,
+    },
+    socialContainer: {
+      marginTop: 20,
+      //marginBottom: 10,
+      flexDirection: "row",
+      justifyContent: "center",
+      alignItems: "center",
+    },
+    vkButton: {
+      width: 69,
+      height: 69,
+      borderRadius: 41,
+      backgroundColor: theme.background.input,
+      justifyContent: "center",
+      alignItems: "center",
+      shadowColor: theme.shadow.default,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.25,
+      shadowRadius: 4,
+      elevation: 5,
+      //overflow: 'hidden',
+    },
+    // Modal styles
+    modalContainer: {
+      flex: 1,
+      justifyContent: "center",
+      alignItems: "center",
+      backgroundColor: theme.modal.backdrop,
+      padding: 20,
+    },
+    modalContent: {
+      width: "90%",
+      maxHeight: "80%",
+      backgroundColor: theme.modal.background,
+      borderRadius: 20,
+      padding: 20,
+      alignItems: "center",
+      shadowColor: theme.shadow.default,
+      shadowOffset: {
+        width: 0,
+        height: 2,
+      },
+      shadowOpacity: 0.25,
+      shadowRadius: 4,
+      elevation: 5,
+    },
+    modalTitle: {
+      fontFamily: "IgraSans",
+      fontSize: 18,
+      color: theme.text.secondary,
+      marginBottom: 15,
+    },
+    modalScroll: {
+      width: "100%",
+      marginBottom: 15,
+    },
+    modalText: {
+      fontFamily: "REM",
+      fontSize: 14,
+      color: theme.text.primary,
+      lineHeight: 20,
+    },
+    modalSubtitle: {
+      fontFamily: "IgraSans",
+      fontSize: 16,
+      color: theme.text.secondary,
+      fontWeight: "bold",
+    },
+    modalCloseButton: {
+      backgroundColor: theme.button.primary,
+      paddingVertical: 10,
+      paddingHorizontal: 20,
+      borderRadius: 20,
+    },
+    modalCloseButtonText: {
+      fontFamily: "IgraSans",
+      fontSize: 16,
+      color: theme.button.primaryText,
+    },
+  });
 
 export default SignupScreen;

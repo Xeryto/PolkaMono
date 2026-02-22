@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import {
   View,
   Text,
@@ -23,6 +23,8 @@ import {
   ANIMATION_DELAYS,
   ANIMATION_EASING,
 } from "../lib/animations";
+import { useTheme } from "../lib/ThemeContext";
+import type { ThemeColors } from "../lib/theme";
 
 const { width, height } = Dimensions.get("window");
 
@@ -37,6 +39,9 @@ const ForgotPasswordScreen: React.FC<ForgotPasswordScreenProps> = ({
   onBack,
   onSuccess,
 }) => {
+  const { theme } = useTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
+
   const [usernameOrEmail, setUsernameOrEmail] = useState("");
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -70,7 +75,7 @@ const ForgotPasswordScreen: React.FC<ForgotPasswordScreenProps> = ({
 
   return (
     <LinearGradient
-      colors={["#FAE9CF", "#CCA479", "#CDA67A", "#6A462F"]}
+      colors={theme.gradients.main as any}
       locations={[0, 0.34, 0.5, 0.87]}
       style={styles.container}
       start={{ x: 0, y: 0.2 }}
@@ -132,7 +137,7 @@ const ForgotPasswordScreen: React.FC<ForgotPasswordScreenProps> = ({
                       <TextInput
                         style={[styles.input, error ? styles.inputError : null]}
                         placeholder="имя пользователя или email"
-                        placeholderTextColor="rgba(0, 0, 0, 1)"
+                        placeholderTextColor={theme.text.placeholderDark}
                         autoCapitalize="none"
                         autoComplete="email"
                         keyboardType="email-address"
@@ -178,141 +183,143 @@ const ForgotPasswordScreen: React.FC<ForgotPasswordScreenProps> = ({
   );
 };
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  safeArea: {
-    flex: 1,
-  },
-  keyboardView: {
-    flex: 1,
-  },
-  scrollContainer: {
-    flexGrow: 1,
-    justifyContent: "center",
-    padding: 24,
-  },
-  formContainer: {
-    width: "100%",
-    backgroundColor: "#F2ECE7",
-    borderRadius: 41,
-    padding: 24,
-    alignItems: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 5,
-  },
-  backButton: {
-    position: "absolute",
-    top: 20,
-    left: 20,
-    zIndex: 10,
-  },
-  logoContainer: {
-    alignItems: "center",
-    justifyContent: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 8,
-    marginBottom: 40,
-  },
-  title: {
-    fontFamily: "IgraSans",
-    fontSize: 24,
-    color: "#4A3120",
-    marginBottom: 10,
-  },
-  subtitle: {
-    fontFamily: "REM",
-    fontSize: 14,
-    color: "#6A462F",
-    textAlign: "center",
-    marginBottom: 30,
-    paddingHorizontal: 20,
-  },
-  inputContainer: {
-    borderRadius: 41,
-    overflow: "hidden",
-    backgroundColor: "#E0D6CC",
-    width: "100%",
-  },
-  inputShadow: {
-    borderRadius: 41,
-    backgroundColor: "transparent",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 8,
-    marginBottom: 20,
-    width: "100%",
-  },
-  input: {
-    borderRadius: 41,
-    paddingHorizontal: 16,
-    paddingVertical: 20,
-    fontFamily: "IgraSans",
-    fontSize: 14,
-  },
-  inputError: {
-    borderColor: "rgba(255, 100, 100, 0.7)",
-    borderWidth: 1,
-  },
-  errorText: {
-    fontFamily: "REM",
-    fontSize: 12,
-    color: "#FF6464",
-    marginTop: 4,
-    marginLeft: 16,
-  },
-  errorContainer: {
-    backgroundColor: "rgba(255, 100, 100, 0.2)",
-    padding: 10,
-    borderRadius: 10,
-    marginBottom: 20,
-    width: "100%",
-  },
-  errorGeneralText: {
-    fontFamily: "REM",
-    fontSize: 14,
-    color: "#FF6464",
-    textAlign: "center",
-  },
-  sendButton: {
-    backgroundColor: "#4A3120",
-    borderRadius: 41,
-    paddingVertical: 22,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 5,
-    width: "100%",
-    alignItems: "center",
-  },
-  sendButtonDisabled: {
-    backgroundColor: "rgba(205, 166, 122, 0.4)",
-  },
-  sendButtonText: {
-    fontFamily: "IgraSans",
-    fontSize: 20,
-    color: "#F2ECE7",
-  },
-  successContainer: {
-    padding: 20,
-    alignItems: "center",
-  },
-  successText: {
-    fontFamily: "REM",
-    fontSize: 16,
-    color: "#4A3120",
-    textAlign: "center",
-  },
-});
+const createStyles = (theme: ThemeColors) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+    },
+    safeArea: {
+      flex: 1,
+    },
+    keyboardView: {
+      flex: 1,
+    },
+    scrollContainer: {
+      flexGrow: 1,
+      justifyContent: "center",
+      padding: 24,
+    },
+    formContainer: {
+      width: "100%",
+      backgroundColor: theme.background.primary,
+      borderRadius: 41,
+      padding: 24,
+      alignItems: "center",
+      shadowColor: theme.shadow.default,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.25,
+      shadowRadius: 4,
+      elevation: 5,
+    },
+    backButton: {
+      position: "absolute",
+      top: 20,
+      left: 20,
+      zIndex: 10,
+    },
+    logoContainer: {
+      alignItems: "center",
+      justifyContent: "center",
+      shadowColor: theme.shadow.default,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.25,
+      shadowRadius: 4,
+      elevation: 8,
+      marginBottom: 40,
+    },
+    title: {
+      fontFamily: "IgraSans",
+      fontSize: 24,
+      color: theme.text.secondary,
+      marginBottom: 10,
+    },
+    subtitle: {
+      fontFamily: "REM",
+      fontSize: 14,
+      color: theme.text.tertiary,
+      textAlign: "center",
+      marginBottom: 30,
+      paddingHorizontal: 20,
+    },
+    inputContainer: {
+      borderRadius: 41,
+      overflow: "hidden",
+      backgroundColor: theme.background.input,
+      width: "100%",
+    },
+    inputShadow: {
+      borderRadius: 41,
+      backgroundColor: "transparent",
+      shadowColor: theme.shadow.default,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.25,
+      shadowRadius: 4,
+      elevation: 8,
+      marginBottom: 20,
+      width: "100%",
+    },
+    input: {
+      borderRadius: 41,
+      paddingHorizontal: 16,
+      paddingVertical: 20,
+      fontFamily: "IgraSans",
+      fontSize: 14,
+      color: theme.text.primary,
+    },
+    inputError: {
+      borderColor: theme.border.error,
+      borderWidth: 1,
+    },
+    errorText: {
+      fontFamily: "REM",
+      fontSize: 12,
+      color: theme.status.errorText,
+      marginTop: 4,
+      marginLeft: 16,
+    },
+    errorContainer: {
+      backgroundColor: theme.status.errorBackground,
+      padding: 10,
+      borderRadius: 10,
+      marginBottom: 20,
+      width: "100%",
+    },
+    errorGeneralText: {
+      fontFamily: "REM",
+      fontSize: 14,
+      color: theme.status.errorText,
+      textAlign: "center",
+    },
+    sendButton: {
+      backgroundColor: theme.button.primary,
+      borderRadius: 41,
+      paddingVertical: 22,
+      shadowColor: theme.shadow.default,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.25,
+      shadowRadius: 4,
+      elevation: 5,
+      width: "100%",
+      alignItems: "center",
+    },
+    sendButtonDisabled: {
+      backgroundColor: theme.button.disabled,
+    },
+    sendButtonText: {
+      fontFamily: "IgraSans",
+      fontSize: 20,
+      color: theme.button.primaryText,
+    },
+    successContainer: {
+      padding: 20,
+      alignItems: "center",
+    },
+    successText: {
+      fontFamily: "REM",
+      fontSize: 16,
+      color: theme.text.secondary,
+      textAlign: "center",
+    },
+  });
 
 export default ForgotPasswordScreen;

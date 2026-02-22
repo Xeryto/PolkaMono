@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import {
   View,
   Text,
@@ -17,6 +17,8 @@ import * as Haptics from "expo-haptics";
 import Logo from "../components/svg/Logo";
 import BackIcon from "../components/svg/BackIcon";
 import { ANIMATION_DURATIONS, ANIMATION_DELAYS } from "../lib/animations";
+import { useTheme } from "../lib/ThemeContext";
+import type { ThemeColors } from "../lib/theme";
 
 const { width, height } = Dimensions.get("window");
 
@@ -31,6 +33,9 @@ const ConfirmationScreen: React.FC<ConfirmationScreenProps> = ({
   onComplete,
   onBack,
 }) => {
+  const { theme } = useTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
+
   const [selectedOption, setSelectedOption] = useState<
     "male" | "female" | null
   >(null);
@@ -50,7 +55,7 @@ const ConfirmationScreen: React.FC<ConfirmationScreenProps> = ({
 
   return (
     <LinearGradient
-      colors={["#FAE9CF", "#CCA479", "#CDA67A", "#6A462F"]}
+      colors={theme.gradients.main as any}
       locations={[0, 0.34, 0.5, 0.87]}
       style={styles.container}
       start={{ x: 0, y: 0.2 }}
@@ -62,7 +67,7 @@ const ConfirmationScreen: React.FC<ConfirmationScreenProps> = ({
           entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM)}
         >
           <LinearGradient
-            colors={["rgba(205, 166, 122, 0.5)", "transparent"]}
+            colors={[theme.surface.gradientOverlay, "transparent"]}
             start={{ x: 0.1, y: 1 }}
             end={{ x: 0.9, y: 0.3 }}
             locations={[0.05, 1]}
@@ -103,7 +108,7 @@ const ConfirmationScreen: React.FC<ConfirmationScreenProps> = ({
                         styles.optionButton,
                         selectedOption === "male" && styles.selectedButtonM,
                         pressed && styles.buttonPressed,
-                        { backgroundColor: "#E0D6CC" },
+                        { backgroundColor: theme.gender.male },
                       ]}
                       onPress={() => handleOptionSelect("male")}
                       android_ripple={{
@@ -141,7 +146,7 @@ const ConfirmationScreen: React.FC<ConfirmationScreenProps> = ({
                         styles.optionButton,
                         selectedOption === "female" && styles.selectedButtonF,
                         pressed && styles.buttonPressed,
-                        { backgroundColor: "#9A7859" },
+                        { backgroundColor: theme.gender.female },
                       ]}
                       onPress={() => handleOptionSelect("female")}
                       android_ripple={{
@@ -152,7 +157,7 @@ const ConfirmationScreen: React.FC<ConfirmationScreenProps> = ({
                       disabled={isSubmitting}
                     >
                       {selectedOption === "female" && isSubmitting ? (
-                        <ActivityIndicator size="small" color="#E0D6CC" />
+                        <ActivityIndicator size="small" color={theme.gender.femaleText} />
                       ) : (
                         <Text
                           style={[
@@ -172,7 +177,7 @@ const ConfirmationScreen: React.FC<ConfirmationScreenProps> = ({
               {/* Saving text at bottom of white box (absolute) */}
               {isSubmitting && (
                 <View style={styles.savingContainer}>
-                  <ActivityIndicator size="small" color="#4A3120" />
+                  <ActivityIndicator size="small" color={theme.text.secondary} />
                   <Text style={styles.savingText}>сохранение...</Text>
                 </View>
               )}
@@ -187,25 +192,26 @@ const ConfirmationScreen: React.FC<ConfirmationScreenProps> = ({
   );
 };
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  safeArea: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    paddingTop: Platform.OS === "android" ? 20 : 0,
-  },
-  roundedBox: {
-    width: "88%",
-    height: "95%",
-    borderRadius: 41,
-    backgroundColor: "rgba(205, 166, 122, 0)",
-    position: "relative",
-    borderWidth: 3,
-    borderColor: "rgba(205, 166, 122, 0.4)",
-  },
+const createStyles = (theme: ThemeColors) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+    },
+    safeArea: {
+      flex: 1,
+      justifyContent: "center",
+      alignItems: "center",
+      paddingTop: Platform.OS === "android" ? 20 : 0,
+    },
+    roundedBox: {
+      width: "88%",
+      height: "95%",
+      borderRadius: 41,
+      backgroundColor: "rgba(205, 166, 122, 0)",
+      position: "relative",
+      borderWidth: 3,
+      borderColor: theme.border.default,
+    },
   gradientBackground: {
     borderRadius: 37,
     position: "absolute",
@@ -230,7 +236,7 @@ const styles = StyleSheet.create({
     borderRadius: 41,
     ...Platform.select({
       ios: {
-        shadowColor: "#000",
+        shadowColor: theme.shadow.default,
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.25,
         shadowRadius: 4,
@@ -244,7 +250,7 @@ const styles = StyleSheet.create({
     width: "100%",
     height: "100%",
     flexDirection: "column",
-    backgroundColor: "#F2ECE7",
+    backgroundColor: theme.background.primary,
     borderRadius: 41,
     ...Platform.select({
       android: {
@@ -263,7 +269,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 30,
-    shadowColor: "#000",
+    shadowColor: theme.shadow.default,
     shadowOffset: {
       width: 0,
       height: 4,
@@ -280,7 +286,7 @@ const styles = StyleSheet.create({
     borderRadius: 41,
     ...Platform.select({
       ios: {
-        shadowColor: "#000",
+        shadowColor: theme.shadow.default,
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.25,
         shadowRadius: 4,
@@ -306,26 +312,26 @@ const styles = StyleSheet.create({
     opacity: 0.8,
   },
   selectedButtonM: {
-    backgroundColor: "#4A3120",
+    backgroundColor: theme.gender.maleSelected,
   },
   selectedButtonF: {
-    backgroundColor: "#9A7859",
+    backgroundColor: theme.gender.femaleSelected,
   },
   optionButtonTextM: {
     fontFamily: "IgraSans",
     fontSize: 40,
-    color: "#9A7859",
+    color: theme.gender.maleText,
   },
   optionButtonTextF: {
     fontFamily: "IgraSans",
     fontSize: 40,
-    color: "#E0D6CC",
+    color: theme.gender.femaleText,
   },
   selectedButtonTextM: {
-    color: "#9A7859",
+    color: theme.gender.maleTextSelected,
   },
   selectedButtonTextF: {
-    color: "#E0D6CC",
+    color: theme.gender.femaleTextSelected,
   },
   buttonsRow: {
     flexDirection: "row",
@@ -348,14 +354,14 @@ const styles = StyleSheet.create({
     paddingVertical: 20,
     paddingBottom: 28,
     borderTopWidth: 1,
-    borderTopColor: "rgba(106, 70, 47, 0.15)",
-    backgroundColor: "rgba(242, 236, 231, 0.98)",
+    borderTopColor: theme.border.subtle,
+    backgroundColor: theme.background.primary,
     borderRadius: 41,
   },
   savingText: {
     fontFamily: "IgraSans",
     fontSize: 20,
-    color: "#4A3120",
+    color: theme.text.secondary,
   },
   textContainer: {
     position: "absolute",
@@ -366,8 +372,8 @@ const styles = StyleSheet.create({
   text: {
     fontFamily: "IgraSans",
     fontSize: 38,
-    color: "#fff",
+    color: theme.text.inverse,
   },
-});
+  });
 
 export default ConfirmationScreen;

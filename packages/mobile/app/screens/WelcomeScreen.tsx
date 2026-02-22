@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import {
   View,
   Text,
@@ -25,6 +25,8 @@ import {
   ANIMATION_DELAYS,
   ANIMATION_EASING,
 } from "../lib/animations";
+import { useTheme } from "../lib/ThemeContext";
+import type { ThemeColors } from "../lib/theme";
 
 interface WelcomeScreenProps {
   onLogin: () => void;
@@ -40,6 +42,9 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
   onRegister,
   onForgotPassword,
 }) => {
+  const { theme } = useTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
+
   const [showLoginScreen, setShowLoginScreen] = useState(false);
   const [showSignupScreen, setShowSignupScreen] = useState(false);
 
@@ -168,7 +173,7 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
 
   return (
     <LinearGradient
-      colors={["#FAE9CF", "#CCA479", "#CDA67A", "#6A462F"]}
+      colors={theme.gradients.main as any}
       locations={[0, 0.34, 0.5, 0.87]}
       style={styles.container}
       start={{ x: 0, y: 0.2 }}
@@ -204,7 +209,7 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
                   }}
                 >
                   <LinearGradient
-                    colors={["#DCD3DE", "#9535EA", "#E222F0"]}
+                    colors={theme.gradients.registerButton as any}
                     start={{ x: 0.49, y: 0 }}
                     end={{ x: 0.51, y: 1 }}
                     locations={[0.55, 0.77, 1]}
@@ -256,100 +261,101 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
   );
 };
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  safeArea: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  whiteBox: {
-    backgroundColor: "#F2ECE7",
-    borderRadius: 41,
-    height: "95%",
-    width: "88%",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingVertical: 30,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 5,
-  },
-  logoContainer: {
-    alignItems: "center",
-    justifyContent: "flex-start",
-  },
-  registerButtonContainer: {
-    width: width * 0.75, // Fixed width to ensure consistent size
-    height: height * 0.09, // Fixed height for the button
-    borderRadius: 41,
-    overflow: "hidden",
-    position: "relative",
-  },
-  registerButtonBorder: {
-    flex: 1,
-    borderRadius: 41,
-  },
-  pressableContainer: {
-    width: "100%",
-    height: "100%",
-    borderRadius: 38,
-    overflow: "hidden",
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "#DCD3DE",
-  },
-  registerButtonGradient: {
-    flex: 1,
-    borderRadius: 38, // Slightly smaller to create border effect
-    alignItems: "center",
-    justifyContent: "center",
-    opacity: 0.8,
-  },
-  registerButtonText: {
-    fontFamily: "IgraSans",
-    fontSize: 15,
-    color: "#A000B0",
-  },
-  loginContainer: {
-    alignItems: "center",
-  },
-  loginText: {
-    fontFamily: "IgraSans",
-    fontSize: 15,
-    color: "#787878",
-    marginBottom: 10,
-  },
-  loginButton: {
-    backgroundColor: "#4A3120",
-    borderRadius: 41,
-    paddingVertical: 27,
-    paddingHorizontal: 45,
-    alignItems: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 5,
-  },
-  loginButtonText: {
-    fontFamily: "IgraSans",
-    fontSize: 15,
-    color: "#F2ECE7",
-  },
-  shadowWrap: {
-    justifyContent: "center",
-  },
-  logoText: {
-    fontFamily: "IgraSans",
-    fontSize: 22,
-    color: "#4A3120",
-    marginTop: 15,
-  },
-});
+const createStyles = (theme: ThemeColors) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+    },
+    safeArea: {
+      flex: 1,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    whiteBox: {
+      backgroundColor: theme.background.primary,
+      borderRadius: 41,
+      height: "95%",
+      width: "88%",
+      justifyContent: "space-between",
+      alignItems: "center",
+      paddingVertical: 30,
+      shadowColor: theme.shadow.default,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.25,
+      shadowRadius: 4,
+      elevation: 5,
+    },
+    logoContainer: {
+      alignItems: "center",
+      justifyContent: "flex-start",
+    },
+    registerButtonContainer: {
+      width: width * 0.75, // Fixed width to ensure consistent size
+      height: height * 0.09, // Fixed height for the button
+      borderRadius: 41,
+      overflow: "hidden",
+      position: "relative",
+    },
+    registerButtonBorder: {
+      flex: 1,
+      borderRadius: 41,
+    },
+    pressableContainer: {
+      width: "100%",
+      height: "100%",
+      borderRadius: 38,
+      overflow: "hidden",
+      alignItems: "center",
+      justifyContent: "center",
+      backgroundColor: theme.button.registerBackground,
+    },
+    registerButtonGradient: {
+      flex: 1,
+      borderRadius: 38, // Slightly smaller to create border effect
+      alignItems: "center",
+      justifyContent: "center",
+      opacity: 0.8,
+    },
+    registerButtonText: {
+      fontFamily: "IgraSans",
+      fontSize: 15,
+      color: theme.button.registerText,
+    },
+    loginContainer: {
+      alignItems: "center",
+    },
+    loginText: {
+      fontFamily: "IgraSans",
+      fontSize: 15,
+      color: theme.text.tertiary,
+      marginBottom: 10,
+    },
+    loginButton: {
+      backgroundColor: theme.button.primary,
+      borderRadius: 41,
+      paddingVertical: 27,
+      paddingHorizontal: 45,
+      alignItems: "center",
+      shadowColor: theme.shadow.default,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.25,
+      shadowRadius: 4,
+      elevation: 5,
+    },
+    loginButtonText: {
+      fontFamily: "IgraSans",
+      fontSize: 15,
+      color: theme.button.primaryText,
+    },
+    shadowWrap: {
+      justifyContent: "center",
+    },
+    logoText: {
+      fontFamily: "IgraSans",
+      fontSize: 22,
+      color: theme.text.primary,
+      marginTop: 15,
+    },
+  });
 
 export default WelcomeScreen;

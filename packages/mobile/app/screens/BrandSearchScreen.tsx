@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import {
   View,
   Text,
@@ -33,6 +33,8 @@ import * as api from "../services/api";
 import NetworkLoadingIndicator from "../components/NetworkLoadingIndicator";
 import { useNetworkRequest } from "../hooks/useNetworkRequest";
 import { ANIMATION_DURATIONS, ANIMATION_DELAYS } from "../lib/animations";
+import { useTheme } from "../lib/ThemeContext";
+import type { ThemeColors } from "../lib/theme";
 const { width, height } = Dimensions.get("window");
 const LOGO_SIZE = Math.min(width, height) * 0.275;
 
@@ -49,6 +51,9 @@ const BrandSearchScreen: React.FC<BrandSearchScreenProps> = ({
   initialBrands = [],
   isSaving = false,
 }) => {
+  const { theme } = useTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
+
   const [searchQuery, setSearchQuery] = useState("");
   const [isSearchActive, setIsSearchActive] = useState(false);
   const [selectedBrands, setSelectedBrands] = useState<number[]>(initialBrands);
@@ -232,7 +237,7 @@ const BrandSearchScreen: React.FC<BrandSearchScreenProps> = ({
 
   return (
     <LinearGradient
-      colors={["#FAE9CF", "#CCA479", "#CDA67A", "#6A462F"]}
+      colors={theme.gradients.main as any}
       locations={[0, 0.34, 0.5, 0.87]}
       style={styles.container}
       start={{ x: 0, y: 0.2 }}
@@ -244,7 +249,7 @@ const BrandSearchScreen: React.FC<BrandSearchScreenProps> = ({
           entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM)}
         >
           <LinearGradient
-            colors={["rgba(205, 166, 122, 0.5)", "transparent"]}
+            colors={[theme.surface.gradientOverlay, "transparent"]}
             start={{ x: 0.1, y: 1 }}
             end={{ x: 0.9, y: 0.3 }}
             locations={[0.05, 1]}
@@ -278,7 +283,7 @@ const BrandSearchScreen: React.FC<BrandSearchScreenProps> = ({
                     <TextInput
                       style={[styles.searchInput]}
                       placeholder="поиск"
-                      placeholderTextColor="rgba(0,0,0,1)"
+                      placeholderTextColor={theme.text.placeholderDark}
                       value={searchQuery}
                       onChangeText={handleSearch}
                       onFocus={handleSearchFocus}
@@ -378,7 +383,7 @@ const BrandSearchScreen: React.FC<BrandSearchScreenProps> = ({
                     <View style={styles.continueButtonLoading}>
                       <ActivityIndicator
                         size="small"
-                        color="#6A462F"
+                        color={theme.text.tertiary}
                       />
                       <Text style={styles.continueButtonText}>
                         сохранение...
@@ -400,25 +405,26 @@ const BrandSearchScreen: React.FC<BrandSearchScreenProps> = ({
   );
 };
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  safeArea: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    paddingTop: Platform.OS === "ios" ? 0 : 30,
-  },
-  roundedBox: {
-    width: "88%",
-    height: "95%",
-    borderRadius: 41,
-    backgroundColor: "rgba(205, 166, 122, 0)",
-    position: "relative",
-    borderWidth: 3,
-    borderColor: "rgba(205, 166, 122, 0.4)",
-  },
+const createStyles = (theme: ThemeColors) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+    },
+    safeArea: {
+      flex: 1,
+      justifyContent: "center",
+      alignItems: "center",
+      paddingTop: Platform.OS === "ios" ? 0 : 30,
+    },
+    roundedBox: {
+      width: "88%",
+      height: "95%",
+      borderRadius: 41,
+      backgroundColor: "rgba(205, 166, 122, 0)",
+      position: "relative",
+      borderWidth: 3,
+      borderColor: theme.border.default,
+    },
   gradientBackground: {
     borderRadius: 37,
     position: "absolute",
@@ -443,7 +449,7 @@ const styles = StyleSheet.create({
     borderRadius: 41,
     ...Platform.select({
       ios: {
-        shadowColor: "#000",
+        shadowColor: theme.shadow.default,
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.2,
         shadowRadius: 8,
@@ -456,7 +462,7 @@ const styles = StyleSheet.create({
   formContainer: {
     width: "100%",
     height: "100%",
-    backgroundColor: "#F2ECE7",
+    backgroundColor: theme.background.primary,
     borderRadius: 41,
     padding: 21,
     alignItems: "center",
@@ -483,11 +489,11 @@ const styles = StyleSheet.create({
   searchContainer: {
     width: "100%",
     borderRadius: 41,
-    backgroundColor: "#E0D6CC",
+    backgroundColor: theme.background.input,
     zIndex: 10,
     ...Platform.select({
       ios: {
-        shadowColor: "#000",
+        shadowColor: theme.shadow.default,
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.25,
         shadowRadius: 4,
@@ -498,7 +504,7 @@ const styles = StyleSheet.create({
     }),
   },
   searchContainerActive: {
-    backgroundColor: "#DFD6CC",
+    backgroundColor: theme.surface.elevated,
   },
   searchInputContainer: {
     flexDirection: "row",
@@ -508,7 +514,7 @@ const styles = StyleSheet.create({
     flex: 1,
     fontFamily: "IgraSans",
     fontSize: 20,
-    color: "#000",
+    color: theme.text.primary,
     height: "100%",
     paddingHorizontal: 20,
     paddingVertical: 45,
@@ -520,7 +526,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 30,
     paddingVertical: 45,
     borderRadius: 41,
-    backgroundColor: "#CDA67A",
+    backgroundColor: theme.button.cancel,
     overflow: "hidden",
     alignItems: "center",
     justifyContent: "center",
@@ -528,7 +534,7 @@ const styles = StyleSheet.create({
   cancelButtonText: {
     fontFamily: "IgraSans",
     fontSize: 20,
-    color: "#000",
+    color: theme.text.primary,
   },
   selectedBubblesContainer: {
     width: "100%",
@@ -545,14 +551,14 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   brandBubble: {
-    backgroundColor: "#DCC1A5",
+    backgroundColor: theme.surface.selection,
     borderRadius: 41,
     paddingHorizontal: 18,
     paddingVertical: 12,
     margin: 4,
     ...Platform.select({
       ios: {
-        shadowColor: "#000",
+        shadowColor: theme.shadow.default,
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.25,
         shadowRadius: 4,
@@ -566,19 +572,19 @@ const styles = StyleSheet.create({
   brandBubbleText: {
     fontFamily: "IgraSans",
     fontSize: 22,
-    color: "#000",
+    color: theme.text.primary,
   },
   removeBubbleIcon: {
     marginLeft: 4,
     width: 20,
     height: 20,
     borderRadius: 41,
-    backgroundColor: "#DCB0A5",
+    backgroundColor: theme.button.delete,
     justifyContent: "center",
     alignItems: "center",
     ...Platform.select({
       ios: {
-        shadowColor: "#000",
+        shadowColor: theme.shadow.default,
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.25,
         shadowRadius: 4,
@@ -591,14 +597,14 @@ const styles = StyleSheet.create({
   searchResultsContainer: {
     width: "100%",
     zIndex: 5,
-    backgroundColor: "#E0D6CC",
+    backgroundColor: theme.background.input,
     borderRadius: 41,
     marginTop: -110,
     height: 110,
     overflow: "hidden",
     ...Platform.select({
       ios: {
-        shadowColor: "#000",
+        shadowColor: theme.shadow.default,
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.15,
         shadowRadius: 4,
@@ -626,7 +632,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   selectedBrandItem: {
-    backgroundColor: "#CDA67A",
+    backgroundColor: theme.primary,
   },
   pressedItem: {
     opacity: 0.8,
@@ -634,10 +640,10 @@ const styles = StyleSheet.create({
   brandText: {
     fontFamily: "IgraSans",
     fontSize: 20,
-    color: "#000",
+    color: theme.text.primary,
   },
   selectedBrandText: {
-    color: "#FFF",
+    color: theme.text.inverse,
   },
   tickContainer: {
     alignItems: "center",
@@ -648,14 +654,14 @@ const styles = StyleSheet.create({
     alignItems: "flex-end",
   },
   continueButton: {
-    backgroundColor: "#E0D6CC",
+    backgroundColor: theme.background.input,
     borderRadius: 41,
     paddingVertical: 16,
     paddingHorizontal: 25,
     alignItems: "center",
     ...Platform.select({
       ios: {
-        shadowColor: "#000",
+        shadowColor: theme.shadow.default,
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.25,
         shadowRadius: 4,
@@ -669,7 +675,7 @@ const styles = StyleSheet.create({
   continueButtonText: {
     fontFamily: "IgraSans",
     fontSize: 20,
-    color: "#000",
+    color: theme.text.primary,
   },
   continueButtonLoading: {
     flexDirection: "row",
@@ -685,7 +691,7 @@ const styles = StyleSheet.create({
   text: {
     fontFamily: "IgraSans",
     fontSize: 38,
-    color: "#fff",
+    color: theme.text.inverse,
   },
   selectedBubblesHeader: {
     paddingHorizontal: 10,
@@ -695,7 +701,7 @@ const styles = StyleSheet.create({
   selectedBubblesTitle: {
     fontFamily: "IgraSans",
     fontSize: 12,
-    color: "#4A3120",
+    color: theme.text.secondary,
   },
   loadingContainer: {
     flex: 1,
@@ -706,8 +712,8 @@ const styles = StyleSheet.create({
   loadingText: {
     fontFamily: "IgraSans",
     fontSize: 20,
-    color: "#000",
+    color: theme.text.primary,
   },
-});
+  });
 
 export default BrandSearchScreen;

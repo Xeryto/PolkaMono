@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import {
   View,
   Text,
@@ -25,6 +25,8 @@ import {
   ANIMATION_DELAYS,
   getStaggeredDelay,
 } from "../lib/animations";
+import { useTheme } from "../lib/ThemeContext";
+import type { ThemeColors } from "../lib/theme";
 
 const { width, height } = Dimensions.get("window");
 
@@ -41,6 +43,9 @@ const LoginScreen: React.FC<LoginScreenProps> = ({
   onBack,
   onForgotPassword,
 }) => {
+  const { theme } = useTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
+
   const [usernameOrEmail, setUsernameOrEmail] = useState("");
   const [password, setPassword] = useState("");
   const [errors, setErrors] = useState({
@@ -127,7 +132,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({
 
   return (
     <LinearGradient
-      colors={["#FAE9CF", "#CCA479", "#CDA67A", "#6A462F"]}
+      colors={theme.gradients.main as any}
       locations={[0, 0.34, 0.5, 0.87]}
       style={styles.container}
       start={{ x: 0, y: 0.2 }}
@@ -177,7 +182,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({
                       errors.usernameOrEmail ? styles.inputError : null,
                     ]}
                     placeholder="ник/email"
-                    placeholderTextColor="rgba(0, 0, 0, 1)"
+                    placeholderTextColor={theme.text.placeholderDark}
                     autoCapitalize="none"
                     autoComplete="email"
                     keyboardType="email-address"
@@ -203,7 +208,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({
                       errors.password ? styles.inputError : null,
                     ]}
                     placeholder="пароль"
-                    placeholderTextColor="rgba(0, 0, 0, 1)"
+                    placeholderTextColor={theme.text.placeholderDark}
                     secureTextEntry
                     value={password}
                     onChangeText={setPassword}
@@ -273,159 +278,161 @@ const LoginScreen: React.FC<LoginScreenProps> = ({
   );
 };
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  safeArea: {
-    flex: 1,
-  },
-  keyboardView: {
-    flex: 1,
-  },
-  scrollContainer: {
-    flexGrow: 1,
-    justifyContent: "center",
-    padding: 24,
-  },
-  formContainer: {
-    width: "100%",
-    height: "100%",
-    backgroundColor: "#F2ECE7",
-    borderRadius: 41,
-    padding: 24,
-    justifyContent: "flex-end",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 5,
-    //overflow: 'hidden',
-  },
-  backButton: {
-    position: "absolute",
-    top: 20,
-    left: 20,
-    zIndex: 10,
-    width: 33,
-    height: 33,
-  },
-  inputContainer: {
-    borderRadius: 41,
-    overflow: "hidden",
-    backgroundColor: "#E0D6CC",
-  },
-  inputShadow: {
-    borderRadius: 41,
-    backgroundColor: "transparent",
-    shadowColor: "#000",
-    shadowOffset: {
-      width: 0,
-      height: 4,
+const createStyles = (theme: ThemeColors) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
     },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 8,
-    marginBottom: 20,
-  },
-  input: {
-    borderRadius: 41,
-    paddingHorizontal: 16,
-    paddingVertical: 20,
-    fontFamily: "IgraSans",
-    fontSize: 14,
-    ...Platform.select({
-      android: {
-        overflow: "hidden",
+    safeArea: {
+      flex: 1,
+    },
+    keyboardView: {
+      flex: 1,
+    },
+    scrollContainer: {
+      flexGrow: 1,
+      justifyContent: "center",
+      padding: 24,
+    },
+    formContainer: {
+      width: "100%",
+      height: "100%",
+      backgroundColor: theme.background.primary,
+      borderRadius: 41,
+      padding: 24,
+      justifyContent: "flex-end",
+      shadowColor: theme.shadow.default,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.25,
+      shadowRadius: 4,
+      elevation: 5,
+      //overflow: 'hidden',
+    },
+    backButton: {
+      position: "absolute",
+      top: 20,
+      left: 20,
+      zIndex: 10,
+      width: 33,
+      height: 33,
+    },
+    inputContainer: {
+      borderRadius: 41,
+      overflow: "hidden",
+      backgroundColor: theme.background.input,
+    },
+    inputShadow: {
+      borderRadius: 41,
+      backgroundColor: "transparent",
+      shadowColor: theme.shadow.default,
+      shadowOffset: {
+        width: 0,
+        height: 4,
       },
-    }),
-  },
-  inputError: {
-    borderColor: "rgba(255, 100, 100, 0.7)",
-    borderWidth: 1,
-  },
-  errorText: {
-    fontFamily: "REM",
-    fontSize: 12,
-    color: "#FF6464",
-    marginTop: 4,
-    marginLeft: 16,
-  },
-  errorContainer: {
-    backgroundColor: "rgba(255, 100, 100, 0.2)",
-    padding: 10,
-    borderRadius: 10,
-    marginBottom: 20,
-  },
-  errorGeneralText: {
-    fontFamily: "REM",
-    fontSize: 14,
-    color: "#FF6464",
-    textAlign: "center",
-  },
-  loginButton: {
-    backgroundColor: "#4A3120",
-    borderRadius: 41,
-    paddingVertical: 22,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 5,
-    width: "100%",
-    alignItems: "center",
-  },
-  loginButtonDisabled: {
-    backgroundColor: "rgba(205, 166, 122, 0.4)",
-  },
-  loginButtonText: {
-    fontFamily: "IgraSans",
-    fontSize: 20,
-    color: "#F2ECE7",
-  },
-  forgotPasswordButton: {
-    alignSelf: "center",
-    marginTop: 16,
-  },
-  forgotPasswordText: {
-    fontFamily: "IgraSans",
-    fontSize: 12,
-    color: "#000",
-  },
-  logoContainer: {
-    alignItems: "center",
-    justifyContent: "center",
-    shadowColor: "#000",
-    shadowOffset: {
-      width: 0,
-      height: 4,
+      shadowOpacity: 0.25,
+      shadowRadius: 4,
+      elevation: 8,
+      marginBottom: 20,
     },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 8,
-    marginBottom: 120,
-  },
-  socialContainer: {
-    marginTop: 20,
-    //marginBottom: 10,
-    flexDirection: "row",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  vkButton: {
-    width: 69,
-    height: 69,
-    borderRadius: 41,
-    backgroundColor: "#E0D6CC",
-    justifyContent: "center",
-    alignItems: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 5,
-    //overflow: 'hidden',
-  },
-});
+    input: {
+      borderRadius: 41,
+      paddingHorizontal: 16,
+      paddingVertical: 20,
+      fontFamily: "IgraSans",
+      fontSize: 14,
+      color: theme.text.primary,
+      ...Platform.select({
+        android: {
+          overflow: "hidden",
+        },
+      }),
+    },
+    inputError: {
+      borderColor: theme.border.error,
+      borderWidth: 1,
+    },
+    errorText: {
+      fontFamily: "REM",
+      fontSize: 12,
+      color: theme.status.errorText,
+      marginTop: 4,
+      marginLeft: 16,
+    },
+    errorContainer: {
+      backgroundColor: theme.status.errorBackground,
+      padding: 10,
+      borderRadius: 10,
+      marginBottom: 20,
+    },
+    errorGeneralText: {
+      fontFamily: "REM",
+      fontSize: 14,
+      color: theme.status.errorText,
+      textAlign: "center",
+    },
+    loginButton: {
+      backgroundColor: theme.button.primary,
+      borderRadius: 41,
+      paddingVertical: 22,
+      shadowColor: theme.shadow.default,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.25,
+      shadowRadius: 4,
+      elevation: 5,
+      width: "100%",
+      alignItems: "center",
+    },
+    loginButtonDisabled: {
+      backgroundColor: theme.button.disabled,
+    },
+    loginButtonText: {
+      fontFamily: "IgraSans",
+      fontSize: 20,
+      color: theme.button.primaryText,
+    },
+    forgotPasswordButton: {
+      alignSelf: "center",
+      marginTop: 16,
+    },
+    forgotPasswordText: {
+      fontFamily: "IgraSans",
+      fontSize: 12,
+      color: theme.text.primary,
+    },
+    logoContainer: {
+      alignItems: "center",
+      justifyContent: "center",
+      shadowColor: theme.shadow.default,
+      shadowOffset: {
+        width: 0,
+        height: 4,
+      },
+      shadowOpacity: 0.25,
+      shadowRadius: 4,
+      elevation: 8,
+      marginBottom: 120,
+    },
+    socialContainer: {
+      marginTop: 20,
+      //marginBottom: 10,
+      flexDirection: "row",
+      justifyContent: "center",
+      alignItems: "center",
+    },
+    vkButton: {
+      width: 69,
+      height: 69,
+      borderRadius: 41,
+      backgroundColor: theme.background.input,
+      justifyContent: "center",
+      alignItems: "center",
+      shadowColor: theme.shadow.default,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.25,
+      shadowRadius: 4,
+      elevation: 5,
+      //overflow: 'hidden',
+    },
+  });
 
 export default LoginScreen;

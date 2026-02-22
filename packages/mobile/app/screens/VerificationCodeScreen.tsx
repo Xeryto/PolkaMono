@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useMemo } from "react";
 import {
   View,
   Text,
@@ -23,6 +23,8 @@ import {
   ANIMATION_DELAYS,
   ANIMATION_EASING,
 } from "../lib/animations";
+import { useTheme } from "../lib/ThemeContext";
+import type { ThemeColors } from "../lib/theme";
 
 interface VerificationCodeScreenProps {
   onVerificationSuccess: () => void;
@@ -35,6 +37,9 @@ const VerificationCodeScreen: React.FC<VerificationCodeScreenProps> = ({
   onBack,
   email,
 }) => {
+  const { theme } = useTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
+
   const [code, setCode] = useState("");
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -109,7 +114,7 @@ const VerificationCodeScreen: React.FC<VerificationCodeScreenProps> = ({
 
   return (
     <LinearGradient
-      colors={["#FAE9CF", "#CCA479", "#CDA67A", "#6A462F"]}
+      colors={theme.gradients.main as any}
       locations={[0, 0.34, 0.5, 0.87]}
       style={styles.container}
       start={{ x: 0, y: 0.2 }}
@@ -233,135 +238,144 @@ const VerificationCodeScreen: React.FC<VerificationCodeScreenProps> = ({
   );
 };
 
-const styles = StyleSheet.create({
-  container: { flex: 1 },
-  safeArea: { flex: 1 },
-  keyboardView: { flex: 1 },
-  scrollContainer: { flexGrow: 1, justifyContent: "center", padding: 24 },
-  formContainer: {
-    backgroundColor: "#F2ECE7",
-    borderRadius: 41,
-    padding: 24,
-    alignItems: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 5,
-  },
-  backButton: {
-    position: "absolute",
-    top: 16,
-    left: 16,
-    zIndex: 10,
-    width: 33,
-    height: 33,
-  },
-  title: {
-    fontFamily: "IgraSans",
-    fontSize: 22,
-    color: "#4A3120",
-    marginBottom: 10,
-  },
-  subtitle: {
-    fontFamily: "REM",
-    fontSize: 14,
-    color: "#4A3120",
-    textAlign: "center",
-    marginBottom: 20,
-  },
-  codeContainerWrapper: {
-    width: "100%",
-    marginBottom: 20,
-    position: "relative",
-  },
-  codePressable: {
-    width: "100%",
-  },
-  codeContainer: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    paddingHorizontal: 20,
-  },
-  codeSlot: {
-    width: 45,
-    height: 55,
-    backgroundColor: "#E0D6CC",
-    borderRadius: 12,
-    justifyContent: "center",
-    alignItems: "center",
-    borderWidth: 2,
-    borderColor: "transparent",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  codeSlotFilled: {
-    borderColor: "#4A3120",
-    backgroundColor: "#F2ECE7",
-  },
-  codeSlotActive: {
-    borderColor: "#4A3120",
-    borderWidth: 3,
-  },
-  codeText: {
-    fontFamily: "IgraSans",
-    fontSize: 24,
-    color: "#4A3120",
-    textAlign: "center",
-  },
-  hiddenInput: {
-    position: "absolute",
-    left: -9999,
-    opacity: 0,
-    width: 1,
-    height: 1,
-  },
-  verifyButton: {
-    backgroundColor: "#4A3120",
-    borderRadius: 41,
-    paddingVertical: 22,
-    width: "100%",
-    alignItems: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 5,
-    marginBottom: 15,
-  },
-  resendButton: {
-    backgroundColor: "transparent",
-    borderRadius: 41,
-    paddingVertical: 22,
-    width: "100%",
-    alignItems: "center",
-    borderWidth: 1,
-    borderColor: "#4A3120",
-  },
-  resendButtonDisabled: {
-    opacity: 0.5,
-    borderColor: "#9E9E9E",
-  },
-  buttonText: { fontFamily: "IgraSans", fontSize: 20, color: "#F2ECE7" },
-  resendButtonText: { fontFamily: "IgraSans", fontSize: 20, color: "#4A3120" },
-  resendButtonTextDisabled: { color: "#9E9E9E" },
-  buttonDisabled: { opacity: 0.7 },
-  errorContainer: {
-    backgroundColor: "rgba(255, 100, 100, 0.2)",
-    padding: 10,
-    borderRadius: 10,
-    marginBottom: 20,
-    width: "100%",
-  },
-  errorText: {
-    fontFamily: "REM",
-    fontSize: 14,
-    color: "#D9534F",
-    textAlign: "center",
-  },
-});
+const createStyles = (theme: ThemeColors) =>
+  StyleSheet.create({
+    container: { flex: 1 },
+    safeArea: { flex: 1 },
+    keyboardView: { flex: 1 },
+    scrollContainer: { flexGrow: 1, justifyContent: "center", padding: 24 },
+    formContainer: {
+      backgroundColor: theme.background.primary,
+      borderRadius: 41,
+      padding: 24,
+      alignItems: "center",
+      shadowColor: theme.shadow.default,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.25,
+      shadowRadius: 4,
+      elevation: 5,
+    },
+    backButton: {
+      position: "absolute",
+      top: 16,
+      left: 16,
+      zIndex: 10,
+      width: 33,
+      height: 33,
+    },
+    title: {
+      fontFamily: "IgraSans",
+      fontSize: 22,
+      color: theme.text.secondary,
+      marginBottom: 10,
+    },
+    subtitle: {
+      fontFamily: "REM",
+      fontSize: 14,
+      color: theme.text.secondary,
+      textAlign: "center",
+      marginBottom: 20,
+    },
+    codeContainerWrapper: {
+      width: "100%",
+      marginBottom: 20,
+      position: "relative",
+    },
+    codePressable: {
+      width: "100%",
+    },
+    codeContainer: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      paddingHorizontal: 20,
+    },
+    codeSlot: {
+      width: 45,
+      height: 55,
+      backgroundColor: theme.background.input,
+      borderRadius: 12,
+      justifyContent: "center",
+      alignItems: "center",
+      borderWidth: 2,
+      borderColor: "transparent",
+      shadowColor: theme.shadow.default,
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.1,
+      shadowRadius: 4,
+      elevation: 3,
+    },
+    codeSlotFilled: {
+      borderColor: theme.text.secondary,
+      backgroundColor: theme.background.primary,
+    },
+    codeSlotActive: {
+      borderColor: theme.text.secondary,
+      borderWidth: 3,
+    },
+    codeText: {
+      fontFamily: "IgraSans",
+      fontSize: 24,
+      color: theme.text.secondary,
+      textAlign: "center",
+    },
+    hiddenInput: {
+      position: "absolute",
+      left: -9999,
+      opacity: 0,
+      width: 1,
+      height: 1,
+    },
+    verifyButton: {
+      backgroundColor: theme.button.primary,
+      borderRadius: 41,
+      paddingVertical: 22,
+      width: "100%",
+      alignItems: "center",
+      shadowColor: theme.shadow.default,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.25,
+      shadowRadius: 4,
+      elevation: 5,
+      marginBottom: 15,
+    },
+    resendButton: {
+      backgroundColor: "transparent",
+      borderRadius: 41,
+      paddingVertical: 22,
+      width: "100%",
+      alignItems: "center",
+      borderWidth: 1,
+      borderColor: theme.button.primary,
+    },
+    resendButtonDisabled: {
+      opacity: 0.5,
+      borderColor: theme.text.disabled,
+    },
+    buttonText: {
+      fontFamily: "IgraSans",
+      fontSize: 20,
+      color: theme.button.primaryText,
+    },
+    resendButtonText: {
+      fontFamily: "IgraSans",
+      fontSize: 20,
+      color: theme.text.secondary,
+    },
+    resendButtonTextDisabled: { color: theme.text.disabled },
+    buttonDisabled: { opacity: 0.7 },
+    errorContainer: {
+      backgroundColor: theme.status.errorBackground,
+      padding: 10,
+      borderRadius: 10,
+      marginBottom: 20,
+      width: "100%",
+    },
+    errorText: {
+      fontFamily: "REM",
+      fontSize: 14,
+      color: theme.status.errorText,
+      textAlign: "center",
+    },
+  });
 
 export default VerificationCodeScreen;

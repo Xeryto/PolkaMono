@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from "react";
+import React, { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import {
   View,
   Text,
@@ -29,6 +29,8 @@ import {
   ANIMATION_EASING,
 } from "../lib/animations";
 import { Easing } from "react-native";
+import { useTheme } from "../lib/ThemeContext";
+import type { ThemeColors } from "../lib/theme";
 
 const { width, height } = Dimensions.get("window");
 
@@ -104,7 +106,7 @@ const HeartButton: React.FC<HeartButtonProps> = ({ isLiked, onToggleLike }) => {
 
   return (
     <Pressable
-      style={[styles.heartButton, { zIndex: 10 }]}
+      style={{ padding: 5, zIndex: 10 }}
       onPressIn={handlePressIn}
       onPressOut={handlePressOut}
       android_ripple={{
@@ -130,6 +132,9 @@ const HeartButton: React.FC<HeartButtonProps> = ({ isLiked, onToggleLike }) => {
 const RecentPiecesScreen: React.FC<RecentPiecesScreenProps> = ({
   navigation,
 }) => {
+  const { theme } = useTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
+
   const [recentPieces, setRecentPieces] = useState<CardItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -293,10 +298,10 @@ const RecentPiecesScreen: React.FC<RecentPiecesScreenProps> = ({
       >
         <View style={styles.roundedBoxContainer}>
           <LinearGradient
-            colors={["rgba(205, 166, 122, 0.5)", "transparent"]}
+            colors={theme.gradients.overlay as any}
             start={{ x: 0.1, y: 1 }}
             end={{ x: 0.9, y: 0.3 }}
-            locations={[0.2, 1]}
+            locations={theme.gradients.overlayLocations as any}
             style={styles.gradientBackground}
           />
           <View style={styles.whiteBox}>
@@ -381,15 +386,23 @@ const RecentPiecesScreen: React.FC<RecentPiecesScreenProps> = ({
   };
 
   return (
-    <Animated.View
-      style={styles.content}
-      entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
-        ANIMATION_DELAYS.LARGE
-      )}
-      exiting={FadeOutDown.duration(ANIMATION_DURATIONS.MICRO)}
+    <LinearGradient
+      colors={theme.gradients.main as any}
+      locations={[0, 0.34, 0.5, 0.87]}
+      style={styles.container}
+      start={{ x: 0, y: 0.2 }}
+      end={{ x: 1, y: 0.8 }}
     >
-      {/* Header with oval background */}
-      <View style={styles.header}>
+      <SafeAreaView style={styles.gradient} edges={["top", "bottom"]}>
+        <Animated.View
+          style={styles.content}
+          entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
+            ANIMATION_DELAYS.LARGE
+          )}
+          exiting={FadeOutDown.duration(ANIMATION_DURATIONS.MICRO)}
+        >
+          {/* Header with oval background */}
+          <View style={styles.header}>
         <TouchableOpacity
           style={styles.backButton}
           onPress={() => {
@@ -402,7 +415,7 @@ const RecentPiecesScreen: React.FC<RecentPiecesScreenProps> = ({
         <View style={styles.titleOvalShadowWrapper}>
           <View style={styles.titleOvalWrapper}>
             <LinearGradient
-              colors={["#F5ECE14D", "#F5ECE1"]}
+              colors={theme.gradients.titleOval as any}
               locations={[0, 1]}
               start={{ x: 0.25, y: 0 }}
               end={{ x: 0.6, y: 1.5 }}
@@ -410,7 +423,7 @@ const RecentPiecesScreen: React.FC<RecentPiecesScreenProps> = ({
             />
             <View style={styles.titleOvalInnerWrapper}>
               <LinearGradient
-                colors={["#F5ECE1", "#DFCAB5"]}
+                colors={theme.gradients.titleOvalContainer as any}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
                 style={styles.titleOvalContainer}
@@ -436,13 +449,16 @@ const RecentPiecesScreen: React.FC<RecentPiecesScreenProps> = ({
       ) : (
         renderEmpty()
       )}
-    </Animated.View>
+        </Animated.View>
+      </SafeAreaView>
+    </LinearGradient>
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (theme: ThemeColors) => StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: theme.background.primary,
   },
   gradient: {
     flex: 1,
@@ -509,7 +525,7 @@ const styles = StyleSheet.create({
     fontFamily: "IgraSans",
     fontSize: 18,
     lineHeight: 22,
-    color: "#000",
+    color: theme.text.primary,
     textAlign: "center",
   },
   listContent: {
@@ -524,9 +540,9 @@ const styles = StyleSheet.create({
     width: "88%",
     height: height * 0.225, // Smaller than MainPage
     borderRadius: 41,
-    backgroundColor: "rgba(205, 166, 122, 0)",
+    backgroundColor: theme.primary + "00",
     borderWidth: 3,
-    borderColor: "rgba(205, 166, 122, 0.4)",
+    borderColor: theme.primary + "66",
     position: "relative",
     overflow: "visible", // Changed from hidden to visible so whiteBox can extend
     zIndex: 0,
@@ -544,7 +560,7 @@ const styles = StyleSheet.create({
     width: "102%",
     height: "70%", // Reduced size
     borderRadius: 38,
-    backgroundColor: "#F2ECE7",
+    backgroundColor: theme.background.primary,
     shadowColor: "#000",
     shadowOffset: {
       width: 0.25,
@@ -576,12 +592,12 @@ const styles = StyleSheet.create({
   placeholderImage: {
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "#E2CCB2",
+    backgroundColor: theme.surface.button,
   },
   placeholderText: {
     fontFamily: "REM",
     fontSize: 12,
-    color: "#666",
+    color: theme.text.secondary,
     textAlign: "center",
   },
   iconsContainer: {
@@ -632,19 +648,19 @@ const styles = StyleSheet.create({
   emptyText: {
     fontFamily: "REM",
     fontSize: 16,
-    color: "#666",
+    color: theme.text.secondary,
     textAlign: "center",
     marginTop: 20,
   },
   errorText: {
     fontFamily: "REM",
     fontSize: 16,
-    color: "#E66655",
+    color: theme.status.error,
     textAlign: "center",
     marginBottom: 20,
   },
   retryButton: {
-    backgroundColor: "#CDA67A",
+    backgroundColor: theme.button.primary,
     paddingHorizontal: 20,
     paddingVertical: 10,
     borderRadius: 20,
@@ -652,7 +668,7 @@ const styles = StyleSheet.create({
   retryButtonText: {
     fontFamily: "IgraSans",
     fontSize: 16,
-    color: "#000",
+    color: theme.text.primary,
   },
 });
 
