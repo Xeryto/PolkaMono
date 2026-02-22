@@ -5,6 +5,8 @@ import React, {
   useEffect,
   useMemo,
 } from "react";
+import { useTheme } from "../lib/ThemeContext";
+import type { ThemeColors } from "../lib/theme";
 import {
   View,
   StyleSheet,
@@ -41,6 +43,7 @@ import BackIcon from "../components/svg/BackIcon";
 import * as api from "../services/api";
 import { apiWrapper } from "../services/apiWrapper";
 import fallbackImage from "../assets/Vision.png";
+import AvatarImage from "../components/AvatarImage";
 import { CardItem, CartItem } from "../types/product";
 import { mapProductToCardItem } from "../lib/productMapper";
 import {
@@ -61,7 +64,8 @@ interface FriendRecommendationsScreenProps {
     params?: {
       friendId: string;
       friendUsername: string;
-      friendIcon?: any;
+      /** Friend avatar URL; when absent, header shows default avatar icon. */
+      friendAvatarUrl?: string | null;
       initialItems: CardItem[];
       clickedItemIndex: number;
     };
@@ -99,9 +103,10 @@ const createLoadingCard = (): CardItem => ({
   selected_color_index: 0,
 });
 
-const ExpandableSection: React.FC<{ title: string; content: string }> = ({
+const ExpandableSection: React.FC<{ title: string; content: string; theme: ThemeColors }> = ({
   title,
   content,
+  theme,
 }) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const animation = useRef(new RNAnimated.Value(0)).current;
@@ -126,11 +131,11 @@ const ExpandableSection: React.FC<{ title: string; content: string }> = ({
   });
 
   return (
-    <View style={styles.expandableContainer}>
-      <Pressable onPress={toggleExpansion} style={styles.expandableHeader}>
-        <Text style={styles.expandableTitle}>{title}</Text>
+    <View style={{ marginBottom: 10, borderBottomWidth: 1, borderBottomColor: theme.border.light, paddingBottom: 5 }}>
+      <Pressable onPress={toggleExpansion} style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 10 }}>
+        <Text style={{ fontFamily: 'REM', fontSize: 18, fontWeight: 'bold', color: theme.text.secondary }}>{title}</Text>
         <RNAnimated.View style={{ transform: [{ rotate: rotateArrow }] }}>
-          <Text style={styles.expandableArrow}>{">"}</Text>
+          <Text style={{ fontSize: 18, color: theme.text.secondary }}>{">"}</Text>
         </RNAnimated.View>
       </Pressable>
       <RNAnimated.View
@@ -140,7 +145,7 @@ const ExpandableSection: React.FC<{ title: string; content: string }> = ({
           paddingBottom: 10,
         }}
       >
-        <Text style={styles.expandableContent}>{content}</Text>
+        <Text style={{ fontFamily: 'REM', fontSize: 16, color: theme.text.tertiary }}>{content}</Text>
       </RNAnimated.View>
     </View>
   );
@@ -205,26 +210,25 @@ const HeartButton: React.FC<{
   const scaleAnim = useRef(new RNAnimated.Value(1)).current;
 
   const handlePress = () => {
+    onToggleLike();
     RNAnimated.sequence([
       RNAnimated.timing(scaleAnim, {
         toValue: 1.3,
-        duration: 100,
+        duration: ANIMATION_DURATIONS.MICRO,
         useNativeDriver: true,
-        easing: Easing.out(Easing.ease),
+        easing: ANIMATION_EASING.QUICK,
       }),
       RNAnimated.timing(scaleAnim, {
         toValue: 1,
-        duration: 100,
+        duration: ANIMATION_DURATIONS.FAST,
         useNativeDriver: true,
-        easing: Easing.in(Easing.ease),
+        easing: ANIMATION_EASING.QUICK,
       }),
     ]).start();
-    onToggleLike();
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
   };
 
   return (
-    <Pressable onPress={handlePress} style={styles.button}>
+    <Pressable onPress={handlePress} style={{ padding: 5 }}>
       <RNAnimated.View style={{ transform: [{ scale: scaleAnim }] }}>
         {isLiked ? (
           <HeartFilled width={33} height={33} />
@@ -240,13 +244,15 @@ const FriendRecommendationsScreen = ({
   navigation,
   route,
 }: FriendRecommendationsScreenProps) => {
+  const { theme } = useTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
+
   const screenHeight = Dimensions.get("window").height;
   const screenWidth = Dimensions.get("window").width;
 
   const friendId = route?.params?.friendId || "";
   const friendUsername = route?.params?.friendUsername || "";
-  const friendIcon =
-    route?.params?.friendIcon || require("../assets/Vision.png");
+  const friendAvatarUrl = route?.params?.friendAvatarUrl ?? undefined;
   const initialItems = route?.params?.initialItems || [];
   const clickedItemIndex = route?.params?.clickedItemIndex || 0;
 
@@ -1018,7 +1024,9 @@ const FriendRecommendationsScreen = ({
                 </View>
               ) : (
                 <View style={[styles.imagePressable, styles.imagePlaceholder]}>
-                  <Text style={styles.imagePlaceholderText}>Нет изображения</Text>
+                  <Text style={styles.imagePlaceholderText}>
+                    Нет изображения
+                  </Text>
                 </View>
               )}
             </RNAnimated.View>
@@ -1265,19 +1273,22 @@ const FriendRecommendationsScreen = ({
               <ExpandableSection
                 title="артикул"
                 content={card.article_number}
+                theme={theme}
               />
             )}
-            <ExpandableSection title="описание" content={card.description} />
+            <ExpandableSection title="описание" content={card.description} theme={theme} />
             <ExpandableSection
               title="цвет"
               content={translateColorToRussian(card.color)}
+              theme={theme}
             />
-            <ExpandableSection title="материалы" content={card.materials} />
+            <ExpandableSection title="материалы" content={card.materials} theme={theme} />
             <ExpandableSection
               title="политика возврата"
               content={
-                card.brand_return_policy || "политика возврата не указана"
+                card.brand_return_policy || "информация о возврате отсутствует"
               }
+              theme={theme}
             />
           </ScrollView>
         </View>
@@ -1422,7 +1433,6 @@ const FriendRecommendationsScreen = ({
   }, [cards.length, isRefreshing, friendId]);
 
   // Page fade-in removed - React Navigation handles screen transitions natively
-  const { start, end } = angleToPoints(30);
   return (
     <Animated.View
       style={[styles.container]}
@@ -1446,7 +1456,7 @@ const FriendRecommendationsScreen = ({
           <View style={styles.friendUsernameShadowWrapper}>
             <View style={styles.friendUsernameWrapper}>
               <LinearGradient
-                colors={["#FFFFFF8F", "#FF10FB59", "#0341EA6B"]}
+                colors={theme.gradients.friendUsername as any}
                 locations={[0, 0.4, 1]}
                 start={{ x: 0.25, y: 0 }}
                 end={{ x: 0.6, y: 1.5 }}
@@ -1460,17 +1470,20 @@ const FriendRecommendationsScreen = ({
             </View>
           </View>
           <View style={styles.friendIconContainer}>
-            <Image source={friendIcon} style={styles.friendIcon} />
+            <AvatarImage
+              avatarUrl={friendAvatarUrl}
+              size={Math.round(height * 0.065)}
+            />
           </View>
         </View>
       </View>
 
       <View style={styles.roundedBox}>
         <LinearGradient
-          colors={["rgba(205, 166, 122, 0.5)", "transparent"]}
+          colors={theme.gradients.overlay as any}
           start={{ x: 0.1, y: 1 }}
           end={{ x: 0.9, y: 0.3 }}
-          locations={[0.2, 1]}
+          locations={theme.gradients.overlayLocations as any}
           style={styles.gradientBackground}
         />
 
@@ -1506,11 +1519,12 @@ const FriendRecommendationsScreen = ({
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (theme: ThemeColors) => StyleSheet.create({
   container: {
     flex: 1,
     justifyContent: "space-evenly",
     alignItems: "center",
+    backgroundColor: 'transparent',
   },
   friendHeader: {
     width: "100%",
@@ -1518,15 +1532,16 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     paddingHorizontal: width * 0.06,
+    zIndex: 1000,
   },
   backButtonContainer: {
     width: height * 0.065,
     height: height * 0.065,
     borderRadius: height * 0.065 * 0.5,
-    backgroundColor: "#F5ECE1",
+    backgroundColor: theme.surface.friend,
     justifyContent: "center",
     alignItems: "center",
-    shadowColor: "#000",
+    shadowColor: theme.shadow.default,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.25,
     shadowRadius: 4,
@@ -1548,10 +1563,10 @@ const styles = StyleSheet.create({
     width: height * 0.065,
     height: height * 0.065,
     borderRadius: height * 0.065 * 0.5,
-    backgroundColor: "#F5ECE1",
+    backgroundColor: theme.surface.friend,
     justifyContent: "center",
     alignItems: "center",
-    shadowColor: "#000",
+    shadowColor: theme.shadow.default,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.25,
     shadowRadius: 4,
@@ -1567,7 +1582,7 @@ const styles = StyleSheet.create({
     height: height * 0.065,
     borderRadius: height * 0.065 * 0.5,
     minWidth: width * 0.5,
-    shadowColor: "#000",
+    shadowColor: theme.shadow.default,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.25,
     shadowRadius: 4,
@@ -1598,7 +1613,7 @@ const styles = StyleSheet.create({
     width: "100%",
     height: "100%",
     borderRadius: (height * 0.065 - 6) * 0.5,
-    backgroundColor: "#F5ECE1",
+    backgroundColor: theme.surface.friend,
     justifyContent: "center",
     alignItems: "center",
     paddingHorizontal: width * 0.06,
@@ -1606,7 +1621,7 @@ const styles = StyleSheet.create({
   friendUsername: {
     fontFamily: "IgraSans",
     fontSize: 22,
-    color: "#4A3120",
+    color: theme.text.primary,
   },
   gradientBackground: {
     borderRadius: 30,
@@ -1620,10 +1635,10 @@ const styles = StyleSheet.create({
     width: "80%",
     height: "85%",
     borderRadius: 35,
-    backgroundColor: "rgba(205, 166, 122, 0)",
+    backgroundColor: theme.primary + "00",
     position: "relative",
     borderWidth: 3,
-    borderColor: "rgba(205, 166, 122, 0.4)",
+    borderColor: theme.primary + "66",
     zIndex: 900,
   },
   whiteBox: {
@@ -1639,8 +1654,8 @@ const styles = StyleSheet.create({
     width: "100%",
     height: "100%",
     borderRadius: 35,
-    backgroundColor: "#F2ECE7",
-    shadowColor: "#000",
+    backgroundColor: theme.background.primary,
+    shadowColor: theme.shadow.default,
     shadowOffset: {
       width: 0.25,
       height: 4,
@@ -1699,11 +1714,11 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: "rgba(74, 49, 32, 0.5)",
+    backgroundColor: theme.text.primary + "80",
     marginHorizontal: 4,
   },
   imageDotActive: {
-    backgroundColor: "#4A3120",
+    backgroundColor: theme.text.primary,
   },
   dotsButton: {
     position: "absolute",
@@ -1766,26 +1781,26 @@ const styles = StyleSheet.create({
     width: 41,
     height: 41,
     borderRadius: 20.5,
-    backgroundColor: "#E2CCB2",
+    backgroundColor: theme.surface.button,
     justifyContent: "center",
     alignItems: "center",
-    shadowColor: "#000",
+    shadowColor: theme.shadow.default,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.25,
     shadowRadius: 3.84,
     elevation: 5,
   },
   sizeCircleAvailable: {
-    backgroundColor: "#E2CCB2",
+    backgroundColor: theme.surface.button,
   },
   sizeCircleUnavailable: {
-    backgroundColor: "#BFBBB8",
+    backgroundColor: theme.surface.elevated,
   },
   sizeCircleUserSize: {
-    backgroundColor: "#CDA67A",
+    backgroundColor: theme.button.primary,
   },
   sizeText: {
-    color: "#000",
+    color: theme.text.primary,
     fontWeight: "bold",
     fontSize: 16,
   },
@@ -1793,17 +1808,17 @@ const styles = StyleSheet.create({
     width: 80,
     height: 41,
     borderRadius: 20.5,
-    backgroundColor: "#E2CCB2",
+    backgroundColor: theme.surface.button,
     justifyContent: "center",
     alignItems: "center",
-    shadowColor: "#000",
+    shadowColor: theme.shadow.default,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.25,
     shadowRadius: 3.84,
     elevation: 5,
   },
   sizeOvalText: {
-    color: "#000",
+    color: theme.text.primary,
     fontWeight: "bold",
     fontSize: 12,
     textAlign: "center",
@@ -1812,10 +1827,10 @@ const styles = StyleSheet.create({
     width: 41,
     height: 41,
     borderRadius: 20.5,
-    backgroundColor: "rgba(230, 109, 123, 0.54)",
+    backgroundColor: theme.interactive.remove,
     justifyContent: "center",
     alignItems: "center",
-    shadowColor: "#000",
+    shadowColor: theme.shadow.default,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.25,
     shadowRadius: 3.84,
@@ -1827,20 +1842,20 @@ const styles = StyleSheet.create({
     width: 41,
     height: 41,
     borderRadius: 20.5,
-    backgroundColor: "rgba(230, 109, 123, 0.54)",
+    backgroundColor: theme.interactive.remove,
     justifyContent: "center",
     alignItems: "center",
-    shadowColor: "#000",
+    shadowColor: theme.shadow.default,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.25,
     shadowRadius: 3.84,
     elevation: 5,
   },
   cancelSizeButton: {
-    backgroundColor: "rgba(230, 109, 123, 0.54)",
+    backgroundColor: theme.interactive.remove,
     justifyContent: "center",
     alignItems: "center",
-    shadowColor: "#000",
+    shadowColor: theme.shadow.default,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.25,
     shadowRadius: 3.84,
@@ -1854,12 +1869,12 @@ const styles = StyleSheet.create({
   noCardsText: {
     fontSize: 24,
     fontWeight: "bold",
-    color: "#333",
+    color: theme.text.primary,
     marginBottom: 10,
   },
   noCardsSubtext: {
     fontSize: 16,
-    color: "#666",
+    color: theme.text.secondary,
   },
   longPressOverlay: {
     width: 50,
@@ -1879,7 +1894,7 @@ const styles = StyleSheet.create({
     width: 25,
     height: 25,
     borderRadius: 7,
-    backgroundColor: "rgba(230, 109, 123, 0.54)",
+    backgroundColor: theme.interactive.remove,
     justifyContent: "center",
     alignItems: "center",
     position: "absolute",
@@ -1903,19 +1918,19 @@ const styles = StyleSheet.create({
     borderRadius: 10,
   },
   imagePlaceholder: {
-    backgroundColor: "rgba(0,0,0,0.06)",
+    backgroundColor: theme.surface.button,
     justifyContent: "center",
     alignItems: "center",
   },
   imagePlaceholderText: {
     fontFamily: "IgraSans",
     fontSize: 14,
-    color: "rgba(0,0,0,0.4)",
+    color: theme.text.secondary,
   },
   cardBackName: {
     fontFamily: "IgraSans",
     fontSize: 24,
-    color: "#333",
+    color: theme.text.primary,
     flex: 1,
     flexWrap: "wrap",
   },
@@ -1929,7 +1944,7 @@ const styles = StyleSheet.create({
   expandableContainer: {
     marginBottom: 10,
     borderBottomWidth: 1,
-    borderBottomColor: "#eee",
+    borderBottomColor: theme.border.light,
     paddingBottom: 5,
   },
   expandableHeader: {
@@ -1942,16 +1957,16 @@ const styles = StyleSheet.create({
     fontFamily: "REM",
     fontSize: 18,
     fontWeight: "bold",
-    color: "#555",
+    color: theme.text.secondary,
   },
   expandableArrow: {
     fontSize: 18,
-    color: "#555",
+    color: theme.text.secondary,
   },
   expandableContent: {
     fontFamily: "REM",
     fontSize: 16,
-    color: "#777",
+    color: theme.text.tertiary,
   },
 });
 
