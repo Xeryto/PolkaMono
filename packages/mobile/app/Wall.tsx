@@ -1611,7 +1611,7 @@ const createStyles = (theme: ThemeColors) => StyleSheet.create({
     width: "100%",
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: theme.surface.elevated,
+    backgroundColor: theme.button.cancel,
     height: height * 0.1,
     borderRadius: 41,
     shadowColor: theme.shadow.default,
@@ -1634,7 +1634,7 @@ const createStyles = (theme: ThemeColors) => StyleSheet.create({
   sizeSection: {
     width: "100%",
     flexDirection: "row",
-    backgroundColor: theme.background.secondary,
+    backgroundColor: theme.button.cancel,
     height: height * 0.1,
     borderRadius: 41,
     justifyContent: "flex-start",
@@ -1885,7 +1885,7 @@ const createStyles = (theme: ThemeColors) => StyleSheet.create({
   },
   returnButton: {
     paddingHorizontal: Platform.OS === "ios" ? 20 : 24,
-    backgroundColor: theme.button.secondary,
+    backgroundColor: theme.button.cancel,
     borderRadius: 41,
     alignSelf: "stretch",
     justifyContent: "center",
