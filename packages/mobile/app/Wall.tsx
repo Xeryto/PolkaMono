@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import {
   View,
   Text,
@@ -53,6 +53,8 @@ import SettingsPage from "./Settings";
 import { Canvas, RoundedRect, Shadow } from "@shopify/react-native-skia";
 import { CardItem } from "./types/product";
 import { mapProductToCardItem } from "./lib/productMapper";
+import { useTheme } from "./lib/ThemeContext";
+import type { ThemeColors } from "./lib/theme";
 
 const { width, height } = Dimensions.get("window");
 
@@ -68,6 +70,9 @@ interface WallProps {
 }
 
 const CartItemImage = ({ item }: { item: api.OrderItem }) => {
+  const { theme } = useTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
+
   const [imageDimensions, setImageDimensions] = useState({
     width: 0,
     height: 0,
@@ -107,6 +112,9 @@ const CartItemImage = ({ item }: { item: api.OrderItem }) => {
 };
 
 const Wall = ({ navigation, onLogout }: WallProps) => {
+  const { theme } = useTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
+
   const [currentView, setCurrentView] = useState<
     "wall" | "settings" | "orders"
   >("wall");
@@ -632,7 +640,7 @@ const Wall = ({ navigation, onLogout }: WallProps) => {
         ]}
         onPress={() => handleBrandSelect(item)}
         android_ripple={{
-          color: "rgba(205, 166, 122, 0.3)",
+          color: theme.interactive.ripple,
           borderless: false,
         }}
       >
@@ -691,7 +699,7 @@ const Wall = ({ navigation, onLogout }: WallProps) => {
           <TextInput
             style={styles.searchInput}
             placeholder="поиск"
-            placeholderTextColor="rgba(0,0,0,1)"
+            placeholderTextColor={theme.text.placeholderDark}
             value={searchQuery}
             onChangeText={handleSearch}
             onFocus={handleSearchFocus}
@@ -1345,7 +1353,8 @@ const Wall = ({ navigation, onLogout }: WallProps) => {
     >
       <Animated.View style={styles.roundedBox}>
         <LinearGradient
-          colors={["rgba(205, 166, 122, 0.4)", "rgba(205, 166, 122, 0)"]}
+          colors={theme.gradients.overlay as any}
+          locations={theme.gradients.overlayLocations as any}
           start={{ x: 0, y: 1 }}
           end={{ x: 1, y: 0.3 }}
           style={styles.gradientBackground}
@@ -1401,49 +1410,49 @@ const Wall = ({ navigation, onLogout }: WallProps) => {
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (theme: ThemeColors) => StyleSheet.create({
   container: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  backButton: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    zIndex: 11,
-  },
-  roundedBox: {
-    width: "88%",
-    height: "95%",
-    borderRadius: 41,
-    backgroundColor: "rgba(205, 166, 122, 0)",
-    position: "relative",
-    borderWidth: 3,
-    borderColor: "rgba(205, 166, 122, 0.4)",
-  },
-  gradientBackground: {
-    borderRadius: 37,
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-  },
-  whiteBox: {
-    backgroundColor: "#F2ECE7",
-    borderRadius: 41,
-    width: width * 0.88,
-    top: -3,
-    left: -3,
-    height: "90%",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 6,
-    padding: height * 0.025,
-    overflow: "hidden",
+      flex: 1,
+      justifyContent: "center",
+      alignItems: "center",
+    },
+    backButton: {
+      position: "absolute",
+      top: 0,
+      left: 0,
+      zIndex: 11,
+    },
+    roundedBox: {
+      width: "88%",
+      height: "95%",
+      borderRadius: 41,
+      backgroundColor: theme.primary + "00",
+      position: "relative",
+      borderWidth: 3,
+      borderColor: theme.border.default,
+    },
+    gradientBackground: {
+      borderRadius: 37,
+      position: "absolute",
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+    },
+    whiteBox: {
+      backgroundColor: theme.background.primary,
+      borderRadius: 41,
+      width: width * 0.88,
+      top: -3,
+      left: -3,
+      height: "90%",
+      shadowColor: theme.shadow.default,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.25,
+      shadowRadius: 4,
+      elevation: 6,
+      padding: height * 0.025,
+      overflow: "hidden",
   },
   scrollHintContainer: {
     position: "absolute",
@@ -1458,7 +1467,7 @@ const styles = StyleSheet.create({
     fontFamily: "IgraSans",
     fontSize: 14,
     lineHeight: 26,
-    color: "#000",
+    color: theme.text.primary,
     flexDirection: "row",
     alignItems: "center",
     marginRight: 8,
@@ -1479,7 +1488,7 @@ const styles = StyleSheet.create({
   text: {
     fontFamily: "Igra Sans",
     fontSize: 34,
-    color: "#FFF",
+    color: theme.text.inverse,
     textAlign: "left",
   },
   contentContainer: {
@@ -1533,14 +1542,14 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     backgroundColor: "transparent",
     borderWidth: 2,
-    borderColor: "rgba(205, 166, 122, 0.4)",
+    borderColor: theme.border.default,
     justifyContent: "center",
     alignItems: "center",
   },
   profileName: {
     fontFamily: "IgraSans",
     fontSize: 20,
-    color: "#000",
+    color: theme.text.primary,
   },
   logoutButton: {
     position: "absolute",
@@ -1555,8 +1564,8 @@ const styles = StyleSheet.create({
     borderRadius: 41,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "#F2ECE7",
-    shadowColor: "#000",
+    backgroundColor: theme.background.primary,
+    shadowColor: theme.shadow.default,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.25,
     shadowRadius: 4,
@@ -1565,7 +1574,7 @@ const styles = StyleSheet.create({
   favoriteBrandsButton: {
     flexDirection: "row",
     width: "100%",
-    backgroundColor: "#E2CCB2",
+    backgroundColor: theme.background.secondary,
     height: height * 0.1,
     borderRadius: 41,
     justifyContent: "flex-start",
@@ -1575,7 +1584,7 @@ const styles = StyleSheet.create({
   favoriteBrandsText: {
     fontFamily: "IgraSans",
     fontSize: 20,
-    color: "#000",
+    color: theme.text.primary,
   },
   statsContainer: {
     flexDirection: "row",
@@ -1584,9 +1593,9 @@ const styles = StyleSheet.create({
     alignItems: "flex-end",
     width: "98%",
     alignSelf: "center",
-    backgroundColor: "#E2CCB2",
+    backgroundColor: theme.background.secondary,
     borderRadius: 41,
-    shadowColor: "#000",
+    shadowColor: theme.shadow.default,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.25,
     shadowRadius: 4,
@@ -1602,10 +1611,10 @@ const styles = StyleSheet.create({
     width: "100%",
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "#DCBF9D",
+    backgroundColor: theme.surface.elevated,
     height: height * 0.1,
     borderRadius: 41,
-    shadowColor: "#000",
+    shadowColor: theme.shadow.default,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.25,
     shadowRadius: 4,
@@ -1613,24 +1622,24 @@ const styles = StyleSheet.create({
   statValue: {
     fontFamily: "IgraSans",
     fontSize: 20,
-    color: "#000",
+    color: theme.text.primary,
   },
   statLabel: {
     fontFamily: "IgraSans",
     fontSize: 20,
-    color: "#000",
+    color: theme.text.primary,
     marginBottom: 5,
     paddingHorizontal: 18,
   },
   sizeSection: {
     width: "100%",
     flexDirection: "row",
-    backgroundColor: "#E2CCB2",
+    backgroundColor: theme.background.secondary,
     height: height * 0.1,
     borderRadius: 41,
     justifyContent: "flex-start",
     alignItems: "center",
-    shadowColor: "#000",
+    shadowColor: theme.shadow.default,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.25,
     shadowRadius: 4,
@@ -1640,7 +1649,7 @@ const styles = StyleSheet.create({
   sizeSectionTitle: {
     fontFamily: "IgraSans",
     fontSize: 20,
-    color: "#000",
+    color: theme.text.primary,
     marginLeft: 20,
     textAlign: "left",
   },
@@ -1654,12 +1663,12 @@ const styles = StyleSheet.create({
     height: "100%",
     minWidth: height * 0.1,
     borderRadius: 41,
-    backgroundColor: "#DCBF9D",
+    backgroundColor: theme.surface.elevated,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     paddingHorizontal: 15,
-    shadowColor: "#000",
+    shadowColor: theme.shadow.default,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.25,
     shadowRadius: 4,
@@ -1680,14 +1689,14 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   sizeText: {
-    color: "black",
+    color: theme.text.primary,
     fontFamily: "IgraSans",
     fontSize: 20,
     textAlign: "center",
   },
   selectedSizeText: {
     textDecorationLine: "underline",
-    textDecorationColor: "black",
+    textDecorationColor: theme.text.primary,
     textDecorationStyle: "solid",
   },
   sizeIndicator: {
@@ -1700,7 +1709,7 @@ const styles = StyleSheet.create({
     right: 0,
   },
   sizeIndicatorText: {
-    color: "black",
+    color: theme.text.primary,
     fontFamily: "IgraSans",
     fontSize: 20,
     textAlign: "center",
@@ -1713,10 +1722,10 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    backgroundColor: "#E2CCB2",
+    backgroundColor: theme.background.secondary,
     borderRadius: 41,
     padding: 20,
-    shadowColor: "#000",
+    shadowColor: theme.shadow.default,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.25,
     shadowRadius: 4,
@@ -1726,7 +1735,7 @@ const styles = StyleSheet.create({
   settingsButtonText: {
     fontFamily: "IgraSans",
     fontSize: 20,
-    color: "#000",
+    color: theme.text.primary,
   },
   searchAndResultsContainer: {
     width: "100%",
@@ -1738,8 +1747,8 @@ const styles = StyleSheet.create({
   selectedBubblesContainer: {
     width: "100%",
     height: height * 0.1,
-    backgroundColor: "#E2CCB2",
-    shadowColor: "#000",
+    backgroundColor: theme.background.secondary,
+    shadowColor: theme.shadow.default,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.25,
     shadowRadius: 4,
@@ -1758,12 +1767,12 @@ const styles = StyleSheet.create({
   brandBubbleText: {
     fontFamily: "IgraSans",
     fontSize: 20,
-    color: "#000",
+    color: theme.text.primary,
   },
   emptyBrandsText: {
     fontFamily: "IgraSans",
     fontSize: 18,
-    color: "rgba(0,0,0,0.6)",
+    color: theme.text.tertiary,
     fontStyle: "italic",
     textAlign: "center",
     alignItems: "center",
@@ -1772,13 +1781,13 @@ const styles = StyleSheet.create({
   searchResultsContainer: {
     width: "100%",
     height: height * 0.47,
-    backgroundColor: "#E2CCB2",
+    backgroundColor: theme.background.secondary,
     borderRadius: 41,
     position: "relative",
     zIndex: 1,
     ...Platform.select({
       ios: {
-        shadowColor: "#000",
+        shadowColor: theme.shadow.default,
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.25,
         shadowRadius: 4,
@@ -1792,14 +1801,14 @@ const styles = StyleSheet.create({
     width: "100%",
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#DCBF9D",
+    backgroundColor: theme.surface.elevated,
     borderRadius: 41,
     paddingHorizontal: 20,
     height: 0.1 * height,
     zIndex: 2,
     ...Platform.select({
       ios: {
-        shadowColor: "#000",
+        shadowColor: theme.shadow.default,
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.25,
         shadowRadius: 4,
@@ -1812,7 +1821,7 @@ const styles = StyleSheet.create({
   searchInput: {
     fontFamily: "IgraSans",
     fontSize: 20,
-    color: "#000",
+    color: theme.text.primary,
   },
   brandsList: {
     marginTop: 5,
@@ -1828,7 +1837,7 @@ const styles = StyleSheet.create({
   brandText: {
     fontFamily: "IgraSans",
     fontSize: 20,
-    color: "#000",
+    color: theme.text.primary,
   },
   tickContainer: {
     alignItems: "center",
@@ -1858,11 +1867,11 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    backgroundColor: "#E2CCB2",
+    backgroundColor: theme.background.secondary,
     borderRadius: 41,
     marginBottom: 20,
     height: 0.1 * height,
-    shadowColor: "#000",
+    shadowColor: theme.shadow.default,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.25,
     shadowRadius: 4,
@@ -1876,13 +1885,13 @@ const styles = StyleSheet.create({
   },
   returnButton: {
     paddingHorizontal: Platform.OS === "ios" ? 20 : 24,
-    backgroundColor: "#D8B68F",
+    backgroundColor: theme.button.secondary,
     borderRadius: 41,
     alignSelf: "stretch",
     justifyContent: "center",
     alignItems: "center",
     marginLeft: 10,
-    shadowColor: "#000",
+    shadowColor: theme.shadow.default,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.25,
     shadowRadius: 4,
@@ -1891,23 +1900,23 @@ const styles = StyleSheet.create({
   returnButtonText: {
     fontFamily: "IgraSans",
     fontSize: 18,
-    color: "#4A3120",
+    color: theme.button.primary,
   },
   orderNumber: {
     fontFamily: "IgraSans",
     fontSize: 20,
-    color: "#000",
+    color: theme.text.primary,
   },
   orderStatusSubtext: {
     fontFamily: "IgraSans",
     fontSize: 14,
-    color: "#666",
+    color: theme.text.tertiary,
     marginTop: 2,
   },
   orderSummary: {
     fontFamily: "IgraSans",
     fontSize: 20,
-    color: "#000",
+    color: theme.text.primary,
     marginLeft: 20,
   },
   orderDetailsContainer: {
@@ -1924,10 +1933,10 @@ const styles = StyleSheet.create({
     height: "60%",
   },
   cartItem: {
-    backgroundColor: "#E2CCB2",
+    backgroundColor: theme.surface.cartItem,
     borderRadius: 41,
     marginBottom: 15,
-    shadowColor: "#000",
+    shadowColor: theme.shadow.default,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.25,
     shadowRadius: 4,
@@ -1970,19 +1979,19 @@ const styles = StyleSheet.create({
   itemName: {
     fontFamily: "IgraSans",
     fontSize: 38,
-    color: "#000",
+    color: theme.text.primary,
     marginBottom: 0,
   },
   itemPrice: {
     fontFamily: "REM",
     fontSize: 16,
-    color: "#000",
+    color: theme.text.primary,
     marginBottom: 5,
   },
   itemSize: {
     fontFamily: "IgraSans",
     fontSize: 16,
-    color: "#000",
+    color: theme.text.primary,
     marginBottom: 20,
   },
   rightContainer: {
@@ -2006,7 +2015,7 @@ const styles = StyleSheet.create({
   orderTotalText: {
     fontFamily: "IgraSans",
     fontSize: 34,
-    color: "#000",
+    color: theme.text.primary,
   },
   orderStatusContainer: {
     height: height * 0.1,
@@ -2014,8 +2023,8 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    backgroundColor: "#E2CCB2",
-    shadowColor: "#000",
+    backgroundColor: theme.background.secondary,
+    shadowColor: theme.shadow.default,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.25,
     shadowRadius: 4,
@@ -2026,8 +2035,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 25,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "#DCBF9D",
-    shadowColor: "#000",
+    backgroundColor: theme.surface.elevated,
+    shadowColor: theme.shadow.default,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.25,
     shadowRadius: 4,
@@ -2036,16 +2045,16 @@ const styles = StyleSheet.create({
   orderStatusText: {
     fontFamily: "IgraSans",
     fontSize: 20,
-    color: "#000",
+    color: theme.text.primary,
   },
   emptyStateText: {
     fontFamily: "IgraSans",
     fontSize: 16,
-    color: "#6A462F",
+    color: theme.text.secondary,
     marginBottom: 20,
   },
   startShoppingButton: {
-    backgroundColor: "#CDA67A",
+    backgroundColor: theme.primary,
     borderRadius: 15,
     padding: 15,
     minWidth: 200,
@@ -2054,7 +2063,7 @@ const styles = StyleSheet.create({
   startShoppingText: {
     fontFamily: "IgraSans",
     fontSize: 16,
-    color: "white",
+    color: theme.text.inverse,
   },
 });
 
