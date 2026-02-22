@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import {
   View,
   Text,
@@ -33,6 +33,8 @@ import {
   ANIMATION_EASING,
 } from "./lib/animations";
 import { mapProductToCardItem } from "./lib/productMapper";
+import { useTheme } from "./lib/ThemeContext";
+import type { ThemeColors } from "./lib/theme";
 
 // Create animated text component using proper method for this version
 const AnimatedText = Animated.createAnimatedComponent(Text);
@@ -41,6 +43,9 @@ const { width, height } = Dimensions.get("window");
 
 // Price tag component with dynamic sizing using the article's approach
 const PriceTag = ({ price }: { price: number }) => {
+  const { theme } = useTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
+
   const [textWidth, setTextWidth] = useState(0);
   const [textHeight, setTextHeight] = useState(0);
   const [isMeasured, setIsMeasured] = useState(false);
@@ -219,10 +224,13 @@ const persistentSearchStorage: {
 };
 
 const Search = ({ navigation }: SearchProps) => {
+  const { theme } = useTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
+
   const [searchQuery, setSearchQuery] = useState("");
   const [isSearchActive, setIsSearchActive] = useState(false);
   const [activeFilter, setActiveFilter] = useState<keyof FilterOptions | null>(
-    null,
+    null
   );
   const [selectedFilters, setSelectedFilters] = useState<SelectedFilters>({
     category: [],
@@ -1304,7 +1312,7 @@ const Search = ({ navigation }: SearchProps) => {
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (theme: ThemeColors) => StyleSheet.create({
   container: {
     flex: 1,
     justifyContent: "center",
@@ -1314,10 +1322,10 @@ const styles = StyleSheet.create({
     width: "88%",
     height: "72%",
     borderRadius: 41,
-    backgroundColor: "#F2ECE7",
+    backgroundColor: theme.background.primary,
     position: "relative",
     //padding: 11,
-    shadowColor: "#000",
+    shadowColor: theme.shadow.default,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.25,
     shadowRadius: 4,
@@ -1327,12 +1335,12 @@ const styles = StyleSheet.create({
     width: "88%",
     marginBottom: "3.6%",
     height: "12%",
-    shadowColor: "#000",
+    shadowColor: theme.shadow.default,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.25,
     shadowRadius: 4,
     elevation: 4,
-    backgroundColor: "#F2ECE7",
+    backgroundColor: theme.background.primary,
     borderRadius: 41,
     overflow: "hidden",
   },
@@ -1347,8 +1355,8 @@ const styles = StyleSheet.create({
     zIndex: 998,
     height: "5%",
     borderRadius: 41,
-    // backgroundColor: "#F2ECE7",
-    shadowColor: "#000",
+    // backgroundColor: theme.background.primary,
+    shadowColor: theme.shadow.default,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.25,
     shadowRadius: 4,
@@ -1364,10 +1372,10 @@ const styles = StyleSheet.create({
     borderRadius: 41,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#F2ECE7",
+    backgroundColor: theme.background.primary,
   },
   filterButtonActive: {
-    backgroundColor: "#DCC1A5",
+    backgroundColor: theme.surface.elevated,
   },
   filterButtonContent: {
     flexDirection: "row",
@@ -1377,28 +1385,28 @@ const styles = StyleSheet.create({
   filterButtonText: {
     fontFamily: "Igra Sans",
     fontSize: 14,
-    color: "#4A3120",
+    color: theme.button.primary,
     marginRight: 5,
     textAlignVertical: "center",
   },
   filterButtonTextActive: {
-    color: "white",
+    color: theme.text.inverse,
   },
   filterIcon: {
-    color: "#4A3120",
+    color: theme.button.primary,
     marginTop: Platform.OS === "ios" ? -3 : 2,
     alignSelf: "center",
   },
   filterIconActive: {
-    color: "white",
+    color: theme.text.inverse,
   },
   optionsContainer: {
     position: "absolute",
     top: 0,
     right: 0,
-    backgroundColor: "#F2ECE7",
+    backgroundColor: theme.background.primary,
     borderRadius: 17,
-    shadowColor: "#000",
+    shadowColor: theme.shadow.default,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.25,
     shadowRadius: 8,
@@ -1420,7 +1428,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   okButton: {
-    backgroundColor: "#CDA57A",
+    backgroundColor: theme.primary,
     paddingVertical: 20,
     paddingHorizontal: 25,
     borderRadius: 17 - 8, // filter box borderRadius (17) minus padding (4)
@@ -1428,7 +1436,7 @@ const styles = StyleSheet.create({
   okButtonText: {
     fontFamily: "Igra Sans",
     fontSize: 20,
-    color: "black",
+    color: theme.text.primary,
     fontWeight: "500",
   },
   optionButton: {
@@ -1438,7 +1446,7 @@ const styles = StyleSheet.create({
     marginBottom: 5,
   },
   optionButtonActive: {
-    backgroundColor: "#CDA67A",
+    backgroundColor: theme.primary,
   },
   optionButtonContent: {
     flexDirection: "row",
@@ -1448,13 +1456,13 @@ const styles = StyleSheet.create({
   optionButtonText: {
     fontFamily: "Igra Sans",
     fontSize: 20,
-    color: "#000",
+    color: theme.text.primary,
   },
   optionButtonTextActive: {
-    color: "white",
+    color: theme.text.inverse,
   },
   optionCheckIcon: {
-    color: "black",
+    color: theme.text.primary,
   },
   resultsContainer: {
     flex: 1,
@@ -1477,12 +1485,12 @@ const styles = StyleSheet.create({
   searchItem: {
     width: (width * 0.88 - 42 - 14) / 2, // Container width (88%) - list padding (42 = 21*2) - gap (14, 1.5:1 ratio)
     marginBottom: 14, // 1.5:1 ratio with outer padding
-    shadowColor: "#000",
+    shadowColor: theme.shadow.default,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.25,
     shadowRadius: 4,
     elevation: 4,
-    backgroundColor: "#EDE7E2",
+    backgroundColor: theme.surface.item,
     borderRadius: Math.round((0.25 * (width * 0.88 - 42 - 14)) / 2),
   },
   imageContainer: {
@@ -1499,7 +1507,7 @@ const styles = StyleSheet.create({
     resizeMode: "contain",
   },
   noProductImagePlaceholder: {
-    backgroundColor: "rgba(0,0,0,0.06)",
+    backgroundColor: theme.surface.button,
     justifyContent: "center",
     alignItems: "center",
     width: "73%",
@@ -1508,7 +1516,7 @@ const styles = StyleSheet.create({
   noProductImageText: {
     fontFamily: "IgraSans",
     fontSize: 12,
-    color: "rgba(0,0,0,0.4)",
+    color: theme.text.disabled,
   },
   itemInfo: {
     // position: 'absolute',
@@ -1522,7 +1530,7 @@ const styles = StyleSheet.create({
   itemName: {
     fontFamily: "IgraSans",
     fontSize: 13,
-    color: "#4A3120",
+    color: theme.text.secondary,
     textAlign: "center",
     paddingHorizontal: 10,
   },
@@ -1532,7 +1540,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     borderRadius: 10,
-    shadowColor: "#000",
+    shadowColor: theme.shadow.default,
     shadowOffset: { width: 4, height: 0 },
     shadowOpacity: 0.25,
     shadowRadius: 4,
@@ -1540,7 +1548,7 @@ const styles = StyleSheet.create({
   itemPrice: {
     fontFamily: "REM",
     fontSize: 14,
-    color: "#4A3120",
+    color: theme.text.secondary,
     paddingHorizontal: 8,
     paddingVertical: 4,
   },
@@ -1558,14 +1566,14 @@ const styles = StyleSheet.create({
     fontFamily: "REM",
     fontSize: 24,
     fontWeight: "600",
-    color: "#4A3120",
+    color: theme.text.secondary,
     textAlign: "center",
     marginBottom: 12,
   },
   emptyStateDescription: {
     fontFamily: "REM",
     fontSize: 16,
-    color: "rgba(74, 49, 32, 0.7)",
+    color: theme.text.tertiary,
     textAlign: "center",
     lineHeight: 22,
     paddingHorizontal: 20,
@@ -1580,7 +1588,7 @@ const styles = StyleSheet.create({
     fontFamily: "REM",
     fontSize: 24,
     fontWeight: "600",
-    color: "#4A3120",
+    color: theme.text.secondary,
     textAlign: "center",
     marginTop: 24,
     marginBottom: 12,
@@ -1588,7 +1596,7 @@ const styles = StyleSheet.create({
   noResultsDescription: {
     fontFamily: "REM",
     fontSize: 16,
-    color: "rgba(74, 49, 32, 0.7)",
+    color: theme.text.tertiary,
     textAlign: "center",
     lineHeight: 22,
     paddingHorizontal: 20,
@@ -1602,7 +1610,7 @@ const styles = StyleSheet.create({
   loadingText: {
     fontFamily: "REM",
     fontSize: 18,
-    color: "rgba(74, 49, 32, 0.7)",
+    color: theme.text.tertiary,
     textAlign: "center",
     marginTop: 20,
   },
@@ -1620,7 +1628,7 @@ const styles = StyleSheet.create({
   popularItemsText: {
     fontFamily: "Igra Sans",
     fontSize: 38,
-    color: "#73706D",
+    color: theme.text.tertiary,
     textAlign: "left",
     marginTop: 20,
     marginBottom: 10,
@@ -1648,7 +1656,7 @@ const styles = StyleSheet.create({
   },
   cancelButton: {
     paddingHorizontal: Platform.OS === "ios" ? 45 : 50,
-    backgroundColor: "#C8A688",
+    backgroundColor: theme.button.cancel,
     borderRadius: 41,
     // paddingVertical: Platform.OS === "ios" ? 34 : 27,
     height: "100%",
@@ -1658,7 +1666,7 @@ const styles = StyleSheet.create({
   cancelButtonText: {
     fontFamily: "Igra Sans",
     fontSize: 18,
-    color: "#4A3120",
+    color: theme.button.primary,
   },
 });
 
