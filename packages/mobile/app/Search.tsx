@@ -1048,7 +1048,7 @@ const Search = ({ navigation }: SearchProps) => {
               isSearchActive && styles.searchInputActive,
             ]}
             placeholder="поиск"
-            placeholderTextColor="rgba(0,0,0,0.6)"
+            placeholderTextColor={theme.text.placeholderDark}
             value={searchQuery}
             onChangeText={handleSearch}
             onFocus={handleSearchFocus}
@@ -1180,7 +1180,7 @@ const Search = ({ navigation }: SearchProps) => {
                 )}
                 style={styles.emptyStateIcon}
               >
-                <AntDesign name="search" size={64} color="rgba(0,0,0,0.3)" />
+                <AntDesign name="search" size={64} color={theme.text.disabled} />
               </Animated.View>
               <Animated.Text
                 entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
@@ -1204,7 +1204,7 @@ const Search = ({ navigation }: SearchProps) => {
               entering={FadeIn.duration(ANIMATION_DURATIONS.STANDARD)}
               style={styles.loadingContainer}
             >
-              <ActivityIndicator size="large" color="#CDA67A" />
+              <ActivityIndicator size="large" color={theme.primary} />
               <Animated.Text
                 entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
                   ANIMATION_DELAYS.SMALL,
@@ -1225,7 +1225,7 @@ const Search = ({ navigation }: SearchProps) => {
                 )}
                 style={styles.emptyStateIcon}
               >
-                <AntDesign name="inbox" size={64} color="rgba(0,0,0,0.3)" />
+                <AntDesign name="inbox" size={64} color={theme.text.disabled} />
               </Animated.View>
               <Animated.Text
                 entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
@@ -1292,7 +1292,7 @@ const Search = ({ navigation }: SearchProps) => {
               ListFooterComponent={
                 isLoadingMoreResults ? (
                   <View style={styles.loadMoreContainer}>
-                    <ActivityIndicator size="small" color="#CDA67A" />
+                    <ActivityIndicator size="small" color={theme.primary} />
                   </View>
                 ) : null
               }

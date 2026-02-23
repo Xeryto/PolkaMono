@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import {
   View,
   Text,
@@ -36,6 +36,8 @@ import {
   ANIMATION_DELAYS,
   ANIMATION_EASING,
 } from "./lib/animations";
+import { useTheme } from "./lib/ThemeContext";
+import type { ThemeColors } from "./lib/theme";
 
 const { height, width } = Dimensions.get("window");
 
@@ -121,6 +123,7 @@ const CancelButton: React.FC<CancelButtonProps> = ({
   onRemove,
   cartItemId,
 }) => {
+  const { theme } = useTheme();
   const scale = useRef(new RNAnimated.Value(1)).current;
   const handlePressIn = () =>
     RNAnimated.timing(scale, {
@@ -138,8 +141,21 @@ const CancelButton: React.FC<CancelButtonProps> = ({
     }).start();
     onRemove(cartItemId);
   };
+
+  const removeButtonStyle = {
+    width: 25,
+    height: 25,
+    borderRadius: 7,
+    backgroundColor: theme.interactive.remove,
+    justifyContent: 'center' as const,
+    alignItems: 'center' as const,
+    position: 'absolute' as const,
+    right: 8,
+    top: 0,
+  };
+
   return (
-    <RNAnimated.View style={[{ transform: [{ scale }] }, styles.removeButton]}>
+    <RNAnimated.View style={[{ transform: [{ scale }] }, removeButtonStyle]}>
       <Pressable onPressIn={handlePressIn} onPressOut={handlePressOut}>
         <Cancel width={27} height={27} />
       </Pressable>
@@ -148,6 +164,7 @@ const CancelButton: React.FC<CancelButtonProps> = ({
 };
 
 const CartItemImage = ({ item }: { item: CartItem }) => {
+  const { theme } = useTheme();
   const [imageDimensions, setImageDimensions] = useState({
     width: 0,
     height: 0,
@@ -160,18 +177,43 @@ const CartItemImage = ({ item }: { item: CartItem }) => {
     imageDimensions.width && imageDimensions.height
       ? imageDimensions.width / imageDimensions.height
       : 1;
+
+  const imageStyles = StyleSheet.create({
+    container: {
+      flex: 1,
+      justifyContent: 'center' as const,
+      alignItems: 'center' as const,
+    },
+    itemImage: {
+      width: '100%',
+      height: '100%',
+    },
+    noProductImagePlaceholder: {
+      backgroundColor: theme.surface.button,
+      justifyContent: 'center' as const,
+      alignItems: 'center' as const,
+      width: '73%',
+      height: '73%',
+    },
+    noProductImageText: {
+      fontFamily: 'IgraSans',
+      fontSize: 12,
+      color: theme.text.disabled,
+    },
+  });
+
   return (
-    <View style={styles.container}>
+    <View style={imageStyles.container}>
       {item.images && item.images.length > 0 ? (
         <Image
           source={item.images[0]}
-          style={[styles.itemImage, { aspectRatio }]}
+          style={[imageStyles.itemImage, { aspectRatio }]}
           resizeMode="contain"
           onLoad={onImageLoad}
         />
       ) : (
-        <View style={[styles.itemImage, styles.noProductImagePlaceholder]}>
-          <Text style={styles.noProductImageText}>Нет изображения</Text>
+        <View style={[imageStyles.itemImage, imageStyles.noProductImagePlaceholder]}>
+          <Text style={imageStyles.noProductImageText}>Нет изображения</Text>
         </View>
       )}
     </View>
@@ -179,6 +221,8 @@ const CartItemImage = ({ item }: { item: CartItem }) => {
 };
 
 const Cart = ({ navigation }: CartProps) => {
+  const { theme } = useTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [brandsMap, setBrandsMap] = useState<BrandMap>({});
   const [isLoading, setIsLoading] = useState(true);
@@ -223,9 +267,9 @@ const Cart = ({ navigation }: CartProps) => {
       }
     };
 
-    Linking.addEventListener("url", handleDeepLink);
+    const subscription = Linking.addEventListener("url", handleDeepLink);
     return () => {
-      Linking.removeAllListeners("url");
+      subscription.remove();
     };
   }, []);
 
@@ -512,10 +556,10 @@ const Cart = ({ navigation }: CartProps) => {
         style={styles.roundedBox}
       >
         <LinearGradient
-          colors={["rgba(205, 166, 122, 0.5)", "transparent"]}
+          colors={theme.gradients.overlay as any}
           start={{ x: 0.1, y: 1 }}
           end={{ x: 0.9, y: 0.3 }}
-          locations={[0.1, 1]}
+          locations={theme.gradients.overlayLocations as any}
           style={styles.gradientBackground}
         />
         <Animated.View style={styles.whiteBox}>
@@ -699,7 +743,7 @@ const Cart = ({ navigation }: CartProps) => {
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (theme: ThemeColors) => StyleSheet.create({
   container: {
     flex: 1,
     justifyContent: "center",
@@ -710,10 +754,10 @@ const styles = StyleSheet.create({
     width: "88%",
     height: "95%",
     borderRadius: 41,
-    backgroundColor: "rgba(205, 166, 122, 0)",
+    backgroundColor: theme.primary + "00",
     position: "relative",
     borderWidth: 3,
-    borderColor: "rgba(205, 166, 122, 0.4)",
+    borderColor: theme.primary + "66",
   },
   gradientBackground: {
     borderRadius: 37,
@@ -724,13 +768,13 @@ const styles = StyleSheet.create({
     bottom: 0,
   },
   whiteBox: {
-    backgroundColor: "#F2ECE7",
+    backgroundColor: theme.background.primary,
     borderRadius: 41,
     width: width * 0.88,
     top: -3,
     left: -3,
     height: "90%",
-    shadowColor: "#000",
+    shadowColor: theme.shadow.default,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.25,
     shadowRadius: 4,
@@ -738,10 +782,10 @@ const styles = StyleSheet.create({
   },
   itemsContainer: { height: "70%", borderRadius: 41, padding: height * 0.02 },
   cartItem: {
-    backgroundColor: "#E2CCB2",
+    backgroundColor: theme.surface.cartItem,
     borderRadius: 41,
     marginBottom: 15,
-    shadowColor: "#000",
+    shadowColor: theme.shadow.default,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.25,
     shadowRadius: 4,
@@ -767,7 +811,7 @@ const styles = StyleSheet.create({
     left: 0,
   },
   noProductImagePlaceholder: {
-    backgroundColor: "rgba(0,0,0,0.06)",
+    backgroundColor: theme.surface.button,
     justifyContent: "center",
     alignItems: "center",
     width: "73%",
@@ -776,7 +820,7 @@ const styles = StyleSheet.create({
   noProductImageText: {
     fontFamily: "IgraSans",
     fontSize: 12,
-    color: "rgba(0,0,0,0.4)",
+    color: theme.text.disabled,
   },
   imageContainer: {
     width: "30%",
@@ -789,19 +833,19 @@ const styles = StyleSheet.create({
   itemName: {
     fontFamily: "IgraSans",
     fontSize: 38,
-    color: "#000",
+    color: theme.text.primary,
     marginBottom: 0,
   },
   itemPrice: {
     fontFamily: "REM",
     fontSize: 16,
-    color: "#000",
+    color: theme.text.primary,
     marginBottom: 5,
   },
   itemSize: {
     fontFamily: "IgraSans",
     fontSize: 16,
-    color: "#000",
+    color: theme.text.primary,
     marginBottom: 20,
   },
   deliveryInfoChangeable: {
@@ -813,7 +857,7 @@ const styles = StyleSheet.create({
   deliveryText: {
     fontFamily: "IgraSans",
     fontSize: 14,
-    color: "#000",
+    color: theme.text.primary,
     marginBottom: 5,
     flexShrink: 1,
   },
@@ -822,17 +866,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     height: "100%",
     width: "20%",
-  },
-  removeButton: {
-    width: 25,
-    height: 25,
-    borderRadius: 7,
-    backgroundColor: "rgba(230, 109, 123, 0.54)",
-    justifyContent: "center",
-    alignItems: "center",
-    position: "absolute",
-    right: 8,
-    top: 0,
   },
   circle: { position: "absolute", top: "30%", bottom: "30%", right: 0 },
   checkoutContainer: { borderRadius: 41, padding: 20, alignItems: "center" },
@@ -845,28 +878,28 @@ const styles = StyleSheet.create({
   horizontalLine: {
     width: "100%",
     height: 3,
-    backgroundColor: "rgba(0, 0, 0, 1)",
+    backgroundColor: theme.text.primary,
   },
   totalContainer: { width: "100%", alignItems: "flex-start", marginTop: 25 },
   totalText: {
     textAlign: "left",
     fontFamily: "IgraSans",
     fontSize: 30,
-    color: "#000",
+    color: theme.text.primary,
   },
   checkoutButton: {
     width: "100%",
-    backgroundColor: "#98907E",
+    backgroundColor: theme.button.checkout,
     borderRadius: 41,
     padding: 25,
     alignItems: "center",
   },
   checkoutButtonText: {
-    color: "#FFFFF5",
+    color: theme.button.checkoutText,
     fontFamily: "IgraSans",
     fontSize: 20,
   },
-  disabledButton: { backgroundColor: "#BDBDBD" },
+  disabledButton: { backgroundColor: theme.interactive.inactive },
   emptyCartContainer: {
     flex: 1,
     justifyContent: "center",
@@ -875,11 +908,11 @@ const styles = StyleSheet.create({
   emptyCartText: {
     fontFamily: "REM",
     fontSize: 18,
-    color: "#666",
+    color: theme.text.secondary,
     marginBottom: 20,
   },
   shopButton: {
-    backgroundColor: "#CDA67A",
+    backgroundColor: theme.primary,
     borderRadius: 25,
     padding: 15,
     alignItems: "center",
@@ -895,42 +928,42 @@ const styles = StyleSheet.create({
   text: {
     fontFamily: "Igra Sans",
     fontSize: 38,
-    color: "#FFF",
+    color: theme.text.inverse,
     textAlign: "left",
   },
   loadingContainer: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "#F2ECE7",
+    backgroundColor: theme.background.primary,
     borderRadius: 41,
     padding: 20,
   },
-  loadingText: { fontFamily: "IgraSans", fontSize: 24, color: "#4A3120" },
+  loadingText: { fontFamily: "IgraSans", fontSize: 24, color: theme.text.secondary },
   confirmationContainer: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "#F2ECE7",
+    backgroundColor: theme.background.primary,
     borderRadius: 41,
     padding: 20,
   },
   confirmationTitle: {
     fontFamily: "IgraSans",
     fontSize: 38,
-    color: "#4A3120",
+    color: theme.text.secondary,
     marginBottom: 20,
     textAlign: "center",
   },
   confirmationText: {
     fontFamily: "REM",
     fontSize: 18,
-    color: "#666",
+    color: theme.text.secondary,
     marginBottom: 40,
     textAlign: "center",
   },
   confirmationButton: {
-    backgroundColor: "#CDA67A",
+    backgroundColor: theme.primary,
     borderRadius: 25,
     padding: 15,
     alignItems: "center",
@@ -943,25 +976,27 @@ const styles = StyleSheet.create({
   },
   errorContainer: { marginBottom: 15, alignItems: "center" },
   errorText: {
-    color: "#D32F2F",
+    color: theme.status.error,
     fontFamily: "REM",
     fontSize: 16,
     textAlign: "center",
     marginBottom: 10,
   },
   settingsButton: {
-    backgroundColor: "#CDA67A",
+    backgroundColor: theme.primary,
     borderRadius: 20,
     paddingVertical: 8,
     paddingHorizontal: 16,
     marginTop: 5,
   },
   settingsButtonText: {
-    color: "#FFFFF5",
+    color: theme.button.primaryText,
     fontFamily: "IgraSans",
     fontSize: 14,
     textAlign: "center",
   },
 });
+
+
 
 export default Cart;

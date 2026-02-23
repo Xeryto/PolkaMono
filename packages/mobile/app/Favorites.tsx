@@ -1460,7 +1460,7 @@ const MainContent = ({
       <Animated.View
         style={[
           styles.topBox,
-          { backgroundColor: activeView === "friends" ? theme.accent : "#AE8F72" },
+          { backgroundColor: activeView === "friends" ? theme.accent : theme.surface.elevated },
           topBoxStyle,
         ]}
         entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
@@ -1543,7 +1543,7 @@ const MainContent = ({
       <Animated.View
         style={[
           styles.bottomBox,
-          { backgroundColor: activeView === "friends" ? "#AE8F72" : theme.accent },
+          { backgroundColor: activeView === "friends" ? theme.surface.elevated : theme.accent },
           bottomBoxStyle,
         ]}
         entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
@@ -1635,7 +1635,7 @@ const SearchContent = ({
           <TextInput
             style={styles.favoritesSearchInput}
             placeholder="поиск"
-            placeholderTextColor="rgba(0,0,0,0.6)"
+            placeholderTextColor={theme.text.placeholderDark}
             value={searchQuery}
             onChangeText={handleSearch}
             autoFocus={true}
@@ -1679,7 +1679,7 @@ const SearchContent = ({
                   ).delay(ANIMATION_DELAYS.STANDARD)}
                   style={styles.emptyStateIcon}
                 >
-                  <AntDesign name="search" size={64} color="rgba(0,0,0,0.3)" />
+                  <AntDesign name="search" size={64} color={theme.text.disabled} />
                 </Animated.View>
                 <Animated.Text
                   entering={FadeInDown.duration(
@@ -1741,7 +1741,7 @@ const SearchContent = ({
                 )}
                 style={styles.emptyStateIcon}
               >
-                <AntDesign name="inbox" size={64} color="rgba(0,0,0,0.3)" />
+                <AntDesign name="inbox" size={64} color={theme.text.disabled} />
               </Animated.View>
               <Animated.Text
                 entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
@@ -2106,10 +2106,10 @@ const FriendProfileView = React.memo(
           exiting={FadeOutDown.duration(ANIMATION_DURATIONS.MICRO)}
         >
           <LinearGradient
-            colors={["rgba(205, 166, 122, 0.5)", "transparent"]}
+            colors={theme.gradients.overlay as any}
             start={{ x: 0.1, y: 1 }}
             end={{ x: 0.9, y: 0.3 }}
-            locations={[0.2, 1]}
+            locations={theme.gradients.overlayLocations as any}
             style={styles.gradientBackground}
           />
           {/* Recommendations section */}
