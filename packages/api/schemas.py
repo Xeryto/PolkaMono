@@ -100,9 +100,10 @@ class OrderSummaryResponse(BaseModel):
     total_amount: float
     currency: str
     date: datetime
-    status: str  # One of: pending, paid, shipped, returned, canceled
+    status: str  # One of: created, pending, paid, shipped, returned, partially_returned, canceled
     tracking_number: Optional[str] = None
     tracking_link: Optional[str] = None
+    shipping_cost: float = 0.0
 
     class Config:
         from_attributes = True

@@ -3149,6 +3149,7 @@ def _order_to_summary(order: Order) -> schemas.OrderSummaryResponse:
         status=order.status.value,
         tracking_number=str(order.tracking_number) if order.tracking_number else None,  # type: ignore
         tracking_link=str(order.tracking_link) if order.tracking_link else None,  # type: ignore
+        shipping_cost=float(order.shipping_cost or 0.0),  # type: ignore
     )
 
 
@@ -3164,6 +3165,7 @@ def _checkout_to_summary(checkout: Checkout) -> schemas.OrderSummaryResponse:
     tracking_link = (
         first_order.tracking_link if first_order and len(checkout.orders) == 1 else None
     )
+    total_shipping = sum(float(o.shipping_cost or 0.0) for o in checkout.orders)  # type: ignore
     return schemas.OrderSummaryResponse(
         id=str(checkout.id),  # type: ignore
         number=number,
@@ -3173,6 +3175,7 @@ def _checkout_to_summary(checkout: Checkout) -> schemas.OrderSummaryResponse:
         status=status,
         tracking_number=tracking,
         tracking_link=tracking_link,
+        shipping_cost=total_shipping,
     )
 
 
