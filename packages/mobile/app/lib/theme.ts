@@ -353,10 +353,10 @@ const darkColors: ThemeColors = {
   text: {
     primary: '#F5EDE4',
     secondary: '#C4A882',
-    tertiary: '#A07856',
-    disabled: 'rgba(245, 237, 228, 0.4)',
+    tertiary: '#B89B78',
+    disabled: 'rgba(245, 237, 228, 0.65)',
     placeholderDark: 'rgba(245, 237, 228, 1)',
-    inverse: '#261E1A',
+    inverse: '#F5EDE4',
     grey: '#9A8878',
   },
 
@@ -467,7 +467,7 @@ const darkColors: ThemeColors = {
   gradients: {
     main: ['#3D3028', '#261E1A', '#1F1713', '#130E0B'],
     mainLocations: [0, 0.34, 0.5, 0.87],
-    overlay: ['rgba(38, 30, 26, 0.5)', 'transparent'],
+    overlay: ['rgba(128, 107, 89, 0.25)', 'transparent'],
     overlayLocations: [0.2, 1],
     regenerateButtonBorder: ['#FC8CAF', '#9EA7FF', '#A3FFD0'],
     regenerateButton: ['#E222F0', '#4747E4', '#E66D7B'],
