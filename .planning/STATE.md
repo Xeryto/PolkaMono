@@ -10,11 +10,11 @@ See: .planning/PROJECT.md (updated 2026-02-23)
 ## Current Position
 
 Phase: 4 of 9 (Order Status Foundation)
-Plan: 2 of 3 in current phase
-Status: In progress
-Last activity: 2026-02-23 — completed plan 04-02 (order lifecycle endpoints + APScheduler expiry)
+Plan: 3 of 3 in current phase
+Status: Phase complete
+Last activity: 2026-02-23 — completed plan 04-03 (delivery cost + status display)
 
-Progress: [█░░░░░░░░░] 10% (v1.1)
+Progress: [██░░░░░░░░] 20% (v1.1)
 
 ## Performance Metrics
 
@@ -49,6 +49,8 @@ See PROJECT.md Key Decisions table for full log. Active decisions for v1.1:
 - [04-02] Buyer cancel rejects expired orders even if status still CREATED (defensive)
 - [04-02] Admin identity = ADMIN_EMAIL env var match on brand auth_account.email (no DB column)
 - [04-02] APScheduler started at module-load, not inside startup event
+- [04-03] _checkout_to_summary() sums shipping_cost across child orders for buyer total visibility
+- [04-03] shipping_cost optional (?:number) in TS OrderSummary so old cached responses don't break
 
 ### Pending Todos
 
@@ -61,5 +63,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-23
-Stopped at: Completed 04-02-PLAN.md (order lifecycle endpoints + APScheduler expiry)
+Stopped at: Completed 04-03-PLAN.md (delivery cost + status display)
 Resume file: None
