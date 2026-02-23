@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useCallback } from "react";
+import React, { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { ActivityIndicator } from "react-native";
 import {
   View,
@@ -54,6 +54,8 @@ import {
   getFadeOutDownAnimation,
 } from "./lib/animations";
 import AvatarEditScreen from "./screens/AvatarEditScreen";
+import { useTheme } from "./lib/ThemeContext";
+import type { ThemeColors } from "./lib/theme";
 
 const { width, height } = Dimensions.get("window");
 
@@ -96,6 +98,7 @@ interface SettingsProps {
     | "my_info"
     | "notifications"
     | "privacy"
+    | "theme"
     | "documents"
     | null; // Initial section to show when embedded
 }
@@ -288,6 +291,8 @@ const Settings = ({
   embedded = false,
   initialSection = null,
 }: SettingsProps) => {
+  const { theme, themeMode, setThemeMode } = useTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
   const [selectedSize, setSelectedSize] = useState("M");
   const [activeSection, setActiveSection] = useState<
     | "payment"
@@ -296,6 +301,7 @@ const Settings = ({
     | "my_info"
     | "notifications"
     | "privacy"
+    | "theme"
     | "documents"
     | "delete_account"
     | null
@@ -1638,7 +1644,7 @@ const Settings = ({
         ]}
         onPress={() => handleBrandSelect(item)}
         android_ripple={{
-          color: "rgba(205, 166, 122, 0.3)",
+          color: theme.interactive.ripple,
           borderless: false,
         }}
       >
@@ -1699,7 +1705,7 @@ const Settings = ({
           <TextInput
             style={styles.searchInput}
             placeholder="поиск"
-            placeholderTextColor="rgba(0,0,0,1)"
+            placeholderTextColor={theme.text.placeholderDark}
             value={searchQuery}
             onChangeText={handleSearch}
             onFocus={handleSearchFocus}
@@ -1726,6 +1732,7 @@ const Settings = ({
       | "my_info"
       | "notifications"
       | "privacy"
+      | "theme"
       | "documents",
     delay: number,
   ) => (
@@ -1757,6 +1764,7 @@ const Settings = ({
       { title: "поддержка", section: "support" as const, delay: 150 },
       { title: "уведомления", section: "notifications" as const, delay: 200 },
       { title: "приватность", section: "privacy" as const, delay: 250 },
+      { title: "тема", section: "theme" as const, delay: 275 },
       { title: "документы", section: "documents" as const, delay: 300 },
     ];
 
@@ -1809,8 +1817,8 @@ const Settings = ({
             size={height * 0.125}
             width={10}
             fill={67}
-            tintColor="#B59679"
-            backgroundColor="#32261B"
+            tintColor={theme.accent}
+            backgroundColor={theme.text.secondary}
             rotation={225}
             arcSweepAngle={270}
             lineCap="round"
@@ -2569,7 +2577,7 @@ const Settings = ({
               <TextInput
                 style={styles.searchInput}
                 placeholder="ввести бренд"
-                placeholderTextColor="rgba(0,0,0,1)"
+                placeholderTextColor={theme.text.placeholderDark}
                 value={supportMessage}
                 onChangeText={setSupportMessage}
                 onSubmitEditing={handleSupportSend}
@@ -2612,6 +2620,77 @@ const Settings = ({
       </Animated.View>
     </View>
   );
+
+  const renderThemeContent = () => {
+    const themeOptions: Array<{ id: 'system' | 'light' | 'dark'; label: string }> = [
+      { id: 'system', label: 'системная' },
+      { id: 'light', label: 'светлая' },
+      { id: 'dark', label: 'темная' },
+    ];
+
+    return (
+      <View style={styles.contentContainer}>
+        <Animated.View
+          style={styles.backButton}
+          entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
+            ANIMATION_DELAYS.LARGE,
+          )}
+        >
+          <TouchableOpacity onPress={() => setActiveSection(null)}>
+            <BackIcon width={22} height={22} />
+          </TouchableOpacity>
+        </Animated.View>
+
+        <View style={styles.notificationsContainer}>
+          <Animated.View
+            entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
+              ANIMATION_DELAYS.STANDARD,
+            )}
+            style={styles.privacySectionTitle}
+          >
+            <Text style={styles.privacySectionTitleText}>выбор темы</Text>
+          </Animated.View>
+
+          {themeOptions.map((option, index) => (
+            <Animated.View
+              key={option.id}
+              entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
+                ANIMATION_DELAYS.STANDARD + (index + 1) * 50,
+              )}
+              style={styles.notificationItemContainer}
+            >
+              <Pressable
+                style={styles.notificationItem}
+                onPress={async () => {
+                  await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  await setThemeMode(option.id);
+                }}
+              >
+                <Text style={styles.notificationItemText}>{option.label}</Text>
+                <View style={styles.switchContainer}>
+                  <Switch
+                    value={themeMode === option.id}
+                    onValueChange={async (value) => {
+                      if (value) {
+                        await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                        await setThemeMode(option.id);
+                      }
+                    }}
+                    trackColor={{
+                      false: "#D0C0B0",
+                      true: theme.primary,
+                    }}
+                    thumbColor={theme.text.inverse}
+                    ios_backgroundColor="#D0C0B0"
+                  />
+                </View>
+              </Pressable>
+            </Animated.View>
+          ))}
+        </View>
+      </View>
+    );
+  };
 
   const renderMyInfoContent = () => {
     // Define form items for FlatList
@@ -3154,8 +3233,8 @@ const Settings = ({
               <Switch
                 value={orderNotifications}
                 onValueChange={handleOrderNotificationsChange}
-                trackColor={{ false: "#D0C0B0", true: "#CDA67A" }}
-                thumbColor="#FFF"
+                trackColor={{ false: "#D0C0B0", true: theme.primary }}
+                thumbColor={theme.text.inverse}
                 ios_backgroundColor="#D0C0B0"
               />
             </View>
@@ -3180,8 +3259,8 @@ const Settings = ({
               <Switch
                 value={marketingNotifications}
                 onValueChange={handleMarketingNotificationsChange}
-                trackColor={{ false: "#D0C0B0", true: "#CDA67A" }}
-                thumbColor="#FFF"
+                trackColor={{ false: "#D0C0B0", true: theme.primary }}
+                thumbColor={theme.text.inverse}
                 ios_backgroundColor="#D0C0B0"
               />
             </View>
@@ -3302,6 +3381,8 @@ const Settings = ({
         return renderNotificationsContent();
       case "privacy":
         return renderPrivacyContent();
+      case "theme":
+        return renderThemeContent();
       case "delete_account":
         return renderDeleteAccountContent();
       case "payment":
@@ -3345,7 +3426,7 @@ const Settings = ({
         style={styles.roundedBox}
       >
         <LinearGradient
-          colors={["rgba(205, 166, 122, 0.4)", "rgba(205, 166, 122, 0)"]}
+          colors={[theme.border.default, theme.border.transparent] as [string, string]}
           start={{ x: 0, y: 1 }}
           end={{ x: 1, y: 0.3 }}
           style={styles.gradientBackground}
@@ -3365,7 +3446,7 @@ const Settings = ({
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (theme: ThemeColors) => StyleSheet.create({
   container: {
     flex: 1,
     justifyContent: "center",
@@ -3379,10 +3460,10 @@ const styles = StyleSheet.create({
     width: "88%",
     height: "95%",
     borderRadius: 41,
-    backgroundColor: "rgba(205, 166, 122, 0)",
+    backgroundColor: theme.border.transparent,
     position: "relative",
     borderWidth: 3,
-    borderColor: "rgba(205, 166, 122, 0.4)",
+    borderColor: theme.border.default,
   },
   gradientBackground: {
     borderRadius: 37,
@@ -3393,13 +3474,13 @@ const styles = StyleSheet.create({
     bottom: 0,
   },
   whiteBox: {
-    backgroundColor: "#F2ECE7",
+    backgroundColor: theme.background.primary,
     borderRadius: 41,
     width: width * 0.88,
     top: -3,
     left: -3,
     height: "90%",
-    shadowColor: "#000",
+    shadowColor: theme.shadow.default,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.25,
     shadowRadius: 4,
@@ -3417,7 +3498,7 @@ const styles = StyleSheet.create({
   text: {
     fontFamily: "Igra Sans",
     fontSize: 34,
-    color: "#000",
+    color: theme.text.primary,
     textAlign: "left",
   },
   profileSection: {
@@ -3456,16 +3537,16 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: "transparent",
+    backgroundColor: theme.border.transparent,
     borderWidth: 2,
-    borderColor: "rgba(205, 166, 122, 0.4)",
+    borderColor: theme.border.default,
     justifyContent: "center",
     alignItems: "center",
   },
   profileName: {
     fontFamily: "IgraSans",
     fontSize: 20,
-    color: "#000",
+    color: theme.text.primary,
   },
   mainButtonsOverlay: {
     width: "100%",
@@ -3492,7 +3573,7 @@ const styles = StyleSheet.create({
     fontFamily: "IgraSans",
     fontSize: 14,
     lineHeight: 26,
-    color: "#000",
+    color: theme.text.primary,
     flexDirection: "row",
     alignItems: "center",
     marginRight: 8,
@@ -3511,10 +3592,10 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    backgroundColor: "#E2CCB2",
+    backgroundColor: theme.surface.cartItem,
     borderRadius: 41,
     padding: 20,
-    shadowColor: "#000",
+    shadowColor: theme.shadow.default,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.25,
     shadowRadius: 4,
@@ -3533,10 +3614,10 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    backgroundColor: "#E2CCB2",
+    backgroundColor: theme.surface.cartItem,
     borderRadius: 41,
     padding: 20,
-    shadowColor: "#000",
+    shadowColor: theme.shadow.default,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.25,
     shadowRadius: 4,
@@ -3546,7 +3627,7 @@ const styles = StyleSheet.create({
   notificationItemText: {
     fontFamily: "IgraSans",
     fontSize: 20,
-    color: "#000",
+    color: theme.text.primary,
     flex: 1,
     flexShrink: 1,
     marginRight: 12,
@@ -3558,16 +3639,16 @@ const styles = StyleSheet.create({
   mainButtonText: {
     fontFamily: "IgraSans",
     fontSize: 20,
-    color: "#000",
+    color: theme.text.primary,
   },
   deleteAccountButton: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    backgroundColor: "#E2B4B3",
+    backgroundColor: theme.button.delete,
     borderRadius: 41,
     padding: 20,
-    shadowColor: "#000",
+    shadowColor: theme.shadow.default,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.25,
     shadowRadius: 4,
@@ -3577,7 +3658,7 @@ const styles = StyleSheet.create({
   deleteAccountButtonText: {
     fontFamily: "IgraSans",
     fontSize: 20,
-    color: "#000",
+    color: theme.text.primary,
   },
   deleteAccountScreenContainer: {
     width: "100%",
@@ -3591,10 +3672,10 @@ const styles = StyleSheet.create({
   },
   deleteAccountQuestion: {
     width: "100%",
-    backgroundColor: "#E2CCB2",
+    backgroundColor: theme.surface.cartItem,
     borderRadius: 41,
     paddingHorizontal: 20,
-    shadowColor: "#000",
+    shadowColor: theme.shadow.default,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.25,
     shadowRadius: 4,
@@ -3607,7 +3688,7 @@ const styles = StyleSheet.create({
     textAlign: "center",
     fontFamily: "IgraSans",
     fontSize: 20,
-    color: "#000",
+    color: theme.text.primary,
     lineHeight: 39,
   },
   deleteAccountButtonsContainer: {
@@ -3629,10 +3710,10 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "#E2B4B3",
+    backgroundColor: theme.button.delete,
     borderRadius: 41,
     padding: 20,
-    shadowColor: "#000",
+    shadowColor: theme.shadow.default,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.25,
     shadowRadius: 4,
@@ -3642,16 +3723,16 @@ const styles = StyleSheet.create({
   deleteAccountYesButtonText: {
     fontFamily: "IgraSans",
     fontSize: 20,
-    color: "#000",
+    color: theme.text.primary,
   },
   deleteAccountNoButton: {
     flexDirection: "row",
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "#E2CCB2",
+    backgroundColor: theme.surface.cartItem,
     borderRadius: 41,
     padding: 20,
-    shadowColor: "#000",
+    shadowColor: theme.shadow.default,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.25,
     shadowRadius: 4,
@@ -3661,7 +3742,7 @@ const styles = StyleSheet.create({
   deleteAccountNoButtonText: {
     fontFamily: "IgraSans",
     fontSize: 20,
-    color: "#000",
+    color: theme.text.primary,
   },
   deleteAccountWarningContainer: {
     position: "absolute",
@@ -3672,7 +3753,7 @@ const styles = StyleSheet.create({
   deleteAccountWarningText: {
     fontFamily: "IgraSans",
     fontSize: 10,
-    color: "#000",
+    color: theme.text.primary,
     textAlign: "center",
     lineHeight: 17,
   },
@@ -3685,7 +3766,7 @@ const styles = StyleSheet.create({
   placeholderText: {
     fontFamily: "IgraSans",
     fontSize: 24,
-    color: "#000",
+    color: theme.text.primary,
     textAlign: "center",
     marginBottom: 10,
   },
@@ -3718,7 +3799,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontFamily: "IgraSans",
     fontSize: 20,
-    color: "#000",
+    color: theme.text.primary,
     lineHeight: 39,
   },
   favoriteBrandsSection: {
@@ -3727,8 +3808,8 @@ const styles = StyleSheet.create({
     borderRadius: 41,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "#F2ECE7",
-    shadowColor: "#000",
+    backgroundColor: theme.background.primary,
+    shadowColor: theme.shadow.default,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.25,
     shadowRadius: 4,
@@ -3736,7 +3817,7 @@ const styles = StyleSheet.create({
   favoriteBrandsButton: {
     flexDirection: "row",
     width: "100%",
-    backgroundColor: "#E2CCB2",
+    backgroundColor: theme.surface.cartItem,
     height: height * 0.1,
     borderRadius: 41,
     justifyContent: "flex-start",
@@ -3746,7 +3827,7 @@ const styles = StyleSheet.create({
   favoriteBrandsText: {
     fontFamily: "IgraSans",
     fontSize: 20,
-    color: "#000",
+    color: theme.text.primary,
   },
   statsContainer: {
     flexDirection: "row",
@@ -3754,9 +3835,9 @@ const styles = StyleSheet.create({
     height: 0.175 * height,
     alignItems: "flex-end",
     width: "100%",
-    backgroundColor: "#E2CCB2",
+    backgroundColor: theme.surface.cartItem,
     borderRadius: 41,
-    shadowColor: "#000",
+    shadowColor: theme.shadow.default,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.25,
     shadowRadius: 4,
@@ -3768,10 +3849,10 @@ const styles = StyleSheet.create({
     width: "100%",
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "#DCBF9D",
+    backgroundColor: theme.surface.elevated,
     height: height * 0.1,
     borderRadius: 41,
-    shadowColor: "#000",
+    shadowColor: theme.shadow.default,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.25,
     shadowRadius: 4,
@@ -3779,24 +3860,24 @@ const styles = StyleSheet.create({
   statValue: {
     fontFamily: "IgraSans",
     fontSize: 20,
-    color: "#000",
+    color: theme.text.primary,
   },
   statLabel: {
     fontFamily: "IgraSans",
     fontSize: 20,
-    color: "#000",
+    color: theme.text.primary,
     marginBottom: 5,
     paddingHorizontal: 18,
   },
   sizeSection: {
     width: "100%",
     flexDirection: "row",
-    backgroundColor: "#E2CCB2",
+    backgroundColor: theme.surface.cartItem,
     height: height * 0.1,
     borderRadius: 41,
     justifyContent: "flex-start",
     alignItems: "center",
-    shadowColor: "#000",
+    shadowColor: theme.shadow.default,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.25,
     shadowRadius: 4,
@@ -3804,7 +3885,7 @@ const styles = StyleSheet.create({
   sizeSectionTitle: {
     fontFamily: "IgraSans",
     fontSize: 20,
-    color: "#000",
+    color: theme.text.primary,
     marginLeft: 20,
     textAlign: "left",
   },
@@ -3818,12 +3899,12 @@ const styles = StyleSheet.create({
     height: "100%",
     minWidth: height * 0.1,
     borderRadius: 41,
-    backgroundColor: "#DCBF9D",
+    backgroundColor: theme.surface.elevated,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     paddingHorizontal: 15,
-    shadowColor: "#000",
+    shadowColor: theme.shadow.default,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.25,
     shadowRadius: 4,
@@ -3844,14 +3925,14 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   sizeText: {
-    color: "black",
+    color: theme.text.primary,
     fontFamily: "IgraSans",
     fontSize: 20,
     textAlign: "center",
   },
   selectedSizeText: {
     textDecorationLine: "underline",
-    textDecorationColor: "black",
+    textDecorationColor: theme.text.primary,
     textDecorationStyle: "solid",
   },
   sizeIndicator: {
@@ -3864,7 +3945,7 @@ const styles = StyleSheet.create({
     right: 0,
   },
   sizeIndicatorText: {
-    color: "black",
+    color: theme.text.primary,
     fontFamily: "IgraSans",
     fontSize: 20,
     textAlign: "center",
@@ -3872,7 +3953,7 @@ const styles = StyleSheet.create({
   bottomText: {
     fontFamily: "IgraSans",
     fontSize: 38,
-    color: "white",
+    color: theme.text.inverse,
     textAlign: "center",
     marginTop: 20,
   },
@@ -3894,13 +3975,13 @@ const styles = StyleSheet.create({
     marginBottom: 25,
   },
   orderBubble: {
-    backgroundColor: "#E2CCB2",
+    backgroundColor: theme.surface.cartItem,
     borderRadius: 41,
     padding: 20,
     justifyContent: "center",
     marginBottom: 20,
     height: 0.1 * height,
-    shadowColor: "#000",
+    shadowColor: theme.shadow.default,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.25,
     shadowRadius: 4,
@@ -3908,12 +3989,12 @@ const styles = StyleSheet.create({
   orderNumber: {
     fontFamily: "IgraSans",
     fontSize: 20,
-    color: "#000",
+    color: theme.text.primary,
   },
   orderSummary: {
     fontFamily: "IgraSans",
     fontSize: 20,
-    color: "#000",
+    color: theme.text.primary,
     marginLeft: 20,
   },
   // Payment styles
@@ -3924,7 +4005,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    backgroundColor: "white",
+    backgroundColor: theme.text.inverse,
     borderRadius: 12,
     padding: 15,
     marginBottom: 15,
@@ -3932,12 +4013,12 @@ const styles = StyleSheet.create({
   paymentMethodText: {
     fontFamily: "REM",
     fontSize: 16,
-    color: "#6A462F",
+    color: theme.text.tertiary,
   },
   paymentInfoText: {
     fontFamily: "REM",
     fontSize: 14,
-    color: "#CDA67A",
+    color: theme.primary,
     textAlign: "center",
   },
   // Support styles
@@ -3946,15 +4027,15 @@ const styles = StyleSheet.create({
     height: height * 0.2,
     justifyContent: "center",
     padding: 10,
-    backgroundColor: "#E2CCB2",
-    shadowColor: "#000",
+    backgroundColor: theme.surface.cartItem,
+    shadowColor: theme.shadow.default,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.25,
     shadowRadius: 4,
     borderRadius: 41,
   },
   supportButton: {
-    backgroundColor: "white",
+    backgroundColor: theme.text.inverse,
     borderRadius: 12,
     padding: 15,
     marginBottom: 15,
@@ -3962,7 +4043,7 @@ const styles = StyleSheet.create({
   supportButtonText: {
     fontFamily: "REM",
     fontSize: 16,
-    color: "#6A462F",
+    color: theme.text.tertiary,
     textAlign: "center",
   },
   brandSearchContainer: {
@@ -3974,8 +4055,8 @@ const styles = StyleSheet.create({
   selectedBubblesContainer: {
     width: "100%",
     height: height * 0.1,
-    backgroundColor: "#E2CCB2",
-    shadowColor: "#000",
+    backgroundColor: theme.surface.cartItem,
+    shadowColor: theme.shadow.default,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.25,
     shadowRadius: 4,
@@ -3992,14 +4073,14 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   selectedBrandItem: {
-    backgroundColor: "#DCC1A5",
+    backgroundColor: theme.surface.selection,
     borderRadius: 41,
     paddingHorizontal: 18,
     paddingVertical: 12,
     marginHorizontal: 4,
     ...Platform.select({
       ios: {
-        shadowColor: "#000",
+        shadowColor: theme.shadow.default,
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.25,
         shadowRadius: 4,
@@ -4012,7 +4093,7 @@ const styles = StyleSheet.create({
   selectedBrandText: {
     fontFamily: "IgraSans",
     fontSize: 22,
-    color: "#000",
+    color: theme.text.primary,
   },
   searchAndResultsContainer: {
     width: "100%",
@@ -4025,14 +4106,14 @@ const styles = StyleSheet.create({
     width: "100%",
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#DCBF9D",
+    backgroundColor: theme.surface.elevated,
     borderRadius: 41,
     paddingHorizontal: 20,
     height: 0.1 * height,
     zIndex: 2,
     ...Platform.select({
       ios: {
-        shadowColor: "#000",
+        shadowColor: theme.shadow.default,
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.25,
         shadowRadius: 4,
@@ -4050,14 +4131,14 @@ const styles = StyleSheet.create({
     flex: 1,
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#E2CCB2",
+    backgroundColor: theme.surface.cartItem,
     borderRadius: 41,
     paddingHorizontal: 20,
     height: 0.1 * height,
     marginLeft: 20,
     ...Platform.select({
       ios: {
-        shadowColor: "#000",
+        shadowColor: theme.shadow.default,
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.25,
         shadowRadius: 4,
@@ -4070,29 +4151,29 @@ const styles = StyleSheet.create({
   searchInput: {
     fontFamily: "IgraSans",
     fontSize: 20,
-    color: "#000",
+    color: theme.text.primary,
   },
   cancelButton: {
     paddingHorizontal: 20,
     paddingVertical: 10,
     borderRadius: 41,
-    backgroundColor: "#CDA67A",
+    backgroundColor: theme.primary,
   },
   cancelButtonText: {
     fontFamily: "IgraSans",
     fontSize: 20,
-    color: "#000",
+    color: theme.text.primary,
   },
   searchResultsContainer: {
     width: "100%",
     height: height * 0.47,
-    backgroundColor: "#E2CCB2",
+    backgroundColor: theme.surface.cartItem,
     borderRadius: 41,
     position: "relative",
     zIndex: 1,
     ...Platform.select({
       ios: {
-        shadowColor: "#000",
+        shadowColor: theme.shadow.default,
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.25,
         shadowRadius: 4,
@@ -4116,7 +4197,7 @@ const styles = StyleSheet.create({
   brandText: {
     fontFamily: "IgraSans",
     fontSize: 20,
-    color: "#000",
+    color: theme.text.primary,
   },
   tickContainer: {
     alignItems: "center",
@@ -4128,7 +4209,7 @@ const styles = StyleSheet.create({
   brandBubbleText: {
     fontFamily: "IgraSans",
     fontSize: 20,
-    color: "#000",
+    color: theme.text.primary,
   },
   emptyBrandsText: {
     fontFamily: "IgraSans",
@@ -4146,18 +4227,18 @@ const styles = StyleSheet.create({
   ratingText: {
     fontFamily: "IgraSans",
     fontSize: 20,
-    color: "#000",
+    color: theme.text.primary,
   },
   supportText: {
     fontFamily: "IgraSans",
     fontSize: 20,
-    color: "#000",
+    color: theme.text.primary,
     lineHeight: 39,
   },
   supportEmail: {
     fontFamily: "IgraSans",
     fontSize: 20,
-    color: "#000",
+    color: theme.text.primary,
     textDecorationLine: "underline",
     lineHeight: 39,
   },
@@ -4170,7 +4251,7 @@ const styles = StyleSheet.create({
   thankYouText: {
     fontFamily: "IgraSans",
     fontSize: 20,
-    color: "#000",
+    color: theme.text.primary,
   },
   logoutButton: {
     position: "absolute",
@@ -4181,7 +4262,7 @@ const styles = StyleSheet.create({
   logoutButtonText: {
     fontFamily: "IgraSans",
     fontSize: 20,
-    color: "#000",
+    color: theme.text.primary,
   },
   // Shopping information styles
   shoppingTitleSection: {
@@ -4193,7 +4274,7 @@ const styles = StyleSheet.create({
   shoppingTitle: {
     fontFamily: "IgraSans",
     fontSize: 24,
-    color: "#000",
+    color: theme.text.primary,
     textAlign: "center",
   },
   shoppingFormContainer: {
@@ -4214,23 +4295,23 @@ const styles = StyleSheet.create({
   inputLabel: {
     fontFamily: "IgraSans",
     fontSize: 18,
-    color: "#000",
+    color: theme.text.primary,
     marginBottom: 8,
   },
   textInput: {
-    backgroundColor: "#E2CCB2",
+    backgroundColor: theme.surface.cartItem,
     borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 12,
     paddingRight: 40, // Make room for status indicator
     fontFamily: "IgraSans",
     fontSize: 16,
-    color: "#000",
+    color: theme.text.primary,
     borderWidth: 1,
-    borderColor: "transparent",
+    borderColor: theme.border.transparent,
     ...Platform.select({
       ios: {
-        shadowColor: "#000",
+        shadowColor: theme.shadow.default,
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.1,
         shadowRadius: 2,
@@ -4245,7 +4326,7 @@ const styles = StyleSheet.create({
   },
   inputError: {
     borderWidth: 2,
-    borderColor: "rgba(255, 100, 100, 0.7)",
+    borderColor: theme.border.error,
   },
   inputSuccess: {
     borderWidth: 2,
@@ -4253,7 +4334,7 @@ const styles = StyleSheet.create({
   },
   inputChecking: {
     borderWidth: 2,
-    borderColor: "rgba(255, 165, 0, 0.7)",
+    borderColor: theme.border.checking,
   },
   statusIndicator: {
     position: "absolute",
@@ -4270,7 +4351,7 @@ const styles = StyleSheet.create({
     transform: [{ translateY: -8 }],
   },
   statusTextSuccess: {
-    color: "#00AA00",
+    color: theme.status.success,
   },
   statusTextError: {
     color: "#FF0000",
@@ -4278,7 +4359,7 @@ const styles = StyleSheet.create({
   usernameErrorText: {
     fontFamily: "REM",
     fontSize: 12,
-    color: "#FF6464",
+    color: theme.status.errorText,
     marginTop: 4,
     marginLeft: 4,
   },
@@ -4287,7 +4368,7 @@ const styles = StyleSheet.create({
     textAlignVertical: "top",
   },
   disabledInput: {
-    backgroundColor: "#D0C0B0",
+    backgroundColor: "#D0C0B0", // Switch track / disabled input neutral - no theme token
     opacity: 0.6,
   },
   saveButtonContainer: {
@@ -4296,14 +4377,14 @@ const styles = StyleSheet.create({
     alignItems: "flex-end",
   },
   confirmButton: {
-    backgroundColor: "#E0D6CC",
+    backgroundColor: theme.background.input,
     borderRadius: 41,
     paddingVertical: 12.5,
     paddingHorizontal: 25,
     alignItems: "center",
     ...Platform.select({
       ios: {
-        shadowColor: "#000",
+        shadowColor: theme.shadow.default,
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.25,
         shadowRadius: 4,
@@ -4317,7 +4398,7 @@ const styles = StyleSheet.create({
   confirmButtonText: {
     fontFamily: "IgraSans",
     fontSize: 20,
-    color: "#000",
+    color: theme.text.primary,
   },
   confirmButtonDisabled: {
     opacity: 0.6,
@@ -4326,14 +4407,14 @@ const styles = StyleSheet.create({
     opacity: 0.37,
   },
   saveButton: {
-    backgroundColor: "#CDA67A",
+    backgroundColor: theme.primary,
     borderRadius: 12,
     paddingVertical: 16,
     paddingHorizontal: 32,
     alignItems: "center",
     ...Platform.select({
       ios: {
-        shadowColor: "#000",
+        shadowColor: theme.shadow.default,
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.25,
         shadowRadius: 4,
@@ -4344,39 +4425,39 @@ const styles = StyleSheet.create({
     }),
   },
   saveButtonDisabled: {
-    backgroundColor: "#A0A0A0",
+    backgroundColor: "#A0A0A0", // Disabled neutral grey - no theme token
     opacity: 0.6,
   },
   saveButtonText: {
     fontFamily: "IgraSans",
     fontSize: 18,
-    color: "#FFF",
+    color: theme.text.inverse,
     fontWeight: "bold",
   },
   loadingText: {
     fontFamily: "IgraSans",
     fontSize: 16,
-    color: "#6A462F",
+    color: theme.text.tertiary,
     textAlign: "center",
     marginTop: 20,
   },
   errorText: {
     fontFamily: "IgraSans",
     fontSize: 16,
-    color: "#FF6B6B",
+    color: "#FF6B6B", // Slightly different red variant - no exact theme token
     textAlign: "center",
     marginTop: 20,
   },
   // Shopping information display in orders
   shoppingInfoDisplay: {
-    backgroundColor: "#E2CCB2",
+    backgroundColor: theme.surface.cartItem,
     borderRadius: 12,
     padding: 16,
     marginVertical: 10,
     marginHorizontal: 20,
     ...Platform.select({
       ios: {
-        shadowColor: "#000",
+        shadowColor: theme.shadow.default,
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.1,
         shadowRadius: 2,
@@ -4389,7 +4470,7 @@ const styles = StyleSheet.create({
   shoppingInfoTitle: {
     fontFamily: "IgraSans",
     fontSize: 18,
-    color: "#000",
+    color: theme.text.primary,
     marginBottom: 12,
     fontWeight: "bold",
   },
@@ -4399,7 +4480,7 @@ const styles = StyleSheet.create({
   shoppingInfoText: {
     fontFamily: "IgraSans",
     fontSize: 14,
-    color: "#000",
+    color: theme.text.primary,
     lineHeight: 20,
   },
   shoppingInfoLabel: {
@@ -4428,7 +4509,7 @@ const styles = StyleSheet.create({
   myInfoInputLabel: {
     fontFamily: "IgraSans",
     fontSize: 18,
-    color: "#000",
+    color: theme.text.primary,
     marginBottom: 8,
     textAlign: "center",
   },
@@ -4441,7 +4522,7 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   myInfoOvalInput: {
-    backgroundColor: "#E2CCB2",
+    backgroundColor: theme.surface.cartItem,
     borderRadius: 41,
     paddingHorizontal: 20,
     paddingVertical: 12,
@@ -4449,7 +4530,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    shadowColor: "#000",
+    shadowColor: theme.shadow.default,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.25,
     shadowRadius: 4,
@@ -4457,7 +4538,7 @@ const styles = StyleSheet.create({
     position: "relative",
   },
   myInfoOvalInputGender: {
-    backgroundColor: "#E2CCB2",
+    backgroundColor: theme.surface.cartItem,
     borderRadius: 41,
     paddingLeft: 20,
     paddingRight: 0,
@@ -4466,7 +4547,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    shadowColor: "#000",
+    shadowColor: theme.shadow.default,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.25,
     shadowRadius: 4,
@@ -4482,19 +4563,19 @@ const styles = StyleSheet.create({
   myInfoOvalInputText: {
     fontFamily: "IgraSans",
     fontSize: 16,
-    color: "#000",
+    color: theme.text.primary,
     flex: 1,
   },
   genderValueText: {
     fontFamily: "IgraSans",
     fontSize: 16,
-    color: "#000",
+    color: theme.text.primary,
   },
   myInfoOvalTextInput: {
     flex: 1,
     fontFamily: "IgraSans",
     fontSize: 16,
-    color: "#000",
+    color: theme.text.primary,
     padding: 0,
     margin: 0,
     zIndex: 1,
@@ -4526,13 +4607,13 @@ const styles = StyleSheet.create({
   floatingLabel: {
     fontFamily: "IgraSans",
     fontSize: 16,
-    color: "rgba(0,0,0,0.5)",
+    color: theme.modal.backdrop,
   },
   floatingLabelRight: {
-    color: "rgba(0,0,0,0.5)",
+    color: theme.modal.backdrop,
   },
   disabledOvalInput: {
-    backgroundColor: "#D0C0B0",
+    backgroundColor: "#D0C0B0", // Switch track / disabled input neutral - no theme token
     opacity: 0.6,
   },
   genderCirclesContainer: {
@@ -4544,23 +4625,23 @@ const styles = StyleSheet.create({
     width: height * 0.1, // Account for 2px border on each side
     height: height * 0.1,
     borderRadius: (height * 0.1) / 2,
-    backgroundColor: "#DEC2A1",
+    backgroundColor: theme.gender.circle,
     justifyContent: "center",
     alignItems: "center",
     opacity: 0.6,
-    shadowColor: "#000",
+    shadowColor: theme.shadow.default,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.25,
     shadowRadius: 4,
     elevation: 6,
   },
   genderCircleSelected: {
-    backgroundColor: "#C5A077",
+    backgroundColor: theme.gender.circleSelected,
   },
   genderCircleText: {
     fontFamily: "IgraSans",
     fontSize: 17,
-    color: "#000",
+    color: theme.text.primary,
     fontWeight: "bold",
   },
   privacySectionTitle: {
@@ -4572,12 +4653,12 @@ const styles = StyleSheet.create({
   privacySectionTitleText: {
     fontFamily: "IgraSans",
     fontSize: 20,
-    color: "#000",
+    color: theme.text.primary,
   },
   privacyOptionText: {
     fontFamily: "IgraSans",
     fontSize: 16,
-    color: "#000",
+    color: theme.text.primary,
   },
   privacyRowContainer: {
     flexDirection: "row",
@@ -4586,7 +4667,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   privacyOptionOval: {
-    backgroundColor: "#DEC2A1",
+    backgroundColor: theme.gender.circle,
     borderRadius: 41,
     paddingHorizontal: 20,
     paddingVertical: 0,
@@ -4596,7 +4677,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     overflow: "hidden",
-    shadowColor: "#000",
+    shadowColor: theme.shadow.default,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.25,
     shadowRadius: 4,
