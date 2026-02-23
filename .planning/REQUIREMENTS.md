@@ -14,7 +14,7 @@
 
 ### Dark Mode
 
-- [ ] **DARK-01**: All auth screens (Welcome, Login, Signup, ForgotPassword, etc.) render correctly in dark mode
+- [x] **DARK-01**: All auth screens (Welcome, Login, Signup, ForgotPassword, etc.) render correctly in dark mode
 - [ ] **DARK-02**: Main tab screens (Wall, Search, Cart, Favorites, Settings) render correctly in dark mode
 - [ ] **DARK-03**: Onboarding/profile screens (BrandSearch, StylesSelection, FriendRecommendations) render correctly in dark mode
 - [x] **DARK-04**: Dark mode palette values in `theme.ts` are correct (warm brown family: `#261E1A`, `#52453C`, `#806B59`)
@@ -50,7 +50,7 @@
 | LIGHT-03 | Phase 1 | Complete |
 | LIGHT-04 | Phase 3 | Deferred (not broken) |
 | DARK-04 | Phase 2 | Complete |
-| DARK-01 | Phase 2 | Pending |
+| DARK-01 | Phase 2 | Complete |
 | DARK-02 | Phase 2 | Pending |
 | DARK-03 | Phase 2 | Pending |
 | CONS-01 | Phase 3 | Pending |

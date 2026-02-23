@@ -12,15 +12,15 @@ See: .planning/PROJECT.md (updated 2026-02-21)
 **Phase 2: Dark Mode**
 - Goal: All screens correct in dark mode, no hardcoded colors
 - Status: In Progress
-- Current Plan: 1/TBD
-- Stopped At: Completed 02-01-PLAN.md
+- Current Plan: 2/TBD
+- Stopped At: Completed 02-02-PLAN.md
 
 ## Phase Status
 
 | Phase | Status | Plans |
 |-------|--------|-------|
 | 1. Light Mode Fixes | Complete | 2/2 |
-| 2. Dark Mode | In Progress | 1/TBD |
+| 2. Dark Mode | In Progress | 2/TBD |
 | 3. Consistency Sweep | Not started | 0/TBD |
 
 ## Decisions
@@ -33,6 +33,9 @@ See: .planning/PROJECT.md (updated 2026-02-21)
 - 2026-02-23 (02-01): Dark text.primary = #F5EDE4 (warm off-white per user spec)
 - 2026-02-23 (02-01): text.grey token added: '#808080' light, '#9A8878' dark
 - 2026-02-23 (02-01): applyColorSchemeImmediate used for initial load to avoid startup flash
+- [Phase 02-02]: ActivityIndicator on primary button uses theme.button.primaryText (not hardcoded #fff)
+- [Phase 02-02]: 'transparent' literal preferred over rgba(x,x,x,0) for zero-opacity backgrounds
+- [Phase 02-02]: android_ripple color uses theme.interactive.ripple instead of hardcoded #CCA479
 
 ## Performance Metrics
 
@@ -41,11 +44,12 @@ See: .planning/PROJECT.md (updated 2026-02-21)
 | 01 | 01 | ~3 min | 2 | 2 |
 | 01 | 02 | ~3 min | 1 | 1 |
 | 02 | 01 | ~2 min | 2 | 3 |
+| 02 | 02 | ~5 min | 2 | 7 |
 
 ## Last Session
 
 - Last updated: 2026-02-23
-- Stopped At: Completed 02-01-PLAN.md
+- Stopped At: Completed 02-02-PLAN.md
 
 ## Blockers/Concerns
 

@@ -59,5 +59,5 @@ Plans:
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Light Mode Fixes | 2/2 | Complete   | 2026-02-22 |
-| 2. Dark Mode | 1/5 | In Progress | - |
+| 2. Dark Mode | 2/5 | In Progress|  |
 | 3. Consistency Sweep | 0/TBD | Not started | - |
