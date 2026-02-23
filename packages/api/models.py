@@ -425,20 +425,24 @@ class Checkout(Base):
 class OrderStatus(str, Enum):
     """Canonical order status. Values are lowercase; API returns these strings.
     Keep in sync with packages/shared orderStatus.ts and schemas.ORDER_STATUS_VALUES."""
+    CREATED = "created"
     PENDING = "pending"
     PAID = "paid"
     SHIPPED = "shipped"
     RETURNED = "returned"
+    PARTIALLY_RETURNED = "partially_returned"
     CANCELED = "canceled"
 
 
 # PostgreSQL orderstatus enum has mixed values: PENDING, PAID, CANCELED (uppercase)
-# and shipped, returned (lowercase, added by migration). Map accordingly.
+# and shipped, returned, created, partially_returned (lowercase, added by migration). Map accordingly.
 _ORDER_STATUS_TO_DB = {
+    OrderStatus.CREATED: "created",
     OrderStatus.PENDING: "PENDING",
     OrderStatus.PAID: "PAID",
     OrderStatus.SHIPPED: "shipped",
     OrderStatus.RETURNED: "returned",
+    OrderStatus.PARTIALLY_RETURNED: "partially_returned",
     OrderStatus.CANCELED: "CANCELED",
 }
 
@@ -489,11 +493,13 @@ class Order(Base):
     delivery_postal_code = Column(String(20), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    expires_at = Column(DateTime, nullable=True)  # Cutoff for unpaid CREATED/PENDING orders
 
     checkout = relationship("Checkout", back_populates="orders")
     brand = relationship("Brand")
     user = relationship("User")
     items = relationship("OrderItem", back_populates="order", cascade="all, delete-orphan")
+    status_events = relationship("OrderStatusEvent", back_populates="order", cascade="all, delete-orphan", order_by="OrderStatusEvent.created_at")
 
 class OrderItemStatus(str, Enum):
     FULFILLED = "fulfilled"
@@ -534,4 +540,20 @@ class ExclusiveAccessEmail(Base):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     email = Column(String(255), unique=True, nullable=False, index=True)
-    created_at = Column(DateTime, default=datetime.utcnow) 
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+
+class OrderStatusEvent(Base):
+    """Audit log: one row per status transition on an Order."""
+    __tablename__ = "order_status_events"
+
+    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    order_id = Column(String, ForeignKey("orders.id", ondelete="CASCADE"), nullable=False, index=True)
+    from_status = Column(String(30), nullable=True)   # Null for first event (order creation)
+    to_status = Column(String(30), nullable=False)
+    actor_type = Column(String(20), nullable=False)   # "system" | "user" | "brand" | "admin"
+    actor_id = Column(String, nullable=True)          # UUID/int of the actor; null for "system"
+    note = Column(String(500), nullable=True)         # Optional human-readable reason
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+    order = relationship("Order", back_populates="status_events")
