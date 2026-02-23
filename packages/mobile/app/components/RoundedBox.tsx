@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useMemo } from "react";
 import { View, StyleSheet, ViewStyle, Platform } from "react-native";
 import Animated, {
   FadeInDown,
@@ -9,6 +9,8 @@ import {
   ANIMATION_DELAYS,
 } from "../lib/animations";
 import { Dimensions } from "react-native";
+import { useTheme } from "../lib/ThemeContext";
+import type { ThemeColors } from "../lib/theme";
 
 const { height } = Dimensions.get("window");
 
@@ -32,14 +34,14 @@ interface RoundedBoxProps {
 
 const RoundedBox: React.FC<RoundedBoxProps> = ({
   children,
-  backgroundColor = "#F2ECE7",
+  backgroundColor,
   borderRadius = 41,
   width = "88%",
   height: heightProp,
   style,
   entering,
   exiting,
-  shadowColor = "#000",
+  shadowColor,
   shadowOffset = { width: 0, height: 4 },
   shadowOpacity = 0.25,
   shadowRadius = 4,
@@ -47,6 +49,13 @@ const RoundedBox: React.FC<RoundedBoxProps> = ({
   zIndex,
   overflow = "hidden",
 }) => {
+  const { theme } = useTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
+
+  // Use theme colors as defaults if not provided
+  const finalBackgroundColor = backgroundColor || theme.background.primary;
+  const finalShadowColor = shadowColor || theme.shadow.default;
+
   const defaultEntering = entering || FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
     ANIMATION_DELAYS.LARGE
   );
@@ -57,11 +66,11 @@ const RoundedBox: React.FC<RoundedBoxProps> = ({
       style={[
         styles.container,
         {
-          backgroundColor,
+          backgroundColor: finalBackgroundColor,
           borderRadius,
-          width,
-          height: heightProp,
-          shadowColor,
+          width: width as any,
+          height: heightProp as any,
+          shadowColor: finalShadowColor,
           shadowOffset,
           shadowOpacity,
           shadowRadius,
@@ -79,10 +88,11 @@ const RoundedBox: React.FC<RoundedBoxProps> = ({
   );
 };
 
-const styles = StyleSheet.create({
-  container: {
-    position: "relative",
-  },
-});
+const createStyles = (_theme: ThemeColors) =>
+  StyleSheet.create({
+    container: {
+      position: "relative",
+    },
+  });
 
 export default RoundedBox;

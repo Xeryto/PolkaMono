@@ -1,7 +1,9 @@
-import React from "react";
+import React, { useMemo } from "react";
 import { View, Image, StyleSheet, ViewStyle, ImageStyle } from "react-native";
 import MeAlt from "./svg/MeAlt";
 import { parseAvatarTransform, transformToPixels } from "../types/avatar";
+import { useTheme } from "../lib/ThemeContext";
+import type { ThemeColors } from "../lib/theme";
 
 /** Displays the user's avatar. When avatarTransform is provided (with avatarUrl or avatarUrlFull), applies device-independent transform so framing is consistent across screens and devices. */
 export default function AvatarImage({
@@ -22,9 +24,17 @@ export default function AvatarImage({
   style?: ViewStyle;
   imageStyle?: ImageStyle;
 }) {
+  const { theme } = useTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
+
   const containerStyle = [
     styles.container,
-    { width: size, height: size, borderRadius: size / 2 },
+    {
+      width: size,
+      height: size,
+      borderRadius: size / 2,
+      backgroundColor: theme.surface.item,
+    },
     style,
   ];
 
@@ -93,22 +103,22 @@ export default function AvatarImage({
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    overflow: "hidden",
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: "#E2CCB2",
-  },
-  transformWrapper: {
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  image: {
-    width: "100%",
-    height: "100%",
-  },
-  fallback: {
-    margin: "auto",
-  },
-});
+const createStyles = (_theme: ThemeColors) =>
+  StyleSheet.create({
+    container: {
+      overflow: "hidden",
+      justifyContent: "center",
+      alignItems: "center",
+    },
+    transformWrapper: {
+      justifyContent: "center",
+      alignItems: "center",
+    },
+    image: {
+      width: "100%",
+      height: "100%",
+    },
+    fallback: {
+      margin: "auto",
+    },
+  });
