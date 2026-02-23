@@ -53,17 +53,26 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
 
         // Apply the appropriate color scheme without animation (initial load)
         if (savedMode === 'system') {
-          const systemScheme = Appearance.getColorScheme();
+          const systemScheme = Appearance.getColorScheme() ?? Appearance.getColorScheme() ?? 'light';
           const scheme = systemScheme === 'dark' ? 'dark' : 'light';
           applyColorSchemeImmediate(scheme);
+          // Re-check after a tick in case Appearance wasn't ready yet
+          setTimeout(() => {
+            const recheckScheme = Appearance.getColorScheme();
+            if (recheckScheme) applyColorSchemeImmediate(recheckScheme === 'dark' ? 'dark' : 'light');
+          }, 0);
         } else {
           applyColorSchemeImmediate(savedMode as ColorScheme);
         }
       } else {
         // Default to system theme
-        const systemScheme = Appearance.getColorScheme();
+        const systemScheme = Appearance.getColorScheme() ?? 'light';
         const scheme = systemScheme === 'dark' ? 'dark' : 'light';
         applyColorSchemeImmediate(scheme);
+        setTimeout(() => {
+          const recheckScheme = Appearance.getColorScheme();
+          if (recheckScheme) applyColorSchemeImmediate(recheckScheme === 'dark' ? 'dark' : 'light');
+        }, 0);
       }
     } catch (error) {
       console.error('Error loading theme preference:', error);
