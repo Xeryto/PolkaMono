@@ -53,7 +53,7 @@ from schemas import UserCreate
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.util import get_remote_address
-from sqlalchemy import func, or_
+from sqlalchemy import func, or_, text
 from sqlalchemy.orm import Session, joinedload
 from storage_service import generate_key, generate_presigned_upload_url
 from storage_service import is_configured as s3_configured
@@ -1766,38 +1766,85 @@ async def update_product(
     # Update product fields
     for field, value in product_data.dict(exclude_unset=True).items():
         if field == "color_variants":
-            # Replace all color variants (cascade deletes their size variants)
-            for cv in product.color_variants[:]:
-                db.delete(cv)
-            db.commit()
+            # Collect all variant IDs referenced by order_items across this product
+            all_variant_ids = [
+                v.id for cv in product.color_variants for v in cv.variants
+            ]
+            if all_variant_ids:
+                referenced_variant_ids = {
+                    row[0]
+                    for row in db.execute(
+                        text(
+                            "SELECT DISTINCT product_variant_id FROM order_items "
+                            "WHERE product_variant_id = ANY(:ids)"
+                        ),
+                        {"ids": all_variant_ids},
+                    ).fetchall()
+                }
+            else:
+                referenced_variant_ids = set()
+
+            incoming_color_names = {cv_data["color_name"] for cv_data in value}
+            existing_by_name = {cv.color_name: cv for cv in product.color_variants}
+
+            # Remove color variants no longer in the incoming list
+            for color_name, cv in existing_by_name.items():
+                if color_name not in incoming_color_names:
+                    has_referenced = any(
+                        v.id in referenced_variant_ids for v in cv.variants
+                    )
+                    if has_referenced:
+                        # Can't delete — zero stock on all its variants instead
+                        for v in cv.variants:
+                            v.stock_quantity = 0
+                    else:
+                        db.delete(cv)
+            db.flush()
+
+            # Upsert incoming color variants
             for order_index, cv_data in enumerate(value):
-                color_variant = ProductColorVariant(
-                    product_id=product.id,
-                    color_name=cv_data["color_name"],
-                    color_hex=cv_data["color_hex"],
-                    images=cv_data.get("images") or [],
-                    display_order=order_index,
-                )
-                db.add(color_variant)
-            db.commit()
-            for cv_data in value:
-                color_variant = (
-                    db.query(ProductColorVariant)
-                    .filter(
-                        ProductColorVariant.product_id == product.id,
-                        ProductColorVariant.color_name == cv_data["color_name"],
+                cv = existing_by_name.get(cv_data["color_name"])
+                if cv:
+                    # Update existing color variant in place
+                    cv.color_hex = cv_data["color_hex"]
+                    cv.images = cv_data.get("images") or []
+                    cv.display_order = order_index
+                    # Upsert size variants
+                    existing_variants_by_size = {v.size: v for v in cv.variants}
+                    incoming_sizes = {v_data["size"] for v_data in cv_data.get("variants") or []}
+                    for size, v in existing_variants_by_size.items():
+                        if size not in incoming_sizes:
+                            if v.id not in referenced_variant_ids:
+                                db.delete(v)
+                            else:
+                                v.stock_quantity = 0
+                    for v_data in cv_data.get("variants") or []:
+                        existing_v = existing_variants_by_size.get(v_data["size"])
+                        if existing_v:
+                            existing_v.stock_quantity = v_data["stock_quantity"]
+                        else:
+                            db.add(ProductVariant(
+                                product_color_variant_id=cv.id,
+                                size=v_data["size"],
+                                stock_quantity=v_data["stock_quantity"],
+                            ))
+                else:
+                    # New color variant
+                    new_cv = ProductColorVariant(
+                        product_id=product.id,
+                        color_name=cv_data["color_name"],
+                        color_hex=cv_data["color_hex"],
+                        images=cv_data.get("images") or [],
+                        display_order=order_index,
                     )
-                    .first()
-                )
-                if not color_variant:
-                    continue
-                for v_data in cv_data.get("variants") or []:
-                    variant = ProductVariant(
-                        product_color_variant_id=color_variant.id,
-                        size=v_data["size"],
-                        stock_quantity=v_data["stock_quantity"],
-                    )
-                    db.add(variant)
+                    db.add(new_cv)
+                    db.flush()
+                    for v_data in cv_data.get("variants") or []:
+                        db.add(ProductVariant(
+                            product_color_variant_id=new_cv.id,
+                            size=v_data["size"],
+                            stock_quantity=v_data["stock_quantity"],
+                        ))
             db.commit()
         elif field == "styles":
             db.query(ProductStyle).filter(
