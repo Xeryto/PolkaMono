@@ -1850,7 +1850,7 @@ const MainPage = ({ navigation, route }: MainPageProps) => {
                             ]?.color_hex?.startsWith("#")
                               ? card.color_variants[card.selected_color_index]
                                   .color_hex
-                              : "#808080",
+                              : theme.text.grey,
                           },
                         ]}
                       />
@@ -1875,7 +1875,7 @@ const MainPage = ({ navigation, route }: MainPageProps) => {
                                 {
                                   backgroundColor: cv.color_hex?.startsWith("#")
                                     ? cv.color_hex
-                                    : "#808080",
+                                    : theme.text.grey,
                                 },
                               ]}
                             />
@@ -2392,10 +2392,10 @@ const MainPage = ({ navigation, route }: MainPageProps) => {
     >
       <View style={styles.roundedBox}>
         <LinearGradient
-          colors={["rgba(205, 166, 122, 0.5)", "transparent"]}
+          colors={theme.gradients.overlay as any}
           start={{ x: 0.1, y: 1 }}
           end={{ x: 0.9, y: 0.3 }}
-          locations={[0.2, 1]}
+          locations={theme.gradients.overlayLocations as any}
           style={styles.gradientBackground}
         />
 
@@ -2961,7 +2961,7 @@ const createStyles = (theme: ThemeColors) => StyleSheet.create({
     width: 25,
     height: 25,
     borderRadius: 7,
-    backgroundColor: "rgba(230, 109, 123, 0.54)",
+    backgroundColor: theme.interactive.remove,
     justifyContent: "center",
     alignItems: "center",
     position: "absolute",
@@ -2986,7 +2986,7 @@ const createStyles = (theme: ThemeColors) => StyleSheet.create({
   cardBackName: {
     fontFamily: "IgraSans",
     fontSize: 24,
-    color: "#333",
+    color: theme.text.primary,
     flex: 1,
     flexWrap: "wrap",
   },
@@ -3058,19 +3058,19 @@ const createStyles = (theme: ThemeColors) => StyleSheet.create({
     fontFamily: "REM",
     fontSize: 18,
     fontWeight: "bold",
-    color: "#555",
+    color: theme.text.secondary,
   },
   expandableArrow: {
     fontSize: 18,
-    color: "#555",
+    color: theme.text.secondary,
   },
   expandableContent: {
     fontFamily: "REM",
     fontSize: 16,
-    color: "#777",
+    color: theme.text.tertiary,
   },
   cancelButtonRedBackground: {
-    backgroundColor: "rgba(230, 109, 123, 0.54)",
+    backgroundColor: theme.interactive.remove,
     borderRadius: 5, // Make it circular
     padding: 0,
   },
@@ -3079,7 +3079,7 @@ const createStyles = (theme: ThemeColors) => StyleSheet.create({
     top: -50,
     left: "50%",
     marginLeft: -80,
-    backgroundColor: "rgba(0, 0, 0, 0.8)",
+    backgroundColor: theme.modal.backdrop,
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 8,

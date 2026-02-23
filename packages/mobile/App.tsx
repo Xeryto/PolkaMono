@@ -471,12 +471,14 @@ function MainAppNavigator({
   onLogout: () => void;
   comingFromSignup: boolean;
 }) {
-  const { theme } = useTheme();
+  const { theme, colorScheme } = useTheme();
   const navigationRef = React.useRef<any>(null);
   const [currentRoute, setCurrentRoute] = React.useState<string>("Home");
   const insets = useSafeAreaInsets();
 
   return (
+    <>
+    <StatusBar barStyle={colorScheme === 'dark' ? 'light-content' : 'dark-content'} />
     <NavigationContainer
       ref={navigationRef}
       theme={{
@@ -520,7 +522,7 @@ function MainAppNavigator({
               styles.navbar,
               {
                 paddingBottom: Math.max(15, insets.bottom),
-                backgroundColor: theme.background.overlay,
+                backgroundColor: theme.surface.elevated,
               },
             ]}
           >
@@ -572,6 +574,7 @@ function MainAppNavigator({
         </SafeAreaView>
       </LinearGradient>
     </NavigationContainer>
+    </>
   );
 }
 

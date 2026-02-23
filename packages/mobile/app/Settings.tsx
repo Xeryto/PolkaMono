@@ -2021,7 +2021,7 @@ const Settings = ({
                       {shoppingInfo.phoneNumber && (
                         <View
                           style={{
-                            backgroundColor: "rgba(0,0,0,0.05)",
+                            backgroundColor: theme.background.overlay,
                             paddingHorizontal: 12,
                             paddingVertical: 8,
                             borderRadius: 8,
@@ -2677,11 +2677,11 @@ const Settings = ({
                       }
                     }}
                     trackColor={{
-                      false: "#D0C0B0",
+                      false: theme.border.light,
                       true: theme.primary,
                     }}
                     thumbColor={theme.text.inverse}
-                    ios_backgroundColor="#D0C0B0"
+                    ios_backgroundColor={theme.border.light}
                   />
                 </View>
               </Pressable>
@@ -3233,9 +3233,9 @@ const Settings = ({
               <Switch
                 value={orderNotifications}
                 onValueChange={handleOrderNotificationsChange}
-                trackColor={{ false: "#D0C0B0", true: theme.primary }}
+                trackColor={{ false: theme.border.light, true: theme.primary }}
                 thumbColor={theme.text.inverse}
-                ios_backgroundColor="#D0C0B0"
+                ios_backgroundColor={theme.border.light}
               />
             </View>
           </View>
@@ -3259,9 +3259,9 @@ const Settings = ({
               <Switch
                 value={marketingNotifications}
                 onValueChange={handleMarketingNotificationsChange}
-                trackColor={{ false: "#D0C0B0", true: theme.primary }}
+                trackColor={{ false: theme.border.light, true: theme.primary }}
                 thumbColor={theme.text.inverse}
-                ios_backgroundColor="#D0C0B0"
+                ios_backgroundColor={theme.border.light}
               />
             </View>
           </View>
@@ -4214,7 +4214,7 @@ const createStyles = (theme: ThemeColors) => StyleSheet.create({
   emptyBrandsText: {
     fontFamily: "IgraSans",
     fontSize: 18,
-    color: "rgba(0,0,0,0.6)",
+    color: theme.text.disabled,
     fontStyle: "italic",
     textAlign: "center",
     alignItems: "center",
@@ -4330,7 +4330,7 @@ const createStyles = (theme: ThemeColors) => StyleSheet.create({
   },
   inputSuccess: {
     borderWidth: 2,
-    borderColor: "rgba(0, 170, 0, 0.4)",
+    borderColor: theme.border.success,
   },
   inputChecking: {
     borderWidth: 2,
@@ -4354,7 +4354,7 @@ const createStyles = (theme: ThemeColors) => StyleSheet.create({
     color: theme.status.success,
   },
   statusTextError: {
-    color: "#FF0000",
+    color: theme.status.error,
   },
   usernameErrorText: {
     fontFamily: "REM",
@@ -4368,7 +4368,7 @@ const createStyles = (theme: ThemeColors) => StyleSheet.create({
     textAlignVertical: "top",
   },
   disabledInput: {
-    backgroundColor: "#D0C0B0", // Switch track / disabled input neutral - no theme token
+    backgroundColor: theme.border.light,
     opacity: 0.6,
   },
   saveButtonContainer: {
@@ -4425,7 +4425,7 @@ const createStyles = (theme: ThemeColors) => StyleSheet.create({
     }),
   },
   saveButtonDisabled: {
-    backgroundColor: "#A0A0A0", // Disabled neutral grey - no theme token
+    backgroundColor: theme.text.grey,
     opacity: 0.6,
   },
   saveButtonText: {
@@ -4444,7 +4444,7 @@ const createStyles = (theme: ThemeColors) => StyleSheet.create({
   errorText: {
     fontFamily: "IgraSans",
     fontSize: 16,
-    color: "#FF6B6B", // Slightly different red variant - no exact theme token
+    color: theme.status.errorText,
     textAlign: "center",
     marginTop: 20,
   },
@@ -4516,7 +4516,7 @@ const createStyles = (theme: ThemeColors) => StyleSheet.create({
   addressSummaryText: {
     fontFamily: "IgraSans",
     fontSize: 14,
-    color: "rgba(0,0,0,0.6)",
+    color: theme.text.disabled,
     textAlign: "left",
     paddingHorizontal: 20,
     lineHeight: 20,
@@ -4613,7 +4613,7 @@ const createStyles = (theme: ThemeColors) => StyleSheet.create({
     color: theme.modal.backdrop,
   },
   disabledOvalInput: {
-    backgroundColor: "#D0C0B0", // Switch track / disabled input neutral - no theme token
+    backgroundColor: theme.border.light,
     opacity: 0.6,
   },
   genderCirclesContainer: {
