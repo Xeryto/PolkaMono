@@ -1758,10 +1758,9 @@ async def update_product(
             detail="Товар не найден. Возможно, он был удален или перемещен.",
         )
 
-    # Ensure the product belongs to the current brand user (if applicable)
-    brand = db.query(Brand).filter(Brand.id == product.brand_id).first()
-    if not brand:
-        raise HTTPException(status_code=400, detail="Brand not found for this product")
+    # Ensure the product belongs to the current brand user
+    if product.brand_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Product does not belong to your brand")
 
     # Update product fields
     for field, value in product_data.dict(exclude_unset=True).items():
