@@ -57,6 +57,8 @@ from sqlalchemy import func, or_
 from sqlalchemy.orm import Session, joinedload
 from storage_service import generate_key, generate_presigned_upload_url
 from storage_service import is_configured as s3_configured
+from apscheduler.schedulers.background import BackgroundScheduler
+from apscheduler.triggers.interval import IntervalTrigger
 
 # Constants for image upload validation
 ALLOWED_IMAGE_CONTENT_TYPES = {"image/jpeg", "image/png", "image/webp", "image/gif"}
@@ -172,6 +174,27 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# APScheduler: background job for order expiry
+scheduler = BackgroundScheduler()
+
+
+def _expire_orders_job():
+    """Background job: expire CREATED orders past their expires_at."""
+    db = next(get_db())
+    try:
+        count = payment_service.expire_pending_orders(db)
+        if count:
+            print(f"[scheduler] expired {count} order(s)")
+    except Exception as e:
+        print(f"[scheduler] expire_pending_orders error: {e}")
+    finally:
+        db.close()
+
+
+scheduler.add_job(_expire_orders_job, IntervalTrigger(hours=1), id="expire_orders", replace_existing=True)
+scheduler.start()
+
 
 # Security
 security = HTTPBearer()
@@ -3405,6 +3428,105 @@ async def get_order_by_id(
         delivery_city=city,
         delivery_postal_code=pc,
     )
+
+
+def _is_admin(current_user) -> bool:
+    """True if the authenticated principal is the designated admin brand."""
+    if not isinstance(current_user, Brand):
+        return False
+    admin_email = getattr(settings, "ADMIN_EMAIL", None)
+    if admin_email and current_user.auth_account and current_user.auth_account.email == admin_email:
+        return True
+    return False
+
+
+@app.delete("/api/v1/orders/{order_id}/cancel", response_model=MessageResponse)
+async def buyer_cancel_order(
+    order_id: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Buyer cancels their own CREATED (unpaid) order. Stock is restored."""
+    if isinstance(current_user, Brand):
+        raise HTTPException(status_code=403, detail="Brands cannot cancel buyer orders via this endpoint")
+    order = db.query(Order).filter(Order.id == order_id, Order.user_id == str(current_user.id)).first()
+    if not order:
+        raise HTTPException(status_code=404, detail="Заказ не найден")
+    if order.status != OrderStatus.CREATED:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Только неоплаченные заказы можно отменить. Статус заказа: {order.status.value}"
+        )
+    if order.expires_at and order.expires_at < datetime.utcnow():
+        raise HTTPException(status_code=400, detail="Срок оплаты заказа истёк")
+    payment_service.update_order_status(
+        db, order_id, OrderStatus.CANCELED,
+        actor_type="user", actor_id=str(current_user.id), note="buyer cancelled"
+    )
+    db.commit()
+    return {"message": "Заказ успешно отменён"}
+
+
+@app.post("/api/v1/admin/orders/{order_id}/cancel", response_model=MessageResponse)
+async def admin_cancel_order(
+    order_id: str,
+    current_user=Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Admin cancels any order regardless of status."""
+    if not _is_admin(current_user):
+        raise HTTPException(status_code=403, detail="Admin access required")
+    order = db.query(Order).filter(Order.id == order_id).first()
+    if not order:
+        raise HTTPException(status_code=404, detail="Заказ не найден")
+    if order.status == OrderStatus.CANCELED:
+        raise HTTPException(status_code=400, detail="Заказ уже отменён")
+    payment_service.update_order_status(
+        db, order_id, OrderStatus.CANCELED,
+        actor_type="admin", actor_id=str(current_user.id), note="admin cancelled"
+    )
+    db.commit()
+    return {"message": "Заказ отменён администратором"}
+
+
+class OrderStatusEventResponse(BaseModel):
+    id: str
+    from_status: Optional[str]
+    to_status: str
+    actor_type: str
+    actor_id: Optional[str]
+    note: Optional[str]
+    created_at: datetime
+
+
+@app.get("/api/v1/orders/{order_id}/history", response_model=List[OrderStatusEventResponse])
+async def get_order_status_history(
+    order_id: str,
+    current_user=Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Return status event history for an order. Brand sees own orders; admin sees all."""
+    from models import OrderStatusEvent
+    order = db.query(Order).filter(Order.id == order_id).first()
+    if not order:
+        raise HTTPException(status_code=404, detail="Заказ не найден")
+    if isinstance(current_user, Brand):
+        if order.brand_id != current_user.id and not _is_admin(current_user):
+            raise HTTPException(status_code=403, detail="Доступ запрещён")
+    else:
+        if order.user_id != str(current_user.id):
+            raise HTTPException(status_code=403, detail="Доступ запрещён")
+    from models import OrderStatusEvent as OSE
+    events = db.query(OSE).filter(OSE.order_id == order_id).order_by(OSE.created_at).all()
+    return [OrderStatusEventResponse(
+        id=str(e.id),
+        from_status=e.from_status,
+        to_status=e.to_status,
+        actor_type=e.actor_type,
+        actor_id=e.actor_id,
+        note=e.note,
+        created_at=e.created_at,
+    ) for e in events]
 
 
 @app.get("/api/v1/checkouts/{checkout_id}", response_model=schemas.CheckoutResponse)

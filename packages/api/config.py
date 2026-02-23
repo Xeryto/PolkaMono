@@ -120,6 +120,9 @@ class Settings:
     UNISENDER_FROM_NAME: Optional[str] = os.getenv("UNISENDER_FROM_NAME")
     UNISENDER_LIST_ID: Optional[str] = os.getenv("UNISENDER_LIST_ID")
 
+    # Admin
+    ADMIN_EMAIL: Optional[str] = os.getenv("ADMIN_EMAIL")
+
     # AWS S3 (images: avatars, product images)
     AWS_ACCESS_KEY_ID: Optional[str] = os.getenv("AWS_ACCESS_KEY_ID")
     AWS_SECRET_ACCESS_KEY: Optional[str] = os.getenv("AWS_SECRET_ACCESS_KEY")
