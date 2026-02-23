@@ -55,6 +55,7 @@ import {
   NetworkRetryError,
 } from "./app/services/networkUtils";
 import { ApiError } from "./app/services/apiHelpers";
+import { ThemeProvider, useTheme } from "./app/lib/ThemeContext";
 
 import Cart from "./app/components/svg/Cart";
 import Search from "./app/components/svg/Search";
@@ -118,7 +119,7 @@ export type RootStackParamList = {
   FriendRecommendations: {
     friendId?: string;
     friendUsername?: string;
-    friendIcon?: any;
+    friendAvatarUrl?: string | null;
     initialItems?: any[];
     clickedItemIndex?: number;
   };
@@ -448,7 +449,7 @@ function MainNavigator({
                   params: {
                     friendId: params.friendId || "",
                     friendUsername: params.friendUsername || "",
-                    friendIcon: params.friendIcon,
+                    friendAvatarUrl: params.friendAvatarUrl,
                     initialItems: params.initialItems || [],
                     clickedItemIndex: params.clickedItemIndex || 0,
                   },
@@ -470,6 +471,7 @@ function MainAppNavigator({
   onLogout: () => void;
   comingFromSignup: boolean;
 }) {
+  const { theme } = useTheme();
   const navigationRef = React.useRef<any>(null);
   const [currentRoute, setCurrentRoute] = React.useState<string>("Home");
   const insets = useSafeAreaInsets();
@@ -480,12 +482,12 @@ function MainAppNavigator({
       theme={{
         dark: false,
         colors: {
-          primary: "#CDA67A",
+          primary: theme.primary,
           background: "transparent",
           card: "transparent",
-          text: "#000",
+          text: theme.text.primary,
           border: "transparent",
-          notification: "#CDA67A",
+          notification: theme.primary,
         },
       }}
       onStateChange={(state) => {
@@ -496,8 +498,8 @@ function MainAppNavigator({
       }}
     >
       <LinearGradient
-        colors={["#FAE9CF", "#CCA479", "#CDA67A", "#6A462F"]}
-        locations={[0, 0.34, 0.5, 0.87]}
+        colors={theme.gradients.main as any}
+        locations={theme.gradients.mainLocations as any}
         style={styles.gradient}
         start={{ x: 0, y: 0.2 }}
         end={{ x: 1, y: 0.8 }}
@@ -516,7 +518,10 @@ function MainAppNavigator({
           <View
             style={[
               styles.navbar,
-              { paddingBottom: Math.max(15, insets.bottom) },
+              {
+                paddingBottom: Math.max(15, insets.bottom),
+                backgroundColor: theme.background.overlay,
+              },
             ]}
           >
             <NavButton
@@ -570,7 +575,8 @@ function MainAppNavigator({
   );
 }
 
-export default function App() {
+function AppContent() {
+  const { fadeAnim } = useTheme();
   const [fontsLoaded, setFontsLoaded] = useState(false);
   const [showLoading, setShowLoading] = useState(true);
   const [showAuthLoading, setShowAuthLoading] = useState(false);
@@ -1700,6 +1706,7 @@ export default function App() {
   // User interface based on phase; overlays rendered on top
   return (
     <SafeAreaProvider>
+      <Animated.View style={{ flex: 1, opacity: fadeAnim }}>
       <GestureHandlerRootView style={{ flex: 1 }}>
         {navState.phase === "boot" && <SimpleAuthLoadingScreen />}
 
@@ -1793,7 +1800,16 @@ export default function App() {
           <LoadingScreen onFinish={handleLoadingFinish} />
         )}
       </GestureHandlerRootView>
+      </Animated.View>
     </SafeAreaProvider>
+  );
+}
+
+export default function App() {
+  return (
+    <ThemeProvider>
+      <AppContent />
+    </ThemeProvider>
   );
 }
 
@@ -1813,7 +1829,6 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-around",
     alignItems: "center",
-    backgroundColor: "rgba(205, 166, 122, 0.2)", // #CDA67A with 20% opacity
     minHeight: Dimensions.get("window").height * 0.1,
     paddingTop: 10,
     paddingBottom: 15,
@@ -1838,6 +1853,6 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "#F3E6D6",
+    backgroundColor: "transparent",
   },
 });
