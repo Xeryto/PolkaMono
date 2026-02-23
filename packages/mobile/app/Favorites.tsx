@@ -1460,7 +1460,7 @@ const MainContent = ({
       <Animated.View
         style={[
           styles.topBox,
-          { backgroundColor: activeView === "friends" ? theme.accent : theme.surface.elevated },
+          { backgroundColor: theme.surface.elevated },
           topBoxStyle,
         ]}
         entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
@@ -1543,7 +1543,7 @@ const MainContent = ({
       <Animated.View
         style={[
           styles.bottomBox,
-          { backgroundColor: activeView === "friends" ? theme.surface.elevated : theme.accent },
+          { backgroundColor: theme.background.primary },
           bottomBoxStyle,
         ]}
         entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
@@ -1784,7 +1784,7 @@ const SearchContent = ({
         style={[
           styles.topBox,
           styles.searchModeTopBox,
-          { backgroundColor: theme.accent },
+          { backgroundColor: theme.surface.elevated },
           searchModeTopBoxStyle,
         ]}
         entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(

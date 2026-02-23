@@ -213,7 +213,7 @@ const lightColors: ThemeColors = {
     disabledText: 'rgba(0, 0, 0, 0.37)',
     checkout: '#98907E',
     checkoutText: '#FFFFF5',
-    delete: '#E2B4B3',
+    delete: '#C0392B',
     cancel: '#C8A688',
     registerBackground: '#DCD3DE',
     registerText: '#A000B0',
@@ -341,11 +341,11 @@ const darkColors: ThemeColors = {
   // Surface Colors
   surface: {
     elevated: '#3D3028',
-    item: '#3D3028',
-    cartItem: '#3D3028',
+    item: '#52453C',
+    cartItem: '#52453C',
     button: '#3D3028',
     selection: '#261E1A',
-    friend: '#3D3028',
+    friend: '#52453C',
     gradientOverlay: 'rgba(38, 30, 26, 0.5)',
   },
 
@@ -370,7 +370,7 @@ const darkColors: ThemeColors = {
     disabledText: 'rgba(255, 255, 255, 0.37)',
     checkout: '#3D3028',
     checkoutText: '#F5EDE4',
-    delete: '#E2B4B3',
+    delete: '#C0392B',
     cancel: '#3D3028',
     registerBackground: '#DCD3DE',
     registerText: '#A000B0',
