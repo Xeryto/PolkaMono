@@ -1,27 +1,34 @@
-from pydantic import BaseModel, EmailStr, validator, model_validator, Field
-from typing import List, Optional, Literal
-from datetime import datetime
 import re
-from models import Gender, PrivacyOption # Import enums
-from config import settings # Import settings
+from datetime import datetime
+from typing import List, Optional
+
+from config import settings  # Import settings
+from models import Gender  # Import enums
+from pydantic import BaseModel, EmailStr, Field, model_validator, validator
+
 
 class Amount(BaseModel):
     value: float
     currency: str
 
+
 class Customer(BaseModel):
     email: Optional[EmailStr] = None
     phone: Optional[str] = None
 
-    @model_validator(mode='after')
+    @model_validator(mode="after")
     def check_at_least_one_contact(self):
         if self.email is None and self.phone is None:
-            raise ValueError('At least one of email or phone must be provided for the customer.')
+            raise ValueError(
+                "At least one of email or phone must be provided for the customer."
+            )
         return self
+
 
 class CartItem(BaseModel):
     product_variant_id: str  # Identifies color + size (ProductVariant.id)
     quantity: int = 1
+
 
 class PaymentCreate(BaseModel):
     amount: Amount
@@ -29,15 +36,16 @@ class PaymentCreate(BaseModel):
     returnUrl: str
     items: List[CartItem]
 
-    @validator('returnUrl')
+    @validator("returnUrl")
     def validate_return_url(cls, v):
         if ":://" not in v:
-            raise ValueError('returnUrl must be a valid URL containing ://')
+            raise ValueError("returnUrl must be a valid URL containing ://")
         return v
 
 
 class OrderTestCreate(BaseModel):
     """Request body for test order creation (no payment gateway)."""
+
     amount: Amount
     description: str
     items: List[CartItem]
@@ -51,6 +59,7 @@ class Delivery(BaseModel):
     cost: float
     estimatedTime: str
     tracking_number: Optional[str] = None
+
 
 class OrderItemResponse(BaseModel):
     id: str
@@ -72,9 +81,11 @@ class OrderItemResponse(BaseModel):
     class Config:
         from_attributes = True
 
+
 class UpdateTrackingRequest(BaseModel):
-    tracking_number: Optional[str] = None # Make optional for partial updates
-    tracking_link: Optional[str] = None # NEW
+    tracking_number: Optional[str] = None  # Make optional for partial updates
+    tracking_link: Optional[str] = None  # NEW
+
 
 # Order status: canonical values returned by API (lowercase).
 # Must stay in sync with OrderStatus enum in models.py and frontend/mobile libs.
@@ -83,6 +94,7 @@ ORDER_STATUS_VALUES = ("pending", "paid", "shipped", "returned", "canceled")
 
 class OrderSummaryResponse(BaseModel):
     """Lightweight order for list view (no items or delivery details)."""
+
     id: str
     number: str
     total_amount: float
@@ -105,7 +117,9 @@ class OrderResponse(BaseModel):
     status: str
     tracking_number: Optional[str] = None
     tracking_link: Optional[str] = None
-    shipping_cost: float = 0.0  # Order-level shipping (per brand); do not sum item delivery.cost
+    shipping_cost: float = (
+        0.0  # Order-level shipping (per brand); do not sum item delivery.cost
+    )
     items: List[OrderItemResponse]
     delivery_full_name: Optional[str] = None
     delivery_email: Optional[str] = None
@@ -120,6 +134,7 @@ class OrderResponse(BaseModel):
 
 class OrderPartResponse(BaseModel):
     """One brand's order within a checkout (for CheckoutResponse)."""
+
     id: str
     number: str
     brand_id: int
@@ -135,6 +150,7 @@ class OrderPartResponse(BaseModel):
 
 class CheckoutResponse(BaseModel):
     """Full checkout (Ozon-style) with nested orders per brand."""
+
     id: str
     total_amount: float
     currency: str
@@ -150,38 +166,45 @@ class CheckoutResponse(BaseModel):
     class Config:
         from_attributes = True
 
+
 class ForgotPasswordRequest(BaseModel):
     identifier: str  # Can be either email or username
+
 
 class ResetPasswordRequest(BaseModel):
     token: str
     new_password: str
+
 
 class ResetPasswordWithCodeRequest(BaseModel):
     identifier: str  # Can be either email or username
     code: str
     new_password: str
 
+
 class ValidatePasswordResetCodeRequest(BaseModel):
     identifier: str  # Can be either email or username
     code: str
+
 
 class EmailVerificationRequest(BaseModel):
     email: EmailStr
     code: str
 
+
 class ExclusiveAccessSignupRequest(BaseModel):
     email: EmailStr
+
 
 class ProductVariantSchema(BaseModel):
     id: Optional[str] = None  # Set in API response for cart/order
     size: str
     stock_quantity: int
 
-    @validator('stock_quantity')
+    @validator("stock_quantity")
     def validate_stock_quantity(cls, v):
         if v < 0:
-            raise ValueError('Stock quantity cannot be negative')
+            raise ValueError("Stock quantity cannot be negative")
         return v
 
     class Config:
@@ -215,18 +238,21 @@ class ProductCreateRequest(BaseModel):
     styles: Optional[List[str]] = []
     color_variants: List[ProductColorVariantCreate]
     material: Optional[str] = Field(None, max_length=100)
-    article_number: Optional[str] = Field(None, max_length=50)  # Auto-generated if not provided
+    article_number: Optional[str] = Field(
+        None, max_length=50
+    )  # Auto-generated if not provided
     general_images: Optional[List[str]] = None
 
-    @model_validator(mode='after')
+    @model_validator(mode="after")
     def require_at_least_one_image(self):
         has_general = self.general_images and len(self.general_images) > 0
-        has_one_per_color = (
-            self.color_variants
-            and all(cv.images and len(cv.images) > 0 for cv in self.color_variants)
+        has_one_per_color = self.color_variants and all(
+            cv.images and len(cv.images) > 0 for cv in self.color_variants
         )
         if not has_general and not has_one_per_color:
-            raise ValueError('At least one image is required: add general_images and/or at least one image per color variant.')
+            raise ValueError(
+                "At least one image is required: add general_images and/or at least one image per color variant."
+            )
         return self
 
 
@@ -241,18 +267,19 @@ class ProductUpdateRequest(BaseModel):
     material: Optional[str] = Field(None, max_length=100)
     general_images: Optional[List[str]] = None
 
-    @model_validator(mode='after')
+    @model_validator(mode="after")
     def require_at_least_one_image_if_provided(self):
         # Only validate if BOTH general_images and color_variants are provided in the update.
         # For partial updates, we cannot validate without knowing the existing product state.
         if self.general_images is not None and self.color_variants is not None:
             has_general = self.general_images and len(self.general_images) > 0
-            has_one_per_color = (
-                self.color_variants
-                and all(cv.images and len(cv.images) > 0 for cv in self.color_variants)
+            has_one_per_color = self.color_variants and all(
+                cv.images and len(cv.images) > 0 for cv in self.color_variants
             )
             if not has_general and not has_one_per_color:
-                raise ValueError('At least one image is required: add general_images and/or at least one image per color variant.')
+                raise ValueError(
+                    "At least one image is required: add general_images and/or at least one image per color variant."
+                )
         return self
 
 
@@ -275,10 +302,12 @@ class Product(BaseModel):
     class Config:
         from_attributes = True
 
+
 # User core update (username/email only)
 class UserProfileUpdateRequest(BaseModel):
     username: Optional[str] = Field(None, max_length=50)
     email: Optional[EmailStr] = None
+
 
 # Profile data schemas
 class ProfileUpdateRequest(BaseModel):
@@ -289,6 +318,7 @@ class ProfileUpdateRequest(BaseModel):
     avatar_url_full: Optional[str] = Field(None, max_length=500)
     avatar_crop: Optional[str] = Field(None, max_length=1000)
     avatar_transform: Optional[str] = Field(None, max_length=500)
+
 
 class ProfileResponse(BaseModel):
     full_name: Optional[str] = None
@@ -302,6 +332,7 @@ class ProfileResponse(BaseModel):
     class Config:
         from_attributes = True
 
+
 # Shipping info schemas
 class ShippingInfoUpdateRequest(BaseModel):
     delivery_email: Optional[EmailStr] = Field(None, max_length=255)
@@ -311,8 +342,8 @@ class ShippingInfoUpdateRequest(BaseModel):
     apartment_number: Optional[str] = Field(None, max_length=50)
     city: Optional[str] = Field(None, max_length=100)
     postal_code: Optional[str] = Field(None, max_length=20)
-    
-    @validator('phone')
+
+    @validator("phone")
     def validate_phone(cls, v):
         if v is None:
             return v
@@ -322,22 +353,24 @@ class ShippingInfoUpdateRequest(BaseModel):
         if not v:
             return v
         # Remove spaces, dashes, parentheses
-        cleaned = re.sub(r'[\s\-\(\)]', '', v)
+        cleaned = re.sub(r"[\s\-\(\)]", "", v)
         # If starts with 8, replace with +7
-        if cleaned.startswith('8'):
-            cleaned = '+7' + cleaned[1:]
+        if cleaned.startswith("8"):
+            cleaned = "+7" + cleaned[1:]
         # If starts with 7 but not +7, add +
-        elif cleaned.startswith('7') and not cleaned.startswith('+7'):
-            cleaned = '+' + cleaned
+        elif cleaned.startswith("7") and not cleaned.startswith("+7"):
+            cleaned = "+" + cleaned
         # If doesn't start with +7, add it
-        elif not cleaned.startswith('+7'):
-            cleaned = '+7' + cleaned
+        elif not cleaned.startswith("+7"):
+            cleaned = "+7" + cleaned
         # Validate format: +7 followed by exactly 10 digits
-        if not re.match(r'^\+7\d{10}$', cleaned):
-            raise ValueError('Phone number must be a valid Russian phone number (+7 followed by 10 digits)')
+        if not re.match(r"^\+7\d{10}$", cleaned):
+            raise ValueError(
+                "Phone number must be a valid Russian phone number (+7 followed by 10 digits)"
+            )
         return cleaned
-    
-    @validator('postal_code')
+
+    @validator("postal_code")
     def validate_postal_code(cls, v):
         if v is None:
             return v
@@ -346,10 +379,11 @@ class ShippingInfoUpdateRequest(BaseModel):
         if not v:
             return v
         # Remove spaces and dashes
-        cleaned = re.sub(r'[\s\-]', '', v)
-        if not re.match(r'^\d{6}$', cleaned):
-            raise ValueError('Postal code must be 6 digits (Russian format)')
+        cleaned = re.sub(r"[\s\-]", "", v)
+        if not re.match(r"^\d{6}$", cleaned):
+            raise ValueError("Postal code must be 6 digits (Russian format)")
         return cleaned
+
 
 class ShippingInfoResponse(BaseModel):
     delivery_email: Optional[str] = None
@@ -359,9 +393,10 @@ class ShippingInfoResponse(BaseModel):
     apartment_number: Optional[str] = None
     city: Optional[str] = None
     postal_code: Optional[str] = None
-    
+
     class Config:
         from_attributes = True
+
 
 # Preferences schemas
 class PreferencesUpdateRequest(BaseModel):
@@ -371,15 +406,17 @@ class PreferencesUpdateRequest(BaseModel):
     order_notifications: Optional[bool] = None
     marketing_notifications: Optional[bool] = None
 
+
 class PreferencesResponse(BaseModel):
     size_privacy: Optional[str] = None
     recommendations_privacy: Optional[str] = None
     likes_privacy: Optional[str] = None
     order_notifications: bool = True
     marketing_notifications: bool = True
-    
+
     class Config:
         from_attributes = True
+
 
 class StyleResponse(BaseModel):
     id: str
@@ -388,6 +425,7 @@ class StyleResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
 
 class UserBrandResponse(BaseModel):
     id: int
@@ -398,6 +436,7 @@ class UserBrandResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
 
 class UserProfileResponse(BaseModel):
     id: str
@@ -418,6 +457,7 @@ class UserProfileResponse(BaseModel):
     class Config:
         from_attributes = True
 
+
 class BrandCreate(BaseModel):
     name: str
     email: EmailStr
@@ -430,14 +470,16 @@ class BrandCreate(BaseModel):
     shipping_price: Optional[float] = None
     shipping_provider: Optional[str] = None
 
+
 class BrandLogin(BaseModel):
     email: EmailStr
     password: str
 
+
 class BrandUpdate(BaseModel):
     name: Optional[str] = None
     email: Optional[EmailStr] = None
-    password: Optional[str] = None # For changing password
+    password: Optional[str] = None  # For changing password
     slug: Optional[str] = None
     logo: Optional[str] = None
     description: Optional[str] = None
@@ -449,6 +491,7 @@ class BrandUpdate(BaseModel):
     registration_address: Optional[str] = None
     payout_account: Optional[str] = None
     payout_account_locked: Optional[bool] = None
+
 
 class BrandResponse(BaseModel):
     id: int
@@ -480,32 +523,46 @@ class UserCreate(BaseModel):
     gender: Optional[Gender] = None
     selected_size: Optional[str] = None
     avatar_url: Optional[str] = None
-    
-    @validator('username')
+
+    @validator("username")
     def validate_username(cls, v):
         if len(v) < settings.MIN_USERNAME_LENGTH:
-            raise ValueError(f'Username must be at least {settings.MIN_USERNAME_LENGTH} characters')
-        if ' ' in v:
-            raise ValueError('Username cannot contain spaces')
-        if not v.replace('_', '').replace('-', '').replace('#', '').replace('$', '').replace('!', '').isalnum():
-            raise ValueError('Username contains invalid characters')
+            raise ValueError(
+                f"Username must be at least {settings.MIN_USERNAME_LENGTH} characters"
+            )
+        if " " in v:
+            raise ValueError("Username cannot contain spaces")
+        if (
+            not v.replace("_", "")
+            .replace("-", "")
+            .replace("#", "")
+            .replace("$", "")
+            .replace("!", "")
+            .isalnum()
+        ):
+            raise ValueError("Username contains invalid characters")
         return v
-    
-    @validator('password')
+
+    @validator("password")
     def validate_password(cls, v):
         if len(v) < settings.MIN_PASSWORD_LENGTH:
-            raise ValueError(f'Password must be at least {settings.MIN_PASSWORD_LENGTH} characters')
-        if ' ' in v:
-            raise ValueError('Password cannot contain spaces')
+            raise ValueError(
+                f"Password must be at least {settings.MIN_PASSWORD_LENGTH} characters"
+            )
+        if " " in v:
+            raise ValueError("Password cannot contain spaces")
         if not any(c.isalpha() for c in v) or not any(c.isdigit() for c in v):
-            raise ValueError('Password must contain both letters and numbers')
+            raise ValueError("Password must contain both letters and numbers")
         return v
 
 
 class PresignedUploadRequest(BaseModel):
     """Request a presigned URL for direct S3 upload (avatar or product image)."""
+
     content_type: str = Field(..., description="e.g. image/jpeg, image/png")
-    filename: Optional[str] = Field(None, description="Optional original filename for extension")
+    filename: Optional[str] = Field(
+        None, description="Optional original filename for extension"
+    )
 
 
 class PresignedUploadResponse(BaseModel):

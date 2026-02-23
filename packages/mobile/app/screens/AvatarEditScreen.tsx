@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useMemo } from "react";
 import {
   View,
   Text,
@@ -26,6 +26,8 @@ import {
   pixelsToTransform,
   transformToPixels,
 } from "../types/avatar";
+import { useTheme } from "../lib/ThemeContext";
+import type { ThemeColors } from "../lib/theme";
 
 const { width, height } = Dimensions.get("window");
 
@@ -59,6 +61,9 @@ const AvatarEditScreen: React.FC<AvatarEditScreenProps> = ({
   currentAvatarTransform,
   onSave,
 }) => {
+  const { theme } = useTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
+
   const [selectedImage, setSelectedImage] = useState<string | null>(
     currentAvatarFull || currentAvatar || null
   );
@@ -287,7 +292,7 @@ const AvatarEditScreen: React.FC<AvatarEditScreenProps> = ({
       const ty = lastTranslate.current.y;
       const userScale = lastScale.current;
       const minDim = Math.min(originalWidth, originalHeight);
-      
+
       // View center in resized image coords (what the user sees as center of the circle)
       const centerXResized =
         resizeWidth / 2 -
@@ -295,7 +300,7 @@ const AvatarEditScreen: React.FC<AvatarEditScreenProps> = ({
       const centerYResized =
         resizeHeight / 2 -
         (ty * minDim * resizeHeight) / (originalHeight * userScale * imageDisplaySize);
-      
+
       // Visible content size: wrapper is IMAGE_DISPLAY_SIZE, scaled by userScale, clipped by circle (CROP_SIZE).
       // The scaled wrapper size is IMAGE_DISPLAY_SIZE * userScale.
       // The circle diameter is CROP_SIZE.
@@ -304,7 +309,7 @@ const AvatarEditScreen: React.FC<AvatarEditScreenProps> = ({
       // = min(IMAGE_DISPLAY_SIZE, CROP_SIZE / userScale)
       const scaledWrapperSize = imageDisplaySize * userScale;
       const visibleInWrapperCoords = Math.min(scaledWrapperSize, cropSize) / userScale;
-      
+
       // Convert visible size from wrapper coords to resized image coords
       // Wrapper shows image with cover: scale = imageDisplaySize/minDim
       // So visible in original = visibleInWrapperCoords * minDim / imageDisplaySize
@@ -313,11 +318,11 @@ const AvatarEditScreen: React.FC<AvatarEditScreenProps> = ({
         (visibleInWrapperCoords * minDim * resizeWidth) / (imageDisplaySize * originalWidth);
       const visibleInResizedH =
         (visibleInWrapperCoords * minDim * resizeHeight) / (imageDisplaySize * originalHeight);
-      
+
       // Always capture exactly the visible square, then scale to 600x600 so output matches what user sees.
       const visibleSquare = Math.min(visibleInResizedW, visibleInResizedH);
       const cropSquareSize = Math.max(1, Math.min(resizeWidth, resizeHeight, Math.round(visibleSquare)));
-      
+
       let originX = centerXResized - cropSquareSize / 2;
       let originY = centerYResized - cropSquareSize / 2;
       originX = Math.max(0, Math.min(resizeWidth - cropSquareSize, originX));
@@ -468,7 +473,7 @@ const AvatarEditScreen: React.FC<AvatarEditScreenProps> = ({
           >
             {isLoading ? (
               <View style={styles.confirmButtonLoading}>
-                <ActivityIndicator size="small" color="#4A3120" />
+                <ActivityIndicator size="small" color={theme.text.secondary} />
                 <Text style={styles.confirmButtonText}>сохранение...</Text>
               </View>
             ) : (
@@ -488,147 +493,148 @@ const AvatarEditScreen: React.FC<AvatarEditScreenProps> = ({
   );
 };
 
-const styles = StyleSheet.create({
-  container: {
-    width: "100%",
-    height: "100%",
-    justifyContent: "flex-start",
-    alignItems: "center",
-    paddingTop: height * 0.05,
-  },
-  backButton: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    zIndex: 11,
-  },
-  content: {
-    width: "100%",
-    alignItems: "center",
-    flex: 1,
-    justifyContent: "space-between",
-  },
-  title: {
-    fontFamily: "IgraSans",
-    fontSize: 24,
-    color: "#000",
-    marginBottom: height * 0.05,
-    textAlign: "center",
-  },
-  imageContainerWrapper: {
-    width: "87%",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  imageContainer: {
-    width: CROP_SIZE,
-    height: CROP_SIZE,
-    borderRadius: CROP_SIZE / 2,
-    overflow: "hidden",
-    backgroundColor: "#E2CCB2",
-    justifyContent: "center",
-    alignItems: "center",
-    ...Platform.select({
-      ios: {
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.25,
-        shadowRadius: 4,
-      },
-      android: {
-        elevation: 6,
-      },
-    }),
-  },
-  cropArea: {
-    width: CROP_SIZE,
-    height: CROP_SIZE,
-    borderRadius: CROP_SIZE / 2,
-    overflow: "hidden",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  imageWrapper: {
-    width: IMAGE_DISPLAY_SIZE,
-    height: IMAGE_DISPLAY_SIZE,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  previewImage: {
-    width: IMAGE_DISPLAY_SIZE,
-    height: IMAGE_DISPLAY_SIZE,
-  },
-  placeholder: {
-    width: "100%",
-    height: "100%",
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: "#E2CCB2",
-  },
-  pickImageButton: {
-    backgroundColor: "#E2CCB2",
-    borderRadius: 41,
-    paddingHorizontal: 32,
-    paddingVertical: 24,
-    width: "81%",
-    alignItems: "center",
-    ...Platform.select({
-      ios: {
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.25,
-        shadowRadius: 4,
-      },
-      android: {
-        elevation: 6,
-      },
-    }),
-  },
-  pickImageButtonText: {
-    fontFamily: "IgraSans",
-    fontSize: 20,
-    color: "#000",
-  },
-  buttonContainer: {
-    width: "100%",
-    alignItems: "flex-end",
-  },
-  confirmButton: {
-    backgroundColor: "#E0D6CC",
-    borderRadius: 41,
-    paddingVertical: 12.5,
-    paddingHorizontal: 25,
-    alignItems: "center",
-    ...Platform.select({
-      ios: {
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.25,
-        shadowRadius: 4,
-      },
-      android: {
-        elevation: 6,
-        overflow: "hidden",
-      },
-    }),
-  },
-  confirmButtonText: {
-    fontFamily: "IgraSans",
-    fontSize: 20,
-    color: "#000",
-  },
-  confirmButtonLoading: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-  },
-  buttonDisabled: {
-    opacity: 0.7,
-  },
-  confirmButtonDisabledText: {
-    color: "#000",
-    opacity: 0.37,
-  },
-});
+const createStyles = (theme: ThemeColors) =>
+  StyleSheet.create({
+    container: {
+      width: "100%",
+      height: "100%",
+      justifyContent: "flex-start",
+      alignItems: "center",
+      paddingTop: height * 0.05,
+    },
+    backButton: {
+      position: "absolute",
+      top: 0,
+      left: 0,
+      zIndex: 11,
+    },
+    content: {
+      width: "100%",
+      alignItems: "center",
+      flex: 1,
+      justifyContent: "space-between",
+    },
+    title: {
+      fontFamily: "IgraSans",
+      fontSize: 24,
+      color: theme.text.primary,
+      marginBottom: height * 0.05,
+      textAlign: "center",
+    },
+    imageContainerWrapper: {
+      width: "87%",
+      justifyContent: "center",
+      alignItems: "center",
+    },
+    imageContainer: {
+      width: CROP_SIZE,
+      height: CROP_SIZE,
+      borderRadius: CROP_SIZE / 2,
+      overflow: "hidden",
+      backgroundColor: theme.surface.cartItem,
+      justifyContent: "center",
+      alignItems: "center",
+      ...Platform.select({
+        ios: {
+          shadowColor: theme.shadow.default,
+          shadowOffset: { width: 0, height: 4 },
+          shadowOpacity: 0.25,
+          shadowRadius: 4,
+        },
+        android: {
+          elevation: 6,
+        },
+      }),
+    },
+    cropArea: {
+      width: CROP_SIZE,
+      height: CROP_SIZE,
+      borderRadius: CROP_SIZE / 2,
+      overflow: "hidden",
+      justifyContent: "center",
+      alignItems: "center",
+    },
+    imageWrapper: {
+      width: IMAGE_DISPLAY_SIZE,
+      height: IMAGE_DISPLAY_SIZE,
+      justifyContent: "center",
+      alignItems: "center",
+    },
+    previewImage: {
+      width: IMAGE_DISPLAY_SIZE,
+      height: IMAGE_DISPLAY_SIZE,
+    },
+    placeholder: {
+      width: "100%",
+      height: "100%",
+      justifyContent: "center",
+      alignItems: "center",
+      backgroundColor: theme.surface.cartItem,
+    },
+    pickImageButton: {
+      backgroundColor: theme.surface.cartItem,
+      borderRadius: 41,
+      paddingHorizontal: 32,
+      paddingVertical: 24,
+      width: "81%",
+      alignItems: "center",
+      ...Platform.select({
+        ios: {
+          shadowColor: theme.shadow.default,
+          shadowOffset: { width: 0, height: 4 },
+          shadowOpacity: 0.25,
+          shadowRadius: 4,
+        },
+        android: {
+          elevation: 6,
+        },
+      }),
+    },
+    pickImageButtonText: {
+      fontFamily: "IgraSans",
+      fontSize: 20,
+      color: theme.text.primary,
+    },
+    buttonContainer: {
+      width: "100%",
+      alignItems: "flex-end",
+    },
+    confirmButton: {
+      backgroundColor: theme.background.input,
+      borderRadius: 41,
+      paddingVertical: 12.5,
+      paddingHorizontal: 25,
+      alignItems: "center",
+      ...Platform.select({
+        ios: {
+          shadowColor: theme.shadow.default,
+          shadowOffset: { width: 0, height: 4 },
+          shadowOpacity: 0.25,
+          shadowRadius: 4,
+        },
+        android: {
+          elevation: 6,
+          overflow: "hidden",
+        },
+      }),
+    },
+    confirmButtonText: {
+      fontFamily: "IgraSans",
+      fontSize: 20,
+      color: theme.text.primary,
+    },
+    confirmButtonLoading: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 10,
+    },
+    buttonDisabled: {
+      opacity: 0.7,
+    },
+    confirmButtonDisabledText: {
+      color: theme.text.primary,
+      opacity: 0.37,
+    },
+  });
 
 export default AvatarEditScreen;

@@ -8,11 +8,11 @@
   "packageManager": "yarn@1.22.22",
   "scripts": {
     "install:js": "yarn install",
-    "install:py": "cd packages/api && python3 -m venv venv && . venv/bin/activate && pip install -r requirements.txt",
+    "install:py": "cd packages/api && python3 -m venv .venv && . .venv/bin/activate && pip install -r requirements.txt",
     "install:all": "yarn install:js && yarn install:py",
     "start:mobile": "yarn workspace polkamobile start --clear",
     "start:frontend": "yarn workspace vite_react_shadcn_ts start",
-    "start:api": "cd packages/api && . venv/bin/activate && uvicorn main:app --reload",
+    "start:api": "cd packages/api && . .venv/bin/activate && uvicorn main:app --reload",
     "dev": "concurrently \"yarn:start:*\""
   },
   "devDependencies": {

@@ -1,6 +1,8 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { View, Text, StyleSheet, Animated, TouchableOpacity } from 'react-native';
 import { ActivityIndicator } from 'react-native';
+import { useTheme } from '../lib/ThemeContext';
+import type { ThemeColors } from '../lib/theme';
 
 interface NetworkLoadingIndicatorProps {
   isLoading: boolean;
@@ -19,6 +21,9 @@ const NetworkLoadingIndicator: React.FC<NetworkLoadingIndicatorProps> = ({
   showTimeoutWarning = true,
   message = 'Загрузка...'
 }) => {
+  const { theme } = useTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
+
   const [showTimeoutMessage, setShowTimeoutMessage] = useState(false);
   const [elapsedTime, setElapsedTime] = useState(0);
   const fadeAnim = useState(new Animated.Value(0))[0];
@@ -30,7 +35,7 @@ const NetworkLoadingIndicator: React.FC<NetworkLoadingIndicatorProps> = ({
     if (isLoading) {
       setElapsedTime(0);
       setShowTimeoutMessage(false);
-      
+
       // Start timer
       interval = setInterval(() => {
         setElapsedTime(prev => {
@@ -83,17 +88,17 @@ const NetworkLoadingIndicator: React.FC<NetworkLoadingIndicatorProps> = ({
     <View style={styles.container}>
       {isLoading && (
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="small" color="#4A3120" />
+          <ActivityIndicator size="small" color={theme.text.secondary} />
           <Text style={styles.loadingText}>{message}</Text>
-          
+
           {/* Progress bar */}
           <View style={styles.progressContainer}>
             <View style={styles.progressBar}>
-              <View 
+              <View
                 style={[
-                  styles.progressFill, 
+                  styles.progressFill,
                   { width: `${progress}%` }
-                ]} 
+                ]}
               />
             </View>
             <Text style={styles.progressText}>
@@ -131,7 +136,7 @@ const NetworkLoadingIndicator: React.FC<NetworkLoadingIndicatorProps> = ({
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (theme: ThemeColors) => StyleSheet.create({
   container: {
     padding: 16,
     alignItems: 'center',
@@ -143,7 +148,7 @@ const styles = StyleSheet.create({
   loadingText: {
     fontFamily: 'REM-Regular',
     fontSize: 14,
-    color: '#4A3120',
+    color: theme.text.secondary,
     marginTop: 8,
     textAlign: 'center',
   },
@@ -155,41 +160,41 @@ const styles = StyleSheet.create({
   progressBar: {
     width: '100%',
     height: 4,
-    backgroundColor: '#E5E5E5',
+    backgroundColor: theme.border.light,
     borderRadius: 2,
     overflow: 'hidden',
   },
   progressFill: {
     height: '100%',
-    backgroundColor: '#4A3120',
+    backgroundColor: theme.text.secondary,
     borderRadius: 2,
   },
   progressText: {
     fontFamily: 'REM-Regular',
     fontSize: 12,
-    color: '#666',
+    color: theme.text.tertiary,
     marginTop: 4,
   },
   timeoutWarning: {
     marginTop: 12,
     padding: 12,
-    backgroundColor: '#FFF3CD',
+    backgroundColor: theme.status.warning,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#FFEAA7',
+    borderColor: theme.status.warning,
     width: '100%',
   },
   timeoutText: {
     fontFamily: 'REM-Regular',
     fontSize: 14,
-    color: '#856404',
+    color: theme.text.secondary,
     textAlign: 'center',
     fontWeight: '500',
   },
   timeoutSubtext: {
     fontFamily: 'REM-Regular',
     fontSize: 12,
-    color: '#856404',
+    color: theme.text.secondary,
     textAlign: 'center',
     marginTop: 4,
   },
@@ -200,12 +205,12 @@ const styles = StyleSheet.create({
   errorText: {
     fontFamily: 'REM-Regular',
     fontSize: 14,
-    color: '#DC3545',
+    color: theme.status.error,
     textAlign: 'center',
     marginBottom: 12,
   },
   retryButton: {
-    backgroundColor: '#4A3120',
+    backgroundColor: theme.button.primary,
     paddingHorizontal: 20,
     paddingVertical: 8,
     borderRadius: 6,
@@ -213,7 +218,7 @@ const styles = StyleSheet.create({
   retryText: {
     fontFamily: 'REM-Regular',
     fontSize: 14,
-    color: '#FFFFFF',
+    color: theme.text.inverse,
     fontWeight: '500',
   },
 });

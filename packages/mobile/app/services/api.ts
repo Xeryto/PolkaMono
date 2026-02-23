@@ -1028,6 +1028,7 @@ export interface PublicUserProfile {
   id: string;
   username: string;
   gender: 'male' | 'female' | null;
+  avatar_url?: string | null;
 }
 
 // Get public profile of another user

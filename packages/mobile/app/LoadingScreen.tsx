@@ -1,6 +1,8 @@
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useMemo } from 'react';
 import { View, Text, StyleSheet, Animated, Dimensions, Easing } from 'react-native';
 import Logo from './components/svg/Logo';
+import { useTheme } from './lib/ThemeContext';
+import type { ThemeColors } from './lib/theme';
 
 interface LoadingScreenProps {
   onFinish: () => void;
@@ -11,6 +13,9 @@ const LOGO_SIZE_LARGE = Math.min(width, height) * 0.3; // 30% of the smallest di
 const LOGO_SIZE_SMALL = 21; // Size in the navbar
 
 const LoadingScreen: React.FC<LoadingScreenProps> = ({ onFinish }) => {
+  const { theme } = useTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
+
   const fadeAnim = useRef(new Animated.Value(1)).current;
   const scaleAnim = useRef(new Animated.Value(1)).current;
   const positionY = useRef(new Animated.Value(0)).current;
@@ -29,7 +34,7 @@ const LoadingScreen: React.FC<LoadingScreenProps> = ({ onFinish }) => {
     console.log('Loading Screen mounted, starting animation');
     // Wait for 500ms with the logo showing
     const initialDelay = Animated.delay(500);
-    
+
     // First jump up - use a specific easing function to prevent bounce
     const jumpUp = Animated.timing(positionY, {
       toValue: -height * 0.05, // Jump up by 15% of screen height
@@ -37,10 +42,10 @@ const LoadingScreen: React.FC<LoadingScreenProps> = ({ onFinish }) => {
       useNativeDriver: true,
       easing: Easing.out(Easing.cubic), // Smoother deceleration
     });
-    
+
     // Calculate the position to move the logo all the way to the navbar
     const navbarPosition = height*2.5;
-    
+
     // Then animate everything with precise control
     const fadeOutLogo = Animated.timing(fadeAnim, {
       toValue: 0,
@@ -48,21 +53,21 @@ const LoadingScreen: React.FC<LoadingScreenProps> = ({ onFinish }) => {
       useNativeDriver: true,
       easing: Easing.linear, // Linear fade for consistency
     });
-    
+
     const fadeOutBg = Animated.timing(bgFadeAnim, {
       toValue: 0,
       duration: 500,
       useNativeDriver: true,
       easing: Easing.linear, // Linear fade for consistency
     });
-    
+
     const shrink = Animated.timing(scaleAnim, {
       toValue: LOGO_SIZE_SMALL / LOGO_SIZE_LARGE,
       duration: 500,
       useNativeDriver: true,
       easing: Easing.linear, // Linear scaling for consistency
     });
-    
+
     const moveDown = Animated.timing(positionY, {
       toValue: navbarPosition,
       duration: 500,
@@ -78,20 +83,20 @@ const LoadingScreen: React.FC<LoadingScreenProps> = ({ onFinish }) => {
     ]).start(() => {
       safelyFinish();
     });
-    
+
     // Safety timeout in case animation fails to complete
     const safetyTimeout = setTimeout(() => {
       safelyFinish();
     }, 2000); // 5 second timeout
-    
+
     // Clean up on unmount
     return () => clearTimeout(safetyTimeout);
   }, []);
 
   return (
-    <Animated.View 
+    <Animated.View
       style={[
-        styles.container, 
+        styles.container,
         { opacity: bgFadeAnim }
       ]}
     >
@@ -109,8 +114,8 @@ const LoadingScreen: React.FC<LoadingScreenProps> = ({ onFinish }) => {
       >
         <Logo width={LOGO_SIZE_LARGE} height={LOGO_SIZE_LARGE} />
       </Animated.View>
-      
-      <Animated.Text 
+
+      <Animated.Text
         style={[
           styles.poweredByText,
           { opacity: fadeAnim }
@@ -126,10 +131,10 @@ const LoadingScreen: React.FC<LoadingScreenProps> = ({ onFinish }) => {
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (theme: ThemeColors) => StyleSheet.create({
   container: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: '#F3E6D6',
+    backgroundColor: theme.background.loading,
     justifyContent: 'center',
     alignItems: 'center',
     zIndex: 1000,
@@ -141,7 +146,7 @@ const styles = StyleSheet.create({
   poweredByText: {
     fontFamily: 'IgraSans',
     fontSize: 13,
-    color: '#4A3120',
+    color: theme.text.secondary,
     marginTop: 20,
     textAlign: 'center',
     width: '100%',
@@ -156,4 +161,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default LoadingScreen; 
+export default LoadingScreen;

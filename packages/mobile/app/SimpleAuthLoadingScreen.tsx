@@ -1,6 +1,8 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { View, Text, StyleSheet, Dimensions } from 'react-native';
 import Logo from './components/svg/Logo';
+import { useTheme } from './lib/ThemeContext';
+import type { ThemeColors } from './lib/theme';
 
 const { width, height } = Dimensions.get('window');
 const LOGO_SIZE = Math.min(width, height) * 0.3; // 30% of the smallest dimension
@@ -10,12 +12,15 @@ interface SimpleAuthLoadingScreenProps {
 }
 
 const SimpleAuthLoadingScreen: React.FC<SimpleAuthLoadingScreenProps> = () => {
+  const { theme } = useTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
+
   return (
     <View style={styles.container}>
       <View style={styles.logoContainer}>
         <Logo width={LOGO_SIZE} height={LOGO_SIZE} />
       </View>
-      
+
       <Text style={styles.poweredByText}>
         Powered by AI
       </Text>
@@ -28,10 +33,10 @@ const SimpleAuthLoadingScreen: React.FC<SimpleAuthLoadingScreenProps> = () => {
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (theme: ThemeColors) => StyleSheet.create({
   container: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: '#F3E6D6',
+    backgroundColor: theme.background.loading,
     justifyContent: 'center',
     alignItems: 'center',
     zIndex: 1000,
@@ -44,7 +49,7 @@ const styles = StyleSheet.create({
   poweredByText: {
     fontFamily: 'IgraSans',
     fontSize: 13,
-    color: '#4A3120',
+    color: theme.text.secondary,
     marginTop: 20,
     textAlign: 'center',
     width: '100%',
@@ -60,9 +65,9 @@ const styles = StyleSheet.create({
   loadingText: {
     fontFamily: 'REM',
     fontSize: 16,
-    color: '#4A3120',
+    color: theme.text.secondary,
     marginTop: 30,
   }
 });
 
-export default SimpleAuthLoadingScreen; 
+export default SimpleAuthLoadingScreen;
