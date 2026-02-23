@@ -3144,21 +3144,10 @@ async def health_check():
 @app.post("/api/v1/payments/create", response_model=PaymentCreateResponse)
 async def create_payment_endpoint(
     payment_data: schemas.PaymentCreate,
-    request: Request,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    print("Entered create_payment_endpoint")
-    print(f"Request headers: {request.headers}")
     try:
-        raw_request_body = await request.body()
-        print(
-            f"Raw incoming request body for /api/v1/payments/create: {raw_request_body.decode()}"
-        )
-
-        # This line is where Pydantic validation happens implicitly
-        # payment_data = schemas.PaymentCreate.parse_raw(raw_request_body) # This is handled by FastAPI automatically
-
         confirmation_url = payment_service.create_payment(
             db=db,
             user_id=current_user.id,
