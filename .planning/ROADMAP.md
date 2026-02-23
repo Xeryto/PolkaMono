@@ -35,7 +35,14 @@ Plans:
   2. All auth screens (Welcome, Login, Signup, ForgotPassword, etc.) display correctly in dark mode — no hardcoded light colors visible
   3. All five main tab screens (Wall, Search, Cart, Favorites, Settings) display correctly in dark mode
   4. Onboarding/profile screens (BrandSearch, StylesSelection, FriendRecommendations) display correctly in dark mode
-**Plans**: TBD
+**Plans**: 5 plans
+
+Plans:
+- [ ] 02-01-PLAN.md — Fix dark palette values in theme.ts + add text.grey token + 200ms fade transition in ThemeContext
+- [ ] 02-02-PLAN.md — Auth screens sweep: fix all hardcoded colors in 12 auth/loading screens
+- [ ] 02-03-PLAN.md — Main tab screens sweep: fix Wall, Search, Cart, Favorites, Settings, MainPage, App.tsx
+- [ ] 02-04-PLAN.md — Onboarding screens + shared components: BrandSearch, StylesSelection, FriendRecommendations, AvatarEdit, RecentPieces, AvatarImage, NetworkLoadingIndicator, RoundedBox
+- [ ] 02-05-PLAN.md — Human visual verification checkpoint for all dark mode screens
 
 ### Phase 3: Consistency Sweep
 **Goal**: No screen or component uses hardcoded colors; theme switches reactively

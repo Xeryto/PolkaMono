@@ -43,6 +43,7 @@ export interface ThemeColors {
     disabled: string;        // Disabled text
     placeholderDark: string; // Dark placeholder
     inverse: string;         // Text on dark backgrounds
+    grey: string;            // Grey text for icons/muted elements
   };
 
   // Button Colors
@@ -199,6 +200,7 @@ const lightColors: ThemeColors = {
     disabled: 'rgba(0, 0, 0, 0.4)',
     placeholderDark: 'rgba(0, 0, 0, 1)',
     inverse: '#FFFFFF',
+    grey: '#808080',
   },
 
   // Button Colors
@@ -322,66 +324,54 @@ const lightColors: ThemeColors = {
 // Dark Theme Colors - Based on color mapping table
 const darkColors: ThemeColors = {
   // Primary/Brand Colors
-  // Light #CDA67A -> Dark #261E1A
-  primary: '#261E1A',
-  // Light #C8A688 -> Similar mapping to primaryVariant
-  accent: '#3D322B',
+  primary: '#806B59',
+  accent: '#806B59',
 
   // Background Colors
   background: {
-    // Light #F2ECE7 -> Dark #806B59
-    primary: '#806B59',
-    // Light #E2CCB2 -> Derived dark shade
-    secondary: '#52453C',
-    // Light #EDE7E2 -> Dark #EDE7E2 (logo/buttons - unchanged)
-    tertiary: '#EDE7E2',
-    // Light #F3E6D6 -> Derived dark shade
-    elevated: '#52453C',
-    // Light #E0D6CC -> Derived dark shade
-    input: '#52453C',
+    primary: '#261E1A',
+    secondary: '#3D3028',
+    tertiary: '#261E1A',
+    elevated: '#3D3028',
+    input: '#3D3028',
     overlay: 'rgba(205, 166, 122, 0.4)',
-    loading: '#52453C',
+    loading: '#261E1A',
   },
 
   // Surface Colors
   surface: {
-    elevated: '#52453C',
-    item: '#EDE7E2',
-    cartItem: '#52453C',
-    button: '#52453C',
-    selection: '#382E28',
-    friend: '#52453C',
-    gradientOverlay: 'rgba(205, 166, 122, 0.5)',
+    elevated: '#3D3028',
+    item: '#3D3028',
+    cartItem: '#3D3028',
+    button: '#3D3028',
+    selection: '#261E1A',
+    friend: '#3D3028',
+    gradientOverlay: 'rgba(38, 30, 26, 0.5)',
   },
 
   // Text Colors
   text: {
-    // Light #000000 -> Dark #FFFFFF (inverted)
-    primary: '#FFFFFF',
-    // Light #4A3120 -> Dark #4A3120 (unchanged - logo/buttons)
-    secondary: '#4A3120',
-    // Light #6A462F -> Dark #6A462F (unchanged)
-    tertiary: '#6A462F',
-    disabled: 'rgba(255, 255, 255, 0.4)',
-    placeholderDark: 'rgba(255, 255, 255, 1)',
-    // Light #FFFFFF -> Dark #000000 (inverted)
-    inverse: '#000000',
+    primary: '#F5EDE4',
+    secondary: '#C4A882',
+    tertiary: '#A07856',
+    disabled: 'rgba(245, 237, 228, 0.4)',
+    placeholderDark: 'rgba(245, 237, 228, 1)',
+    inverse: '#261E1A',
+    grey: '#9A8878',
   },
 
   // Button Colors
   button: {
-    // Light #4A3120 -> Dark #4A3120 (logo/buttons - unchanged)
-    primary: '#4A3120',
-    // Light #F2ECE7 -> Dark #EDE7E2 (logo/buttons)
-    primaryText: '#EDE7E2',
-    secondary: '#52453C',
-    secondaryText: '#FFFFFF',
+    primary: '#806B59',
+    primaryText: '#F5EDE4',
+    secondary: '#3D3028',
+    secondaryText: '#F5EDE4',
     disabled: 'rgba(205, 166, 122, 0.4)',
     disabledText: 'rgba(255, 255, 255, 0.37)',
-    checkout: '#4A3E33',
-    checkoutText: '#FFFFFF',
+    checkout: '#3D3028',
+    checkoutText: '#F5EDE4',
     delete: '#E2B4B3',
-    cancel: '#261E1A',
+    cancel: '#3D3028',
     registerBackground: '#DCD3DE',
     registerText: '#A000B0',
   },
@@ -419,21 +409,21 @@ const darkColors: ThemeColors = {
 
   // Border Colors
   border: {
-    default: 'rgba(205, 166, 122, 0.4)',
-    light: '#52453C',
+    default: 'rgba(128, 107, 89, 0.4)',
+    light: '#3D3028',
     error: 'rgba(255, 100, 100, 0.7)',
     success: 'rgba(0, 170, 0, 0.7)',
     checking: 'rgba(255, 165, 0, 0.7)',
     transparent: 'transparent',
-    subtle: 'rgba(106, 70, 47, 0.15)',
+    subtle: 'rgba(61, 48, 40, 0.6)',
   },
 
   // Size Selection
   size: {
-    available: '#52453C',
-    unavailable: '#2B231F',
-    userSize: '#261E1A',
-    selected: '#4A3120',
+    available: '#3D3028',
+    unavailable: '#261E1A',
+    userSize: '#806B59',
+    selected: '#806B59',
     text: '#FFFFFF',
   },
 
@@ -470,21 +460,21 @@ const darkColors: ThemeColors = {
   // Modal/Overlay
   modal: {
     backdrop: 'rgba(0, 0, 0, 0.5)',
-    background: '#806B59',
+    background: '#261E1A',
   },
 
   // Gradients
   gradients: {
-    main: ['#52453C', '#382E28', '#261E1A', '#1A1512'],
+    main: ['#3D3028', '#261E1A', '#1F1713', '#130E0B'],
     mainLocations: [0, 0.34, 0.5, 0.87],
-    overlay: ['rgba(205, 166, 122, 0.5)', 'transparent'],
+    overlay: ['rgba(38, 30, 26, 0.5)', 'transparent'],
     overlayLocations: [0.2, 1],
     regenerateButtonBorder: ['#FC8CAF', '#9EA7FF', '#A3FFD0'],
     regenerateButton: ['#E222F0', '#4747E4', '#E66D7B'],
     registerButton: ['#DCD3DE', '#9535EA', '#E222F0'],
     friendUsername: ['#FFFFFF8F', '#FF10FB59', '#0341EA6B'],
-    titleOval: ['#52453C4D', '#52453C'],
-    titleOvalContainer: ['#52453C', '#382E28'],
+    titleOval: ['#3D30284D', '#3D3028'],
+    titleOvalContainer: ['#3D3028', '#261E1A'],
   },
 };
 
