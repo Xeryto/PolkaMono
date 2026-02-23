@@ -1,6 +1,8 @@
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useMemo } from 'react';
 import { View, Text, StyleSheet, Animated, Dimensions, Easing } from 'react-native';
 import Logo from './components/svg/Logo';
+import { useTheme } from './lib/ThemeContext';
+import type { ThemeColors } from './lib/theme';
 
 interface LoadingScreenProps {
   onFinish: () => void;
@@ -11,6 +13,9 @@ const LOGO_SIZE_LARGE = Math.min(width, height) * 0.3; // 30% of the smallest di
 const LOGO_SIZE_SMALL = LOGO_SIZE_LARGE*0.86; // Size in the navbar
 
 const AuthLoadingScreen: React.FC<LoadingScreenProps> = ({ onFinish }) => {
+  const { theme } = useTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
+
   const fadeAnim = useRef(new Animated.Value(1)).current;
   const scaleAnim = useRef(new Animated.Value(1)).current;
   const positionY = useRef(new Animated.Value(0)).current;
@@ -98,7 +103,7 @@ const AuthLoadingScreen: React.FC<LoadingScreenProps> = ({ onFinish }) => {
         {
           opacity: bgFadeAnim,
           // Make sure background color has alpha for smooth transitions
-          backgroundColor: 'rgba(243, 230, 214, 1)'
+          backgroundColor: theme.background.loading
         }
       ]}
     >
@@ -133,10 +138,10 @@ const AuthLoadingScreen: React.FC<LoadingScreenProps> = ({ onFinish }) => {
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (theme: ThemeColors) => StyleSheet.create({
   container: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: '#F3E6D6',
+    backgroundColor: theme.background.loading,
     justifyContent: 'center',
     alignItems: 'center',
     zIndex: 1000,
@@ -149,7 +154,7 @@ const styles = StyleSheet.create({
   poweredByText: {
     fontFamily: 'IgraSans',
     fontSize: 13,
-    color: '#4A3120',
+    color: theme.text.secondary,
     marginTop: 20,
     textAlign: 'center',
     width: '100%',

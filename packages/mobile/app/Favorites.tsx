@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, memo } from "react";
+import React, { useState, useEffect, useRef, memo, useMemo } from "react";
 import {
   View,
   Text,
@@ -19,7 +19,6 @@ import {
   FlexAlignType,
   FlexStyle,
   Alert,
-  ImageStyle, // Added ImageStyle
   ActivityIndicator,
 } from "react-native";
 import Animated, {
@@ -60,6 +59,8 @@ import {
   ANIMATION_EASING,
 } from "./lib/animations";
 import { mapProductToCardItem } from "./lib/productMapper";
+import { useTheme } from "./lib/ThemeContext";
+import type { ThemeColors } from "./lib/theme";
 
 // Define a simpler navigation type that our custom navigation can satisfy
 interface SimpleNavigation {
@@ -85,17 +86,16 @@ interface UserActionButtonProps {
 
 const { width, height } = Dimensions.get("window");
 
-// Use platform-specific animation configs
 const ANIMATION_CONFIG = {
-  duration: Platform.OS === "ios" ? 400 : 300, // Faster on Android
+  duration: 400,
   easing: Easing.bezier(0.25, 0.1, 0.25, 1),
 };
 
-// Disable complex animations on Android for better performance
-const USE_ANIMATIONS = Platform.OS === "ios";
-
 // Price tag component with dynamic sizing using the article's approach
 const PriceTag = ({ price }: { price: number }) => {
+  const { theme } = useTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
+
   const [textWidth, setTextWidth] = useState(0);
   const [textHeight, setTextHeight] = useState(0);
   const [isMeasured, setIsMeasured] = useState(false);
@@ -250,6 +250,9 @@ const UserActionButton = memo(
 );
 
 const Favorites = ({ navigation }: FavoritesProps) => {
+  const { theme } = useTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
+
   // Basic state
   const [activeView, setActiveView] = useState<"friends" | "saved">("friends");
   const [isSearchActive, setIsSearchActive] = useState(false);
@@ -671,8 +674,7 @@ const Favorites = ({ navigation }: FavoritesProps) => {
     fromFavorites: boolean = false,
   ) => {
     setIsMounted(false);
-    // Use a shorter timeout on Android
-    const delay = Platform.OS === "ios" ? 50 : 0;
+    const delay = 50;
     setTimeout(() => {
       if (fromFavorites && params && screen === "Home") {
         // Spread the entire item to preserve all fields including article_number
@@ -909,81 +911,39 @@ const Favorites = ({ navigation }: FavoritesProps) => {
     item,
     index,
     separators,
-  }) => {
-    // Simple static rendering for Android
-    if (!USE_ANIMATIONS) {
-      return (
-        <Animated.View style={styles.productItem}>
-          <Pressable
-            style={styles.productImageContainer}
-            onPress={() => {
-              console.log(`Saved item pressed: ${item.brand_name}`);
-              // Navigate with saved item
-              handleNavigate("Home", item, true);
-            }}
-          >
-            {item.images && item.images.length > 0 ? (
-              <Image source={item.images[0]} style={styles.productItemImage} />
-            ) : (
-              <View
-                style={[
-                  styles.productItemImage,
-                  styles.noProductImagePlaceholder,
-                ]}
-              >
-                <Text style={styles.noProductImageText}>Нет изображения</Text>
-              </View>
-            )}
-            <View style={styles.productItemInfo}>
-              <Text style={styles.productItemName} numberOfLines={1}>
-                {item.brand_name}
-              </Text>
-            </View>
-            <PriceTag price={item.price} />
-          </Pressable>
-        </Animated.View>
-      );
-    }
-
-    // More complex animations for iOS
-    return (
-      <Animated.View
-        entering={FadeInDown.duration(ANIMATION_DURATIONS.STANDARD).delay(
-          ANIMATION_DELAYS.STANDARD + index * ANIMATION_DELAYS.SMALL,
-        )}
-        exiting={FadeOutDown.duration(ANIMATION_DURATIONS.MICRO)}
-        style={styles.productItem}
+  }) => (
+    <Animated.View
+      entering={FadeInDown.duration(ANIMATION_DURATIONS.STANDARD).delay(
+        ANIMATION_DELAYS.STANDARD + index * ANIMATION_DELAYS.SMALL,
+      )}
+      exiting={FadeOutDown.duration(ANIMATION_DURATIONS.MICRO)}
+      style={styles.productItem}
+    >
+      <Pressable
+        style={styles.productImageContainer}
+        onPress={() => {
+          console.log(`Saved item pressed: ${item.brand_name}`);
+          handleNavigate("Home", item, true);
+        }}
       >
-        <Pressable
-          style={styles.productImageContainer}
-          onPress={() => {
-            console.log(`Saved item pressed: ${item.name}`);
-            // Navigate with saved item
-            handleNavigate("Home", item, true);
-          }}
-        >
-          {item.images && item.images.length > 0 ? (
-            <Image source={item.images[0]} style={styles.productItemImage} />
-          ) : (
-            <View
-              style={[
-                styles.productItemImage,
-                styles.noProductImagePlaceholder,
-              ]}
-            >
-              <Text style={styles.noProductImageText}>Нет изображения</Text>
-            </View>
-          )}
-          <View style={styles.productItemInfo}>
-            <Text style={styles.productItemName} numberOfLines={1}>
-              {item.brand_name}
-            </Text>
+        {item.images && item.images.length > 0 ? (
+          <Image source={item.images[0]} style={styles.productItemImage} />
+        ) : (
+          <View
+            style={[styles.productItemImage, styles.noProductImagePlaceholder]}
+          >
+            <Text style={styles.noProductImageText}>Нет изображения</Text>
           </View>
-          <PriceTag price={item.price} />
-        </Pressable>
-      </Animated.View>
-    );
-  };
+        )}
+        <View style={styles.productItemInfo}>
+          <Text style={styles.productItemName} numberOfLines={1}>
+            {item.brand_name}
+          </Text>
+        </View>
+        <PriceTag price={item.price} />
+      </Pressable>
+    </Animated.View>
+  );
 
   // Replace renderFriendItem
   const renderFriendItem: ListRenderItem<FriendItem> = ({ item, index }) => {
@@ -1071,91 +1031,41 @@ const Favorites = ({ navigation }: FavoritesProps) => {
       friend: FriendItem,
       recommendedItems: CardItem[],
     ): ListRenderItem<CardItem> =>
-    ({ item, index, separators }) => {
-      // Simple static rendering for Android
-      if (!USE_ANIMATIONS) {
-        return (
-          <View style={styles.recommendationItemWrapper}>
-            <View style={styles.itemContainer}>
-              <Pressable
-                style={styles.itemImageContainer}
-                onPress={() => {
-                  console.log(`Recommended item pressed: ${item.brand_name}`);
-
-                  // Navigate to FriendRecommendationsScreen with friend data and items starting from clicked item
-                  navigation.navigate("FriendRecommendations", {
-                    friendId: friend.id,
-                    friendUsername: friend.username,
-                    friendIcon: require("./assets/Vision.png"), // Default icon
-                    initialItems: recommendedItems,
-                    clickedItemIndex: index,
-                  });
-                }}
+    ({ item, index, separators }) => (
+      <View style={styles.recommendationItemWrapper}>
+        <View style={styles.itemContainer}>
+          <Pressable
+            style={styles.itemImageContainer}
+            onPress={() => {
+              console.log(`Recommended item pressed: ${item.brand_name}`);
+              navigation.navigate("FriendRecommendations", {
+                friendId: friend.id,
+                friendUsername: friend.username,
+                friendAvatarUrl: friend.avatar_url ?? undefined,
+                initialItems: recommendedItems,
+                clickedItemIndex: index,
+              });
+            }}
+          >
+            {item.images && item.images.length > 0 ? (
+              <Image source={item.images[0]} style={styles.itemImage} />
+            ) : (
+              <View
+                style={[styles.itemImage, styles.noProductImagePlaceholder]}
               >
-                {item.images && item.images.length > 0 ? (
-                  <Image
-                    source={item.images[0]}
-                    style={styles.itemImage as ImageStyle}
-                  />
-                ) : (
-                  <View
-                    style={[styles.itemImage, styles.noProductImagePlaceholder]}
-                  >
-                    <Text style={styles.noProductImageText}>
-                      Нет изображения
-                    </Text>
-                  </View>
-                )}
-                <View style={styles.itemInfo}>
-                  <Text style={styles.itemName} numberOfLines={1}>
-                    {item.brand_name}
-                  </Text>
-                </View>
-                <PriceTag price={item.price} />
-              </Pressable>
-            </View>
-          </View>
-        );
-      }
-
-      // More complex animations for iOS
-      return (
-        <View style={styles.recommendationItemWrapper}>
-          <View style={styles.itemContainer}>
-            <Pressable
-              style={styles.itemImageContainer}
-              onPress={() => {
-                console.log(`Recommended item pressed: ${item.name}`);
-                // Navigate to FriendRecommendationsScreen with friend data and items starting from clicked item
-                navigation.navigate("FriendRecommendations", {
-                  friendId: friend.id,
-                  friendUsername: friend.username,
-                  friendIcon: require("./assets/Vision.png"), // Default icon
-                  initialItems: recommendedItems,
-                  clickedItemIndex: index,
-                });
-              }}
-            >
-              {item.images && item.images.length > 0 ? (
-                <Image source={item.images[0]} style={styles.itemImage} />
-              ) : (
-                <View
-                  style={[styles.itemImage, styles.noProductImagePlaceholder]}
-                >
-                  <Text style={styles.noProductImageText}>Нет изображения</Text>
-                </View>
-              )}
-              <View style={styles.itemInfo}>
-                <Text style={styles.itemName} numberOfLines={1}>
-                  {item.brand_name}
-                </Text>
+                <Text style={styles.noProductImageText}>Нет изображения</Text>
               </View>
-              <PriceTag price={item.price} />
-            </Pressable>
-          </View>
+            )}
+            <View style={styles.itemInfo}>
+              <Text style={styles.itemName} numberOfLines={1}>
+                {item.brand_name}
+              </Text>
+            </View>
+            <PriceTag price={item.price} />
+          </Pressable>
         </View>
-      );
-    };
+      </View>
+    );
 
   // Custom render function for search results that includes user status
   const renderSearchUser: ListRenderItem<FriendItem> = ({
@@ -1253,10 +1163,7 @@ const Favorites = ({ navigation }: FavoritesProps) => {
             disabled={item.status !== "friend"}
           >
             <View style={styles.imageContainer}>
-              <AvatarImage
-                avatarUrl={item.avatar_url}
-                size={width * 0.2}
-              />
+              <AvatarImage avatarUrl={item.avatar_url} size={width * 0.2} />
             </View>
             <View style={styles.userInfo}>
               <Text style={styles.itemName} numberOfLines={1}>
@@ -1530,6 +1437,8 @@ const MainContent = ({
   isSmallScreen = false,
   screenHeight,
 }: MainContentProps) => {
+  const { theme } = useTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
   // Responsive box dimensions for iPhone SE and small screens
   const h = screenHeight ?? height;
   const topBoxStyle = isSmallScreen
@@ -1551,7 +1460,7 @@ const MainContent = ({
       <Animated.View
         style={[
           styles.topBox,
-          { backgroundColor: activeView === "friends" ? "#C8A688" : "#AE8F72" },
+          { backgroundColor: activeView === "friends" ? theme.accent : "#AE8F72" },
           topBoxStyle,
         ]}
         entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
@@ -1634,7 +1543,7 @@ const MainContent = ({
       <Animated.View
         style={[
           styles.bottomBox,
-          { backgroundColor: activeView === "friends" ? "#AE8F72" : "#C8A688" },
+          { backgroundColor: activeView === "friends" ? "#AE8F72" : theme.accent },
           bottomBoxStyle,
         ]}
         entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
@@ -1642,35 +1551,20 @@ const MainContent = ({
         )}
         //exiting={FadeOutDown.duration(50)}
       >
-        {Platform.OS === "ios" ? (
-          <Animated.View
-            style={[bottomBoxAnimatedStyle, { flex: 1, borderRadius: 41 }]}
-          >
-            <BottomBoxContent
-              activeView={activeView}
-              handleBottomBoxPressIn={handleBottomBoxPressIn}
-              handleBottomBoxPressOut={handleBottomBoxPressOut}
-              renderSavedItem={renderSavedItem}
-              renderFriendItem={renderFriendItem}
-              savedItems={savedItems}
-              friendItems={friendItems}
-              handleNavigate={handleNavigate}
-            />
-          </Animated.View>
-        ) : (
-          <View style={{ flex: 1, borderRadius: 41 }}>
-            <BottomBoxContent
-              activeView={activeView}
-              handleBottomBoxPressIn={handleBottomBoxPressIn}
-              handleBottomBoxPressOut={handleBottomBoxPressOut}
-              renderSavedItem={renderSavedItem}
-              renderFriendItem={renderFriendItem}
-              savedItems={savedItems}
-              friendItems={friendItems}
-              handleNavigate={handleNavigate}
-            />
-          </View>
-        )}
+        <Animated.View
+          style={[bottomBoxAnimatedStyle, { flex: 1, borderRadius: 41 }]}
+        >
+          <BottomBoxContent
+            activeView={activeView}
+            handleBottomBoxPressIn={handleBottomBoxPressIn}
+            handleBottomBoxPressOut={handleBottomBoxPressOut}
+            renderSavedItem={renderSavedItem}
+            renderFriendItem={renderFriendItem}
+            savedItems={savedItems}
+            friendItems={friendItems}
+            handleNavigate={handleNavigate}
+          />
+        </Animated.View>
       </Animated.View>
     </>
   );
@@ -1687,6 +1581,8 @@ const BottomBoxContent = ({
   friendItems,
   handleNavigate,
 }: BottomBoxContentProps) => {
+  const { theme } = useTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
   return (
     <Pressable
       style={styles.bottomBoxContent}
@@ -1722,6 +1618,8 @@ const SearchContent = ({
   isSmallScreen = false,
   screenHeight,
 }: SearchContentProps) => {
+  const { theme } = useTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
   const h = screenHeight ?? height;
   const searchResultsBoxStyle = isSmallScreen ? { height: h * 0.6 } : undefined;
   const searchModeTopBoxStyle = isSmallScreen ? { height: h * 0.7 } : undefined;
@@ -1822,7 +1720,7 @@ const SearchContent = ({
               entering={FadeIn.duration(ANIMATION_DURATIONS.STANDARD)}
               style={styles.loadingContainer}
             >
-              <ActivityIndicator size="large" color="#CDA67A" />
+              <ActivityIndicator size="large" color={theme.primary} />
               <Animated.Text
                 entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
                   ANIMATION_DELAYS.SMALL,
@@ -1886,7 +1784,7 @@ const SearchContent = ({
         style={[
           styles.topBox,
           styles.searchModeTopBox,
-          { backgroundColor: "#C8A688" },
+          { backgroundColor: theme.accent },
           searchModeTopBoxStyle,
         ]}
         entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
@@ -1935,6 +1833,9 @@ const FriendProfileView = React.memo(
     isLoadingFriendRecs,
     setIsLoadingFriendRecs,
   }: FriendProfileViewProps) => {
+    const { theme } = useTheme();
+    const styles = useMemo(() => createStyles(theme), [theme]);
+
     // Track whether recommendations have been regenerated for animation purposes
     const [isNewRecommendation, setIsNewRecommendation] = useState(false);
 
@@ -2132,9 +2033,9 @@ const FriendProfileView = React.memo(
         {/* Profile info */}
         <View style={styles.profileInfo}>
           <View style={styles.profileImageContainer}>
-            <Image
-              source={require("./assets/Vision.png")}
-              style={styles.profileImage}
+            <AvatarImage
+              avatarUrl={friend.avatar_url ?? friendProfile?.avatar_url}
+              size={width * 0.25}
             />
           </View>
         </View>
@@ -2158,7 +2059,7 @@ const FriendProfileView = React.memo(
               }}
             >
               <LinearGradient
-                colors={["#FC8CAF", "#9EA7FF", "#A3FFD0"]}
+                colors={theme.gradients.regenerateButtonBorder as [string, string, string]}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
                 style={styles.regenerateButtonBorder}
@@ -2180,7 +2081,7 @@ const FriendProfileView = React.memo(
                 style={styles.pressableContainer}
               >
                 <LinearGradient
-                  colors={["#E222F0", "#4747E4", "#E66D7B"]}
+                  colors={theme.gradients.regenerateButton as [string, string, string]}
                   locations={[0.15, 0.56, 1]}
                   start={{ x: 0.48, y: 1 }}
                   end={{ x: 0.52, y: 0 }}
@@ -2270,6 +2171,9 @@ const FriendRequestItemComponent: React.FC<FriendRequestItemProps> = ({
   onAccept,
   onReject,
 }) => {
+  const { theme } = useTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
+
   return (
     <View style={styles.requestItemWrapper}>
       <Animated.View
@@ -2277,9 +2181,9 @@ const FriendRequestItemComponent: React.FC<FriendRequestItemProps> = ({
       >
         <View style={styles.requestItemContainer}>
           <View style={styles.requestImageContainer}>
-            <Image
-              source={require("./assets/Vision.png")}
-              style={styles.itemImage}
+            <AvatarImage
+              avatarUrl={(request as { avatar_url?: string | null }).avatar_url}
+              size={40}
             />
             <View style={styles.itemInfo}>
               <Text style={styles.itemName} numberOfLines={1}>
@@ -2307,7 +2211,7 @@ const FriendRequestItemComponent: React.FC<FriendRequestItemProps> = ({
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (theme: ThemeColors) => StyleSheet.create({
   container: {
     flex: 1,
     justifyContent: "center",
@@ -2335,7 +2239,7 @@ const styles = StyleSheet.create({
   loadingText: {
     fontFamily: "REM",
     fontSize: 18,
-    color: "rgba(74, 49, 32, 0.7)",
+    color: theme.text.tertiary,
     textAlign: "center",
     marginTop: 20,
   },
@@ -2348,7 +2252,7 @@ const styles = StyleSheet.create({
     top: Platform.OS === "ios" ? height * 0.035 : height * 0.052,
     borderRadius: 41,
     //padding: 15,
-    shadowColor: "#000",
+    shadowColor: theme.shadow.default,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.25,
     shadowRadius: 4,
@@ -2375,7 +2279,7 @@ const styles = StyleSheet.create({
     top: Platform.OS === "ios" ? height * 0.035 : height * 0.052,
     borderRadius: 41,
     padding: 15,
-    shadowColor: "#000",
+    shadowColor: theme.shadow.default,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.25,
     shadowRadius: 4,
@@ -2402,7 +2306,7 @@ const styles = StyleSheet.create({
   boxTitle: {
     fontFamily: "IgraSans",
     fontSize: 38,
-    color: "#FFF",
+    color: theme.text.inverse,
     marginTop: 5,
     marginLeft: 10,
     textAlign: "left",
@@ -2426,12 +2330,12 @@ const styles = StyleSheet.create({
     height: (width * 0.88 - 45) / 2,
     width: "100%", // Calculate width for two columns with spacing
     marginBottom: 0, // Reduced to match horizontal spacing (handled by columnWrapper gap)
-    shadowColor: "#000",
+    shadowColor: theme.shadow.default,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.25,
     shadowRadius: 4,
     elevation: 6,
-    backgroundColor: "#EDE7E2",
+    backgroundColor: theme.surface.item,
     borderRadius: 30,
     position: "relative", // For absolute positioned elements
     justifyContent: "center", // Center vertically
@@ -2441,12 +2345,12 @@ const styles = StyleSheet.create({
   searchItem: {
     width: "100%",
     marginBottom: 17,
-    shadowColor: "#000",
+    shadowColor: theme.shadow.default,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.25,
     shadowRadius: 4,
     elevation: 6,
-    backgroundColor: "#EDE7E2",
+    backgroundColor: theme.surface.item,
     borderRadius: 30,
     position: "relative", // For absolute positioned elements
     flexDirection: "row",
@@ -2504,7 +2408,7 @@ const styles = StyleSheet.create({
   itemName: {
     fontFamily: "IgraSans",
     fontSize: 13,
-    color: "#4A3120",
+    color: theme.text.secondary,
     textAlign: "center",
     bottom: -5,
   },
@@ -2514,7 +2418,7 @@ const styles = StyleSheet.create({
     top: (width * 0.88 - 45) / 4,
     transform: [{ translateY: -20 }, { rotate: "90deg" }],
     borderRadius: 10,
-    shadowColor: "#000",
+    shadowColor: theme.shadow.default,
     shadowOffset: { width: 4, height: 0 },
     shadowOpacity: 0.25,
     shadowRadius: 4,
@@ -2522,7 +2426,7 @@ const styles = StyleSheet.create({
   itemPrice: {
     fontFamily: "REM",
     fontSize: 14,
-    color: "#4A3120",
+    color: theme.text.secondary,
     paddingHorizontal: 8,
     paddingVertical: 4,
   },
@@ -2530,12 +2434,12 @@ const styles = StyleSheet.create({
   productItem: {
     width: (width * 0.88 - 42 - 14) / 2, // Container width - list padding (42 = 21*2) - gap (14, 1.5:1 ratio)
     marginBottom: 0, // Vertical spacing handled by columnWrapper to match horizontal spacing
-    shadowColor: "#000",
+    shadowColor: theme.shadow.default,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.25,
     shadowRadius: 4,
     elevation: 4,
-    backgroundColor: "#EDE7E2",
+    backgroundColor: theme.surface.item,
     borderRadius: 30,
   },
   productImageContainer: {
@@ -2551,7 +2455,7 @@ const styles = StyleSheet.create({
     resizeMode: "contain",
   },
   noProductImagePlaceholder: {
-    backgroundColor: "rgba(0,0,0,0.06)",
+    backgroundColor: theme.surface.button,
     justifyContent: "center",
     alignItems: "center",
     width: "73%",
@@ -2560,7 +2464,7 @@ const styles = StyleSheet.create({
   noProductImageText: {
     fontFamily: "IgraSans",
     fontSize: 12,
-    color: "rgba(0,0,0,0.4)",
+    color: theme.text.disabled,
   },
   productItemInfo: {
     bottom: -5,
@@ -2571,7 +2475,7 @@ const styles = StyleSheet.create({
   productItemName: {
     fontFamily: "IgraSans",
     fontSize: 13,
-    color: "#4A3120",
+    color: theme.text.secondary,
     textAlign: "center",
     paddingHorizontal: 10,
   },
@@ -2581,7 +2485,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     borderRadius: 10,
-    shadowColor: "#000",
+    shadowColor: theme.shadow.default,
     shadowOffset: { width: 4, height: 0 },
     shadowOpacity: 0.25,
     shadowRadius: 4,
@@ -2589,7 +2493,7 @@ const styles = StyleSheet.create({
   productItemPrice: {
     fontFamily: "REM",
     fontSize: 14,
-    color: "#4A3120",
+    color: theme.text.secondary,
     paddingHorizontal: 8,
     paddingVertical: 4,
   },
@@ -2600,12 +2504,12 @@ const styles = StyleSheet.create({
     height: height * 0.1,
     zIndex: 10,
     top: Platform.OS === "ios" ? height * 0.02 : height * 0.04,
-    shadowColor: "#000",
+    shadowColor: theme.shadow.default,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.25,
     shadowRadius: 4,
     elevation: 4,
-    backgroundColor: "#F2ECE7",
+    backgroundColor: theme.background.primary,
     borderRadius: 41,
     overflow: "hidden",
   },
@@ -2628,7 +2532,7 @@ const styles = StyleSheet.create({
   },
   favoritesCancelButton: {
     paddingHorizontal: Platform.OS === "ios" ? 45 : 50,
-    backgroundColor: "#C8A688",
+    backgroundColor: theme.button.cancel,
     borderRadius: 41,
     height: "100%",
     justifyContent: "center",
@@ -2637,7 +2541,7 @@ const styles = StyleSheet.create({
   favoritesCancelButtonText: {
     fontFamily: "Igra Sans",
     fontSize: 18,
-    color: "#4A3120",
+    color: theme.button.primary,
   },
   searchResultsBox: {
     position: "absolute",
@@ -2648,8 +2552,8 @@ const styles = StyleSheet.create({
     height: Platform.OS === "ios" ? height * 0.57 : height * 0.56,
     borderRadius: 41,
     //padding: 15,
-    backgroundColor: "#FFFFFF",
-    shadowColor: "#000",
+    backgroundColor: theme.background.primary,
+    shadowColor: theme.shadow.default,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.25,
     shadowRadius: 4,
@@ -2669,14 +2573,14 @@ const styles = StyleSheet.create({
     fontFamily: "REM",
     fontSize: 24,
     fontWeight: "600",
-    color: "#4A3120",
+    color: theme.text.secondary,
     textAlign: "center",
     marginBottom: 12,
   },
   emptyStateDescription: {
     fontFamily: "REM",
     fontSize: 16,
-    color: "rgba(74, 49, 32, 0.7)",
+    color: theme.text.tertiary,
     textAlign: "center",
     lineHeight: 22,
     paddingHorizontal: 20,
@@ -2691,7 +2595,7 @@ const styles = StyleSheet.create({
     fontFamily: "REM",
     fontSize: 24,
     fontWeight: "600",
-    color: "#4A3120",
+    color: theme.text.secondary,
     textAlign: "center",
     marginTop: 24,
     marginBottom: 12,
@@ -2699,7 +2603,7 @@ const styles = StyleSheet.create({
   noResultsDescription: {
     fontFamily: "REM",
     fontSize: 16,
-    color: "rgba(74, 49, 32, 0.7)",
+    color: theme.text.tertiary,
     textAlign: "center",
     lineHeight: 22,
     paddingHorizontal: 20,
@@ -2718,7 +2622,7 @@ const styles = StyleSheet.create({
     top: "50%",
     transform: [{ translateY: -20 }, { rotate: "90deg" }],
     borderRadius: 10,
-    shadowColor: "#000",
+    shadowColor: theme.shadow.default,
     shadowOffset: { width: 4, height: 0 },
     shadowOpacity: 0.25,
     shadowRadius: 4,
@@ -2726,7 +2630,7 @@ const styles = StyleSheet.create({
   usernameText: {
     fontFamily: "REM",
     fontSize: 14,
-    color: "#4A3120",
+    color: theme.text.secondary,
     paddingHorizontal: 8,
     paddingVertical: 4,
   },
@@ -2735,13 +2639,13 @@ const styles = StyleSheet.create({
     top: Platform.OS === "ios" ? height * 0.02 : height * 0.04,
     right: 10,
     padding: 10,
-    backgroundColor: "#C8A688",
+    backgroundColor: theme.button.secondary,
     borderRadius: 41,
   },
   toggleButtonText: {
     fontFamily: "Igra Sans",
     fontSize: 18,
-    color: "#FFF",
+    color: theme.text.inverse,
   },
   // Friend Profile styles
   profileContainer: {
@@ -2762,20 +2666,20 @@ const styles = StyleSheet.create({
   profileInfo: {
     alignItems: "center",
     marginBottom: 25,
-  },
-  profileImageContainer: {
-    width: width * 0.3,
-    height: width * 0.3,
-    borderRadius: width * 0.1,
-    overflow: "hidden",
-    backgroundColor: "#EDE7E2",
-    alignItems: "center",
-    justifyContent: "center",
-    shadowColor: "#000",
+    shadowColor: theme.shadow.default,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.25,
     shadowRadius: 4,
     elevation: 6,
+  },
+  profileImageContainer: {
+    width: width * 0.3,
+    height: width * 0.3,
+    borderRadius: width * 0.15,
+    overflow: "hidden",
+    backgroundColor: theme.surface.item,
+    alignItems: "center",
+    justifyContent: "center",
   },
   profileImage: {
     width: "75%",
@@ -2787,10 +2691,10 @@ const styles = StyleSheet.create({
     width: "100%",
     height: width * 1.06,
     borderRadius: 41,
-    backgroundColor: "rgba(205, 166, 122, 0)",
+    backgroundColor: theme.primary + "00",
     position: "relative",
     borderWidth: 3,
-    borderColor: "rgba(205, 166, 122, 0.4)",
+    borderColor: theme.primary + "66",
   },
   gradientBackground: {
     borderRadius: 37,
@@ -2801,13 +2705,13 @@ const styles = StyleSheet.create({
     bottom: 0,
   },
   recommendationsContainer: {
-    backgroundColor: "#F2ECE7",
+    backgroundColor: theme.background.primary,
     borderRadius: 41,
     width: width * 0.88,
     height: width * 0.88,
     top: -3,
     left: -3,
-    shadowColor: "#000",
+    shadowColor: theme.shadow.default,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.25,
     shadowRadius: 4,
@@ -2828,7 +2732,7 @@ const styles = StyleSheet.create({
     width: (width * 0.88 - 42 - 14) / 2, // Container width - list padding (42 = 21*2) - gap (14, 1.5:1 ratio)
   },
   regenerateButtonWrapper: {
-    shadowColor: "#000",
+    shadowColor: theme.shadow.default,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.25,
     shadowRadius: 4,
@@ -2869,10 +2773,10 @@ const styles = StyleSheet.create({
   regenerateButtonText: {
     fontFamily: "IgraSans",
     fontSize: 15,
-    color: "white",
+    color: theme.text.inverse,
   },
   regenerateButtonDisabled: {
-    backgroundColor: "#8F7A66",
+    backgroundColor: theme.surface.selection,
     opacity: 0.8,
   },
   textContainer: {
@@ -2884,7 +2788,7 @@ const styles = StyleSheet.create({
   text: {
     fontFamily: "IgraSans",
     fontSize: 38,
-    color: "#fff",
+    color: theme.text.inverse,
   },
   requestItemWrapper: {
     width: "100%",
@@ -2907,19 +2811,19 @@ const styles = StyleSheet.create({
   requestButton: {
     padding: 10,
     borderRadius: 20,
-    backgroundColor: "#C8A688",
+    backgroundColor: theme.button.secondary,
     marginHorizontal: 5,
   },
   acceptButton: {
-    backgroundColor: "#A8E6BB",
+    backgroundColor: theme.interactive.accept,
   },
   rejectButton: {
-    backgroundColor: "#E9A5AA",
+    backgroundColor: theme.interactive.reject,
   },
   requestButtonText: {
     fontFamily: "IgraSans",
     fontSize: 15,
-    color: "white",
+    color: theme.text.inverse,
   },
   confirmationContainer: {
     height: "88%",
@@ -2927,13 +2831,13 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "center",
     padding: 14,
-    backgroundColor: "#E9A5AA",
+    backgroundColor: theme.status.error,
     borderRadius: 30,
   },
   confirmationText: {
     fontFamily: "IgraSans",
     fontSize: 15,
-    color: "#4A3120",
+    color: theme.text.secondary,
     lineHeight: 20,
     opacity: 0.8,
     textAlign: "center",
@@ -2949,23 +2853,23 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     borderRadius: 20,
-    backgroundColor: "#C8A688",
-    shadowColor: "#000",
+    backgroundColor: theme.button.secondary,
+    shadowColor: theme.shadow.default,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.25,
     shadowRadius: 4,
     elevation: 6,
   },
   confirmYesButton: {
-    backgroundColor: "#E78791", // Red for remove
+    backgroundColor: theme.status.error,
   },
   confirmNoButton: {
-    backgroundColor: "#B0B0B0",
+    backgroundColor: theme.interactive.inactive,
   },
   confirmButtonText: {
     fontFamily: "IgraSans",
     fontSize: 15,
-    color: "#4A3120",
+    color: theme.text.secondary,
     opacity: 0.8,
   },
   removeFriendButton: {
@@ -2973,7 +2877,7 @@ const styles = StyleSheet.create({
     top: 10,
     right: 10,
     padding: 2.5,
-    backgroundColor: "rgba(230, 109, 123, 0.54)",
+    backgroundColor: theme.interactive.remove,
     borderRadius: 20,
   },
   removeFriendButtonText: {
@@ -2984,7 +2888,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontFamily: "IgraSans",
     fontSize: 24,
-    color: "#4A3120",
+    color: theme.text.secondary,
     marginBottom: 10,
   },
   miniRequestButtons: {
@@ -2994,30 +2898,30 @@ const styles = StyleSheet.create({
   miniRequestButton: {
     padding: 5,
     borderRadius: 20,
-    backgroundColor: "#C8A688",
+    backgroundColor: theme.button.secondary,
     marginHorizontal: 5,
   },
   miniAcceptButton: {
-    backgroundColor: "#A3FFD0",
+    backgroundColor: theme.social.acceptLight,
   },
   miniRejectButton: {
-    backgroundColor: "#FC8CAF",
+    backgroundColor: theme.social.rejectLight,
   },
   miniRequestButtonText: {
     fontFamily: "IgraSans",
     fontSize: 15,
-    color: "white",
+    color: theme.text.inverse,
   },
   pendingRequestBadge: {
     padding: 5,
     borderRadius: 20,
-    backgroundColor: "#C8A688",
+    backgroundColor: theme.button.secondary,
     marginLeft: 10,
   },
   pendingRequestText: {
     fontFamily: "IgraSans",
     fontSize: 15,
-    color: "white",
+    color: theme.text.inverse,
   },
   addFriendButton: {
     padding: 5,
@@ -3027,7 +2931,7 @@ const styles = StyleSheet.create({
   addFriendButtonText: {
     fontFamily: "IgraSans",
     fontSize: 15,
-    color: "white",
+    color: theme.text.inverse,
   },
   cancelRequestButton: {
     flexDirection: "row",
@@ -3038,7 +2942,7 @@ const styles = StyleSheet.create({
     height: width * 0.15,
   },
   cancelRequestText: {
-    color: "#4A3120",
+    color: theme.text.secondary,
     fontFamily: "IgraSans",
     fontSize: 10,
     textAlign: "center",
@@ -3058,7 +2962,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     justifyContent: "center",
     alignItems: "center",
-    shadowColor: "#000",
+    shadowColor: theme.shadow.default,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.25,
     shadowRadius: 4,
@@ -3067,7 +2971,7 @@ const styles = StyleSheet.create({
   stackedButtonText: {
     fontFamily: "IgraSans",
     fontSize: 18,
-    color: "white",
+    color: theme.text.inverse,
   },
   confirmationOverlay: {
     position: "absolute",
@@ -3075,7 +2979,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    backgroundColor: theme.modal.backdrop,
     justifyContent: "center",
     alignItems: "center",
     zIndex: 1000,
@@ -3094,7 +2998,7 @@ const styles = StyleSheet.create({
   mainEmptyStateText: {
     fontFamily: "IgraSans",
     fontSize: 32,
-    color: "#fff",
+    color: theme.text.inverse,
     textAlign: "center",
   },
 });
@@ -3143,10 +3047,7 @@ const FriendListItem = memo(
               disabled={item.status !== "friend"}
             >
               <View style={styles.imageContainer}>
-                <AvatarImage
-                  avatarUrl={item.avatar_url}
-                  size={width * 0.2}
-                />
+                <AvatarImage avatarUrl={item.avatar_url} size={width * 0.2} />
               </View>
               <View style={styles.userInfo}>
                 <Text style={styles.itemName} numberOfLines={1}>

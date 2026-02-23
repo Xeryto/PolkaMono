@@ -356,7 +356,7 @@ const RecentPiecesScreen: React.FC<RecentPiecesScreenProps> = ({
     if (isLoading) {
       return (
         <View style={styles.emptyContainer}>
-          <ActivityIndicator size="large" color="#CDA67A" />
+          <ActivityIndicator size="large" color={theme.primary} />
           <Text style={styles.emptyText}>Загрузка...</Text>
         </View>
       );
@@ -485,7 +485,7 @@ const createStyles = (theme: ThemeColors) => StyleSheet.create({
   titleOvalShadowWrapper: {
     height: "100%",
     borderRadius: 30,
-    shadowColor: "#000",
+    shadowColor: theme.shadow.default,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.25,
     shadowRadius: 4,
@@ -561,7 +561,7 @@ const createStyles = (theme: ThemeColors) => StyleSheet.create({
     height: "70%", // Reduced size
     borderRadius: 38,
     backgroundColor: theme.background.primary,
-    shadowColor: "#000",
+    shadowColor: theme.shadow.default,
     shadowOffset: {
       width: 0.25,
       height: 4,

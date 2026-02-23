@@ -41,6 +41,8 @@ import {
   ANIMATION_DELAYS,
   ANIMATION_EASING,
 } from "./lib/animations";
+import { useTheme } from "./lib/ThemeContext";
+import type { ThemeColors } from "./lib/theme";
 
 import Cart2 from "./components/svg/Cart2";
 import Heart2 from "./components/svg/Heart2";
@@ -132,6 +134,7 @@ const ExpandableSection: React.FC<{ title: string; content: string }> = ({
   title,
   content,
 }) => {
+  const { theme } = useTheme();
   const [isExpanded, setIsExpanded] = useState(false);
   const animation = useRef(new RNAnimated.Value(0)).current;
 
@@ -155,11 +158,11 @@ const ExpandableSection: React.FC<{ title: string; content: string }> = ({
   });
 
   return (
-    <View style={styles.expandableContainer}>
-      <Pressable onPress={toggleExpansion} style={styles.expandableHeader}>
-        <Text style={styles.expandableTitle}>{title}</Text>
+    <View style={{ marginBottom: 10 }}>
+      <Pressable onPress={toggleExpansion} style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 10 }}>
+        <Text style={{ fontFamily: 'IgraSans', fontSize: 14, color: theme.text.primary }}>{title}</Text>
         <RNAnimated.View style={{ transform: [{ rotate: rotateArrow }] }}>
-          <Text style={styles.expandableArrow}>{">"}</Text>
+          <Text style={{ fontFamily: 'IgraSans', fontSize: 14, color: theme.text.primary }}>{">"}</Text>
         </RNAnimated.View>
       </Pressable>
       <RNAnimated.View
@@ -169,7 +172,7 @@ const ExpandableSection: React.FC<{ title: string; content: string }> = ({
           paddingBottom: 10,
         }}
       >
-        <Text style={styles.expandableContent}>{content}</Text>
+        <Text style={{ fontFamily: 'IgraSans', fontSize: 12, color: theme.text.primary, lineHeight: 18 }}>{content}</Text>
       </RNAnimated.View>
     </View>
   );
@@ -319,7 +322,7 @@ const HeartButton: React.FC<HeartButtonProps> = ({ isLiked, onToggleLike }) => {
 
   return (
     <Pressable
-      style={[styles.button, { zIndex: 10 }]} // Added zIndex to ensure button is clickable
+      style={{ padding: 10, zIndex: 10 }} // Added zIndex to ensure button is clickable
       onPressIn={handlePressIn}
       onPressOut={handlePressOut}
       android_ripple={{
@@ -343,6 +346,8 @@ const HeartButton: React.FC<HeartButtonProps> = ({ isLiked, onToggleLike }) => {
 };
 
 const MainPage = ({ navigation, route }: MainPageProps) => {
+  const { theme } = useTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
   const screenHeight = Dimensions.get("window").height;
   const screenWidth = Dimensions.get("window").width;
 
@@ -2428,7 +2433,7 @@ const MainPage = ({ navigation, route }: MainPageProps) => {
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (theme: ThemeColors) => StyleSheet.create({
   container: {
     flex: 1,
     justifyContent: "center",
@@ -2447,10 +2452,10 @@ const styles = StyleSheet.create({
     width: "88%",
     height: "90%",
     borderRadius: 41,
-    backgroundColor: "rgba(205, 166, 122, 0)",
+    backgroundColor: theme.primary + "00",
     position: "relative",
     borderWidth: 3,
-    borderColor: "rgba(205, 166, 122, 0.4)",
+    borderColor: theme.primary + "66",
     zIndex: 900,
   },
   colorSelectorTriggerCircle: {
@@ -2465,8 +2470,8 @@ const styles = StyleSheet.create({
     height: 26 + 4 * 2 + 4 * 2,
     borderRadius: 21,
     borderWidth: 4,
-    borderColor: "#4A3120",
-    backgroundColor: "#F2ECE7",
+    borderColor: theme.button.primary,
+    backgroundColor: theme.background.primary,
     justifyContent: "center",
     alignItems: "center",
   },
@@ -2525,8 +2530,8 @@ const styles = StyleSheet.create({
     width: "100%",
     height: "100%",
     borderRadius: 41,
-    backgroundColor: "#F2ECE7",
-    shadowColor: "#000",
+    backgroundColor: theme.background.primary,
+    shadowColor: theme.shadow.default,
     shadowOffset: { width: 0.25, height: 4 },
     shadowOpacity: 0.5,
     shadowRadius: 4,
@@ -2569,14 +2574,14 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   imagePlaceholder: {
-    backgroundColor: "rgba(0,0,0,0.06)",
+    backgroundColor: theme.surface.button,
     justifyContent: "center",
     alignItems: "center",
   },
   imagePlaceholderText: {
     fontFamily: "IgraSans",
     fontSize: 14,
-    color: "rgba(0,0,0,0.4)",
+    color: theme.text.disabled,
   },
   imageCarousel: {
     width: "100%",
@@ -2599,11 +2604,11 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: "rgba(74, 49, 32, 0.5)",
+    backgroundColor: theme.text.secondary + "80",
     marginHorizontal: 4,
   },
   imageDotActive: {
-    backgroundColor: "#4A3120",
+    backgroundColor: theme.button.primary,
   },
   cornerOverlayTopLeft: {
     position: "absolute",
@@ -2611,7 +2616,7 @@ const styles = StyleSheet.create({
     left: 0,
     width: CORNER_OVERLAY_SIZE,
     height: CORNER_OVERLAY_SIZE,
-    backgroundColor: "#F2ECE7",
+    backgroundColor: theme.background.primary,
     borderTopLeftRadius: 41,
     borderBottomRightRadius: 16,
     zIndex: 20,
@@ -2623,7 +2628,7 @@ const styles = StyleSheet.create({
     right: 0,
     width: CORNER_OVERLAY_SIZE,
     height: CORNER_OVERLAY_SIZE,
-    backgroundColor: "#F2ECE7",
+    backgroundColor: theme.background.primary,
     borderTopRightRadius: 41,
     borderBottomLeftRadius: 16,
     zIndex: 20,
@@ -2635,7 +2640,7 @@ const styles = StyleSheet.create({
     left: 0,
     width: CORNER_OVERLAY_SIZE,
     height: CORNER_OVERLAY_SIZE,
-    backgroundColor: "#F2ECE7",
+    backgroundColor: theme.background.primary,
     borderBottomLeftRadius: 41,
     borderTopRightRadius: 16,
     zIndex: 25,
@@ -2647,7 +2652,7 @@ const styles = StyleSheet.create({
     right: 0,
     width: CORNER_OVERLAY_SIZE,
     height: CORNER_OVERLAY_SIZE,
-    backgroundColor: "#F2ECE7",
+    backgroundColor: theme.background.primary,
     borderBottomRightRadius: 41,
     borderTopLeftRadius: 16,
     zIndex: 20,
@@ -2684,7 +2689,7 @@ const styles = StyleSheet.create({
     height: CORNER_BOX_SIZE,
   },
   sizePanelOuter: {
-    backgroundColor: "#F2ECE7",
+    backgroundColor: theme.background.primary,
     height: CORNER_BOX_SIZE,
     justifyContent: "center",
   },
@@ -2704,10 +2709,10 @@ const styles = StyleSheet.create({
     borderRadius: 20.5,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "rgba(230, 109, 123, 0.54)",
+    backgroundColor: theme.interactive.remove,
   },
   cornerOverlayTopRightInner: {
-    backgroundColor: "#F2ECE7",
+    backgroundColor: theme.background.primary,
     width: CORNER_BOX_SIZE,
     height: CORNER_BOX_SIZE,
     padding: 10,
@@ -2716,7 +2721,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   cornerOverlayBottomLeftInner: {
-    backgroundColor: "#F2ECE7",
+    backgroundColor: theme.background.primary,
     width: CORNER_BOX_SIZE,
     height: CORNER_BOX_SIZE,
     padding: 10,
@@ -2725,7 +2730,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   cornerOverlayBottomRightInner: {
-    backgroundColor: "#F2ECE7",
+    backgroundColor: theme.background.primary,
     width: CORNER_BOX_SIZE,
     height: CORNER_BOX_SIZE,
     padding: 10,
@@ -2739,7 +2744,7 @@ const styles = StyleSheet.create({
     bottom: CARD_CORNER_INSET,
   },
   colorSelectorCornerBox: {
-    backgroundColor: "#F2ECE7",
+    backgroundColor: theme.background.primary,
     paddingHorizontal: 10,
     paddingVertical: 0,
     borderBottomRightRadius: 16,
@@ -2825,27 +2830,27 @@ const styles = StyleSheet.create({
     width: 41,
     height: 41,
     borderRadius: 20.5,
-    backgroundColor: "#E2CCB2",
+    backgroundColor: theme.size.available,
     justifyContent: "center",
     alignItems: "center",
-    shadowColor: "#000",
+    shadowColor: theme.shadow.default,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.25,
     shadowRadius: 3.84,
     elevation: 5,
-    marginVertical: 9.5, // Center vertically: (60 - 41) / 2 = 9.5
+    marginVertical: 9.5,
   },
   sizeCircleAvailable: {
-    backgroundColor: "#E2CCB2", // Available sizes
+    backgroundColor: theme.size.available,
   },
   sizeCircleUnavailable: {
-    backgroundColor: "#BFBBB8", // Unavailable sizes
+    backgroundColor: theme.size.unavailable,
   },
   sizeCircleUserSize: {
-    backgroundColor: "#CDA67A", // Highlight user's selected size
+    backgroundColor: theme.size.userSize,
   },
   sizeText: {
-    color: "#000",
+    color: theme.size.text,
     fontWeight: "bold",
     fontSize: 16,
   },
@@ -2853,18 +2858,18 @@ const styles = StyleSheet.create({
     width: 80,
     height: 41,
     borderRadius: 20.5,
-    backgroundColor: "#E2CCB2",
+    backgroundColor: theme.size.available,
     justifyContent: "center",
     alignItems: "center",
-    shadowColor: "#000",
+    shadowColor: theme.shadow.default,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.25,
     shadowRadius: 3.84,
     elevation: 5,
-    marginVertical: 9.5, // Center vertically: (60 - 41) / 2 = 9.5
+    marginVertical: 9.5,
   },
   sizeOvalText: {
-    color: "#000",
+    color: theme.text.primary,
     fontWeight: "bold",
     fontSize: 12,
     textAlign: "center",
@@ -2873,10 +2878,10 @@ const styles = StyleSheet.create({
     width: 41,
     height: 41,
     borderRadius: 20.5,
-    backgroundColor: "rgba(230, 109, 123, 0.54)",
+    backgroundColor: theme.interactive.remove,
     justifyContent: "center",
     alignItems: "center",
-    shadowColor: "#000",
+    shadowColor: theme.shadow.default,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.25,
     shadowRadius: 3.84,
@@ -2888,10 +2893,10 @@ const styles = StyleSheet.create({
     width: 41,
     height: 41,
     borderRadius: 20.5,
-    backgroundColor: "rgba(230, 109, 123, 0.54)",
+    backgroundColor: theme.interactive.remove,
     justifyContent: "center",
     alignItems: "center",
-    shadowColor: "#000",
+    shadowColor: theme.shadow.default,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.25,
     shadowRadius: 3.84,
@@ -2901,10 +2906,10 @@ const styles = StyleSheet.create({
     width: 41,
     height: 41,
     borderRadius: 20.5,
-    backgroundColor: "rgba(230, 109, 123, 0.54)",
+    backgroundColor: theme.interactive.remove,
     justifyContent: "center",
     alignItems: "center",
-    shadowColor: "#000",
+    shadowColor: theme.shadow.default,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.25,
     shadowRadius: 3.84,
@@ -2912,10 +2917,10 @@ const styles = StyleSheet.create({
     zIndex: 10,
   },
   cancelSizeButton: {
-    backgroundColor: "rgba(230, 109, 123, 0.54)",
+    backgroundColor: theme.interactive.remove,
     justifyContent: "center",
     alignItems: "center",
-    shadowColor: "#000",
+    shadowColor: theme.shadow.default,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.25,
     shadowRadius: 3.84,
@@ -2929,12 +2934,12 @@ const styles = StyleSheet.create({
   noCardsText: {
     fontSize: 24,
     fontWeight: "bold",
-    color: "#333",
+    color: theme.text.primary,
     marginBottom: 10,
   },
   noCardsSubtext: {
     fontSize: 16,
-    color: "#666",
+    color: theme.text.secondary,
   },
   longPressOverlay: {
     width: 50,
@@ -3022,7 +3027,7 @@ const styles = StyleSheet.create({
     left: CORNER_BOX_SIZE,
     top: 0,
     bottom: 0,
-    backgroundColor: "#F2ECE7",
+    backgroundColor: theme.background.primary,
     justifyContent: "center",
   },
   backIconBoxWrapper: {
@@ -3032,7 +3037,7 @@ const styles = StyleSheet.create({
   backIconBox: {
     width: CORNER_BOX_SIZE,
     height: CORNER_BOX_SIZE,
-    backgroundColor: "#F2ECE7",
+    backgroundColor: theme.background.primary,
     borderRadius: 16,
     justifyContent: "center",
     alignItems: "center",
@@ -3040,7 +3045,7 @@ const styles = StyleSheet.create({
   expandableContainer: {
     marginBottom: 5,
     borderBottomWidth: 1,
-    borderBottomColor: "#eee",
+    borderBottomColor: theme.border.light,
     paddingBottom: 3,
   },
   expandableHeader: {
@@ -3081,7 +3086,7 @@ const styles = StyleSheet.create({
     zIndex: 1000,
   },
   linkCopiedText: {
-    color: "#FFF",
+    color: theme.text.inverse,
     fontFamily: "REM",
     fontSize: 14,
     textAlign: "center",
