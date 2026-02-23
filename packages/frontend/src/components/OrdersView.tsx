@@ -147,6 +147,11 @@ export function OrdersView() {
                     <p className="text-sm text-muted-foreground">
                       Итого: {formatCurrency(order.total_amount)}
                     </p>
+                    {order.shipping_cost != null && order.shipping_cost > 0 && (
+                      <p className="text-sm text-muted-foreground">
+                        Доставка: {formatCurrency(order.shipping_cost)}
+                      </p>
+                    )}
                   </div>
                   <div className="text-right">
                     <p className="font-bold text-foreground">

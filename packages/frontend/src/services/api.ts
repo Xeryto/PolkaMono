@@ -167,6 +167,7 @@ export interface OrderSummary {
   status: string;
   tracking_number?: string;
   tracking_link?: string;
+  shipping_cost?: number;
 }
 
 export interface OrderItemResponse {
