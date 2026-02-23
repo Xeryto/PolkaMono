@@ -12,15 +12,15 @@ See: .planning/PROJECT.md (updated 2026-02-21)
 **Phase 2: Dark Mode**
 - Goal: All screens correct in dark mode, no hardcoded colors
 - Status: In Progress
-- Current Plan: 2/TBD
-- Stopped At: Completed 02-02-PLAN.md
+- Current Plan: 3/TBD
+- Stopped At: Completed 02-03-PLAN.md
 
 ## Phase Status
 
 | Phase | Status | Plans |
 |-------|--------|-------|
 | 1. Light Mode Fixes | Complete | 2/2 |
-| 2. Dark Mode | In Progress | 2/TBD |
+| 2. Dark Mode | In Progress | 3/TBD |
 | 3. Consistency Sweep | Not started | 0/TBD |
 
 ## Decisions
@@ -36,6 +36,9 @@ See: .planning/PROJECT.md (updated 2026-02-21)
 - [Phase 02-02]: ActivityIndicator on primary button uses theme.button.primaryText (not hardcoded #fff)
 - [Phase 02-02]: 'transparent' literal preferred over rgba(x,x,x,0) for zero-opacity backgrounds
 - [Phase 02-02]: android_ripple color uses theme.interactive.ripple instead of hardcoded #CCA479
+- 2026-02-23 (02-03): Color swatch fallback #808080 → theme.text.grey (adapts in dark mode)
+- 2026-02-23 (02-03): Tab bar backgroundColor → theme.surface.elevated (solid #3D3028 dark, not translucent overlay)
+- 2026-02-23 (02-03): StatusBar barStyle driven by colorScheme from useTheme()
 
 ## Performance Metrics
 
@@ -45,11 +48,12 @@ See: .planning/PROJECT.md (updated 2026-02-21)
 | 01 | 02 | ~3 min | 1 | 1 |
 | 02 | 01 | ~2 min | 2 | 3 |
 | 02 | 02 | ~5 min | 2 | 7 |
+| 02 | 03 | ~3 min | 2 | 6 |
 
 ## Last Session
 
 - Last updated: 2026-02-23
-- Stopped At: Completed 02-02-PLAN.md
+- Stopped At: Completed 02-03-PLAN.md
 
 ## Blockers/Concerns
 
