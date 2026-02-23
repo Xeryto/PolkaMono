@@ -3,10 +3,12 @@ import os
 import random
 import string
 import uuid
+from datetime import datetime, timedelta
 from typing import List, Optional
 
 import models
 import schemas
+from config import settings
 from dotenv import load_dotenv
 from models import (
     Brand,
@@ -14,6 +16,7 @@ from models import (
     Order,
     OrderItem,
     OrderStatus,
+    OrderStatusEvent,
     ProductVariant,
     User,
     UserProfile,
@@ -47,6 +50,27 @@ def verify_webhook_ip(ip: str) -> bool:
         if ip_address in network:
             return True
     return False
+
+
+def record_status_event(
+    db: Session,
+    order: Order,
+    to_status: OrderStatus,
+    actor_type: str,  # "system" | "user" | "brand" | "admin"
+    actor_id: Optional[str] = None,
+    note: Optional[str] = None,
+) -> None:
+    """Append an audit row to order_status_events. Caller must commit."""
+    from_val = order.status.value if order.status else None
+    event = OrderStatusEvent(
+        order_id=order.id,
+        from_status=from_val,
+        to_status=to_status.value,
+        actor_type=actor_type,
+        actor_id=str(actor_id) if actor_id is not None else None,
+        note=note,
+    )
+    db.add(event)
 
 
 DEFAULT_SHIPPING_PRICE = 350.0
@@ -96,6 +120,8 @@ def create_payment(
         order_number=order_number,
         total_amount=str(amount),
         currency=currency,
+        status=OrderStatus.CREATED,
+        expires_at=datetime.utcnow() + timedelta(hours=settings.ORDER_PENDING_EXPIRY_HOURS),
         # Store delivery information at order creation time
         delivery_full_name=user.full_name,
         delivery_email=user.delivery_email,
@@ -321,7 +347,8 @@ def create_order_test(
             subtotal=subtotal,
             shipping_cost=shipping_cost,
             total_amount=order_total,
-            status=OrderStatus.PENDING,
+            status=OrderStatus.CREATED,
+            expires_at=datetime.utcnow() + timedelta(hours=settings.ORDER_PENDING_EXPIRY_HOURS),
             delivery_full_name=delivery_full_name,
             delivery_email=delivery_email,
             delivery_phone=delivery_phone,
@@ -374,7 +401,14 @@ def get_yookassa_payment_status(payment_id: str):
         return None
 
 
-def update_order_status(db: Session, order_id: str, status: OrderStatus):
+def update_order_status(
+    db: Session,
+    order_id: str,
+    status: OrderStatus,
+    actor_type: str = "system",
+    actor_id: Optional[str] = None,
+    note: Optional[str] = None,
+):
     print(f"Attempting to update order {order_id} to status {status.value}")
     order = db.query(Order).filter(Order.id == order_id).first()
     if order:
@@ -450,8 +484,30 @@ def update_order_status(db: Session, order_id: str, status: OrderStatus):
                     variant.stock_quantity += quantity
                     print(f"Restored {quantity} units to product variant {variant.id}")
 
+        record_status_event(db, order, status, actor_type, actor_id, note)
         order.status = status
         # db.commit() # Removed commit from here - commit is done by caller
         print(f"Order {order_id} status updated to {order.status.value}")
     else:
         print(f"Order {order_id} not found in database.")
+
+
+def expire_pending_orders(db: Session) -> int:
+    """Cancel CREATED orders whose expires_at has passed. Returns count of orders expired."""
+    now = datetime.utcnow()
+    expired = (
+        db.query(Order)
+        .filter(
+            Order.status == OrderStatus.CREATED,
+            Order.expires_at != None,
+            Order.expires_at < now,
+        )
+        .all()
+    )
+    count = 0
+    for order in expired:
+        update_order_status(db, order.id, OrderStatus.CANCELED, actor_type="system", note="auto-expired")
+        count += 1
+    if count:
+        db.commit()
+    return count
