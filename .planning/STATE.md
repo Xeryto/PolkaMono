@@ -2,76 +2,60 @@
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-02-21)
+See: .planning/PROJECT.md (updated 2026-02-23)
 
-**Core value:** Every screen in both light and dark mode looks intentional and on-brand, with no hardcoded colors.
-**Current focus:** Phase 1 — Light Mode Fixes
+**Core value:** Brands can run their storefront end-to-end; buyers get a smooth, trustworthy purchase experience.
+**Current focus:** Milestone v1.1 — Phase 4: Order Status Foundation
 
-## Current Phase
+## Current Position
 
-**Phase 2: Dark Mode**
-- Goal: All screens correct in dark mode, no hardcoded colors
-- Status: Complete
-- Current Plan: 5/5
-- Stopped At: Completed 02-05-PLAN.md
+Phase: 4 of 9 (Order Status Foundation)
+Plan: 1 of 3 in current phase
+Status: In progress
+Last activity: 2026-02-23 — completed plan 04-01 (order status foundation schema)
 
-## Phase Status
-
-| Phase | Status | Plans |
-|-------|--------|-------|
-| 1. Light Mode Fixes | Complete | 2/2 |
-| 2. Dark Mode | Complete | 5/5 |
-| 3. Consistency Sweep | Not started | 0/TBD |
-
-## Decisions
-
-- 2026-02-22 (01-01): Use theme.button.cancel for Search cancel button background (warm brown #CDA67A in light mode)
-- 2026-02-22 (01-01): FriendRecommendationsScreen container backgroundColor set to 'transparent' to show parent nav background
-- 2026-02-22 (01-02): LinearGradient locations prop added alongside colors to preserve overlayLocations [0.2, 1] from theme token
-- 2026-02-22 (01-02): placeholderTextColor replaced with theme.text.placeholderDark (rgba(0,0,0,1) in light, rgba(255,255,255,1) in dark)
-- 2026-02-23 (02-01): Dark background = #261E1A (not #806B59 which is accent)
-- 2026-02-23 (02-01): Dark text.primary = #F5EDE4 (warm off-white per user spec)
-- 2026-02-23 (02-01): text.grey token added: '#808080' light, '#9A8878' dark
-- 2026-02-23 (02-01): applyColorSchemeImmediate used for initial load to avoid startup flash
-- [Phase 02-02]: ActivityIndicator on primary button uses theme.button.primaryText (not hardcoded #fff)
-- [Phase 02-02]: 'transparent' literal preferred over rgba(x,x,x,0) for zero-opacity backgrounds
-- [Phase 02-02]: android_ripple color uses theme.interactive.ripple instead of hardcoded #CCA479
-- 2026-02-23 (02-03): Color swatch fallback #808080 → theme.text.grey (adapts in dark mode)
-- 2026-02-23 (02-03): Tab bar backgroundColor → theme.surface.elevated (solid #3D3028 dark, not translucent overlay)
-- 2026-02-23 (02-03): StatusBar barStyle driven by colorScheme from useTheme()
-- 2026-02-23 (02-05): Delete account button uses #C0392B red unconditionally (destructive action, not theme token)
-- 2026-02-23 (02-05): Favorites card layering: darkest surface = highest zIndex (front card)
-- 2026-02-23 (02-05): Tab/card icons use useTheme() hook rather than navigator tintColor for per-state control
+Progress: [█░░░░░░░░░] 10% (v1.1)
 
 ## Performance Metrics
 
-| Phase | Plan | Duration | Tasks | Files |
-|-------|------|----------|-------|-------|
-| 01 | 01 | ~3 min | 2 | 2 |
-| 01 | 02 | ~3 min | 1 | 1 |
-| 02 | 01 | ~2 min | 2 | 3 |
-| 02 | 02 | ~5 min | 2 | 7 |
-| 02 | 03 | ~3 min | 2 | 6 |
-| 02 | 04 | ~8 min | 2 | 8 |
-| 02 | 05 | ~30 min | 1 | 5 |
+**Velocity:**
+- Total plans completed: 7 (v1.0)
+- Average duration: —
+- Total execution time: —
 
-## Last Session
+**By Phase:**
 
-- Last updated: 2026-02-23
-- Stopped At: Completed 02-05-PLAN.md
+| Phase | Plans | Total | Avg/Plan |
+|-------|-------|-------|----------|
+| 1. Light Mode Fixes | 2 | — | — |
+| 2. Dark Mode | 5 | — | — |
 
-## Blockers/Concerns
+*Updated after each plan completion*
 
-None
+## Accumulated Context
 
-### Quick Tasks Completed
+### Decisions
 
-| # | Description | Date | Commit | Directory |
-|---|-------------|------|--------|-----------|
-| 1 | Consolidate theme system - remove duplicates, base on light mode, reference commit 2bb91e2 | 2026-02-22 | 0d4e477 | [1-consolidate-theme-system-remove-duplicat](.planning/quick/1-consolidate-theme-system-remove-duplicat/) |
-| 2 | Verify every light mode color - migrate Settings to createStyles(theme), fix remaining hardcoded colors | 2026-02-23 | 3deb89c | [2-verify-every-single-color-in-light-mode-](.planning/quick/2-verify-every-single-color-in-light-mode-/) |
+See PROJECT.md Key Decisions table for full log. Active decisions for v1.1:
 
-Last activity: 2026-02-23 - Completed quick task 2: Verify every light mode color - migrate Settings.tsx to createStyles(theme), fix remaining hardcoded colors in MainPage/Favorites/RecentPieces/AuthLoading
+- Order statuses stored in DB table (auditable, consistent across clients)
+- Per-product delivery time overrides brand default (brand confirmed model)
+- Single global admin inside brand portal (upgrade later)
+- Expo Push Notifications for mobile (App Store ready, no extra infra)
+- [04-01] Migration guards ALTER TYPE orderstatus behind pg_type existence check (column is VARCHAR not PG enum)
+- [04-01] OrderStatusEvent uses UUID string PK for consistency with rest of models
+- [04-01] expires_at nullable; set at order creation for CREATED/PENDING orders
 
----
-*Initialized: 2026-02-21*
+### Pending Todos
+
+None.
+
+### Blockers/Concerns
+
+None.
+
+## Session Continuity
+
+Last session: 2026-02-23
+Stopped at: Completed 04-01-PLAN.md (order status foundation schema)
+Resume file: None
