@@ -52,6 +52,7 @@ interface HeartButtonProps {
 }
 
 const HeartButton: React.FC<HeartButtonProps> = ({ isLiked, onToggleLike }) => {
+  const { theme } = useTheme();
   const heartScale = useRef(new RNAnimated.Value(1)).current;
   const pressScale = useRef(new RNAnimated.Value(1)).current;
   const [isAnimating, setIsAnimating] = useState(false);
@@ -110,7 +111,7 @@ const HeartButton: React.FC<HeartButtonProps> = ({ isLiked, onToggleLike }) => {
       onPressIn={handlePressIn}
       onPressOut={handlePressOut}
       android_ripple={{
-        color: "rgba(0,0,0,0.1)",
+        color: theme.interactive.ripple,
         radius: 20,
         borderless: true,
       }}
@@ -629,14 +630,14 @@ const createStyles = (theme: ThemeColors) => StyleSheet.create({
     fontFamily: "IgraSans",
     fontSize: 32,
     textAlign: "left",
-    color: "white",
+    color: theme.text.inverse,
     flex: 1,
   },
   price: {
     fontFamily: "REM",
     fontSize: 14,
     textAlign: "right",
-    color: "white",
+    color: theme.text.inverse,
     marginLeft: 10,
   },
   emptyContainer: {

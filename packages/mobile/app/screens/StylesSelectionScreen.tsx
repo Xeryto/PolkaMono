@@ -149,7 +149,7 @@ const StylesSelectionScreen: React.FC<StylesSelectionScreenProps> = ({
           ]}
           onPress={() => handleStyleSelect(item.id)}
           android_ripple={{
-            color: "rgba(205, 166, 122, 0.3)",
+            color: theme.interactive.ripple,
             borderless: false,
           }}
         >
@@ -305,7 +305,7 @@ const createStyles = (theme: ThemeColors) =>
       width: "88%",
       height: "95%",
       borderRadius: 41,
-      backgroundColor: "rgba(205, 166, 122, 0)",
+      backgroundColor: 'transparent',
       position: "relative",
       borderWidth: 3,
       borderColor: theme.border.default,

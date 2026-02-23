@@ -221,7 +221,7 @@ const BrandSearchScreen: React.FC<BrandSearchScreenProps> = ({
     <Pressable
       style={({ pressed }) => [styles.brandItem, pressed && styles.pressedItem]}
       onPress={() => handleBrandSelect(item.id)}
-      android_ripple={{ color: "rgba(205, 166, 122, 0.3)", borderless: false }}
+      android_ripple={{ color: theme.interactive.ripple, borderless: false }}
     >
       <View style={styles.brandItemContent}>
         <Text style={styles.brandText}>{item.name}</Text>
@@ -420,7 +420,7 @@ const createStyles = (theme: ThemeColors) =>
       width: "88%",
       height: "95%",
       borderRadius: 41,
-      backgroundColor: "rgba(205, 166, 122, 0)",
+      backgroundColor: 'transparent',
       position: "relative",
       borderWidth: 3,
       borderColor: theme.border.default,

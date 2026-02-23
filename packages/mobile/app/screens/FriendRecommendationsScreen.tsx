@@ -1754,19 +1754,19 @@ const createStyles = (theme: ThemeColors) => StyleSheet.create({
     fontFamily: "IgraSans",
     fontSize: 38,
     textAlign: "left",
-    color: "white",
+    color: theme.text.inverse,
   },
   brandName: {
     fontFamily: "IgraSans",
     fontSize: 38,
     textAlign: "left",
-    color: "white",
+    color: theme.text.inverse,
   },
   price: {
     fontFamily: "REM",
     fontSize: 16,
     textAlign: "left",
-    color: "white",
+    color: theme.text.inverse,
   },
   sizeContainer: {
     flexDirection: "row",
