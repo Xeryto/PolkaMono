@@ -112,7 +112,7 @@ const ConfirmationScreen: React.FC<ConfirmationScreenProps> = ({
                       ]}
                       onPress={() => handleOptionSelect("male")}
                       android_ripple={{
-                        color: "#CCA479",
+                        color: theme.interactive.ripple,
                         borderless: false,
                         radius: 41,
                       }}
@@ -150,7 +150,7 @@ const ConfirmationScreen: React.FC<ConfirmationScreenProps> = ({
                       ]}
                       onPress={() => handleOptionSelect("female")}
                       android_ripple={{
-                        color: "#CCA479",
+                        color: theme.interactive.ripple,
                         borderless: false,
                         radius: 41,
                       }}
@@ -207,7 +207,7 @@ const createStyles = (theme: ThemeColors) =>
       width: "88%",
       height: "95%",
       borderRadius: 41,
-      backgroundColor: "rgba(205, 166, 122, 0)",
+      backgroundColor: 'transparent',
       position: "relative",
       borderWidth: 3,
       borderColor: theme.border.default,

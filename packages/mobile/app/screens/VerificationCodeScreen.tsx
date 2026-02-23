@@ -198,7 +198,7 @@ const VerificationCodeScreen: React.FC<VerificationCodeScreenProps> = ({
                 disabled={isLoading}
               >
                 {isLoading ? (
-                  <ActivityIndicator color="#fff" />
+                  <ActivityIndicator color={theme.button.primaryText} />
                 ) : (
                   <Text style={styles.buttonText}>подтвердить</Text>
                 )}
@@ -214,7 +214,7 @@ const VerificationCodeScreen: React.FC<VerificationCodeScreenProps> = ({
                 disabled={resendLoading || resendCooldown > 0}
               >
                 {resendLoading ? (
-                  <ActivityIndicator color="#4A3120" />
+                  <ActivityIndicator color={theme.button.primary} />
                 ) : resendCooldown > 0 ? (
                   <Text
                     style={[
