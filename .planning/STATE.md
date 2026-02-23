@@ -11,16 +11,16 @@ See: .planning/PROJECT.md (updated 2026-02-21)
 
 **Phase 2: Dark Mode**
 - Goal: All screens correct in dark mode, no hardcoded colors
-- Status: In Progress
-- Current Plan: 3/TBD
-- Stopped At: Completed 02-03-PLAN.md
+- Status: Complete
+- Current Plan: 5/5
+- Stopped At: Completed 02-05-PLAN.md
 
 ## Phase Status
 
 | Phase | Status | Plans |
 |-------|--------|-------|
 | 1. Light Mode Fixes | Complete | 2/2 |
-| 2. Dark Mode | In Progress | 3/TBD |
+| 2. Dark Mode | Complete | 5/5 |
 | 3. Consistency Sweep | Not started | 0/TBD |
 
 ## Decisions
@@ -39,6 +39,9 @@ See: .planning/PROJECT.md (updated 2026-02-21)
 - 2026-02-23 (02-03): Color swatch fallback #808080 → theme.text.grey (adapts in dark mode)
 - 2026-02-23 (02-03): Tab bar backgroundColor → theme.surface.elevated (solid #3D3028 dark, not translucent overlay)
 - 2026-02-23 (02-03): StatusBar barStyle driven by colorScheme from useTheme()
+- 2026-02-23 (02-05): Delete account button uses #C0392B red unconditionally (destructive action, not theme token)
+- 2026-02-23 (02-05): Favorites card layering: darkest surface = highest zIndex (front card)
+- 2026-02-23 (02-05): Tab/card icons use useTheme() hook rather than navigator tintColor for per-state control
 
 ## Performance Metrics
 
@@ -49,11 +52,13 @@ See: .planning/PROJECT.md (updated 2026-02-21)
 | 02 | 01 | ~2 min | 2 | 3 |
 | 02 | 02 | ~5 min | 2 | 7 |
 | 02 | 03 | ~3 min | 2 | 6 |
+| 02 | 04 | ~8 min | 2 | 8 |
+| 02 | 05 | ~30 min | 1 | 5 |
 
 ## Last Session
 
 - Last updated: 2026-02-23
-- Stopped At: Completed 02-03-PLAN.md
+- Stopped At: Completed 02-05-PLAN.md
 
 ## Blockers/Concerns
 

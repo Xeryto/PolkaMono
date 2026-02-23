@@ -7,7 +7,7 @@ Fix broken light mode spots, repair dark mode across all screens, then sweep for
 ## Phases
 
 - [x] **Phase 1: Light Mode Fixes** - Correct specific broken colors in light mode (completed 2026-02-22)
-- [ ] **Phase 2: Dark Mode** - Make dark mode work correctly across all screens
+- [x] **Phase 2: Dark Mode** - Make dark mode work correctly across all screens (completed 2026-02-23)
 - [ ] **Phase 3: Consistency Sweep** - Eliminate all hardcoded colors, enforce useTheme() everywhere
 
 ## Phase Details
@@ -39,10 +39,10 @@ Plans:
 
 Plans:
 - [x] 02-01-PLAN.md — Fix dark palette values in theme.ts + add text.grey token + 200ms fade transition in ThemeContext
-- [ ] 02-02-PLAN.md — Auth screens sweep: fix all hardcoded colors in 12 auth/loading screens
-- [ ] 02-03-PLAN.md — Main tab screens sweep: fix Wall, Search, Cart, Favorites, Settings, MainPage, App.tsx
-- [ ] 02-04-PLAN.md — Onboarding screens + shared components: BrandSearch, StylesSelection, FriendRecommendations, AvatarEdit, RecentPieces, AvatarImage, NetworkLoadingIndicator, RoundedBox
-- [ ] 02-05-PLAN.md — Human visual verification checkpoint for all dark mode screens
+- [x] 02-02-PLAN.md — Auth screens sweep: fix all hardcoded colors in 12 auth/loading screens
+- [x] 02-03-PLAN.md — Main tab screens sweep: fix Wall, Search, Cart, Favorites, Settings, MainPage, App.tsx
+- [x] 02-04-PLAN.md — Onboarding screens + shared components: BrandSearch, StylesSelection, FriendRecommendations, AvatarEdit, RecentPieces, AvatarImage, NetworkLoadingIndicator, RoundedBox
+- [x] 02-05-PLAN.md — Human visual verification checkpoint for all dark mode screens
 
 ### Phase 3: Consistency Sweep
 **Goal**: No screen or component uses hardcoded colors; theme switches reactively
@@ -59,5 +59,5 @@ Plans:
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Light Mode Fixes | 2/2 | Complete   | 2026-02-22 |
-| 2. Dark Mode | 4/5 | In Progress|  |
+| 2. Dark Mode | 5/5 | Complete | 2026-02-23 |
 | 3. Consistency Sweep | 0/TBD | Not started | - |
