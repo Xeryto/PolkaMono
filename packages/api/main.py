@@ -1578,9 +1578,6 @@ async def create_product(
     db: Session = Depends(get_db),
 ):
     """Create a new product for the authenticated brand user"""
-    brand = db.query(Brand).filter(Brand.id == product_data.brand_id).first()
-    if not brand:
-        raise HTTPException(status_code=400, detail="Brand not found")
 
     # Generate unique article number for the product (Option 5: Brand + Abbreviation + Random)
     def generate_article_number(brand_name: str, product_name: str) -> str:
@@ -1657,7 +1654,7 @@ async def create_product(
     article_number = None
     max_attempts = 10
     for attempt in range(max_attempts):
-        candidate_article = generate_article_number(str(brand.name), product_data.name)  # type: ignore
+        candidate_article = generate_article_number(str(current_user.name), product_data.name)  # type: ignore
         existing = (
             db.query(Product)
             .filter(Product.article_number == candidate_article)
@@ -1677,7 +1674,7 @@ async def create_product(
         # Fallback: use UUID-based (extremely unlikely to need this)
         product_id_preview = str(uuid.uuid4())[:8].upper()
         random_chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
-        brand_prefix = re.sub(r"[^A-Z0-9]", "", brand.name.upper())[:6]
+        brand_prefix = re.sub(r"[^A-Z0-9]", "", current_user.name.upper())[:6]
         article_number = f"{brand_prefix}-{product_id_preview[:4]}-{''.join(random.choices(random_chars, k=4))}"
 
     # Create product (no images/color; those live on color_variants)
@@ -1687,7 +1684,7 @@ async def create_product(
         price=product_data.price,
         material=product_data.material,
         article_number=article_number,
-        brand_id=product_data.brand_id,
+        brand_id=current_user.id,         # always the authenticated brand
         category_id=product_data.category_id,
         general_images=product_data.general_images or [],
     )
