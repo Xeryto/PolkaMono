@@ -38,7 +38,7 @@ Plans:
 **Plans**: 5 plans
 
 Plans:
-- [ ] 02-01-PLAN.md — Fix dark palette values in theme.ts + add text.grey token + 200ms fade transition in ThemeContext
+- [x] 02-01-PLAN.md — Fix dark palette values in theme.ts + add text.grey token + 200ms fade transition in ThemeContext
 - [ ] 02-02-PLAN.md — Auth screens sweep: fix all hardcoded colors in 12 auth/loading screens
 - [ ] 02-03-PLAN.md — Main tab screens sweep: fix Wall, Search, Cart, Favorites, Settings, MainPage, App.tsx
 - [ ] 02-04-PLAN.md — Onboarding screens + shared components: BrandSearch, StylesSelection, FriendRecommendations, AvatarEdit, RecentPieces, AvatarImage, NetworkLoadingIndicator, RoundedBox
@@ -59,5 +59,5 @@ Plans:
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Light Mode Fixes | 2/2 | Complete   | 2026-02-22 |
-| 2. Dark Mode | 0/TBD | Not started | - |
+| 2. Dark Mode | 1/5 | In Progress | - |
 | 3. Consistency Sweep | 0/TBD | Not started | - |
