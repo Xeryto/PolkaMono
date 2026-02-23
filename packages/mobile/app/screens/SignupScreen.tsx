@@ -495,7 +495,7 @@ const SignupScreen: React.FC<SignupScreenProps> = ({ onSignup, onBack }) => {
                   ).delay(ANIMATION_DELAYS.EXTENDED)}
                 >
                   {isLoading ? (
-                    <ActivityIndicator color="#fff" />
+                    <ActivityIndicator color={theme.button.primaryText} />
                   ) : (
                     <Text style={styles.signupButtonText}>
                       зарегистрироваться

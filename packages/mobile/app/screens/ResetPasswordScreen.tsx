@@ -228,7 +228,7 @@ const ResetPasswordScreen: React.FC<ResetPasswordScreenProps> = ({
                   ]}
                 >
                   {isLoading ? (
-                    <ActivityIndicator color="#fff" />
+                    <ActivityIndicator color={theme.button.primaryText} />
                   ) : (
                     <Text style={styles.resetButtonText}>Сбросить пароль</Text>
                   )}

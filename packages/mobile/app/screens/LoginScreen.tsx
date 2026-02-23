@@ -234,7 +234,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({
                   ]}
                 >
                   {isLoading ? (
-                    <ActivityIndicator color="#fff" />
+                    <ActivityIndicator color={theme.button.primaryText} />
                   ) : (
                     <Text style={styles.loginButtonText}>войти</Text>
                   )}

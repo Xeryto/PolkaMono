@@ -167,7 +167,7 @@ const ForgotPasswordScreen: React.FC<ForgotPasswordScreenProps> = ({
                       ]}
                     >
                       {isLoading ? (
-                        <ActivityIndicator color="#fff" />
+                        <ActivityIndicator color={theme.button.primaryText} />
                       ) : (
                         <Text style={styles.sendButtonText}>отправить код</Text>
                       )}
