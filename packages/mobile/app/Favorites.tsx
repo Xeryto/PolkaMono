@@ -1532,7 +1532,7 @@ const MainContent = ({
                 onPress={toggleSearch}
                 style={styles.plusIconContainer}
               >
-                <PlusSvg width={32} height={32} fill="#FFF" />
+                <PlusSvg width={32} height={32} fill={theme.text.inverse} />
               </Pressable>
             )}
           </View>
@@ -1795,7 +1795,7 @@ const SearchContent = ({
         <View style={styles.titleRow}>
           <Text style={styles.boxTitle}>ДРУЗЬЯ</Text>
           <Pressable onPress={toggleSearch} style={styles.plusIconContainer}>
-            <PlusSvg width={24} height={24} fill="#FFF" />
+            <PlusSvg width={24} height={24} fill={theme.text.inverse} />
           </Pressable>
         </View>
       </Animated.View>

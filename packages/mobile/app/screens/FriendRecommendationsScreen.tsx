@@ -26,7 +26,15 @@ import {
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import * as Haptics from "expo-haptics";
-import Animated, { FadeInDown, FadeOutDown } from "react-native-reanimated";
+import Animated, {
+  FadeInDown,
+  FadeOutDown,
+  useSharedValue,
+  withTiming,
+  runOnJS,
+  useAnimatedStyle,
+  interpolate,
+} from "react-native-reanimated";
 import {
   ANIMATION_DURATIONS,
   ANIMATION_DELAYS,
@@ -45,7 +53,10 @@ import { apiWrapper } from "../services/apiWrapper";
 import fallbackImage from "../assets/Vision.png";
 import AvatarImage from "../components/AvatarImage";
 import { CardItem, CartItem } from "../types/product";
-import { mapProductToCardItem } from "../lib/productMapper";
+import {
+  mapProductToCardItem,
+  getCardItemForColorIndex,
+} from "../lib/productMapper";
 import {
   translateColorToRussian,
   translateMaterialToRussian,
@@ -87,6 +98,13 @@ const MIN_CARDS_THRESHOLD = 3;
 const LOADING_CARD_ID = "__loading_card__";
 const height = Dimensions.get("window").height;
 const width = Dimensions.get("window").width;
+
+// Constants for corner overlays (matching MainPage)
+const CARD_CORNER_INSET = 20;
+const CORNER_BOX_SIZE = 52;
+const CORNER_OVERLAY_SIZE = CARD_CORNER_INSET + CORNER_BOX_SIZE; // 72
+const SIZE_PANEL_CLOSED_WIDTH = 52;
+
 const createLoadingCard = (): CardItem => ({
   id: LOADING_CARD_ID,
   name: "загрузка...",
@@ -264,10 +282,7 @@ const FriendRecommendationsScreen = ({
 
   const pan = useRef(new RNAnimated.ValueXY()).current;
   const fadeAnim = useRef(new RNAnimated.Value(1)).current;
-  const buttonsTranslateX = useRef(new RNAnimated.Value(0)).current;
-  const sizesTranslateX = useRef(new RNAnimated.Value(-screenWidth)).current;
   const imageHeightPercent = useRef(new RNAnimated.Value(100)).current;
-  // pageOpacity removed - React Navigation handles screen transitions
   const refreshAnim = useRef(new RNAnimated.Value(1)).current;
   const [isRefreshing, setIsRefreshing] = useState(false);
   const heartScale = useRef(new RNAnimated.Value(1)).current;
@@ -286,8 +301,13 @@ const FriendRecommendationsScreen = ({
   const [userSelectedSize, setUserSelectedSize] = useState<string | null>(null);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
+  // Color selector state
+  const [colorSelectorOpen, setColorSelectorOpen] = useState(false);
+  const [dropdownContentHeight, setDropdownContentHeight] = useState(0);
+  const colorDropdownHeight = useSharedValue(52);
+  const sizePanelWidth = useSharedValue(52); // closed = cart corner only; open = full width
+
   const cartButtonScale = useRef(new RNAnimated.Value(1)).current;
-  const seenButtonScale = useRef(new RNAnimated.Value(1)).current;
   const [isFlipped, setIsFlipped] = useState(false);
   const flipAnimation = useRef(new RNAnimated.Value(0)).current;
   const scrollViewRef = useRef<ScrollView>(null);
@@ -325,6 +345,84 @@ const FriendRecommendationsScreen = ({
 
     fetchUserData();
   }, []);
+
+  // Color selector constants (matching MainPage)
+  const COLOR_CORNER_CLOSED_HEIGHT = 52;
+  const COLOR_GAP = 6;
+  const COLOR_OPTION_HEIGHT = 32;
+  const COLOR_DROPDOWN_ITEM_HEIGHT = COLOR_OPTION_HEIGHT + COLOR_GAP; // 38
+  const COLOR_DROPDOWN_BOTTOM_PADDING = 8;
+
+  // Close color selector when card changes
+  useEffect(() => {
+    setColorSelectorOpen(false);
+    setDropdownContentHeight(0);
+    colorDropdownHeight.value = 52;
+  }, [currentCardIndex]);
+
+  // Animate color dropdown height
+  useEffect(() => {
+    if (colorSelectorOpen && dropdownContentHeight > 0) {
+      colorDropdownHeight.value = withTiming(dropdownContentHeight, {
+        duration: 220,
+      });
+    }
+  }, [colorSelectorOpen, dropdownContentHeight]);
+
+  const closeColorSelector = useCallback(() => {
+    colorDropdownHeight.value = withTiming(
+      COLOR_CORNER_CLOSED_HEIGHT,
+      { duration: 180 },
+      (finished) => {
+        if (finished) {
+          runOnJS(setColorSelectorOpen)(false);
+          runOnJS(setDropdownContentHeight)(0);
+        }
+      },
+    );
+  }, []);
+
+  const colorDropdownAnimatedStyle = useAnimatedStyle(() => ({
+    height: colorDropdownHeight.value,
+    overflow: "hidden" as const,
+  }));
+
+  const handleColorSelect = useCallback(
+    (colorIndex: number) => {
+      const card = cards[currentCardIndex];
+      if (
+        !card?.color_variants?.length ||
+        colorIndex < 0 ||
+        colorIndex >= card.color_variants.length
+      )
+        return;
+      const next = getCardItemForColorIndex(card, colorIndex);
+      setCards((prev) => {
+        const nextCards = [...prev];
+        nextCards[currentCardIndex] = {
+          ...card,
+          selected_color_index: colorIndex,
+          images: next.images,
+          variants: next.variants,
+          available_sizes: next.available_sizes,
+          color: next.color,
+        };
+        return nextCards;
+      });
+      setCurrentImageIndex(0);
+      closeColorSelector();
+      if (imageScrollViewRef.current && imageCarouselWidth > 0) {
+        setTimeout(() => {
+          imageScrollViewRef.current?.scrollTo({ x: 0, animated: false });
+        }, 0);
+      }
+    },
+    [cards, currentCardIndex, closeColorSelector, imageCarouselWidth],
+  );
+
+  const CORNER_INSET = CARD_CORNER_INSET;
+  const cardWidth = screenWidth * 0.80; // FriendRecommendationsScreen uses 80% card width
+  const sizePanelMaxWidth = cardWidth - CORNER_INSET * 2;
 
   const SWIPE_THRESHOLD = screenHeight * 0.1;
 
@@ -787,88 +885,41 @@ const FriendRecommendationsScreen = ({
       useNativeDriver: true,
       easing: Easing.inOut(Easing.ease),
     }).start();
-    handleCartPress();
-  };
-
-  const handleSeenPressIn = () => {
-    RNAnimated.timing(seenButtonScale, {
-      toValue: 0.85,
-      duration: 80,
-      useNativeDriver: true,
-      easing: Easing.inOut(Easing.ease),
-    }).start();
-  };
-
-  const handleSeenPressOut = () => {
-    RNAnimated.timing(seenButtonScale, {
-      toValue: 1,
-      duration: 150,
-      useNativeDriver: true,
-      easing: Easing.inOut(Easing.ease),
-    }).start();
-    swipeCard("up");
   };
 
   const handleCartPress = () => {
-    RNAnimated.parallel([
-      RNAnimated.timing(buttonsTranslateX, {
-        toValue: screenWidth,
-        duration: 300,
-        easing: Easing.ease,
-        useNativeDriver: true,
-      }),
-      RNAnimated.timing(sizesTranslateX, {
-        toValue: 0,
-        duration: 300,
-        easing: Easing.ease,
-        useNativeDriver: true,
-      }),
-      RNAnimated.timing(imageHeightPercent, {
-        toValue: 90,
-        duration: 300,
-        easing: Easing.ease,
-        useNativeDriver: false,
-      }),
-    ]).start(() => {
-      requestAnimationFrame(() => {
-        setShowSizeSelection(true);
-      });
+    setShowSizeSelection(true);
+    sizePanelWidth.value = withTiming(sizePanelMaxWidth, {
+      duration: 280,
     });
   };
 
   const handleCancelSizeSelection = () => {
-    RNAnimated.parallel([
-      RNAnimated.timing(buttonsTranslateX, {
-        toValue: 0,
-        duration: 300,
-        easing: Easing.ease,
-        useNativeDriver: true,
-      }),
-      RNAnimated.timing(sizesTranslateX, {
-        toValue: -screenWidth,
-        duration: 300,
-        easing: Easing.ease,
-        useNativeDriver: true,
-      }),
-      RNAnimated.timing(imageHeightPercent, {
-        toValue: 100,
-        duration: 300,
-        easing: Easing.ease,
-        useNativeDriver: false,
-      }),
-    ]).start(() => {
-      requestAnimationFrame(() => {
-        setShowSizeSelection(false);
-      });
+    sizePanelWidth.value = withTiming(SIZE_PANEL_CLOSED_WIDTH, {
+      duration: 220,
+    });
+    requestAnimationFrame(() => {
+      setTimeout(() => setShowSizeSelection(false), 220);
     });
   };
 
   const resetToButtons = () => {
-    buttonsTranslateX.setValue(0);
-    sizesTranslateX.setValue(-screenWidth);
-    imageHeightPercent.setValue(100);
+    sizePanelWidth.set(SIZE_PANEL_CLOSED_WIDTH);
     setShowSizeSelection(false);
   };
+
+  const sizePanelAnimatedStyle = useAnimatedStyle(() => {
+    const radius = interpolate(
+      sizePanelWidth.value,
+      [SIZE_PANEL_CLOSED_WIDTH, sizePanelMaxWidth],
+      [16, 0],
+    );
+    return {
+      width: sizePanelWidth.value,
+      overflow: "hidden" as const,
+      borderTopRightRadius: radius,
+    };
+  });
 
   const handleSizeSelect = (size: string) => {
     const currentCard = cards[currentCardIndex];
@@ -1030,9 +1081,15 @@ const FriendRecommendationsScreen = ({
                 </View>
               )}
             </RNAnimated.View>
-            <Pressable style={styles.dotsButton} onPress={handleFlip}>
-              <More width={23} height={33} />
-            </Pressable>
+          </View>
+
+          {/* Top-right: three dots – same inset as other corners */}
+          <View style={styles.cornerOverlayTopRight} pointerEvents="box-none">
+            <View style={styles.cornerInnerTopRight}>
+              <Pressable onPress={handleFlip}>
+                <More width={33} height={33} />
+              </Pressable>
+            </View>
           </View>
 
           {card.images.length > 1 && (
@@ -1050,173 +1107,194 @@ const FriendRecommendationsScreen = ({
             </View>
           )}
 
-          <RNAnimated.View
-            style={[
-              styles.buttonContainer,
-              {
-                transform: [{ translateX: buttonsTranslateX }],
-                opacity: showSizeSelection ? 0 : 1,
-              },
-            ]}
-          >
-            <Pressable
-              style={styles.button}
-              onPressIn={handleCartPressIn}
-              onPressOut={handleCartPressOut}
-            >
-              <RNAnimated.View
-                style={{ transform: [{ scale: cartButtonScale }] }}
+          {/* Top-left: color selector – same inset; only animate height if more than one color */}
+          {card.color_variants?.length > 0 && (
+            <View style={styles.cornerOverlayTopLeft} pointerEvents="box-none">
+              <Animated.View
+                style={[
+                  styles.colorSelectorCornerBox,
+                  styles.colorSelectorInnerPos,
+                  colorDropdownAnimatedStyle,
+                ]}
               >
-                <Cart2 width={33} height={33} />
-              </RNAnimated.View>
-            </Pressable>
-
-            <Pressable
-              style={styles.button}
-              onPressIn={handleSeenPressIn}
-              onPressOut={handleSeenPressOut}
-            >
-              <RNAnimated.View
-                style={{ transform: [{ scale: seenButtonScale }] }}
-              >
-                <Seen width={33} height={33} />
-              </RNAnimated.View>
-            </Pressable>
-
-            <View style={{ zIndex: 999 }}>
-              <HeartButton
-                isLiked={isLiked}
-                onToggleLike={() => toggleLike(index)}
-              />
+                <View style={styles.colorSelectorTriggerRow}>
+                  <TouchableOpacity
+                    style={styles.colorSelectorTriggerCircle}
+                    onPress={() => {
+                      if (colorSelectorOpen) {
+                        closeColorSelector();
+                      } else if ((card.color_variants?.length ?? 0) > 1) {
+                        const otherCount = Math.max(
+                          0,
+                          (card.color_variants?.length ?? 1) - 1,
+                        );
+                        const openHeight =
+                          COLOR_CORNER_CLOSED_HEIGHT +
+                          COLOR_GAP +
+                          otherCount * COLOR_DROPDOWN_ITEM_HEIGHT +
+                          COLOR_DROPDOWN_BOTTOM_PADDING;
+                        setDropdownContentHeight(openHeight);
+                        setColorSelectorOpen(true);
+                      }
+                    }}
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                    activeOpacity={0.7}
+                  >
+                    <View style={styles.colorSelectorSelectedRing}>
+                      <View
+                        style={[
+                          styles.colorSwatchCircle,
+                          {
+                            backgroundColor: card.color_variants[
+                              card.selected_color_index
+                            ]?.color_hex?.startsWith("#")
+                              ? card.color_variants[card.selected_color_index]
+                                  .color_hex
+                              : theme.text.grey,
+                          },
+                        ]}
+                      />
+                    </View>
+                  </TouchableOpacity>
+                </View>
+                {colorSelectorOpen && (
+                  <View style={styles.colorSelectorDropdownCircles}>
+                    {card.color_variants
+                      .map((cv, idx) => ({ cv, idx }))
+                      .filter(({ idx }) => idx !== card.selected_color_index)
+                      .map(({ cv, idx }) => (
+                        <View key={cv.id ?? cv.color_name + idx}>
+                          <TouchableOpacity
+                            style={styles.colorSelectorOptionCircle}
+                            onPress={() => handleColorSelect(idx)}
+                            activeOpacity={0.7}
+                          >
+                            <View
+                              style={[
+                                styles.colorSwatchCircleSmall,
+                                {
+                                  backgroundColor: cv.color_hex?.startsWith("#")
+                                    ? cv.color_hex
+                                    : theme.text.grey,
+                                },
+                              ]}
+                            />
+                          </TouchableOpacity>
+                        </View>
+                      ))}
+                  </View>
+                )}
+              </Animated.View>
             </View>
+          )}
 
-            <Pressable
-              style={[
-                styles.longPressOverlay,
-                { position: "absolute", right: 0, zIndex: 998 },
-              ]}
-              onLongPress={() => handleLongPress(index)}
-              delayLongPress={300}
-            />
-          </RNAnimated.View>
+          {/* Bottom-left: size panel – same inset, grows to the right */}
+          <View style={styles.cornerOverlayBottomLeft} pointerEvents="box-none">
+            <View style={styles.sizePanelPosition}>
+              <Animated.View
+                style={[styles.sizePanelOuter, sizePanelAnimatedStyle]}
+              >
+                <View style={styles.sizePanelRow}>
+                  <Pressable
+                    style={styles.cornerOverlayBottomLeftInner}
+                    onPressIn={handleCartPressIn}
+                    onPressOut={handleCartPressOut}
+                    onPress={handleCartPress}
+                  >
+                    <RNAnimated.View
+                      style={{ transform: [{ scale: cartButtonScale }] }}
+                    >
+                      <Cart2 width={33} height={33} />
+                    </RNAnimated.View>
+                  </Pressable>
+                  <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    contentContainerStyle={styles.sizeScrollContent}
+                    style={styles.sizePanelScrollView}
+                    pointerEvents={showSizeSelection ? "auto" : "none"}
+                  >
+                    {card?.variants?.map((variant, variantIndex) => {
+                      const isAvailable = variant.stock_quantity > 0;
+                      const isUserSize = variant.size === userSelectedSize;
+                      const isOneSize = variant.size === "One Size";
+                      return (
+                        <Pressable
+                          key={variant.size}
+                          style={[
+                            isOneSize ? styles.sizeOval : styles.sizeCircle,
+                            isAvailable
+                              ? styles.sizeCircleAvailable
+                              : styles.sizeCircleUnavailable,
+                            isUserSize && isAvailable
+                              ? styles.sizeCircleUserSize
+                              : null,
+                            variantIndex > 0 ? { marginLeft: 10 } : null,
+                          ]}
+                          onPress={() => {
+                            if (isAvailable) {
+                              handleSizeSelect(variant.size);
+                            } else {
+                              Haptics.impactAsync(
+                                Haptics.ImpactFeedbackStyle.Light,
+                              );
+                            }
+                          }}
+                          disabled={!isAvailable}
+                        >
+                          <Text
+                            style={
+                              isOneSize ? styles.sizeOvalText : styles.sizeText
+                            }
+                          >
+                            {variant.size}
+                          </Text>
+                        </Pressable>
+                      );
+                    })}
+                  </ScrollView>
+                  <Pressable
+                    onPress={handleCancelSizeSelection}
+                    style={styles.sizePanelCancelButton}
+                  >
+                    <Cancel width={27} height={27} />
+                  </Pressable>
+                </View>
+              </Animated.View>
+            </View>
+          </View>
 
-          <RNAnimated.View
-            style={[
-              styles.sizeContainer,
-              {
-                transform: [{ translateX: sizesTranslateX }],
-                opacity: showSizeSelection ? 1 : 0,
-              },
-            ]}
+          {/* Bottom-right: like – same inset, overlay extends to edge (no image line) */}
+          <View
+            style={styles.cornerOverlayBottomRight}
+            pointerEvents="box-none"
           >
-            {card?.variants && card.variants.length === 1 ? (
-              <>
-                {card.variants.map((variant) => {
-                  const isAvailable = variant.stock_quantity > 0;
-                  const isUserSize = variant.size === userSelectedSize;
-                  const isOneSize = variant.size === "One Size";
-
-                  return (
-                    <Pressable
-                      key={variant.size}
-                      style={[
-                        isOneSize ? styles.sizeOval : styles.sizeCircle,
-                        isAvailable
-                          ? styles.sizeCircleAvailable
-                          : styles.sizeCircleUnavailable,
-                        isUserSize && isAvailable
-                          ? styles.sizeCircleUserSize
-                          : null,
-                      ]}
-                      onPress={() => {
-                        if (isAvailable) {
-                          handleSizeSelect(variant.size);
-                        } else {
-                          Haptics.impactAsync(
-                            Haptics.ImpactFeedbackStyle.Light,
-                          );
-                        }
-                      }}
-                      disabled={!isAvailable}
-                    >
-                      <Text
-                        style={
-                          isOneSize ? styles.sizeOvalText : styles.sizeText
-                        }
-                      >
-                        {variant.size}
-                      </Text>
-                    </Pressable>
-                  );
-                })}
+            <View style={styles.cornerInnerBottomRight}>
+              <View
+                style={[
+                  styles.cornerOverlayBottomRightInner,
+                  { position: "relative" },
+                ]}
+              >
+                <View style={{ zIndex: 999 }}>
+                  <HeartButton
+                    isLiked={isLiked}
+                    onToggleLike={() => toggleLike(index)}
+                  />
+                </View>
                 <Pressable
-                  onPress={handleCancelSizeSelection}
-                  style={styles.cancelSizeSelectionButtonAbsolute}
-                >
-                  <Cancel width={27} height={27} />
-                </Pressable>
-              </>
-            ) : (
-              <>
-                {card?.variants?.map((variant, index) => {
-                  const isAvailable = variant.stock_quantity > 0;
-                  const isUserSize = variant.size === userSelectedSize;
-                  const isOneSize = variant.size === "One Size";
-
-                  return (
-                    <Pressable
-                      key={variant.size}
-                      style={[
-                        isOneSize ? styles.sizeOval : styles.sizeCircle,
-                        isAvailable
-                          ? styles.sizeCircleAvailable
-                          : styles.sizeCircleUnavailable,
-                        isUserSize && isAvailable
-                          ? styles.sizeCircleUserSize
-                          : null,
-                        index > 0 ? { marginLeft: 10 } : null,
-                      ]}
-                      onPress={() => {
-                        if (isAvailable) {
-                          handleSizeSelect(variant.size);
-                        } else {
-                          Haptics.impactAsync(
-                            Haptics.ImpactFeedbackStyle.Light,
-                          );
-                        }
-                      }}
-                      disabled={!isAvailable}
-                    >
-                      <Text
-                        style={
-                          isOneSize ? styles.sizeOvalText : styles.sizeText
-                        }
-                      >
-                        {variant.size}
-                      </Text>
-                    </Pressable>
-                  );
-                })}
-                <Pressable
-                  onPress={handleCancelSizeSelection}
-                  style={[
-                    styles.sizeCircle,
-                    styles.cancelSizeButton,
-                    { marginLeft: 10 },
-                  ]}
-                >
-                  <Cancel width={27} height={27} />
-                </Pressable>
-              </>
-            )}
-          </RNAnimated.View>
+                  style={[StyleSheet.absoluteFill, { zIndex: 998 }]}
+                  onLongPress={() => handleLongPress(index)}
+                  delayLongPress={300}
+                />
+              </View>
+            </View>
+          </View>
         </>
       );
     },
     [
       showSizeSelection,
-      buttonsTranslateX,
-      sizesTranslateX,
       imageHeightPercent,
       handleFlip,
       scrollToImageIndex,
@@ -1225,8 +1303,6 @@ const FriendRecommendationsScreen = ({
       imageCarouselWidth,
       handleCartPressIn,
       handleCartPressOut,
-      handleSeenPressIn,
-      handleSeenPressOut,
       handleLongPress,
       toggleLike,
       currentImageIndex,
@@ -1235,6 +1311,17 @@ const FriendRecommendationsScreen = ({
       handleCancelSizeSelection,
       cards,
       imageScrollViewRef,
+      colorSelectorOpen,
+      handleColorSelect,
+      closeColorSelector,
+      currentCardIndex,
+      colorDropdownAnimatedStyle,
+      COLOR_CORNER_CLOSED_HEIGHT,
+      COLOR_GAP,
+      COLOR_DROPDOWN_ITEM_HEIGHT,
+      COLOR_DROPDOWN_BOTTOM_PADDING,
+      sizePanelAnimatedStyle,
+      cartButtonScale,
     ],
   );
 
@@ -1665,6 +1752,7 @@ const createStyles = (theme: ThemeColors) => StyleSheet.create({
     elevation: 10,
     justifyContent: "center",
     alignItems: "center",
+    padding: CARD_CORNER_INSET,
   },
   overlayLabelContainer: {
     width: "102%",
@@ -1676,11 +1764,13 @@ const createStyles = (theme: ThemeColors) => StyleSheet.create({
     alignItems: "center",
   },
   imageHolder: {
-    width: "75%",
-    height: "80%",
+    position: "absolute",
+    top: CARD_CORNER_INSET,
+    left: CARD_CORNER_INSET,
+    right: CARD_CORNER_INSET,
+    bottom: CARD_CORNER_INSET,
     justifyContent: "center",
     alignItems: "center",
-    marginBottom: 5,
   },
   image: {
     width: "100%",
@@ -1707,7 +1797,7 @@ const createStyles = (theme: ThemeColors) => StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     position: "absolute",
-    bottom: 10,
+    bottom: CARD_CORNER_INSET + CORNER_BOX_SIZE / 2 - 8 / 2,
     width: "100%",
   },
   imageDot: {
@@ -1718,32 +1808,7 @@ const createStyles = (theme: ThemeColors) => StyleSheet.create({
     marginHorizontal: 4,
   },
   imageDotActive: {
-    backgroundColor: theme.text.primary,
-  },
-  dotsButton: {
-    position: "absolute",
-    top: -15,
-    right: -22.5,
-    padding: 5,
-    borderRadius: 5,
-  },
-  dotsImage: {
-    width: 23,
-    height: 33,
-  },
-  buttonContainer: {
-    flexDirection: "row",
-    justifyContent: "space-around",
-    width: "110%",
-    marginBottom: -60,
-  },
-  button: {
-    padding: 5,
-  },
-  icon: {
-    width: 33,
-    height: 33,
-    resizeMode: "contain",
+    backgroundColor: theme.button.primary,
   },
   text: {
     top: Platform.OS == "android" ? "82.5%" : "85%",
@@ -1767,15 +1832,6 @@ const createStyles = (theme: ThemeColors) => StyleSheet.create({
     fontSize: 16,
     textAlign: "left",
     color: theme.text.inverse,
-  },
-  sizeContainer: {
-    flexDirection: "row",
-    justifyContent: "space-around",
-    alignItems: "center",
-    width: "100%",
-    marginBottom: 0,
-    paddingHorizontal: 20,
-    position: "relative",
   },
   sizeCircle: {
     width: 41,
@@ -1823,44 +1879,7 @@ const createStyles = (theme: ThemeColors) => StyleSheet.create({
     fontSize: 12,
     textAlign: "center",
   },
-  cancelSizeSelectionButton: {
-    width: 41,
-    height: 41,
-    borderRadius: 20.5,
-    backgroundColor: theme.interactive.remove,
-    justifyContent: "center",
-    alignItems: "center",
-    shadowColor: theme.shadow.default,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-    elevation: 5,
-  },
-  cancelSizeSelectionButtonAbsolute: {
-    position: "absolute",
-    right: 20,
-    width: 41,
-    height: 41,
-    borderRadius: 20.5,
-    backgroundColor: theme.interactive.remove,
-    justifyContent: "center",
-    alignItems: "center",
-    shadowColor: theme.shadow.default,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-    elevation: 5,
-  },
-  cancelSizeButton: {
-    backgroundColor: theme.interactive.remove,
-    justifyContent: "center",
-    alignItems: "center",
-    shadowColor: theme.shadow.default,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-    elevation: 5,
-  },
+
   noCardsContainer: {
     flex: 1,
     justifyContent: "center",
@@ -1876,14 +1895,7 @@ const createStyles = (theme: ThemeColors) => StyleSheet.create({
     fontSize: 16,
     color: theme.text.secondary,
   },
-  longPressOverlay: {
-    width: 50,
-    height: 50,
-    position: "absolute",
-    top: -10,
-    right: -10,
-    zIndex: 998,
-  },
+
   cardBackContainer: {
     flex: 1,
     padding: 20,
@@ -1964,9 +1976,193 @@ const createStyles = (theme: ThemeColors) => StyleSheet.create({
     color: theme.text.secondary,
   },
   expandableContent: {
-    fontFamily: "REM",
-    fontSize: 16,
-    color: theme.text.tertiary,
+    fontFamily: "Rubik-Regular",
+    fontSize: 14,
+    color: theme.text.secondary,
+  },
+  cornerOverlayTopLeft: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    width: CORNER_OVERLAY_SIZE,
+    height: CORNER_OVERLAY_SIZE,
+    backgroundColor: theme.background.primary,
+    borderTopLeftRadius: 41,
+    borderBottomRightRadius: 16,
+    zIndex: 20,
+    elevation: 21,
+  },
+  cornerOverlayTopRight: {
+    position: "absolute",
+    top: 0,
+    right: 0,
+    width: CORNER_OVERLAY_SIZE,
+    height: CORNER_OVERLAY_SIZE,
+    backgroundColor: theme.background.primary,
+    borderTopRightRadius: 41,
+    borderBottomLeftRadius: 16,
+    zIndex: 20,
+    elevation: 21,
+  },
+  cornerOverlayBottomLeft: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    width: CORNER_OVERLAY_SIZE,
+    height: CORNER_OVERLAY_SIZE,
+    backgroundColor: theme.background.primary,
+    borderBottomLeftRadius: 41,
+    borderTopRightRadius: 16,
+    zIndex: 25,
+    elevation: 26,
+  },
+  cornerOverlayBottomRight: {
+    position: "absolute",
+    bottom: 0,
+    right: 0,
+    width: CORNER_OVERLAY_SIZE,
+    height: CORNER_OVERLAY_SIZE,
+    backgroundColor: theme.background.primary,
+    borderBottomRightRadius: 41,
+    borderTopLeftRadius: 16,
+    zIndex: 20,
+    elevation: 21,
+  },
+  cornerInnerTopRight: {
+    position: "absolute",
+    top: CARD_CORNER_INSET,
+    right: CARD_CORNER_INSET,
+    width: CORNER_BOX_SIZE,
+    height: CORNER_BOX_SIZE,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  cornerInnerBottomRight: {
+    position: "absolute",
+    bottom: CARD_CORNER_INSET,
+    right: CARD_CORNER_INSET,
+    width: CORNER_BOX_SIZE,
+    height: CORNER_BOX_SIZE,
+  },
+  sizePanelPosition: {
+    position: "absolute",
+    left: CARD_CORNER_INSET,
+    bottom: CARD_CORNER_INSET,
+  },
+  sizePanelOuter: {
+    backgroundColor: theme.background.primary,
+    height: CORNER_BOX_SIZE,
+    justifyContent: "center",
+  },
+  sizePanelRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    minHeight: CORNER_BOX_SIZE,
+  },
+  sizePanelScrollView: {
+    flex: 1,
+    height: 60,
+    minWidth: 0,
+  },
+  sizePanelCancelButton: {
+    width: 41,
+    height: 41,
+    borderRadius: 20.5,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: theme.interactive.remove,
+  },
+  cornerOverlayBottomLeftInner: {
+    backgroundColor: theme.background.primary,
+    width: CORNER_BOX_SIZE,
+    height: CORNER_BOX_SIZE,
+    padding: 10,
+    borderTopRightRadius: 16,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  cornerOverlayBottomRightInner: {
+    backgroundColor: theme.background.primary,
+    width: CORNER_BOX_SIZE,
+    height: CORNER_BOX_SIZE,
+    padding: 10,
+    borderTopLeftRadius: 16,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  colorSelectorCornerBox: {
+    backgroundColor: theme.background.primary,
+    paddingHorizontal: 10,
+    paddingVertical: 0,
+    borderBottomRightRadius: 16,
+    width: CORNER_BOX_SIZE,
+    minHeight: CORNER_BOX_SIZE,
+    overflow: "hidden",
+    justifyContent: "flex-start",
+    alignItems: "center",
+  },
+  colorSelectorTriggerRow: {
+    width: "100%",
+    height: CORNER_BOX_SIZE,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  colorSelectorInnerPos: {
+    position: "absolute",
+    top: CARD_CORNER_INSET,
+    left: CARD_CORNER_INSET,
+  },
+  colorSelectorTriggerCircle: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  colorSelectorSelectedRing: {
+    width: 26 + 4 * 2 + 4 * 2,
+    height: 26 + 4 * 2 + 4 * 2,
+    borderRadius: (26 + 4 * 2 + 4 * 2) / 2,
+    borderWidth: 4,
+    borderColor: theme.text.tertiary,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  colorSwatchCircle: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    borderWidth: 2,
+    borderColor: "rgba(0,0,0,0.2)",
+  },
+  colorSelectorDropdownWrapper: {
+    width: 32,
+    marginTop: 6,
+    alignSelf: "center",
+  },
+  colorSelectorDropdownCircles: {
+    flexDirection: "column",
+    alignItems: "center",
+    paddingTop: 6,
+    paddingBottom: 0,
+  },
+  colorSelectorOptionCircle: {
+    padding: 3,
+    borderRadius: 13,
+  },
+  colorSwatchCircleSmall: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    borderWidth: 2,
+    borderColor: "rgba(0,0,0,0.2)",
+  },
+  sizeScrollContent: {
+    width: "100%",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    minHeight: 60,
   },
 });
 

@@ -3773,7 +3773,7 @@ const createStyles = (theme: ThemeColors) => StyleSheet.create({
   placeholderSubtext: {
     fontFamily: "IgraSans",
     fontSize: 18,
-    color: "#666",
+    color: theme.text.grey,
     textAlign: "center",
   },
   contentContainer: {
