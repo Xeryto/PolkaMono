@@ -89,7 +89,7 @@ class UpdateTrackingRequest(BaseModel):
 
 # Order status: canonical values returned by API (lowercase).
 # Must stay in sync with OrderStatus enum in models.py and frontend/mobile libs.
-ORDER_STATUS_VALUES = ("pending", "paid", "shipped", "returned", "canceled")
+ORDER_STATUS_VALUES = ("created", "pending", "paid", "shipped", "returned", "partially_returned", "canceled")
 
 
 class OrderSummaryResponse(BaseModel):

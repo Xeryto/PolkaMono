@@ -26,6 +26,7 @@ class Settings:
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "30"))
     EMAIL_VERIFICATION_CODE_EXPIRE_MINUTES: int = int(os.getenv("EMAIL_VERIFICATION_CODE_EXPIRE_MINUTES", "10"))
+    ORDER_PENDING_EXPIRY_HOURS: int = int(os.getenv("ORDER_PENDING_EXPIRY_HOURS", "24"))
     
     # Database Configuration
     DATABASE_URL: str = os.getenv("DATABASE_URL")
