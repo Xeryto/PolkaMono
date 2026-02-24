@@ -5,16 +5,16 @@
 See: .planning/PROJECT.md (updated 2026-02-23)
 
 **Core value:** Brands can run their storefront end-to-end; buyers get a smooth, trustworthy purchase experience.
-**Current focus:** Milestone v1.1 — Phase 6: Product Enrichment API + Web
+**Current focus:** Milestone v1.1 — Phase 7: Account Management + 2FA
 
 ## Current Position
 
-Phase: 6 of 9 (Product Enrichment API + Web)
-Plan: 3 of 3 in current phase
+Phase: 7 of 9 (Account Management + 2FA)
+Plan: 1 of 4 in current phase
 Status: In progress
-Last activity: 2026-02-24 — completed plan 06-03 (sizing table upload + delivery time override in ProductDetailsModal)
+Last activity: 2026-02-24 — completed plan 07-01 (DB columns for brand inactive/deletion + AuthAccount 2FA)
 
-Progress: [███░░░░░░░] 25% (v1.1)
+Progress: [████░░░░░░] 30% (v1.1)
 
 ## Performance Metrics
 
@@ -36,6 +36,7 @@ Progress: [███░░░░░░░] 25% (v1.1)
 | Phase 06-product-enrichment-api-web P01 | 10 | 3 tasks | 4 files |
 | Phase 06-product-enrichment-api-web P02 | 2 | 3 tasks | 3 files |
 | Phase 06-product-enrichment-api-web P03 | 2 | 2 tasks | 1 files |
+| Phase 07-account-management-2fa P01 | 5 | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -71,6 +72,9 @@ See PROJECT.md Key Decisions table for full log. Active decisions for v1.1:
 - [Phase 06-02]: [06-02] Remove-sale button uses e.stopPropagation() to prevent modal open on row click
 - [Phase 06-product-enrichment-api-web]: [06-03] DELIVERY_TIME_OPTIONS copied locally per plan — avoids import coupling between pages
 - [Phase 06-product-enrichment-api-web]: [06-03] sizingTableImage null (not '') — simpler truthiness; only http URLs forwarded to API on save
+- [07-01] otp_session_token is String(64) = secrets.token_hex(32); prevents forgeable base64(email) session binding
+- [07-01] is_inactive separates brand visibility from account deletion (scheduled_deletion_at for deferred purge)
+- [07-01] All OTP limits env-configurable via Settings: expire=5min, max_fails=5, lockout=15min, max_resends=3, cooldown=60s
 
 ### Pending Todos
 
@@ -91,5 +95,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-24
-Stopped at: Completed 06-03-PLAN.md — sizing table upload + delivery time override in ProductDetailsModal
+Stopped at: Completed 07-01-PLAN.md — Brand inactive/deletion columns + AuthAccount 2FA columns + migration
 Resume file: None

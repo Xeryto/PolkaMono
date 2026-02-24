@@ -31,16 +31,16 @@
 
 ### Brand Account
 
-- [ ] **ACCT-01**: Brand can set their account to "inactive" mode — products hidden from buyers, no new purchases, existing orders still manageable
-- [ ] **ACCT-02**: Brand can delete their account; active/paid orders preserved for history; products hidden; personal data handled per legal compliance
-- [ ] **ACCT-03**: Brand has a "Security" settings screen with 2FA toggle and change-password form
+- [x] **ACCT-01**: Brand can set their account to "inactive" mode — products hidden from buyers, no new purchases, existing orders still manageable
+- [x] **ACCT-02**: Brand can delete their account; active/paid orders preserved for history; products hidden; personal data handled per legal compliance
+- [x] **ACCT-03**: Brand has a "Security" settings screen with 2FA toggle and change-password form
 - [ ] **ACCT-04**: Brand can change their password from the Security screen
 
 ### Two-Factor Auth
 
-- [ ] **2FA-01**: If 2FA is enabled, login shows an email OTP step after credentials
-- [ ] **2FA-02**: OTP screen has a resend button with rate limiting (max 3 resends, 60s cooldown)
-- [ ] **2FA-03**: 2FA codes expire after a configurable window (e.g. 10 min)
+- [x] **2FA-01**: If 2FA is enabled, login shows an email OTP step after credentials
+- [x] **2FA-02**: OTP screen has a resend button with rate limiting (max 3 resends, 60s cooldown)
+- [x] **2FA-03**: 2FA codes expire after a configurable window (e.g. 10 min)
 
 ### Input Validation
 
@@ -105,13 +105,13 @@
 | PROD-03 | Phase 6 | Complete |
 | PROD-04 | Phase 6 | Complete |
 | PROD-06 | Phase 6 | Complete |
-| ACCT-01 | Phase 7 | Pending |
-| ACCT-02 | Phase 7 | Pending |
-| ACCT-03 | Phase 7 | Pending |
+| ACCT-01 | Phase 7 | Complete |
+| ACCT-02 | Phase 7 | Complete |
+| ACCT-03 | Phase 7 | Complete |
 | ACCT-04 | Phase 7 | Pending |
-| 2FA-01 | Phase 7 | Pending |
-| 2FA-02 | Phase 7 | Pending |
-| 2FA-03 | Phase 7 | Pending |
+| 2FA-01 | Phase 7 | Complete |
+| 2FA-02 | Phase 7 | Complete |
+| 2FA-03 | Phase 7 | Complete |
 | NOTIF-02 | Phase 8 | Pending |
 | NOTIF-01 | Phase 8 | Pending |
 | NOTIF-03 | Phase 8 | Pending |

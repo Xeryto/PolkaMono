@@ -111,7 +111,13 @@ Plans:
   2. Brand can delete their account; active/paid orders are preserved, products hidden, personal data handled per legal compliance
   3. Brand has a Security settings screen where they can change their password
   4. When 2FA is enabled, login requires an email OTP step with a resend button (rate-limited: max 3 resends, 60s cooldown) and codes expire after the configured window
-**Plans**: TBD
+**Plans**: 4 plans
+
+Plans:
+- [ ] 07-01-PLAN.md — DB: is_inactive/scheduled_deletion_at on Brand + 2FA columns on AuthAccount + migration
+- [ ] 07-02-PLAN.md — API: inactive toggle, account deletion, change-password, 2FA enable/confirm/disable endpoints
+- [ ] 07-03-PLAN.md — API: 2FA-aware brand login, OTP verify + resend with rate limiting + lockout
+- [ ] 07-04-PLAN.md — Web: SecuritySettingsPage (inactive, change-pw, 2FA, delete) + Portal 2FA challenge
 
 #### Phase 8: Notifications
 **Goal**: Brands receive in-app notifications for order events; buyers receive push notifications on mobile; admin can send manual notifications
@@ -147,6 +153,6 @@ Plans:
 | 4. Order Status Foundation | 3/3 | Complete    | 2026-02-23 | - |
 | 5. Brand Profile Restructure | 3/3 | Complete   | 2026-02-24 | - |
 | 6. Product Enrichment (API + Web) | 3/3 | Complete    | 2026-02-24 | - |
-| 7. Account Management + 2FA | v1.1 | 0/TBD | Not started | - |
+| 7. Account Management + 2FA | 1/4 | In Progress|  | - |
 | 8. Notifications | v1.1 | 0/TBD | Not started | - |
 | 9. Admin Dashboard + Mobile Display | v1.1 | 0/TBD | Not started | - |
