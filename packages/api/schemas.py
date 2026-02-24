@@ -4,7 +4,7 @@ from typing import List, Optional
 
 from config import settings  # Import settings
 from models import Gender  # Import enums
-from pydantic import BaseModel, EmailStr, Field, model_validator, validator
+from pydantic import BaseModel, EmailStr, Field, field_validator, model_validator, validator
 
 
 class Amount(BaseModel):
@@ -243,6 +243,15 @@ class ProductCreateRequest(BaseModel):
         None, max_length=50
     )  # Auto-generated if not provided
     general_images: Optional[List[str]] = None
+    delivery_time_min: Optional[int] = None  # per-product override
+    delivery_time_max: Optional[int] = None
+
+    @field_validator("price", mode="before")
+    @classmethod
+    def validate_price(cls, v):
+        if v is not None and v <= 0:
+            raise ValueError("Цена должна быть больше нуля")
+        return v
 
     @model_validator(mode="after")
     def require_at_least_one_image(self):
@@ -267,6 +276,8 @@ class ProductUpdateRequest(BaseModel):
     color_variants: Optional[List[ProductColorVariantCreate]] = None
     material: Optional[str] = Field(None, max_length=100)
     general_images: Optional[List[str]] = None
+    delivery_time_min: Optional[int] = None
+    delivery_time_max: Optional[int] = None
 
     @model_validator(mode="after")
     def require_at_least_one_image_if_provided(self):
@@ -299,6 +310,8 @@ class Product(BaseModel):
     brand_return_policy: Optional[str] = None
     is_liked: Optional[bool] = None
     general_images: List[str] = []
+    delivery_time_min: Optional[int] = None
+    delivery_time_max: Optional[int] = None
 
     class Config:
         from_attributes = True
@@ -478,20 +491,53 @@ class BrandLogin(BaseModel):
 
 
 class BrandUpdate(BaseModel):
-    name: Optional[str] = None
+    name: Optional[str] = Field(None, max_length=100)
     email: Optional[EmailStr] = None
     password: Optional[str] = None  # For changing password
     slug: Optional[str] = None
     logo: Optional[str] = None
-    description: Optional[str] = None
+    description: Optional[str] = Field(None, max_length=1000)
     return_policy: Optional[str] = None
     min_free_shipping: Optional[int] = None
     shipping_price: Optional[float] = None
     shipping_provider: Optional[str] = None
     inn: Optional[str] = None
     registration_address: Optional[str] = None
-    payout_account: Optional[str] = None
+    payout_account: Optional[str] = Field(None, max_length=100)
     payout_account_locked: Optional[bool] = None
+    delivery_time_min: Optional[int] = None  # days
+    delivery_time_max: Optional[int] = None  # days
+
+    @field_validator("inn", mode="before")
+    @classmethod
+    def validate_inn(cls, v):
+        if v is None:
+            return v
+        cleaned = re.sub(r"\s", "", str(v))
+        if not re.match(r"^\d{10}$|^\d{12}$", cleaned):
+            raise ValueError("ИНН должен содержать 10 или 12 цифр")
+        return cleaned
+
+    @field_validator("shipping_price", mode="before")
+    @classmethod
+    def validate_shipping_price(cls, v):
+        if v is not None and v < 0:
+            raise ValueError("Цена доставки не может быть отрицательной")
+        return v
+
+    @field_validator("min_free_shipping", mode="before")
+    @classmethod
+    def validate_min_free_shipping(cls, v):
+        if v is not None and v < 0:
+            raise ValueError("Минимальная цена для бесплатной доставки не может быть отрицательной")
+        return v
+
+    @field_validator("delivery_time_min", "delivery_time_max", mode="before")
+    @classmethod
+    def validate_delivery_times(cls, v):
+        if v is not None and v < 1:
+            raise ValueError("Срок доставки должен быть не менее 1 дня")
+        return v
 
 
 class BrandResponse(BaseModel):
@@ -510,6 +556,8 @@ class BrandResponse(BaseModel):
     registration_address: Optional[str] = None
     payout_account: Optional[str] = None
     payout_account_locked: bool = False
+    delivery_time_min: Optional[int] = None
+    delivery_time_max: Optional[int] = None
     created_at: datetime
     updated_at: datetime
 
