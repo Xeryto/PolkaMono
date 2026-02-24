@@ -27,6 +27,11 @@ class Settings:
     ACCESS_TOKEN_EXPIRE_MINUTES: int = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "30"))
     EMAIL_VERIFICATION_CODE_EXPIRE_MINUTES: int = int(os.getenv("EMAIL_VERIFICATION_CODE_EXPIRE_MINUTES", "10"))
     ORDER_PENDING_EXPIRY_HOURS: int = int(os.getenv("ORDER_PENDING_EXPIRY_HOURS", "24"))
+    OTP_EXPIRE_MINUTES: int = int(os.getenv("OTP_EXPIRE_MINUTES", "5"))
+    OTP_MAX_FAILED_ATTEMPTS: int = int(os.getenv("OTP_MAX_FAILED_ATTEMPTS", "5"))
+    OTP_LOCKOUT_MINUTES: int = int(os.getenv("OTP_LOCKOUT_MINUTES", "15"))
+    OTP_MAX_RESENDS: int = int(os.getenv("OTP_MAX_RESENDS", "3"))
+    OTP_RESEND_COOLDOWN_SECONDS: int = int(os.getenv("OTP_RESEND_COOLDOWN_SECONDS", "60"))
     
     # Database Configuration
     DATABASE_URL: str = os.getenv("DATABASE_URL")

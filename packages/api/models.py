@@ -40,6 +40,14 @@ class AuthAccount(Base):
     password_reset_token = Column(String, nullable=True)
     password_reset_expires = Column(DateTime, nullable=True)
     password_history = Column(ARRAY(String), default=list)
+    two_factor_enabled = Column(Boolean, default=False, nullable=False)
+    otp_code = Column(String(6), nullable=True)               # Current pending 2FA OTP (6-digit code)
+    otp_code_expires_at = Column(DateTime, nullable=True)     # Expires 5 min from send
+    otp_session_token = Column(String(64), nullable=True)     # secrets.token_hex(32) — ties OTP to login session; cleared after verify
+    failed_otp_attempts = Column(Integer, default=0, nullable=False)  # Resets on success
+    otp_locked_until = Column(DateTime, nullable=True)        # 15-min lockout after too many fails
+    otp_resend_count = Column(Integer, default=0, nullable=False)     # Resets each login attempt
+    otp_resend_window_start = Column(DateTime, nullable=True) # When current resend window started
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
