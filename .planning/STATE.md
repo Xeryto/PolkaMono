@@ -10,9 +10,9 @@ See: .planning/PROJECT.md (updated 2026-02-23)
 ## Current Position
 
 Phase: 6 of 9 (Product Enrichment API + Web)
-Plan: 2 of 3 in current phase
+Plan: 3 of 3 in current phase
 Status: In progress
-Last activity: 2026-02-24 — completed plan 06-02 (sale price UI: modal section + list badge + remove button)
+Last activity: 2026-02-24 — completed plan 06-03 (sizing table upload + delivery time override in ProductDetailsModal)
 
 Progress: [███░░░░░░░] 25% (v1.1)
 
@@ -35,6 +35,7 @@ Progress: [███░░░░░░░] 25% (v1.1)
 | Phase 05-brand-profile-restructure P03 | 10 | 2 tasks | 1 files |
 | Phase 06-product-enrichment-api-web P01 | 10 | 3 tasks | 4 files |
 | Phase 06-product-enrichment-api-web P02 | 2 | 3 tasks | 3 files |
+| Phase 06-product-enrichment-api-web P03 | 2 | 2 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -68,6 +69,8 @@ See PROJECT.md Key Decisions table for full log. Active decisions for v1.1:
 - [Phase 06-02]: [06-02] sale_price/sale_type use null not undefined in updateProduct param type so JSON.stringify includes the clear signal
 - [Phase 06-02]: [06-02] saleType state uses '' as no-sale sentinel; converted to null before API call (consistent with 05-03 delivery time pattern)
 - [Phase 06-02]: [06-02] Remove-sale button uses e.stopPropagation() to prevent modal open on row click
+- [Phase 06-product-enrichment-api-web]: [06-03] DELIVERY_TIME_OPTIONS copied locally per plan — avoids import coupling between pages
+- [Phase 06-product-enrichment-api-web]: [06-03] sizingTableImage null (not '') — simpler truthiness; only http URLs forwarded to API on save
 
 ### Pending Todos
 
@@ -88,5 +91,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-24
-Stopped at: Completed 06-02-PLAN.md — sale price UI (modal section + list badge + remove button)
+Stopped at: Completed 06-03-PLAN.md — sizing table upload + delivery time override in ProductDetailsModal
 Resume file: None
