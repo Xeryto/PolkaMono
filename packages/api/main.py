@@ -859,11 +859,40 @@ async def oauth_login(oauth_data: OAuthLogin, db: Session = Depends(get_db)):
     )
 
 
-@app.post(
-    "/api/v1/brands/auth/login", response_model=AuthResponse
-)  # Re-use AuthResponse for now, will adjust user field later
-async def brand_login(brand_data: schemas.BrandLogin, db: Session = Depends(get_db)):
-    """Login brand user with email and password"""
+def _issue_brand_jwt(brand: Brand) -> AuthResponse:
+    """Issue JWT for a successfully authenticated brand."""
+    access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+    access_token = auth_service.create_access_token(
+        data={"sub": str(brand.id), "is_brand": True},
+        expires_delta=access_token_expires,
+    )
+    return AuthResponse(
+        token=access_token,
+        expires_at=datetime.utcnow() + access_token_expires,
+        user=schemas.UserProfileResponse(
+            id=str(brand.id),
+            username=brand.name,
+            email=brand.auth_account.email,
+            is_active=True,
+            is_email_verified=True,
+            is_brand=True,
+            created_at=brand.created_at,
+            updated_at=brand.updated_at,
+        ),
+    )
+
+
+@app.post("/api/v1/brands/auth/login")
+@limiter.limit("10/minute")
+async def brand_login(
+    request: Request,
+    brand_data: schemas.BrandLogin,
+    db: Session = Depends(get_db),
+):
+    """Login brand — returns JWT directly, or 202+session_token if 2FA is enabled."""
+    import secrets as _secrets
+    from fastapi.responses import JSONResponse
+
     brand = (
         db.query(Brand)
         .join(AuthAccount)
@@ -878,34 +907,144 @@ async def brand_login(brand_data: schemas.BrandLogin, db: Session = Depends(get_
             detail="Неверные учетные данные бренда. Проверьте правильность email и пароля.",
         )
 
-    # Create access token for the brand
-    access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
-    access_token = auth_service.create_access_token(
-        data={"sub": str(brand.id), "is_brand": True},
-        expires_delta=access_token_expires,
-    )
+    acc = brand.auth_account
 
-    # For now, return a simplified UserResponse for the brand
-    # In a real app, you'd have a dedicated BrandAuthResponse or similar
-    return AuthResponse(
-        token=access_token,
-        expires_at=datetime.utcnow() + access_token_expires,
-        user=schemas.UserProfileResponse(  # Re-using UserProfileResponse, but it's a Brand
-            id=str(brand.id),  # Convert int ID to string for UserProfileResponse
-            username=brand.name,  # Use brand name as username
-            email=brand.auth_account.email,
-            is_active=True,  # Brands are always active for login
-            is_email_verified=True,  # Assuming brand emails are verified
-            is_brand=True,
-            created_at=brand.created_at,
-            updated_at=brand.updated_at,
-            # Brand specific fields
-            return_policy=brand.return_policy,
-            min_free_shipping=brand.min_free_shipping,
-            shipping_price=brand.shipping_price,
-            shipping_provider=brand.shipping_provider,
-        ),
+    # Reactivate if scheduled for deletion (grace period login)
+    if brand.scheduled_deletion_at is not None and brand.scheduled_deletion_at > datetime.utcnow():
+        brand.scheduled_deletion_at = None
+        brand.is_inactive = False
+        db.commit()
+
+    # 2FA check
+    if acc.two_factor_enabled:
+        # Check lockout
+        if acc.otp_locked_until and acc.otp_locked_until > datetime.utcnow():
+            raise HTTPException(
+                status_code=423,
+                detail="Аккаунт временно заблокирован из-за множества неверных попыток. Попробуйте позже.",
+            )
+        # Generate OTP and a cryptographically secure session token
+        otp = "".join([str(_secrets.randbelow(10)) for _ in range(6)])
+        session_token = _secrets.token_hex(32)  # 64 hex chars — stored in DB, not derivable from email
+        acc.otp_code = otp
+        acc.otp_code_expires_at = datetime.utcnow() + timedelta(minutes=settings.OTP_EXPIRE_MINUTES)
+        acc.otp_session_token = session_token
+        acc.failed_otp_attempts = 0
+        acc.otp_resend_count = 0
+        acc.otp_resend_window_start = datetime.utcnow()
+        db.commit()
+        mail_service.send_email(
+            to_email=acc.email,
+            subject="Код подтверждения входа",
+            html_content=f"Ваш код для входа: <b>{otp}</b>. Он действителен {settings.OTP_EXPIRE_MINUTES} минут.",
+        )
+        return JSONResponse(
+            status_code=202,
+            content={"otp_required": True, "session_token": session_token},
+        )
+
+    # No 2FA — issue JWT directly
+    return _issue_brand_jwt(brand)
+
+
+@app.post("/api/v1/brands/auth/2fa/verify")
+@limiter.limit("10/minute")
+async def brand_verify_2fa(
+    request: Request,
+    payload: schemas.BrandVerifyOTP,
+    db: Session = Depends(get_db),
+):
+    """Verify 2FA OTP after login challenge. Returns JWT on success."""
+    # Look up by session_token — prevents forgery via known email
+    acc = (
+        db.query(AuthAccount)
+        .filter(AuthAccount.otp_session_token == payload.session_token)
+        .first()
     )
+    if not acc:
+        raise HTTPException(status_code=400, detail="Неверный или истёкший session_token")
+
+    brand = db.query(Brand).filter(Brand.auth_account_id == acc.id).first()
+    if not brand:
+        raise HTTPException(status_code=400, detail="Неверный session_token")
+
+    # Lockout check
+    if acc.otp_locked_until and acc.otp_locked_until > datetime.utcnow():
+        raise HTTPException(status_code=423, detail="Аккаунт временно заблокирован. Попробуйте через 15 минут.")
+
+    # Expiry check
+    if not acc.otp_code or not acc.otp_code_expires_at or acc.otp_code_expires_at < datetime.utcnow():
+        raise HTTPException(status_code=400, detail="Код истёк. Войдите снова.")
+
+    # Code check
+    if acc.otp_code != payload.code:
+        acc.failed_otp_attempts = (acc.failed_otp_attempts or 0) + 1
+        if acc.failed_otp_attempts >= settings.OTP_MAX_FAILED_ATTEMPTS:
+            acc.otp_locked_until = datetime.utcnow() + timedelta(minutes=settings.OTP_LOCKOUT_MINUTES)
+        db.commit()
+        raise HTTPException(status_code=400, detail="Неверный код")
+
+    # Success — clear OTP and session state
+    acc.otp_code = None
+    acc.otp_code_expires_at = None
+    acc.otp_session_token = None  # Invalidate session token after use
+    acc.failed_otp_attempts = 0
+    acc.otp_locked_until = None
+    acc.otp_resend_count = 0
+    acc.otp_resend_window_start = None
+    db.commit()
+
+    return _issue_brand_jwt(brand)
+
+
+@app.post("/api/v1/brands/auth/2fa/resend")
+@limiter.limit("5/minute")
+async def brand_resend_2fa(
+    request: Request,
+    payload: schemas.BrandResendOTP,
+    db: Session = Depends(get_db),
+):
+    """Resend 2FA OTP. Max 3 resends per login attempt, 60s cooldown between resends."""
+    import secrets as _secrets
+
+    acc = (
+        db.query(AuthAccount)
+        .filter(AuthAccount.otp_session_token == payload.session_token)
+        .first()
+    )
+    if not acc:
+        raise HTTPException(status_code=400, detail="Неверный или истёкший session_token")
+
+    # Check resend limit
+    resend_count = acc.otp_resend_count or 0
+    if resend_count >= settings.OTP_MAX_RESENDS:
+        raise HTTPException(
+            status_code=429,
+            detail=f"Превышен лимит отправок кода ({settings.OTP_MAX_RESENDS}). Войдите снова.",
+        )
+
+    # Check cooldown (60s between resends)
+    if acc.otp_resend_window_start:
+        elapsed = (datetime.utcnow() - acc.otp_resend_window_start).total_seconds()
+        if elapsed < settings.OTP_RESEND_COOLDOWN_SECONDS:
+            wait = int(settings.OTP_RESEND_COOLDOWN_SECONDS - elapsed)
+            raise HTTPException(status_code=429, detail=f"Подождите {wait} секунд перед повторной отправкой.")
+
+    # Send new OTP
+    otp = "".join([str(_secrets.randbelow(10)) for _ in range(6)])
+    acc.otp_code = otp
+    acc.otp_code_expires_at = datetime.utcnow() + timedelta(minutes=settings.OTP_EXPIRE_MINUTES)
+    acc.otp_resend_count = resend_count + 1
+    acc.otp_resend_window_start = datetime.utcnow()
+    db.commit()
+
+    mail_service.send_email(
+        to_email=acc.email,
+        subject="Новый код подтверждения входа",
+        html_content=f"Ваш новый код для входа: <b>{otp}</b>. Он действителен {settings.OTP_EXPIRE_MINUTES} минут.",
+    )
+    resends_left = settings.OTP_MAX_RESENDS - acc.otp_resend_count
+    return {"message": "Код отправлен повторно", "resends_remaining": resends_left}
 
 
 @app.post("/api/v1/brands/auth/forgot-password")
