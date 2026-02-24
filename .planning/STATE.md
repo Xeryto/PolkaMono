@@ -5,14 +5,14 @@
 See: .planning/PROJECT.md (updated 2026-02-23)
 
 **Core value:** Brands can run their storefront end-to-end; buyers get a smooth, trustworthy purchase experience.
-**Current focus:** Milestone v1.1 — Phase 5: Brand Profile Restructure
+**Current focus:** Milestone v1.1 — Phase 6: Product Enrichment API + Web
 
 ## Current Position
 
-Phase: 5 of 9 (Brand Profile Restructure)
-Plan: 3 of ? in current phase
+Phase: 6 of 9 (Product Enrichment API + Web)
+Plan: 1 of 3 in current phase
 Status: In progress
-Last activity: 2026-02-24 — completed plan 05-03 (AddNewItemPage delivery time dropdowns + Zod inline validation)
+Last activity: 2026-02-24 — completed plan 06-01 (product enrichment API: sale_price, sale_type, sizing_table_image + migration)
 
 Progress: [███░░░░░░░] 25% (v1.1)
 
@@ -33,6 +33,7 @@ Progress: [███░░░░░░░] 25% (v1.1)
 *Updated after each plan completion*
 | Phase 05-brand-profile-restructure P02 | 15 | 2 tasks | 2 files |
 | Phase 05-brand-profile-restructure P03 | 10 | 2 tasks | 1 files |
+| Phase 06-product-enrichment-api-web P01 | 10 | 3 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -61,6 +62,8 @@ See PROJECT.md Key Decisions table for full log. Active decisions for v1.1:
 - [Phase 05-02]: parsePydanticErrors in api.ts + ApiError.fieldErrors enables 422 server validation surfacing in UI
 - [05-03]: DELIVERY_TIME_OPTIONS local const; empty string sentinel for undefined in Radix Select
 - [05-03]: Structural color-variant validations remain toasts; scalar field errors go inline via Zod
+- [Phase 06-01]: [06-01] sale_type validated via Pydantic regex pattern not DB enum
+- [Phase 06-01]: [06-01] delivery_time_min/max backfilled into product_to_schema (were written in Ph5 but never returned)
 
 ### Pending Todos
 
@@ -81,5 +84,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-24
-Stopped at: Completed 05-03-PLAN.md — AddNewItemPage delivery time dropdowns + Zod inline validation
+Stopped at: Completed 06-01-PLAN.md — product enrichment API (sale_price, sale_type, sizing_table_image)
 Resume file: None
