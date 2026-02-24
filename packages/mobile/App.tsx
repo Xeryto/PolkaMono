@@ -522,7 +522,7 @@ function MainAppNavigator({
               styles.navbar,
               {
                 paddingBottom: Math.max(15, insets.bottom),
-                backgroundColor: theme.surface.elevated,
+                backgroundColor: theme.background.tab,
               },
             ]}
           >

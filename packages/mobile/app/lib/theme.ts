@@ -22,6 +22,7 @@ export interface ThemeColors {
     input: string;          // Input fields
     overlay: string;        // Overlay backgrounds
     loading: string;        // Loading screen
+    tab: string;            // Tab bar background
   };
 
   // Surface Colors (for cards, containers, etc.)
@@ -179,6 +180,7 @@ const lightColors: ThemeColors = {
     input: '#E0D6CC',
     overlay: 'rgba(205, 166, 122, 0.4)',
     loading: '#F3E6D6',
+    tab: 'rgba(205, 166, 122, 0.2)',
   },
 
   // Surface Colors
@@ -336,6 +338,7 @@ const darkColors: ThemeColors = {
     input: '#3D3028',
     overlay: 'rgba(205, 166, 122, 0.4)',
     loading: '#261E1A',
+    tab: 'rgba(205, 166, 122, 0.2)',
   },
 
   // Surface Colors
