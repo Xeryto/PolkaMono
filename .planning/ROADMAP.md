@@ -95,7 +95,12 @@ Plans:
   1. Brand can set a sale price (% off or exact) on any product and the API serves it; brand can remove the sale from the products list
   2. Brand can upload a sizing table image per product and the image is stored and served via API
   3. Brand can set a delivery time range per product that overrides the brand default, and the API serves the effective delivery time
-**Plans**: TBD
+**Plans**: 3 plans
+
+Plans:
+- [ ] 06-01-PLAN.md — API: sale_price/sale_type/sizing_table_image columns, migration, schemas, product_to_schema backfill
+- [ ] 06-02-PLAN.md — Web: sale price set/remove UI in ProductDetailsModal and ProductsView
+- [ ] 06-03-PLAN.md — Web: sizing table image upload + delivery time override selects in ProductDetailsModal
 
 #### Phase 7: Account Management + 2FA
 **Goal**: Brands have full control over their account lifecycle and can secure it with two-factor authentication
@@ -141,7 +146,7 @@ Plans:
 | 3. Consistency Sweep | v1.0 | 0/TBD | Deferred to v1.2 | - |
 | 4. Order Status Foundation | 3/3 | Complete    | 2026-02-23 | - |
 | 5. Brand Profile Restructure | 3/3 | Complete   | 2026-02-24 | - |
-| 6. Product Enrichment (API + Web) | v1.1 | 0/TBD | Not started | - |
+| 6. Product Enrichment (API + Web) | v1.1 | 0/3 | Not started | - |
 | 7. Account Management + 2FA | v1.1 | 0/TBD | Not started | - |
 | 8. Notifications | v1.1 | 0/TBD | Not started | - |
 | 9. Admin Dashboard + Mobile Display | v1.1 | 0/TBD | Not started | - |
