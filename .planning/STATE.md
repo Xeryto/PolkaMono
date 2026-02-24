@@ -10,9 +10,9 @@ See: .planning/PROJECT.md (updated 2026-02-23)
 ## Current Position
 
 Phase: 7 of 9 (Account Management + 2FA)
-Plan: 3 of 4 in current phase
-Status: In progress
-Last activity: 2026-02-24 — completed plan 07-03 (brand login 2FA challenge + verify/resend endpoints)
+Plan: 4 of 4 in current phase
+Status: Checkpoint — awaiting human verification
+Last activity: 2026-02-24 — completed plan 07-04 tasks 1-3 (SecuritySettingsPage + Portal 2FA); paused at human-verify checkpoint
 
 Progress: [████░░░░░░] 30% (v1.1)
 
@@ -39,6 +39,7 @@ Progress: [████░░░░░░] 30% (v1.1)
 | Phase 07-account-management-2fa P01 | 5 | 2 tasks | 3 files |
 | Phase 07-account-management-2fa P02 | 12 | 3 tasks | 2 files |
 | Phase 07-account-management-2fa P03 | 15 | 2 tasks | 2 files |
+| Phase 07-account-management-2fa P04 | 4 | 3 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -84,6 +85,10 @@ See PROJECT.md Key Decisions table for full log. Active decisions for v1.1:
 - [07-03] brand_login gets @limiter.limit(10/minute) + request:Request (was missing)
 - [07-03] _issue_brand_jwt extracted as shared helper for non-2FA login and 2FA verify success paths
 - [07-03] otp_session_token cleared after successful verify (one-time use)
+- [07-04] Portal calls api.brandLogin directly to intercept otp_required before AuthContext login
+- [07-04] handleLoginSuccess uses window.location.href hard redirect after 2FA verify (AuthContext re-reads localStorage)
+- [07-04] BrandResponse extended with is_inactive + two_factor_enabled (already returned by API)
+- [07-04] resendCount initialized to 1 on first OTP send; disabled when >= 3
 
 ### Pending Todos
 
@@ -104,5 +109,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-24
-Stopped at: Completed 07-03-PLAN.md — brand login 2FA challenge + verify/resend endpoints
+Stopped at: 07-04-PLAN.md — checkpoint:human-verify (tasks 1-3 complete, awaiting functional verification)
 Resume file: None
