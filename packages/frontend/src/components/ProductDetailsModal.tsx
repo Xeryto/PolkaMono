@@ -70,6 +70,10 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({
   const [salePrice, setSalePrice] = useState<string>(
     product.sale_price != null ? String(product.sale_price) : ''
   );
+  const [sizingTableImage, setSizingTableImage] = useState<string | null>(
+    product.sizing_table_image ?? null
+  );
+  const [sizingTableFile, setSizingTableFile] = useState<File | null>(null);
 
   const hasDuplicateSizes = (variants: { size: string; stock_quantity: number }[]) => {
     const seen = new Set<string>();
@@ -96,6 +100,8 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({
     setGeneralImageFiles([]);
     setSaleType(product.sale_type || '');
     setSalePrice(product.sale_price != null ? String(product.sale_price) : '');
+    setSizingTableImage(product.sizing_table_image ?? null);
+    setSizingTableFile(null);
   }, [product]);
 
   useEffect(() => {
@@ -236,6 +242,13 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({
         })
       );
 
+      let finalSizingTableImage = sizingTableImage?.startsWith('http')
+        ? sizingTableImage
+        : null;
+      if (sizingTableFile) {
+        finalSizingTableImage = await uploadOne(sizingTableFile);
+      }
+
       await api.updateProduct(
         product.id,
         {
@@ -249,6 +262,7 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({
           general_images: finalGeneralImages,
           sale_price: salePrice !== '' ? parseFloat(salePrice) : null,
           sale_type: saleType !== '' ? saleType : null,
+          sizing_table_image: finalSizingTableImage,
         },
         token!
       );
@@ -502,6 +516,41 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({
                       </div>
                     ))}
                   </div>
+                </div>
+                {/* Sizing table image */}
+                <div className="space-y-2">
+                  <Label>Таблица размеров</Label>
+                  <p className="text-xs text-muted-foreground">Изображение с таблицей размеров для покупателей</p>
+                  <FileInput
+                    accept="image/*"
+                    onFilesChange={(files) => {
+                      if (files[0]) {
+                        setSizingTableFile(files[0]);
+                        setSizingTableImage(URL.createObjectURL(files[0]));
+                      }
+                    }}
+                    selectedFileNames={sizingTableFile ? [sizingTableFile.name] : []}
+                    className="mt-1"
+                  />
+                  {sizingTableImage && (
+                    <div className="relative mt-2 inline-block">
+                      <img
+                        src={sizingTableImage}
+                        alt="Таблица размеров"
+                        className="h-24 object-contain rounded-md border border-border/30"
+                      />
+                      <button
+                        type="button"
+                        className="absolute -top-2 -right-2 h-4 w-4 text-red-500"
+                        onClick={() => {
+                          setSizingTableImage(null);
+                          setSizingTableFile(null);
+                        }}
+                      >
+                        <XCircle className="h-4 w-4" />
+                      </button>
+                    </div>
+                  )}
                 </div>
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
