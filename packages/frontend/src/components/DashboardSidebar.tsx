@@ -5,6 +5,7 @@ import {
   LogOut,
   PlusSquare,
   User,
+  ShieldCheck,
 } from "lucide-react";
 import {
   Sidebar,
@@ -19,7 +20,7 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 
-type DashboardView = "stats" | "orders" | "products" | "add-item" | "profile";
+type DashboardView = "stats" | "orders" | "products" | "add-item" | "profile" | "security";
 
 interface DashboardSidebarProps {
   currentView: DashboardView;
@@ -32,6 +33,7 @@ const menuItems = [
   { id: "products", title: "Товары", icon: Package },
   { id: "add-item", title: "Добавить товар", icon: PlusSquare },
   { id: "profile", title: "Профиль", icon: User },
+  { id: "security", title: "Безопасность", icon: ShieldCheck },
 ];
 
 export function DashboardSidebar({

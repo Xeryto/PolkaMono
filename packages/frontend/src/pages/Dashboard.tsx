@@ -7,8 +7,9 @@ import { ProductsView } from "@/components/ProductsView";
 import { StatsView } from "@/components/StatsView";
 import { AddNewItemPage } from "@/pages/AddNewItemPage";
 import { ProfileSettingsPage } from "@/pages/ProfileSettingsPage";
+import { SecuritySettingsPage } from "@/pages/SecuritySettingsPage";
 
-type DashboardView = 'stats' | 'orders' | 'products' | 'add-item' | 'profile';
+type DashboardView = 'stats' | 'orders' | 'products' | 'add-item' | 'profile' | 'security';
 
 const Dashboard = () => {
   const [currentView, setCurrentView] = useState<DashboardView>('stats');
@@ -23,6 +24,8 @@ const Dashboard = () => {
         return <AddNewItemPage />;
       case 'profile':
         return <ProfileSettingsPage />;
+      case 'security':
+        return <SecuritySettingsPage />;
       case 'stats':
         return <StatsView />;
       default: // Fallback for any unhandled view, or if 'stats' is still somehow set
