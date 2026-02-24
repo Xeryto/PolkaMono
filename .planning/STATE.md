@@ -10,9 +10,9 @@ See: .planning/PROJECT.md (updated 2026-02-23)
 ## Current Position
 
 Phase: 7 of 9 (Account Management + 2FA)
-Plan: 2 of 4 in current phase
+Plan: 3 of 4 in current phase
 Status: In progress
-Last activity: 2026-02-24 — completed plan 07-02 (brand account management + 2FA endpoints + inactive filter)
+Last activity: 2026-02-24 — completed plan 07-03 (brand login 2FA challenge + verify/resend endpoints)
 
 Progress: [████░░░░░░] 30% (v1.1)
 
@@ -38,6 +38,7 @@ Progress: [████░░░░░░] 30% (v1.1)
 | Phase 06-product-enrichment-api-web P03 | 2 | 2 tasks | 1 files |
 | Phase 07-account-management-2fa P01 | 5 | 2 tasks | 3 files |
 | Phase 07-account-management-2fa P02 | 12 | 3 tasks | 2 files |
+| Phase 07-account-management-2fa P03 | 15 | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -79,6 +80,10 @@ See PROJECT.md Key Decisions table for full log. Active decisions for v1.1:
 - [07-02] brand_enable_2fa uses `import secrets as _secrets` inline to avoid collision with top-level `secrets` module name
 - [07-02] GET /api/v1/products/{product_id} uses product.brand.is_inactive lazy-load check (not join) — consistent with existing pattern
 - [07-02] Inactive filter applied to 7 buyer-facing queries: brands list, favorites, recent-swipes, recommendations (user+friend), popular, search, single product
+- [07-03] brand_login 2FA branch uses secrets.token_hex(32) session_token stored in DB; verify/resend look up by token not email (prevents forgery)
+- [07-03] brand_login gets @limiter.limit(10/minute) + request:Request (was missing)
+- [07-03] _issue_brand_jwt extracted as shared helper for non-2FA login and 2FA verify success paths
+- [07-03] otp_session_token cleared after successful verify (one-time use)
 
 ### Pending Todos
 
@@ -99,5 +104,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-24
-Stopped at: Completed 07-02-PLAN.md — brand account management + 2FA endpoints + inactive filter on buyer queries
+Stopped at: Completed 07-03-PLAN.md — brand login 2FA challenge + verify/resend endpoints
 Resume file: None

@@ -153,6 +153,6 @@ Plans:
 | 4. Order Status Foundation | 3/3 | Complete    | 2026-02-23 | - |
 | 5. Brand Profile Restructure | 3/3 | Complete   | 2026-02-24 | - |
 | 6. Product Enrichment (API + Web) | 3/3 | Complete    | 2026-02-24 | - |
-| 7. Account Management + 2FA | 2/4 | In Progress|  | - |
+| 7. Account Management + 2FA | 3/4 | In Progress|  | - |
 | 8. Notifications | v1.1 | 0/TBD | Not started | - |
 | 9. Admin Dashboard + Mobile Display | v1.1 | 0/TBD | Not started | - |
