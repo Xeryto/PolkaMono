@@ -2466,7 +2466,7 @@ async def update_user_preferences(
 @app.get("/api/v1/brands", response_model=List[BrandResponse])
 async def get_brands(db: Session = Depends(get_db)):
     """Get all available brands"""
-    brands = db.query(Brand).all()
+    brands = db.query(Brand).filter(Brand.is_inactive == False).all()
     return [
         BrandResponse(
             id=int(brand.id),  # type: ignore
@@ -2621,7 +2621,10 @@ async def get_user_favorites(
         db.query(Product)
         .join(UserLikedProduct)
         .join(Brand)
-        .filter(UserLikedProduct.user_id == current_user.id)
+        .filter(
+            UserLikedProduct.user_id == current_user.id,
+            Brand.is_inactive == False,
+        )
         .all()
     )
 
@@ -2648,8 +2651,11 @@ async def get_recent_swipes(
     # Extract product IDs, maintaining order
     product_ids = [swipe.product_id for swipe in recent_swipes]
 
-    # Get products in the same order
-    products = db.query(Product).join(Brand).filter(Product.id.in_(product_ids)).all()
+    # Get products in the same order (exclude inactive brands)
+    products = db.query(Product).join(Brand).filter(
+        Product.id.in_(product_ids),
+        Brand.is_inactive == False,
+    ).all()
 
     # Create a map for quick lookup
     product_map = {product.id: product for product in products}
@@ -2678,8 +2684,8 @@ async def get_recommendations_for_user(
     # This is a placeholder for a real recommendation engine.
     # For now, return a few random products and mark if liked by the user
     all_products = (
-        db.query(Product).join(Brand).order_by(func.random()).limit(limit).all()
-    )  # Get random products
+        db.query(Product).join(Brand).filter(Brand.is_inactive == False).order_by(func.random()).limit(limit).all()
+    )  # Get random products (exclude inactive brands)
     liked_product_ids = {ulp.product_id for ulp in current_user.liked_products}
 
     return [
@@ -2704,8 +2710,8 @@ async def get_recommendations_for_friend(
         )
 
     all_products = (
-        db.query(Product).join(Brand).order_by(func.random()).limit(8).all()
-    )  # Get 8 random products
+        db.query(Product).join(Brand).filter(Brand.is_inactive == False).order_by(func.random()).limit(8).all()
+    )  # Get 8 random products (exclude inactive brands)
     liked_product_ids = {ulp.product_id for ulp in current_user.liked_products}
 
     return [
@@ -2750,6 +2756,7 @@ async def get_popular_products(
     products = (
         db.query(Product)
         .join(Brand)
+        .filter(Brand.is_inactive == False)
         .order_by(
             Product.purchase_count.desc(),
             Product.created_at.desc(),  # Secondary sort by creation date for consistency
@@ -2785,7 +2792,7 @@ async def search_products(
     db: Session = Depends(get_db),
 ):
     """Search for products based on query and filters. Supports multiple values per filter (OR logic)."""
-    products_query = db.query(Product).join(Brand)
+    products_query = db.query(Product).join(Brand).filter(Brand.is_inactive == False)
 
     # Apply search query
     if query:
@@ -2836,7 +2843,7 @@ async def get_product_details(
 ):
     """Get details of a specific product for regular users"""
     product = db.query(Product).filter(Product.id == product_id).first()
-    if not product:
+    if not product or product.brand.is_inactive:
         raise HTTPException(
             status_code=404,
             detail="Товар не найден. Возможно, он был удален или перемещен.",
