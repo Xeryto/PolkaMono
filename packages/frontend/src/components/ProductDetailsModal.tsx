@@ -64,6 +64,12 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({
   const [styles, setStyles] = useState<any[]>([]);
   const [categories, setCategories] = useState<any[]>([]);
   const [selectedCategory, setSelectedCategory] = useState(product.category_id || "");
+  const [saleType, setSaleType] = useState<'percent' | 'exact' | ''>(
+    product.sale_type || ''
+  );
+  const [salePrice, setSalePrice] = useState<string>(
+    product.sale_price != null ? String(product.sale_price) : ''
+  );
 
   const hasDuplicateSizes = (variants: { size: string; stock_quantity: number }[]) => {
     const seen = new Set<string>();
@@ -88,6 +94,8 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({
     setColorVariationFiles(product.color_variants?.map(() => []) || [[]]);
     setGeneralImages(product.general_images || []);
     setGeneralImageFiles([]);
+    setSaleType(product.sale_type || '');
+    setSalePrice(product.sale_price != null ? String(product.sale_price) : '');
   }, [product]);
 
   useEffect(() => {
@@ -239,6 +247,8 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({
           category_id: selectedCategory,
           color_variants: colorVariantsWithUrls,
           general_images: finalGeneralImages,
+          sale_price: salePrice !== '' ? parseFloat(salePrice) : null,
+          sale_type: saleType !== '' ? saleType : null,
         },
         token!
       );
@@ -615,6 +625,49 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({
                     </Card>
                   ))}
                 </div>
+              </div>
+            </div>
+            {/* Sale section */}
+            <div className="border border-border/30 rounded-lg p-4 space-y-3">
+              <h3 className="font-medium text-sm">Скидка</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label>Тип скидки</Label>
+                  <Select
+                    value={saleType}
+                    onValueChange={(v) => setSaleType(v as 'percent' | 'exact' | '')}
+                  >
+                    <SelectTrigger className="mt-1">
+                      <SelectValue placeholder="Без скидки" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">Без скидки</SelectItem>
+                      <SelectItem value="percent">Процент (%)</SelectItem>
+                      <SelectItem value="exact">Фиксированная цена (₽)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                {saleType !== '' && (
+                  <div>
+                    <Label>
+                      {saleType === 'percent' ? 'Скидка (%)' : 'Цена со скидкой (₽)'}
+                    </Label>
+                    <Input
+                      type="number"
+                      min={saleType === 'percent' ? 1 : 0}
+                      max={saleType === 'percent' ? 99 : undefined}
+                      placeholder={saleType === 'percent' ? 'напр., 20' : 'напр., 1990'}
+                      className="mt-1"
+                      value={salePrice}
+                      onChange={(e) => setSalePrice(e.target.value)}
+                    />
+                    {saleType === 'percent' && (
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Покупатели увидят цену {salePrice ? Math.round(product.price * (1 - parseFloat(salePrice) / 100)) : '—'} ₽
+                      </p>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
             <div className="flex justify-end space-x-2 pt-4">
