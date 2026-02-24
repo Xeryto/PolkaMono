@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { z } from "zod";
 import {
   Card,
   CardContent,
@@ -12,6 +13,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { PlusCircle, XCircle } from "lucide-react";
 import * as api from "@/services/api";
+import { parsePydanticErrors } from "@/services/api";
 import { useToast } from "@/hooks/use-toast";
 import { colors } from "@/lib/colors";
 import { materials } from "@/lib/materials";
@@ -26,6 +28,26 @@ import {
 import { FileInput } from "@/components/ui/file-input";
 import { sizes } from "@/lib/sizes";
 import { useAuth } from "@/context/AuthContext";
+
+const DELIVERY_TIME_OPTIONS = [
+  { value: 1, label: "1 день" },
+  { value: 3, label: "3 дня" },
+  { value: 5, label: "5 дней" },
+  { value: 7, label: "1 неделя" },
+  { value: 14, label: "2 недели" },
+  { value: 21, label: "3 недели" },
+  { value: 30, label: "1 месяц" },
+];
+
+const productSchema = z.object({
+  name: z.string().min(1, "Название обязательно").max(255, "Не более 255 символов"),
+  price: z.string().min(1, "Цена обязательна").refine(
+    (v) => !isNaN(Number(v)) && Number(v) > 0,
+    "Цена должна быть больше нуля"
+  ),
+  description: z.string().max(1000, "Не более 1000 символов").optional(),
+  selectedCategory: z.string().min(1, "Выберите категорию"),
+});
 
 export interface ColorVariationForm {
   colorName: string;
@@ -70,6 +92,9 @@ export function AddNewItemPage() {
   ]);
   const [generalImages, setGeneralImages] = useState<string[]>([]);
   const [generalImageFiles, setGeneralImageFiles] = useState<File[]>([]);
+  const [deliveryTimeMin, setDeliveryTimeMin] = useState<number | undefined>(undefined);
+  const [deliveryTimeMax, setDeliveryTimeMax] = useState<number | undefined>(undefined);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
 
@@ -218,28 +243,19 @@ export function AddNewItemPage() {
   };
 
   const handleSubmit = async () => {
-    if (
-      !name.trim() ||
-      !price.trim() ||
-      !description.trim() ||
-      !selectedCategory
-    ) {
-      toast({
-        title: "Ошибка",
-        description: "Заполните название, цену, описание и категорию.",
-        variant: "destructive",
+    const parsed = productSchema.safeParse({ name, price, description, selectedCategory });
+    if (!parsed.success) {
+      const flat = parsed.error.flatten().fieldErrors;
+      setFieldErrors({
+        name: flat.name?.[0] ?? "",
+        price: flat.price?.[0] ?? "",
+        description: flat.description?.[0] ?? "",
+        selectedCategory: flat.selectedCategory?.[0] ?? "",
       });
       return;
     }
+    setFieldErrors({});
     const priceNum = parseFloat(price);
-    if (Number.isNaN(priceNum) || priceNum < 0) {
-      toast({
-        title: "Ошибка",
-        description: "Цена не может быть отрицательной.",
-        variant: "destructive",
-      });
-      return;
-    }
 
     for (let i = 0; i < colorVariations.length; i++) {
       const cv = colorVariations[i];
@@ -341,6 +357,8 @@ export function AddNewItemPage() {
         color_variants: colorVariantsWithUrls,
         general_images:
           generalImageUrls.length > 0 ? generalImageUrls : undefined,
+        delivery_time_min: deliveryTimeMin,
+        delivery_time_max: deliveryTimeMax,
       };
 
       await api.createProduct(productData, token);
@@ -357,8 +375,13 @@ export function AddNewItemPage() {
       setColorVariations([defaultColorVariation()]);
       setGeneralImages([]);
       setGeneralImageFiles([]);
+      setDeliveryTimeMin(undefined);
+      setDeliveryTimeMax(undefined);
     } catch (error: any) {
       console.error("Failed to add product:", error);
+      if ((error as any).fieldErrors) {
+        setFieldErrors((error as any).fieldErrors);
+      }
       toast({
         title: "Ошибка",
         description: error.message || "Не удалось добавить товар.",
@@ -392,6 +415,7 @@ export function AddNewItemPage() {
               value={name}
               onChange={(e) => setName(e.target.value)}
             />
+            {fieldErrors.name && <p className="text-xs text-destructive mt-1">{fieldErrors.name}</p>}
           </div>
           <div>
             <Label htmlFor="price">Цена</Label>
@@ -403,6 +427,7 @@ export function AddNewItemPage() {
               value={price}
               onChange={(e) => setPrice(e.target.value)}
             />
+            {fieldErrors.price && <p className="text-xs text-destructive mt-1">{fieldErrors.price}</p>}
           </div>
           <div>
             <Label htmlFor="description">Описание</Label>
@@ -413,6 +438,7 @@ export function AddNewItemPage() {
               value={description}
               onChange={(e) => setDescription(e.target.value)}
             />
+            {fieldErrors.description && <p className="text-xs text-destructive mt-1">{fieldErrors.description}</p>}
           </div>
 
           <div>
@@ -446,6 +472,7 @@ export function AddNewItemPage() {
                 ))}
               </SelectContent>
             </Select>
+            {fieldErrors.selectedCategory && <p className="text-xs text-destructive mt-1">{fieldErrors.selectedCategory}</p>}
           </div>
 
           <div>
@@ -462,6 +489,47 @@ export function AddNewItemPage() {
                 ))}
               </SelectContent>
             </Select>
+          </div>
+
+          <div className="space-y-2">
+            <Label>Срок доставки (переопределить по умолчанию бренда — необязательно)</Label>
+            <p className="text-xs text-muted-foreground">Если не выбрать — применяется срок из настроек бренда.</p>
+            <div className="flex gap-4">
+              <div className="flex-1">
+                <Label className="text-xs text-muted-foreground">От (дней)</Label>
+                <Select
+                  value={deliveryTimeMin !== undefined ? String(deliveryTimeMin) : ""}
+                  onValueChange={(v) => setDeliveryTimeMin(v ? Number(v) : undefined)}
+                >
+                  <SelectTrigger className="mt-1 h-10">
+                    <SelectValue placeholder="По умолчанию" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">По умолчанию</SelectItem>
+                    {DELIVERY_TIME_OPTIONS.map((o) => (
+                      <SelectItem key={o.value} value={String(o.value)}>{o.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex-1">
+                <Label className="text-xs text-muted-foreground">До (дней)</Label>
+                <Select
+                  value={deliveryTimeMax !== undefined ? String(deliveryTimeMax) : ""}
+                  onValueChange={(v) => setDeliveryTimeMax(v ? Number(v) : undefined)}
+                >
+                  <SelectTrigger className="mt-1 h-10">
+                    <SelectValue placeholder="По умолчанию" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">По умолчанию</SelectItem>
+                    {DELIVERY_TIME_OPTIONS.map((o) => (
+                      <SelectItem key={o.value} value={String(o.value)}>{o.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
           </div>
 
           <div className="space-y-2">
