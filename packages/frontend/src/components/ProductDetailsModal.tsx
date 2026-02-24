@@ -29,6 +29,17 @@ import { sizes } from "@/lib/sizes";
 import { useAuth } from "@/context/AuthContext"; // Import useAuth
 import { formatCurrency } from "@/lib/currency";
 
+const DELIVERY_TIME_OPTIONS = [
+  { label: '1 день', value: 1 },
+  { label: '2 дня', value: 2 },
+  { label: '3 дня', value: 3 },
+  { label: '5 дней', value: 5 },
+  { label: '1 неделя', value: 7 },
+  { label: '2 недели', value: 14 },
+  { label: '3 недели', value: 21 },
+  { label: '1 месяц', value: 30 },
+];
+
 interface ProductDetailsModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -74,6 +85,12 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({
     product.sizing_table_image ?? null
   );
   const [sizingTableFile, setSizingTableFile] = useState<File | null>(null);
+  const [deliveryTimeMin, setDeliveryTimeMin] = useState<string>(
+    product.delivery_time_min != null ? String(product.delivery_time_min) : ''
+  );
+  const [deliveryTimeMax, setDeliveryTimeMax] = useState<string>(
+    product.delivery_time_max != null ? String(product.delivery_time_max) : ''
+  );
 
   const hasDuplicateSizes = (variants: { size: string; stock_quantity: number }[]) => {
     const seen = new Set<string>();
@@ -102,6 +119,8 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({
     setSalePrice(product.sale_price != null ? String(product.sale_price) : '');
     setSizingTableImage(product.sizing_table_image ?? null);
     setSizingTableFile(null);
+    setDeliveryTimeMin(product.delivery_time_min != null ? String(product.delivery_time_min) : '');
+    setDeliveryTimeMax(product.delivery_time_max != null ? String(product.delivery_time_max) : '');
   }, [product]);
 
   useEffect(() => {
@@ -263,6 +282,8 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({
           sale_price: salePrice !== '' ? parseFloat(salePrice) : null,
           sale_type: saleType !== '' ? saleType : null,
           sizing_table_image: finalSizingTableImage,
+          delivery_time_min: deliveryTimeMin !== '' ? parseInt(deliveryTimeMin) : null,
+          delivery_time_max: deliveryTimeMax !== '' ? parseInt(deliveryTimeMax) : null,
         },
         token!
       );
@@ -717,6 +738,49 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({
                     )}
                   </div>
                 )}
+              </div>
+            </div>
+            {/* Delivery time override */}
+            <div className="border border-border/30 rounded-lg p-4 space-y-3">
+              <div>
+                <h3 className="font-medium text-sm">Срок доставки для этого товара</h3>
+                <p className="text-xs text-muted-foreground">
+                  Оставьте пустым, чтобы использовать настройки бренда
+                </p>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label>Минимальный срок</Label>
+                  <Select value={deliveryTimeMin} onValueChange={setDeliveryTimeMin}>
+                    <SelectTrigger className="mt-1">
+                      <SelectValue placeholder="По умолчанию бренда" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">По умолчанию бренда</SelectItem>
+                      {DELIVERY_TIME_OPTIONS.map((opt) => (
+                        <SelectItem key={opt.value} value={String(opt.value)}>
+                          {opt.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label>Максимальный срок</Label>
+                  <Select value={deliveryTimeMax} onValueChange={setDeliveryTimeMax}>
+                    <SelectTrigger className="mt-1">
+                      <SelectValue placeholder="По умолчанию бренда" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">По умолчанию бренда</SelectItem>
+                      {DELIVERY_TIME_OPTIONS.map((opt) => (
+                        <SelectItem key={opt.value} value={String(opt.value)}>
+                          {opt.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
             </div>
             <div className="flex justify-end space-x-2 pt-4">
