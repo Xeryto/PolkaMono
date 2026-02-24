@@ -267,6 +267,9 @@ class Product(Base):
     article_number = Column(String(50), nullable=True)  # Article number for user-facing identification, search, and sharing
     delivery_time_min = Column(Integer, nullable=True)  # per-product override; None = use brand default
     delivery_time_max = Column(Integer, nullable=True)
+    sale_price = Column(Float, nullable=True)        # Reduced price (exact) or discount pct; None = no sale
+    sale_type = Column(String(10), nullable=True)     # 'percent' or 'exact'; None when no active sale
+    sizing_table_image = Column(String, nullable=True)  # S3 public URL of sizing table image
     brand_id = Column(Integer, ForeignKey("brands.id", ondelete="RESTRICT"), nullable=False)
     category_id = Column(String(50), ForeignKey("categories.id", ondelete="RESTRICT"), nullable=False)
     purchase_count = Column(Integer, nullable=False, default=0)  # Denormalized for performance
