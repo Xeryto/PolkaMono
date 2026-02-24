@@ -10,9 +10,9 @@ See: .planning/PROJECT.md (updated 2026-02-23)
 ## Current Position
 
 Phase: 5 of 9 (Brand Profile Restructure)
-Plan: 1 of ? in current phase
+Plan: 2 of ? in current phase
 Status: In progress
-Last activity: 2026-02-23 — completed plan 05-01 (DB + API foundation: delivery time columns, validators)
+Last activity: 2026-02-24 — completed plan 05-02 (ProfileSettingsPage restructure: legal modal + delivery section + Zod validation)
 
 Progress: [███░░░░░░░] 25% (v1.1)
 
@@ -31,6 +31,7 @@ Progress: [███░░░░░░░] 25% (v1.1)
 | 2. Dark Mode | 5 | — | — |
 
 *Updated after each plan completion*
+| Phase 05-brand-profile-restructure P02 | 15 | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -54,6 +55,9 @@ See PROJECT.md Key Decisions table for full log. Active decisions for v1.1:
 - [05-01] New validators use @field_validator (Pydantic v2); existing @validator decorators left untouched to preserve compat mode
 - [05-01] delivery_time_min/max nullable on both Brand and Product; None on Product means fall back to brand default
 - [05-01] Product update delivery_time fields handled via setattr fallthrough in update_product route
+- [Phase 05-02]: Legal fields (INN/address/payout_account) read-only modal only; no edit path in brand portal
+- [Phase 05-02]: payout_account_locked checkbox removed from brand portal UI entirely (admin-only)
+- [Phase 05-02]: parsePydanticErrors in api.ts + ApiError.fieldErrors enables 422 server validation surfacing in UI
 
 ### Pending Todos
 
@@ -73,6 +77,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-02-23
-Stopped at: Completed 05-01-PLAN.md — DB + API foundation (delivery time columns, INN/price validators, Alembic migration)
+Last session: 2026-02-24
+Stopped at: Completed 05-02-PLAN.md — ProfileSettingsPage restructure (legal modal + delivery section + Zod validation)
 Resume file: None
