@@ -1,19 +1,4 @@
-import { useToast } from "@/hooks/use-toast";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
-import { PlusCircle, XCircle } from "lucide-react";
-import * as api from "@/services/api"; // Assuming API calls are here
-import { Textarea } from "@/components/ui/textarea";
-import { Badge } from "@/components/ui/badge";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { 
   fetchWithTimeoutAndRetry, 
   getNetworkErrorMessage, 
   isRetryableError,
@@ -27,7 +12,8 @@ const API_URL = ENV_CONFIG.API_BASE_URL;
 // Error handling
 class ApiError extends Error {
   status: number;
-  
+  fieldErrors?: Record<string, string>;
+
   constructor(message: string, status: number) {
     super(message);
     this.status = status;
@@ -90,6 +76,8 @@ export interface BrandResponse {
   registration_address?: string;
   payout_account?: string;
   payout_account_locked: boolean;
+  delivery_time_min?: number;
+  delivery_time_max?: number;
   created_at: string;
   updated_at: string;
 }
@@ -120,6 +108,8 @@ export interface BrandProfileUpdateRequest {
   registration_address?: string;
   payout_account?: string;
   payout_account_locked?: boolean;
+  delivery_time_min?: number;
+  delivery_time_max?: number;
 }
 
 export interface ProductVariantSchema {
@@ -253,17 +243,39 @@ export interface ToggleFavoriteRequest {
 
 export interface UserRecommendationsResponse extends Array<ProductResponse> {}
 
+/**
+ * FastAPI 422 responses have detail as either a string or an array of
+ * { loc: string[], msg: string, type: string }. Convert to a flat map of
+ * fieldName -> errorMessage for easy display.
+ */
+export function parsePydanticErrors(detail: unknown): Record<string, string> {
+  if (!Array.isArray(detail)) return {};
+  const map: Record<string, string> = {};
+  for (const err of detail) {
+    if (err && typeof err === 'object' && Array.isArray(err.loc)) {
+      const field = String(err.loc[err.loc.length - 1] ?? 'general');
+      map[field] = String(err.msg ?? 'Invalid value');
+    }
+  }
+  return map;
+}
+
 // Helper to handle API responses
 const handleApiResponse = async (response: Response) => {
   const data = await response.json();
-  
+
   if (!response.ok) {
-    throw new ApiError(
-      data.detail || data.message || 'An error occurred',
+    const fieldErrors = response.status === 422 ? parsePydanticErrors(data.detail) : undefined;
+    const err = new ApiError(
+      Array.isArray(data.detail)
+        ? (data.detail[0]?.msg ?? 'Validation error')
+        : (data.detail || data.message || 'An error occurred'),
       response.status
     );
+    err.fieldErrors = fieldErrors;
+    throw err;
   }
-  
+
   return data;
 };
 
