@@ -1,6 +1,6 @@
 import re
 from datetime import datetime
-from typing import List, Optional
+from typing import Any, List, Optional
 
 from config import settings  # Import settings
 from models import Gender  # Import enums
@@ -683,3 +683,21 @@ class BrandDeleteResponse(BaseModel):
 class Brand2FAStatusResponse(BaseModel):
     two_factor_enabled: bool
     pending_confirmation: bool  # True if OTP was sent but not yet confirmed
+
+
+class BrandLoginResponse(BaseModel):
+    """Returned by brand login. If otp_required=True, token is absent — client must call /2fa/verify."""
+    token: Optional[str] = None
+    expires_at: Optional[datetime] = None
+    user: Optional[Any] = None  # UserProfileResponse when login is complete
+    otp_required: bool = False
+    session_token: Optional[str] = None  # secrets.token_hex(32) — stored in AuthAccount.otp_session_token
+
+
+class BrandVerifyOTP(BaseModel):
+    session_token: str  # Random hex token from the 202 login response
+    code: str = Field(min_length=6, max_length=6)
+
+
+class BrandResendOTP(BaseModel):
+    session_token: str  # Random hex token from the 202 login response
