@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Card,
   CardContent,
@@ -10,21 +10,59 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import * as api from "@/services/api";
-import { BrandResponse, BrandProfileUpdateRequest } from "@/services/api";
+import { BrandResponse, BrandProfileUpdateRequest, parsePydanticErrors } from "@/services/api";
 import { useAuth } from "@/context/AuthContext";
 import { formatCurrency } from "@/lib/currency";
-import { Lock } from "lucide-react";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { z } from "zod";
+
+const DELIVERY_TIME_OPTIONS = [
+  { value: 1, label: "1 день" },
+  { value: 3, label: "3 дня" },
+  { value: 5, label: "5 дней" },
+  { value: 7, label: "1 неделя" },
+  { value: 14, label: "2 недели" },
+  { value: 21, label: "3 недели" },
+  { value: 30, label: "1 месяц" },
+];
+
+const profileSchema = z.object({
+  name: z.string().min(1, "Обязательное поле").max(100),
+  description: z.string().max(1000).optional(),
+  return_policy: z.string().optional(),
+  shipping_price: z
+    .number({ invalid_type_error: "Введите число" })
+    .min(0, "Не может быть отрицательной")
+    .optional(),
+  min_free_shipping: z.number({ invalid_type_error: "Введите число" }).min(0).optional(),
+  shipping_provider: z.string().max(100).optional(),
+  delivery_time_min: z.number().int().min(1).optional(),
+  delivery_time_max: z.number().int().min(1).optional(),
+});
 
 export function ProfileSettingsPage() {
   const [isEditing, setIsEditing] = useState(false);
-  const { token } = useAuth(); // Get token from useAuth
+  const { token } = useAuth();
 
   const [profile, setProfile] = useState<BrandResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const [legalModalOpen, setLegalModalOpen] = useState(false);
   const { toast } = useToast();
-  const wasPayoutLockedOnLoad = useRef<boolean | null>(null);
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -43,7 +81,6 @@ export function ProfileSettingsPage() {
         setIsLoading(true);
         const fetchedProfile = await api.getBrandProfile(token);
         setProfile(fetchedProfile);
-        wasPayoutLockedOnLoad.current = fetchedProfile.payout_account_locked ?? false;
       } catch (error: any) {
         console.error("Failed to fetch brand profile:", error);
         toast({
@@ -56,7 +93,7 @@ export function ProfileSettingsPage() {
       }
     };
     fetchProfile();
-  }, [token, toast]); // Add token and toast to dependency array
+  }, [token, toast]);
 
   const handleInputChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
@@ -64,10 +101,14 @@ export function ProfileSettingsPage() {
     const { id, value } = e.target;
     if (id === "shipping_price" || id === "min_free_shipping") {
       setProfile((prev) =>
-        prev ? { ...prev, [id]: parseFloat(value) } : null
+        prev ? { ...prev, [id]: value === "" ? undefined : parseFloat(value) } : null
       );
     } else {
       setProfile((prev) => (prev ? { ...prev, [id]: value } : null));
+    }
+    // Clear field error on change
+    if (fieldErrors[id]) {
+      setFieldErrors((prev) => { const next = { ...prev }; delete next[id]; return next; });
     }
   };
 
@@ -83,55 +124,30 @@ export function ProfileSettingsPage() {
       return;
     }
 
-    const hasRequisites = [profile.inn, profile.registration_address, profile.payout_account].some(
-      (v) => (v ?? "").toString().trim() !== ""
-    );
-    const alreadyLocked = wasPayoutLockedOnLoad.current === true;
-    if (!alreadyLocked && hasRequisites && !profile.payout_account_locked) {
-      toast({
-        title: "Подтвердите сохранение реквизитов",
-        description:
-          "Вы заполнили ИНН, адрес или счёт для выплат. Отметьте галочку «Подтверждаю сохранение реквизитов» — после сохранения они будут заблокированы. Иначе реквизиты не будут сохранены.",
-        variant: "destructive",
-      });
+    // Zod validation
+    const parseResult = profileSchema.safeParse({
+      name: profile.name,
+      description: profile.description,
+      return_policy: profile.return_policy,
+      shipping_price: profile.shipping_price,
+      min_free_shipping: profile.min_free_shipping,
+      shipping_provider: profile.shipping_provider,
+      delivery_time_min: profile.delivery_time_min,
+      delivery_time_max: profile.delivery_time_max,
+    });
+
+    if (!parseResult.success) {
+      const errors: Record<string, string> = {};
+      for (const [field, msgs] of Object.entries(
+        parseResult.error.flatten().fieldErrors
+      )) {
+        if (msgs && msgs.length > 0) errors[field] = msgs[0];
+      }
+      setFieldErrors(errors);
       return;
     }
 
-    const required = [
-      { v: profile.name?.trim(), label: "Название" },
-      { v: profile.email?.trim(), label: "Контактный Email" },
-      { v: profile.shipping_provider?.trim(), label: "Фирма доставки" },
-      { v: profile.return_policy?.trim(), label: "Политика возврата" },
-    ];
-    const missing = required.filter((r) => !r.v);
-    if (missing.length > 0) {
-      toast({
-        title: "Заполните обязательные поля",
-        description: missing.map((m) => m.label).join(", "),
-        variant: "destructive",
-      });
-      return;
-    }
-    const shipPrice = profile.shipping_price;
-    if (shipPrice != null && (typeof shipPrice !== "number" || shipPrice < 0)) {
-      toast({
-        title: "Ошибка",
-        description: "Цена доставки не может быть отрицательной.",
-        variant: "destructive",
-      });
-      return;
-    }
-    const minFree = profile.min_free_shipping;
-    if (minFree != null && (typeof minFree !== "number" || minFree < 0)) {
-      toast({
-        title: "Ошибка",
-        description: "Минимальная цена для бесплатной доставки не может быть отрицательной.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    const sendingRequisites = !alreadyLocked && !!profile.payout_account_locked;
+    setFieldErrors({});
     setIsLoading(true);
     try {
       const updatedProfile: BrandProfileUpdateRequest = {
@@ -144,10 +160,9 @@ export function ProfileSettingsPage() {
         min_free_shipping: profile.min_free_shipping,
         shipping_price: profile.shipping_price,
         shipping_provider: profile.shipping_provider,
-        inn: sendingRequisites ? profile.inn : undefined,
-        registration_address: sendingRequisites ? profile.registration_address : undefined,
-        payout_account: sendingRequisites ? profile.payout_account : undefined,
-        payout_account_locked: sendingRequisites ? true : undefined,
+        delivery_time_min: profile.delivery_time_min,
+        delivery_time_max: profile.delivery_time_max,
+        // inn, registration_address, payout_account, payout_account_locked intentionally omitted (admin-only)
       };
       const response = await api.updateBrandProfile(updatedProfile, token);
       setProfile(response);
@@ -158,6 +173,9 @@ export function ProfileSettingsPage() {
       });
     } catch (error: any) {
       console.error("Failed to update brand profile:", error);
+      if (error.fieldErrors) {
+        setFieldErrors(error.fieldErrors);
+      }
       toast({
         title: "Ошибка",
         description: error.message || "Не удалось обновить профиль бренда.",
@@ -200,6 +218,9 @@ export function ProfileSettingsPage() {
                     onChange={handleInputChange}
                     className="mt-1"
                   />
+                  {fieldErrors.name && (
+                    <p className="text-xs text-destructive mt-1">{fieldErrors.name}</p>
+                  )}
                 </div>
                 <div>
                   <label
@@ -216,112 +237,108 @@ export function ProfileSettingsPage() {
                     className="mt-1"
                   />
                 </div>
+
+                {/* Legal info — view-only modal trigger */}
                 <div>
-                  <Label htmlFor="inn" className="text-sm font-medium text-muted-foreground">
-                    ИНН
-                  </Label>
-                  <Input
-                    id="inn"
-                    value={profile.inn ?? ""}
-                    onChange={handleInputChange}
-                    className="mt-1"
-                    placeholder="10 или 12 цифр"
-                  />
+                  <h3 className="text-sm font-semibold text-foreground mb-2">Юридические данные</h3>
+                  <Button variant="outline" size="sm" onClick={() => setLegalModalOpen(true)}>
+                    Просмотреть реквизиты
+                  </Button>
                 </div>
-                <div>
-                  <Label htmlFor="registration_address" className="text-sm font-medium text-muted-foreground">
-                    Адрес регистрации
-                  </Label>
-                  <Textarea
-                    id="registration_address"
-                    value={profile.registration_address ?? ""}
-                    onChange={handleInputChange}
-                    className="mt-1"
-                    placeholder="Юридический адрес"
-                    rows={2}
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="payout_account" className="text-sm font-medium text-muted-foreground">
-                    Счёт, на который мы будем производить выплату
-                  </Label>
-                  <Input
-                    id="payout_account"
-                    value={profile.payout_account ?? ""}
-                    onChange={handleInputChange}
-                    className="mt-1"
-                    placeholder="Номер счёта (реквизиты)"
-                    disabled={profile.payout_account_locked}
-                  />
-                  {profile.payout_account_locked && (
-                    <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
-                      <Lock className="h-3 w-3" /> Счёт заблокирован. Изменения только через поддержку.
-                    </p>
-                  )}
-                  {!profile.payout_account_locked && (
-                    <div className="flex items-center space-x-2 mt-2">
-                      <Checkbox
-                        id="payout_account_locked"
-                        checked={profile.payout_account_locked}
-                        onCheckedChange={(checked) =>
-                          setProfile((prev) =>
-                            prev ? { ...prev, payout_account_locked: !!checked } : null
+
+                {/* Delivery section */}
+                <div className="space-y-4">
+                  <h3 className="text-sm font-semibold text-foreground">Доставка</h3>
+                  <div>
+                    <Label htmlFor="shipping_price">Цена доставки (руб.)</Label>
+                    <Input
+                      id="shipping_price"
+                      type="number"
+                      min={0}
+                      value={profile.shipping_price ?? ""}
+                      onChange={handleInputChange}
+                      className="mt-1"
+                    />
+                    {fieldErrors.shipping_price && (
+                      <p className="text-xs text-destructive mt-1">{fieldErrors.shipping_price}</p>
+                    )}
+                  </div>
+                  <div>
+                    <Label htmlFor="min_free_shipping">
+                      Мин. сумма для бесплатной доставки (необязательно)
+                    </Label>
+                    <Input
+                      id="min_free_shipping"
+                      type="number"
+                      min={0}
+                      value={profile.min_free_shipping ?? ""}
+                      onChange={handleInputChange}
+                      className="mt-1"
+                    />
+                    {fieldErrors.min_free_shipping && (
+                      <p className="text-xs text-destructive mt-1">{fieldErrors.min_free_shipping}</p>
+                    )}
+                  </div>
+                  <div className="flex gap-4">
+                    <div className="flex-1">
+                      <Label>Срок доставки: от</Label>
+                      <Select
+                        value={String(profile.delivery_time_min ?? "")}
+                        onValueChange={(v) =>
+                          setProfile((p) =>
+                            p ? { ...p, delivery_time_min: v ? Number(v) : undefined } : null
                           )
                         }
-                      />
-                      <Label
-                        htmlFor="payout_account_locked"
-                        className="text-sm font-normal cursor-pointer"
                       >
-                        Подтверждаю сохранение реквизитов (ИНН, адрес, счёт). После сохранения они будут заблокированы.
-                      </Label>
+                        <SelectTrigger className="mt-1">
+                          <SelectValue placeholder="Выберите" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {DELIVERY_TIME_OPTIONS.map((o) => (
+                            <SelectItem key={o.value} value={String(o.value)}>
+                              {o.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </div>
-                  )}
+                    <div className="flex-1">
+                      <Label>до</Label>
+                      <Select
+                        value={String(profile.delivery_time_max ?? "")}
+                        onValueChange={(v) =>
+                          setProfile((p) =>
+                            p ? { ...p, delivery_time_max: v ? Number(v) : undefined } : null
+                          )
+                        }
+                      >
+                        <SelectTrigger className="mt-1">
+                          <SelectValue placeholder="Выберите" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {DELIVERY_TIME_OPTIONS.map((o) => (
+                            <SelectItem key={o.value} value={String(o.value)}>
+                              {o.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  <div>
+                    <Label htmlFor="shipping_provider">Служба доставки</Label>
+                    <Input
+                      id="shipping_provider"
+                      value={profile.shipping_provider ?? ""}
+                      onChange={handleInputChange}
+                      className="mt-1"
+                    />
+                    {fieldErrors.shipping_provider && (
+                      <p className="text-xs text-destructive mt-1">{fieldErrors.shipping_provider}</p>
+                    )}
+                  </div>
                 </div>
-                <div>
-                  <label
-                    htmlFor="min_free_shipping"
-                    className="text-sm font-medium text-muted-foreground"
-                  >
-                    Минимальная цена для бесплатной доставки
-                  </label>
-                  <Input
-                    id="min_free_shipping"
-                    type="number"
-                    value={profile.min_free_shipping}
-                    onChange={handleInputChange}
-                    className="mt-1"
-                  />
-                </div>
-                <div>
-                  <label
-                    htmlFor="shipping_price"
-                    className="text-sm font-medium text-muted-foreground"
-                  >
-                    Цена доставки
-                  </label>
-                  <Input
-                    id="shipping_price"
-                    type="number"
-                    value={profile.shipping_price}
-                    onChange={handleInputChange}
-                    className="mt-1"
-                  />
-                </div>
-                <div>
-                  <label
-                    htmlFor="shipping_provider"
-                    className="text-sm font-medium text-muted-foreground"
-                  >
-                    Фирма доставки
-                  </label>
-                  <Input
-                    id="shipping_provider"
-                    value={profile.shipping_provider}
-                    onChange={handleInputChange}
-                    className="mt-1"
-                  />
-                </div>
+
                 <div>
                   <label
                     htmlFor="return_policy"
@@ -331,15 +348,19 @@ export function ProfileSettingsPage() {
                   </label>
                   <Textarea
                     id="return_policy"
-                    value={profile.return_policy}
+                    value={profile.return_policy ?? ""}
                     onChange={handleInputChange}
                     className="mt-1"
                   />
+                  {fieldErrors.return_policy && (
+                    <p className="text-xs text-destructive mt-1">{fieldErrors.return_policy}</p>
+                  )}
                 </div>
+
                 <div className="flex justify-end gap-2">
                   <Button
                     variant="outline"
-                    onClick={() => setIsEditing(false)}
+                    onClick={() => { setIsEditing(false); setFieldErrors({}); }}
                     disabled={isLoading}
                   >
                     Отмена
@@ -363,39 +384,15 @@ export function ProfileSettingsPage() {
                   </p>
                   <p className="text-lg">{profile.email}</p>
                 </div>
+
+                {/* Legal info — view-only modal trigger (also in view mode) */}
                 <div>
-                  <p className="text-sm font-medium text-muted-foreground">
-                    ИНН
-                  </p>
-                  <p className="text-lg">{profile.inn || "—"}</p>
+                  <h3 className="text-sm font-semibold text-foreground mb-2">Юридические данные</h3>
+                  <Button variant="outline" size="sm" onClick={() => setLegalModalOpen(true)}>
+                    Просмотреть реквизиты
+                  </Button>
                 </div>
-                <div>
-                  <p className="text-sm font-medium text-muted-foreground">
-                    Адрес регистрации
-                  </p>
-                  <p className="text-lg">{profile.registration_address || "—"}</p>
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-muted-foreground">
-                    Счёт для выплат
-                  </p>
-                  <p className="text-lg flex items-center gap-2">
-                    {profile.payout_account || "—"}
-                    {profile.payout_account_locked && (
-                      <span className="text-xs text-muted-foreground flex items-center gap-1">
-                        <Lock className="h-3 w-3" /> заблокирован
-                      </span>
-                    )}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-muted-foreground">
-                    Минимальная цена для бесплатной доставки
-                  </p>
-                  <p className="text-lg">
-                    {formatCurrency(profile.min_free_shipping)}
-                  </p>
-                </div>
+
                 <div>
                   <p className="text-sm font-medium text-muted-foreground">
                     Цена доставки
@@ -406,7 +403,26 @@ export function ProfileSettingsPage() {
                 </div>
                 <div>
                   <p className="text-sm font-medium text-muted-foreground">
-                    Фирма доставки
+                    Минимальная цена для бесплатной доставки
+                  </p>
+                  <p className="text-lg">
+                    {formatCurrency(profile.min_free_shipping)}
+                  </p>
+                </div>
+                {(profile.delivery_time_min || profile.delivery_time_max) && (
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground">
+                      Срок доставки
+                    </p>
+                    <p className="text-lg">
+                      {profile.delivery_time_min ? `от ${profile.delivery_time_min} дн.` : ""}
+                      {profile.delivery_time_max ? ` до ${profile.delivery_time_max} дн.` : ""}
+                    </p>
+                  </div>
+                )}
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">
+                    Служба доставки
                   </p>
                   <p className="text-lg">{profile.shipping_provider}</p>
                 </div>
@@ -423,6 +439,32 @@ export function ProfileSettingsPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Legal info Dialog (read-only) */}
+      <Dialog open={legalModalOpen} onOpenChange={setLegalModalOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Юридические данные и выплаты</DialogTitle>
+            <DialogDescription>
+              Эти данные доступны только для просмотра. Для изменений обратитесь в поддержку.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 text-sm">
+            <div>
+              <p className="text-muted-foreground">ИНН</p>
+              <p className="font-medium">{profile?.inn || "—"}</p>
+            </div>
+            <div>
+              <p className="text-muted-foreground">Адрес регистрации</p>
+              <p className="font-medium">{profile?.registration_address || "—"}</p>
+            </div>
+            <div>
+              <p className="text-muted-foreground">Счёт для выплат</p>
+              <p className="font-medium">{profile?.payout_account || "—"}</p>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
