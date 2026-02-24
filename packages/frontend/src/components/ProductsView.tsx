@@ -75,6 +75,25 @@ export function ProductsView() {
     });
   };
 
+  const handleRemoveSale = async (
+    e: React.MouseEvent,
+    product: api.ProductResponse
+  ) => {
+    e.stopPropagation();
+    if (!token) return;
+    try {
+      await api.updateProduct(product.id, { sale_price: null, sale_type: null }, token);
+      fetchProducts(token);
+      toast({ title: 'Скидка удалена' });
+    } catch {
+      toast({
+        title: 'Ошибка',
+        description: 'Не удалось удалить скидку.',
+        variant: 'destructive',
+      });
+    }
+  };
+
   return (
     <div className="space-y-6">
       <h2 className="text-2xl font-bold text-foreground">Товары</h2>
@@ -134,9 +153,24 @@ export function ProductsView() {
                       ) ?? 0}
                     </p>
                   </div>
-                  <p className="font-bold text-foreground">
-                    {formatCurrency(product.price)}
-                  </p>
+                  <div className="flex flex-col items-end gap-1">
+                    {product.sale_price != null && (
+                      <span className="text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded-full">
+                        {product.sale_type === 'percent'
+                          ? `-${product.sale_price}%`
+                          : `${formatCurrency(product.sale_price)}`}
+                      </span>
+                    )}
+                    <p className="font-bold text-foreground">{formatCurrency(product.price)}</p>
+                    {product.sale_price != null && (
+                      <button
+                        className="text-xs text-muted-foreground hover:text-destructive underline"
+                        onClick={(e) => handleRemoveSale(e, product)}
+                      >
+                        Убрать скидку
+                      </button>
+                    )}
+                  </div>
                 </div>
               ))}
             </div>
