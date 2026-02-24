@@ -183,6 +183,8 @@ class Brand(Base):
     registration_address = Column(Text, nullable=True)
     payout_account = Column(String(100), nullable=True)
     payout_account_locked = Column(Integer, nullable=False, default=0)
+    is_inactive = Column(Boolean, default=False, nullable=False)
+    scheduled_deletion_at = Column(DateTime, nullable=True)  # Set when brand requests deletion; null means active
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
