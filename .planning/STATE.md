@@ -10,9 +10,9 @@ See: .planning/PROJECT.md (updated 2026-02-23)
 ## Current Position
 
 Phase: 7 of 9 (Account Management + 2FA)
-Plan: 1 of 4 in current phase
+Plan: 2 of 4 in current phase
 Status: In progress
-Last activity: 2026-02-24 — completed plan 07-01 (DB columns for brand inactive/deletion + AuthAccount 2FA)
+Last activity: 2026-02-24 — completed plan 07-02 (brand account management + 2FA endpoints + inactive filter)
 
 Progress: [████░░░░░░] 30% (v1.1)
 
@@ -37,6 +37,7 @@ Progress: [████░░░░░░] 30% (v1.1)
 | Phase 06-product-enrichment-api-web P02 | 2 | 3 tasks | 3 files |
 | Phase 06-product-enrichment-api-web P03 | 2 | 2 tasks | 1 files |
 | Phase 07-account-management-2fa P01 | 5 | 2 tasks | 3 files |
+| Phase 07-account-management-2fa P02 | 12 | 3 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -75,6 +76,9 @@ See PROJECT.md Key Decisions table for full log. Active decisions for v1.1:
 - [07-01] otp_session_token is String(64) = secrets.token_hex(32); prevents forgeable base64(email) session binding
 - [07-01] is_inactive separates brand visibility from account deletion (scheduled_deletion_at for deferred purge)
 - [07-01] All OTP limits env-configurable via Settings: expire=5min, max_fails=5, lockout=15min, max_resends=3, cooldown=60s
+- [07-02] brand_enable_2fa uses `import secrets as _secrets` inline to avoid collision with top-level `secrets` module name
+- [07-02] GET /api/v1/products/{product_id} uses product.brand.is_inactive lazy-load check (not join) — consistent with existing pattern
+- [07-02] Inactive filter applied to 7 buyer-facing queries: brands list, favorites, recent-swipes, recommendations (user+friend), popular, search, single product
 
 ### Pending Todos
 
@@ -95,5 +99,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-24
-Stopped at: Completed 07-01-PLAN.md — Brand inactive/deletion columns + AuthAccount 2FA columns + migration
+Stopped at: Completed 07-02-PLAN.md — brand account management + 2FA endpoints + inactive filter on buyer queries
 Resume file: None
