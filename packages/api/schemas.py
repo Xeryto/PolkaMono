@@ -245,12 +245,22 @@ class ProductCreateRequest(BaseModel):
     general_images: Optional[List[str]] = None
     delivery_time_min: Optional[int] = None  # per-product override
     delivery_time_max: Optional[int] = None
+    sale_price: Optional[float] = None
+    sale_type: Optional[str] = Field(None, pattern=r"^(percent|exact)$")
+    sizing_table_image: Optional[str] = None
 
     @field_validator("price", mode="before")
     @classmethod
     def validate_price(cls, v):
         if v is not None and v <= 0:
             raise ValueError("Цена должна быть больше нуля")
+        return v
+
+    @field_validator("sale_price", mode="before")
+    @classmethod
+    def validate_sale_price(cls, v):
+        if v is not None and v <= 0:
+            raise ValueError("Цена со скидкой должна быть больше нуля")
         return v
 
     @model_validator(mode="after")
@@ -266,6 +276,8 @@ class ProductCreateRequest(BaseModel):
         if self.delivery_time_min is not None and self.delivery_time_max is not None:
             if self.delivery_time_max < self.delivery_time_min:
                 raise ValueError("Максимальный срок доставки должен быть не меньше минимального")
+        if self.sale_price is not None and self.sale_type is None:
+            raise ValueError("sale_type обязателен при указании sale_price")
         return self
 
 
@@ -281,6 +293,9 @@ class ProductUpdateRequest(BaseModel):
     general_images: Optional[List[str]] = None
     delivery_time_min: Optional[int] = None
     delivery_time_max: Optional[int] = None
+    sale_price: Optional[float] = None
+    sale_type: Optional[str] = Field(None, pattern=r"^(percent|exact)$")
+    sizing_table_image: Optional[str] = None
 
     @model_validator(mode="after")
     def require_at_least_one_image_if_provided(self):
@@ -298,6 +313,8 @@ class ProductUpdateRequest(BaseModel):
         if self.delivery_time_min is not None and self.delivery_time_max is not None:
             if self.delivery_time_max < self.delivery_time_min:
                 raise ValueError("Максимальный срок доставки должен быть не меньше минимального")
+        if self.sale_price is not None and self.sale_type is None:
+            raise ValueError("sale_type обязателен при указании sale_price")
         return self
 
 
@@ -318,6 +335,9 @@ class Product(BaseModel):
     general_images: List[str] = []
     delivery_time_min: Optional[int] = None
     delivery_time_max: Optional[int] = None
+    sale_price: Optional[float] = None
+    sale_type: Optional[str] = None
+    sizing_table_image: Optional[str] = None
 
     class Config:
         from_attributes = True
