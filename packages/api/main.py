@@ -455,6 +455,8 @@ async def get_brand_profile(
         else None,  # type: ignore
         payout_account=str(brand.payout_account) if brand.payout_account else None,  # type: ignore
         payout_account_locked=brand.payout_account_locked,
+        delivery_time_min=int(brand.delivery_time_min) if brand.delivery_time_min else None,  # type: ignore
+        delivery_time_max=int(brand.delivery_time_max) if brand.delivery_time_max else None,  # type: ignore
         created_at=brand.created_at,  # type: ignore
         updated_at=brand.updated_at,  # type: ignore
     )

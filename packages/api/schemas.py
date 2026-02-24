@@ -263,6 +263,9 @@ class ProductCreateRequest(BaseModel):
             raise ValueError(
                 "At least one image is required: add general_images and/or at least one image per color variant."
             )
+        if self.delivery_time_min is not None and self.delivery_time_max is not None:
+            if self.delivery_time_max < self.delivery_time_min:
+                raise ValueError("Максимальный срок доставки должен быть не меньше минимального")
         return self
 
 
@@ -292,6 +295,9 @@ class ProductUpdateRequest(BaseModel):
                 raise ValueError(
                     "At least one image is required: add general_images and/or at least one image per color variant."
                 )
+        if self.delivery_time_min is not None and self.delivery_time_max is not None:
+            if self.delivery_time_max < self.delivery_time_min:
+                raise ValueError("Максимальный срок доставки должен быть не меньше минимального")
         return self
 
 
@@ -538,6 +544,13 @@ class BrandUpdate(BaseModel):
         if v is not None and v < 1:
             raise ValueError("Срок доставки должен быть не менее 1 дня")
         return v
+
+    @model_validator(mode="after")
+    def check_delivery_time_range(self):
+        if self.delivery_time_min is not None and self.delivery_time_max is not None:
+            if self.delivery_time_max < self.delivery_time_min:
+                raise ValueError("Максимальный срок доставки должен быть не меньше минимального")
+        return self
 
 
 class BrandResponse(BaseModel):

@@ -52,7 +52,15 @@ const profileSchema = z.object({
   shipping_provider: z.string().max(100).optional(),
   delivery_time_min: z.number().int().min(1).optional(),
   delivery_time_max: z.number().int().min(1).optional(),
-});
+}).refine(
+  (d) => {
+    if (d.delivery_time_min != null && d.delivery_time_max != null) {
+      return d.delivery_time_max >= d.delivery_time_min;
+    }
+    return true;
+  },
+  { message: "Максимальный срок должен быть не меньше минимального", path: ["delivery_time_max"] }
+);
 
 export function ProfileSettingsPage() {
   const [isEditing, setIsEditing] = useState(false);
@@ -415,8 +423,12 @@ export function ProfileSettingsPage() {
                       Срок доставки
                     </p>
                     <p className="text-lg">
-                      {profile.delivery_time_min ? `от ${profile.delivery_time_min} дн.` : ""}
-                      {profile.delivery_time_max ? ` до ${profile.delivery_time_max} дн.` : ""}
+                      {profile.delivery_time_min
+                        ? `от ${DELIVERY_TIME_OPTIONS.find((o) => o.value === profile.delivery_time_min)?.label ?? `${profile.delivery_time_min} дн.`}`
+                        : ""}
+                      {profile.delivery_time_max
+                        ? ` до ${DELIVERY_TIME_OPTIONS.find((o) => o.value === profile.delivery_time_max)?.label ?? `${profile.delivery_time_max} дн.`}`
+                        : ""}
                     </p>
                   </div>
                 )}
