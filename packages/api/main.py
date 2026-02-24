@@ -462,6 +462,9 @@ async def get_brand_profile(
         payout_account_locked=brand.payout_account_locked,
         delivery_time_min=int(brand.delivery_time_min) if brand.delivery_time_min else None,  # type: ignore
         delivery_time_max=int(brand.delivery_time_max) if brand.delivery_time_max else None,  # type: ignore
+        is_inactive=bool(brand.is_inactive),
+        scheduled_deletion_at=brand.scheduled_deletion_at,  # type: ignore
+        two_factor_enabled=bool(brand.auth_account.two_factor_enabled),
         created_at=brand.created_at,  # type: ignore
         updated_at=brand.updated_at,  # type: ignore
     )
@@ -1036,6 +1039,136 @@ async def brand_reset_password_with_code(
     db.commit()
 
     return {"message": "Brand password has been reset successfully."}
+
+
+# -- Phase 7: Brand Account Management + 2FA --
+
+@app.patch("/api/v1/brands/me/inactive")
+async def toggle_brand_inactive(
+    payload: schemas.BrandInactiveToggle,
+    current_user: Brand = Depends(get_current_brand_user),
+    db: Session = Depends(get_db),
+):
+    """Set or clear brand inactive mode"""
+    current_user.is_inactive = payload.is_inactive
+    db.commit()
+    return {"is_inactive": current_user.is_inactive}
+
+
+@app.delete("/api/v1/brands/me")
+async def request_brand_deletion(
+    current_user: Brand = Depends(get_current_brand_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Schedule brand account for deletion.
+    - Sets is_inactive=True immediately (products hidden)
+    - Sets scheduled_deletion_at = now + 30 days (grace period for reactivation)
+    - Orders and OrderItems are never deleted
+    - Personal data purge happens when scheduled_deletion_at passes (via future job or on-login check)
+    """
+    if current_user.scheduled_deletion_at is not None:
+        raise HTTPException(status_code=400, detail="Account deletion already scheduled")
+    grace_end = datetime.utcnow() + timedelta(days=30)
+    current_user.is_inactive = True
+    current_user.scheduled_deletion_at = grace_end
+    db.commit()
+    return schemas.BrandDeleteResponse(
+        message="Account scheduled for deletion. You have 30 days to reactivate by logging in.",
+        scheduled_deletion_at=grace_end,
+    )
+
+
+@app.post("/api/v1/brands/auth/change-password")
+async def brand_change_password(
+    payload: schemas.BrandChangePassword,
+    current_user: Brand = Depends(get_current_brand_user),
+    db: Session = Depends(get_db),
+):
+    """Change brand password; rejects current password reuse and last 5 passwords"""
+    acc = current_user.auth_account
+    if not acc.password_hash or not auth_service.verify_password(payload.current_password, acc.password_hash):
+        raise HTTPException(status_code=400, detail="Текущий пароль неверный")
+    if auth_service.verify_password(payload.new_password, acc.password_hash):
+        raise HTTPException(status_code=400, detail="Нельзя использовать текущий пароль")
+    if acc.password_history:
+        for h in acc.password_history:
+            if auth_service.verify_password(payload.new_password, h):
+                raise HTTPException(status_code=400, detail="Нельзя использовать ранее использованный пароль")
+    if not acc.password_history:
+        acc.password_history = []
+    acc.password_history.append(acc.password_hash)
+    if len(acc.password_history) > 5:
+        acc.password_history = acc.password_history[-5:]
+    from sqlalchemy.orm.attributes import flag_modified
+    flag_modified(acc, "password_history")
+    acc.password_hash = auth_service.hash_password(payload.new_password)
+    db.commit()
+    return {"message": "Пароль успешно изменён"}
+
+
+@app.post("/api/v1/brands/auth/2fa/enable")
+@limiter.limit("5/minute")
+async def brand_enable_2fa(
+    request: Request,
+    current_user: Brand = Depends(get_current_brand_user),
+    db: Session = Depends(get_db),
+):
+    """Initiate 2FA enable — generates OTP and emails it. Brand must confirm with /2fa/confirm."""
+    import secrets as _secrets
+    acc = current_user.auth_account
+    if acc.two_factor_enabled:
+        raise HTTPException(status_code=400, detail="2FA уже включена")
+    code = "".join([str(_secrets.randbelow(10)) for _ in range(6)])
+    acc.otp_code = code
+    acc.otp_code_expires_at = datetime.utcnow() + timedelta(minutes=settings.OTP_EXPIRE_MINUTES)
+    db.commit()
+    mail_service.send_email(
+        to_email=acc.email,
+        subject="Код подтверждения двухфакторной аутентификации",
+        html_content=f"Ваш код для включения 2FA: <b>{code}</b>. Он действителен {settings.OTP_EXPIRE_MINUTES} минут.",
+    )
+    return {"message": "Код отправлен на email", "pending_confirmation": True}
+
+
+@app.post("/api/v1/brands/auth/2fa/confirm")
+async def brand_confirm_2fa(
+    payload: schemas.Brand2FAConfirm,
+    current_user: Brand = Depends(get_current_brand_user),
+    db: Session = Depends(get_db),
+):
+    """Confirm 2FA enable by validating the OTP that was emailed."""
+    acc = current_user.auth_account
+    if acc.two_factor_enabled:
+        raise HTTPException(status_code=400, detail="2FA уже включена")
+    if not acc.otp_code or acc.otp_code != payload.code:
+        raise HTTPException(status_code=400, detail="Неверный код")
+    if not acc.otp_code_expires_at or acc.otp_code_expires_at < datetime.utcnow():
+        raise HTTPException(status_code=400, detail="Код истёк")
+    acc.two_factor_enabled = True
+    acc.otp_code = None
+    acc.otp_code_expires_at = None
+    db.commit()
+    return {"message": "2FA успешно включена", "two_factor_enabled": True}
+
+
+@app.post("/api/v1/brands/auth/2fa/disable")
+async def brand_disable_2fa(
+    payload: schemas.Brand2FADisable,
+    current_user: Brand = Depends(get_current_brand_user),
+    db: Session = Depends(get_db),
+):
+    """Disable 2FA — requires password re-entry to confirm."""
+    acc = current_user.auth_account
+    if not acc.two_factor_enabled:
+        raise HTTPException(status_code=400, detail="2FA не включена")
+    if not acc.password_hash or not auth_service.verify_password(payload.password, acc.password_hash):
+        raise HTTPException(status_code=400, detail="Неверный пароль")
+    acc.two_factor_enabled = False
+    acc.otp_code = None
+    acc.otp_code_expires_at = None
+    db.commit()
+    return {"message": "2FA отключена", "two_factor_enabled": False}
 
 
 @app.get("/api/v1/auth/oauth/providers", response_model=List[OAuthProviderResponse])
