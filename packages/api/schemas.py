@@ -591,6 +591,9 @@ class BrandResponse(BaseModel):
     payout_account_locked: bool = False
     delivery_time_min: Optional[int] = None
     delivery_time_max: Optional[int] = None
+    is_inactive: bool = False
+    scheduled_deletion_at: Optional[datetime] = None
+    two_factor_enabled: bool = False
     created_at: datetime
     updated_at: datetime
 
@@ -651,3 +654,32 @@ class PresignedUploadResponse(BaseModel):
     upload_url: str
     public_url: str
     key: str
+
+
+# -- Phase 7: Account Management + 2FA --
+
+class BrandChangePassword(BaseModel):
+    current_password: str
+    new_password: str = Field(min_length=8)
+
+
+class Brand2FAConfirm(BaseModel):
+    code: str = Field(min_length=6, max_length=6)
+
+
+class Brand2FADisable(BaseModel):
+    password: str  # Requires password re-entry to disable 2FA
+
+
+class BrandInactiveToggle(BaseModel):
+    is_inactive: bool
+
+
+class BrandDeleteResponse(BaseModel):
+    message: str
+    scheduled_deletion_at: datetime
+
+
+class Brand2FAStatusResponse(BaseModel):
+    two_factor_enabled: bool
+    pending_confirmation: bool  # True if OTP was sent but not yet confirmed
