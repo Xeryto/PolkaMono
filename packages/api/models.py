@@ -176,6 +176,8 @@ class Brand(Base):
     min_free_shipping = Column(Integer, nullable=True)
     shipping_price = Column(Float, nullable=True)
     shipping_provider = Column(String(100), nullable=True)
+    delivery_time_min = Column(Integer, nullable=True)  # days, e.g. 3
+    delivery_time_max = Column(Integer, nullable=True)  # days, e.g. 7
     amount_withdrawn = Column(Float, nullable=False, default=0.0)
     inn = Column(String(20), nullable=True)
     registration_address = Column(Text, nullable=True)
@@ -263,6 +265,8 @@ class Product(Base):
     price = Column(Float, nullable=False)
     material = Column(String(100), nullable=True)
     article_number = Column(String(50), nullable=True)  # Article number for user-facing identification, search, and sharing
+    delivery_time_min = Column(Integer, nullable=True)  # per-product override; None = use brand default
+    delivery_time_max = Column(Integer, nullable=True)
     brand_id = Column(Integer, ForeignKey("brands.id", ondelete="RESTRICT"), nullable=False)
     category_id = Column(String(50), ForeignKey("categories.id", ondelete="RESTRICT"), nullable=False)
     purchase_count = Column(Integer, nullable=False, default=0)  # Denormalized for performance
