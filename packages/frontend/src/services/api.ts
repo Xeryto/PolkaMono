@@ -78,6 +78,8 @@ export interface BrandResponse {
   payout_account_locked: boolean;
   delivery_time_min?: number;
   delivery_time_max?: number;
+  is_inactive: boolean;
+  two_factor_enabled: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -558,4 +560,58 @@ export const getUserFavorites = async (token: string): Promise<ProductResponse[]
 // --- Product Recommendations ---
 export const getUserRecommendations = async (limit: number = 5, token: string): Promise<ProductResponse[]> => { // Add token parameter
   return await apiRequest(`/api/v1/recommendations/for_user?limit=${limit}`, 'GET', undefined, true, token);
+};
+
+// -- Phase 7: Account Management + 2FA --
+
+export interface BrandDeleteResponse {
+  message: string;
+  scheduled_deletion_at: string;
+}
+
+export interface OTPLoginResponse {
+  otp_required: true;
+  session_token: string;
+}
+
+export interface OTPVerifyResponse {
+  token: string;
+  expires_at: string;
+  user: UserProfileResponse;
+}
+
+export const toggleBrandInactive = async (is_inactive: boolean, token: string): Promise<{ is_inactive: boolean }> => {
+  return apiRequest('/api/v1/brands/me/inactive', 'PATCH', { is_inactive }, true, token);
+};
+
+export const requestBrandDeletion = async (token: string): Promise<BrandDeleteResponse> => {
+  return apiRequest('/api/v1/brands/me', 'DELETE', undefined, true, token);
+};
+
+export const changeBrandPassword = async (
+  current_password: string,
+  new_password: string,
+  token: string
+): Promise<{ message: string }> => {
+  return apiRequest('/api/v1/brands/auth/change-password', 'POST', { current_password, new_password }, true, token);
+};
+
+export const enableBrand2FA = async (token: string): Promise<{ message: string; pending_confirmation: boolean }> => {
+  return apiRequest('/api/v1/brands/auth/2fa/enable', 'POST', {}, true, token);
+};
+
+export const confirmBrand2FA = async (code: string, token: string): Promise<{ message: string; two_factor_enabled: boolean }> => {
+  return apiRequest('/api/v1/brands/auth/2fa/confirm', 'POST', { code }, true, token);
+};
+
+export const disableBrand2FA = async (password: string, token: string): Promise<{ message: string; two_factor_enabled: boolean }> => {
+  return apiRequest('/api/v1/brands/auth/2fa/disable', 'POST', { password }, true, token);
+};
+
+export const verify2FA = async (session_token: string, code: string): Promise<OTPVerifyResponse> => {
+  return apiRequest('/api/v1/brands/auth/2fa/verify', 'POST', { session_token, code }, false);
+};
+
+export const resend2FA = async (session_token: string): Promise<{ message: string; resends_remaining: number }> => {
+  return apiRequest('/api/v1/brands/auth/2fa/resend', 'POST', { session_token }, false);
 };
