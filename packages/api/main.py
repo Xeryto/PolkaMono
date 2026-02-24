@@ -640,6 +640,10 @@ async def update_brand_profile(
         brand.shipping_price = brand_data.shipping_price  # type: ignore
     if brand_data.shipping_provider is not None:
         brand.shipping_provider = brand_data.shipping_provider  # type: ignore
+    if brand_data.delivery_time_min is not None:
+        brand.delivery_time_min = brand_data.delivery_time_min
+    if brand_data.delivery_time_max is not None:
+        brand.delivery_time_max = brand_data.delivery_time_max
     requisites_updated = False
     if brand_data.inn is not None:
         brand.inn = brand_data.inn
@@ -686,6 +690,8 @@ async def update_brand_profile(
         else None,  # type: ignore
         payout_account=str(brand.payout_account) if brand.payout_account else None,  # type: ignore
         payout_account_locked=brand.payout_account_locked,
+        delivery_time_min=brand.delivery_time_min,
+        delivery_time_max=brand.delivery_time_max,
         created_at=brand.created_at,  # type: ignore
         updated_at=brand.updated_at,  # type: ignore
     )
@@ -1687,6 +1693,8 @@ async def create_product(
         brand_id=current_user.id,         # always the authenticated brand
         category_id=product_data.category_id,
         general_images=product_data.general_images or [],
+        delivery_time_min=product_data.delivery_time_min,
+        delivery_time_max=product_data.delivery_time_max,
     )
     db.add(product)
     db.commit()
