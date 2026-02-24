@@ -152,6 +152,11 @@ def product_to_schema(product, is_liked=None):
         brand_return_policy=product.brand.return_policy,
         is_liked=is_liked,
         general_images=product.general_images or [],
+        delivery_time_min=product.delivery_time_min,
+        delivery_time_max=product.delivery_time_max,
+        sale_price=product.sale_price,
+        sale_type=product.sale_type,
+        sizing_table_image=product.sizing_table_image,
     )
 
 
@@ -1697,6 +1702,9 @@ async def create_product(
         general_images=product_data.general_images or [],
         delivery_time_min=product_data.delivery_time_min,
         delivery_time_max=product_data.delivery_time_max,
+        sale_price=product_data.sale_price,
+        sale_type=product_data.sale_type,
+        sizing_table_image=product_data.sizing_table_image,
     )
     db.add(product)
     db.commit()
