@@ -6,6 +6,16 @@ import {
   CardTitle,
   CardDescription,
 } from "@/components/ui/card";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { ProductDetailsModal } from "@/components/ProductDetailsModal";
 import { useToast } from "@/hooks/use-toast";
 import * as api from "@/services/api"; // Import api
@@ -21,6 +31,8 @@ import { formatCurrency } from "@/lib/currency";
 export function ProductsView() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] =
+    useState<api.ProductResponse | null>(null);
+  const [removeSaleProduct, setRemoveSaleProduct] =
     useState<api.ProductResponse | null>(null);
   const { toast } = useToast();
   const { token } = useAuth(); // Get token from useAuth
@@ -75,14 +87,15 @@ export function ProductsView() {
     });
   };
 
-  const handleRemoveSale = async (
-    e: React.MouseEvent,
-    product: api.ProductResponse
-  ) => {
+  const handleRemoveSaleClick = (e: React.MouseEvent, product: api.ProductResponse) => {
     e.stopPropagation();
-    if (!token) return;
+    setRemoveSaleProduct(product);
+  };
+
+  const confirmRemoveSale = async () => {
+    if (!token || !removeSaleProduct) return;
     try {
-      await api.updateProduct(product.id, { sale_price: null, sale_type: null }, token);
+      await api.updateProduct(removeSaleProduct.id, { sale_price: null, sale_type: null }, token);
       fetchProducts(token);
       toast({ title: 'Скидка удалена' });
     } catch {
@@ -91,6 +104,8 @@ export function ProductsView() {
         description: 'Не удалось удалить скидку.',
         variant: 'destructive',
       });
+    } finally {
+      setRemoveSaleProduct(null);
     }
   };
 
@@ -161,11 +176,22 @@ export function ProductsView() {
                           : `${formatCurrency(product.sale_price)}`}
                       </span>
                     )}
-                    <p className="font-bold text-foreground">{formatCurrency(product.price)}</p>
+                    {product.sale_price != null ? (
+                      <div className="flex flex-col items-end">
+                        <p className="font-bold text-red-600">
+                          {product.sale_type === 'percent'
+                            ? formatCurrency(Math.round(product.price * (1 - product.sale_price / 100)))
+                            : formatCurrency(product.sale_price)}
+                        </p>
+                        <p className="text-xs text-muted-foreground line-through">{formatCurrency(product.price)}</p>
+                      </div>
+                    ) : (
+                      <p className="font-bold text-foreground">{formatCurrency(product.price)}</p>
+                    )}
                     {product.sale_price != null && (
                       <button
                         className="text-xs text-muted-foreground hover:text-destructive underline"
-                        onClick={(e) => handleRemoveSale(e, product)}
+                        onClick={(e) => handleRemoveSaleClick(e, product)}
                       >
                         Убрать скидку
                       </button>
@@ -186,6 +212,21 @@ export function ProductsView() {
           onProductUpdated={handleProductUpdated}
         />
       )}
+
+      <AlertDialog open={!!removeSaleProduct} onOpenChange={(open) => { if (!open) setRemoveSaleProduct(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Убрать скидку?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Скидка на товар «{removeSaleProduct?.name}» будет удалена. Покупатели увидят только оригинальную цену.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Отмена</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmRemoveSale}>Убрать скидку</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

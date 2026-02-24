@@ -9,6 +9,7 @@ import {
   CardTitle,
   CardDescription,
 } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Label } from "@/components/ui/label";
 import { PlusCircle, XCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
@@ -75,8 +76,8 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({
   const [styles, setStyles] = useState<any[]>([]);
   const [categories, setCategories] = useState<any[]>([]);
   const [selectedCategory, setSelectedCategory] = useState(product.category_id || "");
-  const [saleType, setSaleType] = useState<'percent' | 'exact' | ''>(
-    product.sale_type || ''
+  const [saleType, setSaleType] = useState<'percent' | 'exact' | 'none'>(
+    (product.sale_type as 'percent' | 'exact') || 'none'
   );
   const [salePrice, setSalePrice] = useState<string>(
     product.sale_price != null ? String(product.sale_price) : ''
@@ -85,12 +86,16 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({
     product.sizing_table_image ?? null
   );
   const [sizingTableFile, setSizingTableFile] = useState<File | null>(null);
+  const [deliveryOverride, setDeliveryOverride] = useState(
+    product.delivery_time_min != null || product.delivery_time_max != null
+  );
   const [deliveryTimeMin, setDeliveryTimeMin] = useState<string>(
     product.delivery_time_min != null ? String(product.delivery_time_min) : ''
   );
   const [deliveryTimeMax, setDeliveryTimeMax] = useState<string>(
     product.delivery_time_max != null ? String(product.delivery_time_max) : ''
   );
+  const [activeTab, setActiveTab] = useState<string>('info');
 
   const hasDuplicateSizes = (variants: { size: string; stock_quantity: number }[]) => {
     const seen = new Set<string>();
@@ -115,12 +120,14 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({
     setColorVariationFiles(product.color_variants?.map(() => []) || [[]]);
     setGeneralImages(product.general_images || []);
     setGeneralImageFiles([]);
-    setSaleType(product.sale_type || '');
+    setSaleType((product.sale_type as 'percent' | 'exact') || 'none');
     setSalePrice(product.sale_price != null ? String(product.sale_price) : '');
     setSizingTableImage(product.sizing_table_image ?? null);
     setSizingTableFile(null);
+    setDeliveryOverride(product.delivery_time_min != null || product.delivery_time_max != null);
     setDeliveryTimeMin(product.delivery_time_min != null ? String(product.delivery_time_min) : '');
     setDeliveryTimeMax(product.delivery_time_max != null ? String(product.delivery_time_max) : '');
+    setActiveTab('info');
   }, [product]);
 
   useEffect(() => {
@@ -279,11 +286,11 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({
           category_id: selectedCategory,
           color_variants: colorVariantsWithUrls,
           general_images: finalGeneralImages,
-          sale_price: salePrice !== '' ? parseFloat(salePrice) : null,
-          sale_type: saleType !== '' ? saleType : null,
+          sale_price: saleType !== 'none' && salePrice !== '' ? parseFloat(salePrice) : null,
+          sale_type: saleType !== 'none' ? saleType : null,
           sizing_table_image: finalSizingTableImage,
-          delivery_time_min: deliveryTimeMin !== '' ? parseInt(deliveryTimeMin) : null,
-          delivery_time_max: deliveryTimeMax !== '' ? parseInt(deliveryTimeMax) : null,
+          delivery_time_min: deliveryOverride && deliveryTimeMin !== '' ? parseInt(deliveryTimeMin) : null,
+          delivery_time_max: deliveryOverride && deliveryTimeMax !== '' ? parseInt(deliveryTimeMax) : null,
         },
         token!
       );
@@ -430,6 +437,13 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
+            <Tabs value={activeTab} onValueChange={setActiveTab}>
+              <TabsList className="mb-4">
+                <TabsTrigger value="info">Информация</TabsTrigger>
+                <TabsTrigger value="sale">Скидка</TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="info" className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
               <div className="space-y-4">
                 <div>
@@ -697,92 +711,116 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({
                 </div>
               </div>
             </div>
-            {/* Sale section */}
-            <div className="border border-border/30 rounded-lg p-4 space-y-3">
-              <h3 className="font-medium text-sm">Скидка</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <Label>Тип скидки</Label>
-                  <Select
-                    value={saleType}
-                    onValueChange={(v) => setSaleType(v as 'percent' | 'exact' | '')}
-                  >
-                    <SelectTrigger className="mt-1">
-                      <SelectValue placeholder="Без скидки" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="">Без скидки</SelectItem>
-                      <SelectItem value="percent">Процент (%)</SelectItem>
-                      <SelectItem value="exact">Фиксированная цена (₽)</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                {saleType !== '' && (
-                  <div>
-                    <Label>
-                      {saleType === 'percent' ? 'Скидка (%)' : 'Цена со скидкой (₽)'}
-                    </Label>
-                    <Input
-                      type="number"
-                      min={saleType === 'percent' ? 1 : 0}
-                      max={saleType === 'percent' ? 99 : undefined}
-                      placeholder={saleType === 'percent' ? 'напр., 20' : 'напр., 1990'}
-                      className="mt-1"
-                      value={salePrice}
-                      onChange={(e) => setSalePrice(e.target.value)}
-                    />
-                    {saleType === 'percent' && (
-                      <p className="text-xs text-muted-foreground mt-1">
-                        Покупатели увидят цену {salePrice ? Math.round(product.price * (1 - parseFloat(salePrice) / 100)) : '—'} ₽
-                      </p>
-                    )}
-                  </div>
-                )}
-              </div>
-            </div>
             {/* Delivery time override */}
             <div className="border border-border/30 rounded-lg p-4 space-y-3">
-              <div>
-                <h3 className="font-medium text-sm">Срок доставки для этого товара</h3>
-                <p className="text-xs text-muted-foreground">
-                  Оставьте пустым, чтобы использовать настройки бренда
-                </p>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="flex items-center justify-between">
                 <div>
-                  <Label>Минимальный срок</Label>
-                  <Select value={deliveryTimeMin} onValueChange={setDeliveryTimeMin}>
-                    <SelectTrigger className="mt-1">
-                      <SelectValue placeholder="По умолчанию бренда" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="">По умолчанию бренда</SelectItem>
-                      {DELIVERY_TIME_OPTIONS.map((opt) => (
-                        <SelectItem key={opt.value} value={String(opt.value)}>
-                          {opt.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <h3 className="font-medium text-sm">Срок доставки для этого товара</h3>
+                  <p className="text-xs text-muted-foreground">Переопределяет настройки бренда</p>
                 </div>
-                <div>
-                  <Label>Максимальный срок</Label>
-                  <Select value={deliveryTimeMax} onValueChange={setDeliveryTimeMax}>
-                    <SelectTrigger className="mt-1">
-                      <SelectValue placeholder="По умолчанию бренда" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="">По умолчанию бренда</SelectItem>
-                      {DELIVERY_TIME_OPTIONS.map((opt) => (
-                        <SelectItem key={opt.value} value={String(opt.value)}>
-                          {opt.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+                <Select
+                  value={deliveryOverride ? "custom" : "default"}
+                  onValueChange={(v) => {
+                    const on = v === "custom";
+                    setDeliveryOverride(on);
+                    if (!on) { setDeliveryTimeMin(''); setDeliveryTimeMax(''); }
+                  }}
+                >
+                  <SelectTrigger className="w-44">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="default">По умолчанию бренда</SelectItem>
+                    <SelectItem value="custom">Указать для товара</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
+              {deliveryOverride && (
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label>Минимальный срок</Label>
+                    <Select value={deliveryTimeMin || "none"} onValueChange={(v) => setDeliveryTimeMin(v === "none" ? "" : v)}>
+                      <SelectTrigger className="mt-1">
+                        <SelectValue placeholder="Выберите" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">—</SelectItem>
+                        {DELIVERY_TIME_OPTIONS.map((opt) => (
+                          <SelectItem key={opt.value} value={String(opt.value)}>
+                            {opt.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label>Максимальный срок</Label>
+                    <Select value={deliveryTimeMax || "none"} onValueChange={(v) => setDeliveryTimeMax(v === "none" ? "" : v)}>
+                      <SelectTrigger className="mt-1">
+                        <SelectValue placeholder="Выберите" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">—</SelectItem>
+                        {DELIVERY_TIME_OPTIONS.map((opt) => (
+                          <SelectItem key={opt.value} value={String(opt.value)}>
+                            {opt.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              )}
             </div>
+
+              </TabsContent>
+
+              <TabsContent value="sale" className="space-y-4">
+                <div className="border border-border/30 rounded-lg p-4 space-y-3">
+                  <h3 className="font-medium text-sm">Скидка</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <Label>Тип скидки</Label>
+                      <Select
+                        value={saleType}
+                        onValueChange={(v) => setSaleType(v as 'percent' | 'exact' | 'none')}
+                      >
+                        <SelectTrigger className="mt-1">
+                          <SelectValue placeholder="Без скидки" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">Без скидки</SelectItem>
+                          <SelectItem value="percent">Процент (%)</SelectItem>
+                          <SelectItem value="exact">Фиксированная цена (₽)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    {saleType !== 'none' && (
+                      <div>
+                        <Label>
+                          {saleType === 'percent' ? 'Скидка (%)' : 'Цена со скидкой (₽)'}
+                        </Label>
+                        <Input
+                          type="number"
+                          min={saleType === 'percent' ? 1 : 0}
+                          max={saleType === 'percent' ? 99 : undefined}
+                          placeholder={saleType === 'percent' ? 'напр., 20' : 'напр., 1990'}
+                          className="mt-1"
+                          value={salePrice}
+                          onChange={(e) => setSalePrice(e.target.value)}
+                        />
+                        {saleType === 'percent' && (
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Покупатели увидят цену {salePrice ? Math.round(product.price * (1 - parseFloat(salePrice) / 100)) : '—'} ₽
+                          </p>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </TabsContent>
+            </Tabs>
+
             <div className="flex justify-end space-x-2 pt-4">
               <Button variant="outline" onClick={onClose}>
                 Отмена
