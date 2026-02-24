@@ -10,9 +10,9 @@ See: .planning/PROJECT.md (updated 2026-02-23)
 ## Current Position
 
 Phase: 5 of 9 (Brand Profile Restructure)
-Plan: 2 of ? in current phase
+Plan: 3 of ? in current phase
 Status: In progress
-Last activity: 2026-02-24 — completed plan 05-02 (ProfileSettingsPage restructure: legal modal + delivery section + Zod validation)
+Last activity: 2026-02-24 — completed plan 05-03 (AddNewItemPage delivery time dropdowns + Zod inline validation)
 
 Progress: [███░░░░░░░] 25% (v1.1)
 
@@ -32,6 +32,7 @@ Progress: [███░░░░░░░] 25% (v1.1)
 
 *Updated after each plan completion*
 | Phase 05-brand-profile-restructure P02 | 15 | 2 tasks | 2 files |
+| Phase 05-brand-profile-restructure P03 | 10 | 2 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -58,6 +59,8 @@ See PROJECT.md Key Decisions table for full log. Active decisions for v1.1:
 - [Phase 05-02]: Legal fields (INN/address/payout_account) read-only modal only; no edit path in brand portal
 - [Phase 05-02]: payout_account_locked checkbox removed from brand portal UI entirely (admin-only)
 - [Phase 05-02]: parsePydanticErrors in api.ts + ApiError.fieldErrors enables 422 server validation surfacing in UI
+- [05-03]: DELIVERY_TIME_OPTIONS local const; empty string sentinel for undefined in Radix Select
+- [05-03]: Structural color-variant validations remain toasts; scalar field errors go inline via Zod
 
 ### Pending Todos
 
@@ -78,5 +81,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-24
-Stopped at: Completed 05-02-PLAN.md — ProfileSettingsPage restructure (legal modal + delivery section + Zod validation)
+Stopped at: Completed 05-03-PLAN.md — AddNewItemPage delivery time dropdowns + Zod inline validation
 Resume file: None

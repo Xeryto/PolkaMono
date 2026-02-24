@@ -140,7 +140,7 @@ Plans:
 | 2. Dark Mode | v1.0 | 5/5 | Complete | 2026-02-23 |
 | 3. Consistency Sweep | v1.0 | 0/TBD | Deferred to v1.2 | - |
 | 4. Order Status Foundation | 3/3 | Complete    | 2026-02-23 | - |
-| 5. Brand Profile Restructure | 2/3 | In Progress|  | - |
+| 5. Brand Profile Restructure | 3/3 | Complete   | 2026-02-24 | - |
 | 6. Product Enrichment (API + Web) | v1.1 | 0/TBD | Not started | - |
 | 7. Account Management + 2FA | v1.1 | 0/TBD | Not started | - |
 | 8. Notifications | v1.1 | 0/TBD | Not started | - |
