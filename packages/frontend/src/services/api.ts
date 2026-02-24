@@ -139,6 +139,11 @@ export interface ProductResponse {
   article_number?: string;
   is_liked?: boolean;
   general_images?: string[];
+  delivery_time_min?: number;
+  delivery_time_max?: number;
+  sale_price?: number | null;
+  sale_type?: 'percent' | 'exact' | null;
+  sizing_table_image?: string | null;
 }
 
 export interface ProductColorVariantCreate {
@@ -369,6 +374,11 @@ export const updateProduct = async (productId: string, productData: {
   color_variants?: ProductColorVariantCreate[];
   material?: string;
   general_images?: string[];
+  sale_price?: number | null;
+  sale_type?: 'percent' | 'exact' | null;
+  sizing_table_image?: string | null;
+  delivery_time_min?: number | null;
+  delivery_time_max?: number | null;
 }, token: string): Promise<ProductResponse> => {
   return await apiRequest(`/api/v1/brands/products/${productId}`, 'PUT', productData, true, token);
 };
