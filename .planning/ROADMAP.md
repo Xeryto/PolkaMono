@@ -146,7 +146,7 @@ Plans:
 | 3. Consistency Sweep | v1.0 | 0/TBD | Deferred to v1.2 | - |
 | 4. Order Status Foundation | 3/3 | Complete    | 2026-02-23 | - |
 | 5. Brand Profile Restructure | 3/3 | Complete   | 2026-02-24 | - |
-| 6. Product Enrichment (API + Web) | 1/3 | In Progress|  | - |
+| 6. Product Enrichment (API + Web) | 2/3 | In Progress|  | - |
 | 7. Account Management + 2FA | v1.1 | 0/TBD | Not started | - |
 | 8. Notifications | v1.1 | 0/TBD | Not started | - |
 | 9. Admin Dashboard + Mobile Display | v1.1 | 0/TBD | Not started | - |

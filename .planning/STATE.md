@@ -10,9 +10,9 @@ See: .planning/PROJECT.md (updated 2026-02-23)
 ## Current Position
 
 Phase: 6 of 9 (Product Enrichment API + Web)
-Plan: 1 of 3 in current phase
+Plan: 2 of 3 in current phase
 Status: In progress
-Last activity: 2026-02-24 — completed plan 06-01 (product enrichment API: sale_price, sale_type, sizing_table_image + migration)
+Last activity: 2026-02-24 — completed plan 06-02 (sale price UI: modal section + list badge + remove button)
 
 Progress: [███░░░░░░░] 25% (v1.1)
 
@@ -34,6 +34,7 @@ Progress: [███░░░░░░░] 25% (v1.1)
 | Phase 05-brand-profile-restructure P02 | 15 | 2 tasks | 2 files |
 | Phase 05-brand-profile-restructure P03 | 10 | 2 tasks | 1 files |
 | Phase 06-product-enrichment-api-web P01 | 10 | 3 tasks | 4 files |
+| Phase 06-product-enrichment-api-web P02 | 2 | 3 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -64,6 +65,9 @@ See PROJECT.md Key Decisions table for full log. Active decisions for v1.1:
 - [05-03]: Structural color-variant validations remain toasts; scalar field errors go inline via Zod
 - [Phase 06-01]: [06-01] sale_type validated via Pydantic regex pattern not DB enum
 - [Phase 06-01]: [06-01] delivery_time_min/max backfilled into product_to_schema (were written in Ph5 but never returned)
+- [Phase 06-02]: [06-02] sale_price/sale_type use null not undefined in updateProduct param type so JSON.stringify includes the clear signal
+- [Phase 06-02]: [06-02] saleType state uses '' as no-sale sentinel; converted to null before API call (consistent with 05-03 delivery time pattern)
+- [Phase 06-02]: [06-02] Remove-sale button uses e.stopPropagation() to prevent modal open on row click
 
 ### Pending Todos
 
@@ -84,5 +88,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-24
-Stopped at: Completed 06-01-PLAN.md — product enrichment API (sale_price, sale_type, sizing_table_image)
+Stopped at: Completed 06-02-PLAN.md — sale price UI (modal section + list badge + remove button)
 Resume file: None
