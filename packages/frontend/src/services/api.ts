@@ -639,3 +639,16 @@ export async function fetchNotifications(token: string): Promise<NotificationsRe
 export async function markNotificationsRead(token: string): Promise<void> {
   await apiRequest('/api/v1/notifications/read', 'POST', {}, true, token);
 }
+
+export async function sendAdminNotification(message: string): Promise<void> {
+  const token = localStorage.getItem('authToken');
+  const res = await fetch(`${API_URL}/api/v1/admin/notifications/send`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ message }),
+  });
+  if (!res.ok && res.status !== 204) throw new Error('Failed to send notification');
+}

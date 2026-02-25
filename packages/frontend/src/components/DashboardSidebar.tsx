@@ -4,6 +4,7 @@ import {
   ShoppingCart,
   LogOut,
   PlusSquare,
+  Bell,
 } from "lucide-react";
 import {
   Sidebar,
@@ -18,7 +19,7 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 
-type DashboardView = "stats" | "orders" | "products" | "add-item" | "profile" | "security";
+type DashboardView = "stats" | "orders" | "products" | "add-item" | "profile" | "security" | "admin-notifications";
 
 interface DashboardSidebarProps {
   currentView: DashboardView;
@@ -83,6 +84,19 @@ export function DashboardSidebar({
         <SidebarGroup className="mt-auto">
           <SidebarGroupContent>
             <SidebarMenu>
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  onClick={() => handleViewChange("admin-notifications")}
+                  className={`${
+                    currentView === "admin-notifications"
+                      ? "sidebar-menu-button-active"
+                      : "sidebar-menu-button-hover"
+                  } transition-colors`}
+                >
+                  <Bell className="mr-2 h-4 w-4" />
+                  {!collapsed && <span>Рассылка (Админ)</span>}
+                </SidebarMenuButton>
+              </SidebarMenuItem>
               <SidebarMenuItem>
                 <SidebarMenuButton
                   onClick={handleLogout}
