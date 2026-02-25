@@ -1228,6 +1228,7 @@ export interface OrderPart {
   number: string;
   brand_id: number;
   brand_name?: string;
+  brand_is_inactive?: boolean;
   subtotal: number;
   shipping_cost: number;
   total_amount: number;

@@ -39,7 +39,7 @@ const Dashboard = () => {
         <DashboardSidebar currentView={currentView} onViewChange={setCurrentView} />
         
         <div className="flex-1 flex flex-col">
-          <DashboardHeader />
+          <DashboardHeader onViewChange={setCurrentView} />
           
           <main className="flex-1 p-6">
             {renderView()}

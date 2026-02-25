@@ -1543,7 +1543,7 @@ const MainContent = ({
       <Animated.View
         style={[
           styles.bottomBox,
-          { backgroundColor: theme.background.primary },
+          { backgroundColor: theme.background.favorites },
           bottomBoxStyle,
         ]}
         entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(

@@ -4,8 +4,6 @@ import {
   ShoppingCart,
   LogOut,
   PlusSquare,
-  User,
-  ShieldCheck,
 } from "lucide-react";
 import {
   Sidebar,
@@ -32,8 +30,6 @@ const menuItems = [
   { id: "orders", title: "Заказы", icon: ShoppingCart },
   { id: "products", title: "Товары", icon: Package },
   { id: "add-item", title: "Добавить товар", icon: PlusSquare },
-  { id: "profile", title: "Профиль", icon: User },
-  { id: "security", title: "Безопасность", icon: ShieldCheck },
 ];
 
 export function DashboardSidebar({

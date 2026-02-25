@@ -1,4 +1,4 @@
-import { Bell, Settings, User } from "lucide-react";
+import { Bell, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -11,7 +11,13 @@ import {
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { useAuth } from "@/context/AuthContext";
 
-export function DashboardHeader() {
+type DashboardView = "stats" | "orders" | "products" | "add-item" | "profile" | "security";
+
+interface DashboardHeaderProps {
+  onViewChange: (view: DashboardView) => void;
+}
+
+export function DashboardHeader({ onViewChange }: DashboardHeaderProps) {
   const { logout } = useAuth();
 
   return (
@@ -47,8 +53,8 @@ export function DashboardHeader() {
           >
             <DropdownMenuLabel>Аккаунт бренда</DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <DropdownMenuItem>Настройки профиля</DropdownMenuItem>
-            <DropdownMenuItem>Безопасность</DropdownMenuItem>
+            <DropdownMenuItem onSelect={() => onViewChange("profile")}>Настройки профиля</DropdownMenuItem>
+            <DropdownMenuItem onSelect={() => onViewChange("security")}>Безопасность</DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem className="text-destructive" onSelect={logout}>
               Выйти

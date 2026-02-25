@@ -140,6 +140,7 @@ class OrderPartResponse(BaseModel):
     number: str
     brand_id: int
     brand_name: Optional[str] = None
+    brand_is_inactive: bool = False
     subtotal: float
     shipping_cost: float
     total_amount: float

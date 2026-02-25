@@ -33,8 +33,9 @@
 
 - [x] **ACCT-01**: Brand can set their account to "inactive" mode — products hidden from buyers, no new purchases, existing orders still manageable
 - [x] **ACCT-02**: Brand can delete their account; active/paid orders preserved for history; products hidden; personal data handled per legal compliance
+  - ⚠ **Gap**: personal data purge (anonymization of PII after grace period) not yet implemented — no background job exists; login blocks after deadline but DB row remains intact
 - [x] **ACCT-03**: Brand has a "Security" settings screen with 2FA toggle and change-password form
-- [ ] **ACCT-04**: Brand can change their password from the Security screen
+- [x] **ACCT-04**: Brand can change their password from the Security screen
 
 ### Two-Factor Auth
 
@@ -108,7 +109,7 @@
 | ACCT-01 | Phase 7 | Complete |
 | ACCT-02 | Phase 7 | Complete |
 | ACCT-03 | Phase 7 | Complete |
-| ACCT-04 | Phase 7 | Pending |
+| ACCT-04 | Phase 7 | Complete |
 | 2FA-01 | Phase 7 | Complete |
 | 2FA-02 | Phase 7 | Complete |
 | 2FA-03 | Phase 7 | Complete |

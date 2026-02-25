@@ -909,11 +909,19 @@ async def brand_login(
 
     acc = brand.auth_account
 
-    # Reactivate if scheduled for deletion (grace period login)
-    if brand.scheduled_deletion_at is not None and brand.scheduled_deletion_at > datetime.utcnow():
-        brand.scheduled_deletion_at = None
-        brand.is_inactive = False
-        db.commit()
+    # Grace period / deletion handling
+    if brand.scheduled_deletion_at is not None:
+        if brand.scheduled_deletion_at > datetime.utcnow():
+            # Within grace period — reactivate
+            brand.scheduled_deletion_at = None
+            brand.is_inactive = False
+            db.commit()
+        else:
+            # Grace period expired — treat as deleted
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Этот аккаунт был удалён. Обратитесь в поддержку, если это ошибка.",
+            )
 
     # 2FA check
     if acc.two_factor_enabled:
@@ -1208,12 +1216,12 @@ async def request_brand_deletion(
     """
     if current_user.scheduled_deletion_at is not None:
         raise HTTPException(status_code=400, detail="Account deletion already scheduled")
-    grace_end = datetime.utcnow() + timedelta(days=30)
+    grace_end = datetime.utcnow() + timedelta(minutes=5)
     current_user.is_inactive = True
     current_user.scheduled_deletion_at = grace_end
     db.commit()
     return schemas.BrandDeleteResponse(
-        message="Account scheduled for deletion. You have 30 days to reactivate by logging in.",
+        message="Account scheduled for deletion. You have 5 minutes to reactivate by logging in.",
         scheduled_deletion_at=grace_end,
     )
 
@@ -3576,6 +3584,7 @@ def _checkout_to_full_response(checkout: Checkout) -> schemas.CheckoutResponse:
                 number=order.order_number,
                 brand_id=order.brand_id,
                 brand_name=brand.name if brand else None,
+                brand_is_inactive=bool(brand.is_inactive) if brand else False,
                 subtotal=order.subtotal or 0,
                 shipping_cost=order.shipping_cost or 0,
                 total_amount=order.total_amount,

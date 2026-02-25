@@ -717,39 +717,18 @@ const Wall = ({ navigation, onLogout }: WallProps) => {
     </View>
   );
 
+
   const handleItemPress = async (item: api.OrderItem) => {
     try {
       if (item.product_id) {
-        console.log(
-          "Wall - Fetching full product details for product_id:",
-          item.product_id,
-        );
-
         const fullProduct = await api.getProductDetails(item.product_id);
-
         const cardItem: CardItem = {
           ...mapProductToCardItem(fullProduct),
           size: item.size,
           quantity: 1,
         };
-
-        console.log("Wall - Sending full product to MainPage:", {
-          id: cardItem.id,
-          brand_name: cardItem.brand_name,
-          brand_return_policy: cardItem.brand_return_policy,
-          images: cardItem.images,
-          description: cardItem.description,
-          variants: cardItem.variants,
-          originalOrderItemId: item.id,
-          productId: item.product_id,
-        });
-
         navigation.navigate("Home", { addCardItem: cardItem });
       } else {
-        console.log(
-          "Wall - No product_id available, using order item data only",
-        );
-
         const cardItem: CardItem = {
           id: item.id,
           name: item.name,
@@ -778,42 +757,10 @@ const Wall = ({ navigation, onLogout }: WallProps) => {
           materials: item.materials || "Unknown",
           brand_return_policy: item.return_policy || "Unknown",
         };
-
         navigation.navigate("Home", { addCardItem: cardItem });
       }
     } catch (error) {
-      console.error("Wall - Error fetching product details:", error);
-
-      const cardItem: CardItem = {
-        id: item.product_id || item.id,
-        name: item.name,
-        brand_name: item.brand_name || "Unknown Brand",
-        price: item.price,
-        images: item.images
-          ? item.images.map((img) => ({ uri: img }))
-          : item.image
-            ? [{ uri: item.image }]
-            : [],
-        isLiked: false,
-        size: item.size,
-        quantity: 1,
-        color_variants: [
-          {
-            color_name: item.color || "Unknown",
-            color_hex: "#888888",
-            images: item.images || (item.image ? [item.image] : []),
-            variants: [{ size: item.size, stock_quantity: 1 }],
-          },
-        ],
-        selected_color_index: 0,
-        variants: [{ size: item.size, stock_quantity: 1 }],
-        description: item.description || "No description available.",
-        color: item.color || "Unknown",
-        materials: item.materials || "Unknown",
-        brand_return_policy: item.return_policy || "Unknown",
-      };
-
-      navigation.navigate("Home", { addCardItem: cardItem });
+      console.log("Wall - Product details unavailable, using order item data:", (error as any)?.message);
     }
   };
 
@@ -845,70 +792,81 @@ const Wall = ({ navigation, onLogout }: WallProps) => {
           showsVerticalScrollIndicator={false}
         >
           {(api.isCheckoutResponse(orderDetail)
-            ? orderDetail.orders.flatMap((o) => o.items)
-            : orderDetail.items
-          ).map((item, index) => (
-            <Animated.View
-              key={item.id}
-              entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
-                ANIMATION_DELAYS.STANDARD + index * ANIMATION_DELAYS.SMALL,
-              )}
-              style={styles.cartItem}
-            >
-              <Pressable
-                style={styles.itemPressable}
-                onPress={() => handleItemPress(item)}
-              >
-                <View style={styles.itemContent}>
-                  <View style={styles.imageContainer}>
-                    <CartItemImage item={item} />
-                  </View>
-                  <View style={styles.itemDetails}>
-                    <Text
-                      style={styles.itemName}
-                      numberOfLines={1}
-                      ellipsizeMode="tail"
-                    >
-                      {item.name}
+            ? orderDetail.orders
+            : [{ items: orderDetail.items, brand_is_inactive: false, brand_name: undefined }]
+          ).map((orderPart, partIndex) => {
+            const isInactive = !!(orderPart as api.OrderPart).brand_is_inactive;
+            return (
+              <View key={(orderPart as api.OrderPart).id ?? partIndex}>
+                {isInactive && (
+                  <View style={styles.inactiveBrandBanner}>
+                    <Text style={styles.inactiveBrandBannerText}>
+                      бренд временно приостановил работу — товары недоступны для покупки
                     </Text>
-                    <Text style={styles.itemPrice}>{`${item.price.toFixed(
-                      2,
-                    )} ₽`}</Text>
-                    <Text style={styles.itemSize}>{item.size}</Text>
                   </View>
-                </View>
-
-                <View style={styles.rightContainer}>
-                  <View style={styles.circle}>
-                    <Canvas
-                      style={{
-                        width: 41,
-                        height: 41,
-                        backgroundColor: "transparent",
-                      }}
-                    >
-                      <RoundedRect
-                        x={0}
-                        y={0}
-                        width={41}
-                        height={41}
-                        r={20.5}
-                        color="white"
-                      >
-                        <Shadow
-                          dx={0}
-                          dy={4}
-                          blur={4}
-                          color="rgba(0,0,0,0.5)"
-                          inner
-                        />
-                      </RoundedRect>
-                    </Canvas>
-                  </View>
-                </View>
-              </Pressable>
-            </Animated.View>
-          ))}
+                )}
+                {orderPart.items.map((item, index) => (
+                  <Animated.View
+                    key={item.id}
+                    entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
+                      ANIMATION_DELAYS.STANDARD + (partIndex * 10 + index) * ANIMATION_DELAYS.SMALL,
+                    )}
+                    style={[styles.cartItem, isInactive && styles.cartItemInactive]}
+                  >
+                    {isInactive ? (
+                      <View style={styles.itemPressable}>
+                        <View style={styles.itemContent}>
+                          <View style={[styles.imageContainer, styles.imageContainerInactive]}>
+                            <CartItemImage item={item} />
+                          </View>
+                          <View style={styles.itemDetails}>
+                            <Text style={[styles.itemName, styles.itemTextInactive]} numberOfLines={1} ellipsizeMode="tail">
+                              {item.name}
+                            </Text>
+                            <Text style={[styles.itemPrice, styles.itemTextInactive]}>{`${item.price.toFixed(2)} ₽`}</Text>
+                            <Text style={[styles.itemSize, styles.itemTextInactive]}>{item.size}</Text>
+                          </View>
+                        </View>
+                        <View style={styles.rightContainer}>
+                          <View style={styles.circle}>
+                            <Canvas style={{ width: 41, height: 41, backgroundColor: "transparent" }}>
+                              <RoundedRect x={0} y={0} width={41} height={41} r={20.5} color="white">
+                                <Shadow dx={0} dy={4} blur={4} color="rgba(0,0,0,0.5)" inner />
+                              </RoundedRect>
+                            </Canvas>
+                          </View>
+                        </View>
+                      </View>
+                    ) : (
+                      <Pressable style={styles.itemPressable} onPress={() => handleItemPress(item)}>
+                        <View style={styles.itemContent}>
+                          <View style={styles.imageContainer}>
+                            <CartItemImage item={item} />
+                          </View>
+                          <View style={styles.itemDetails}>
+                            <Text style={styles.itemName} numberOfLines={1} ellipsizeMode="tail">
+                              {item.name}
+                            </Text>
+                            <Text style={styles.itemPrice}>{`${item.price.toFixed(2)} ₽`}</Text>
+                            <Text style={styles.itemSize}>{item.size}</Text>
+                          </View>
+                        </View>
+                        <View style={styles.rightContainer}>
+                          <View style={styles.circle}>
+                            <Canvas style={{ width: 41, height: 41, backgroundColor: "transparent" }}>
+                              <RoundedRect x={0} y={0} width={41} height={41} r={20.5} color="white">
+                                <Shadow dx={0} dy={4} blur={4} color="rgba(0,0,0,0.5)" inner />
+                              </RoundedRect>
+                            </Canvas>
+                          </View>
+                        </View>
+                      </Pressable>
+                    )}
+                  </Animated.View>
+                ))}
+              </View>
+            );
+          })}
         </ScrollView>
 
         <Animated.View
@@ -1942,6 +1900,28 @@ const createStyles = (theme: ThemeColors) => StyleSheet.create({
     shadowRadius: 4,
     elevation: 6,
     flex: 1,
+  },
+  cartItemInactive: {
+    opacity: 0.45,
+  },
+  imageContainerInactive: {
+    opacity: 0.6,
+  },
+  itemTextInactive: {
+    color: theme.text.disabled,
+  },
+  inactiveBrandBanner: {
+    backgroundColor: theme.button.disabled,
+    borderRadius: 20,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    marginBottom: 10,
+  },
+  inactiveBrandBannerText: {
+    fontFamily: "IgraSans",
+    fontSize: 13,
+    color: theme.button.disabledText,
+    textAlign: "center",
   },
   itemPressable: {
     flexDirection: "row",
