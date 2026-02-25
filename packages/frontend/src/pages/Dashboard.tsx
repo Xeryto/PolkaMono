@@ -13,11 +13,17 @@ type DashboardView = 'stats' | 'orders' | 'products' | 'add-item' | 'profile' | 
 
 const Dashboard = () => {
   const [currentView, setCurrentView] = useState<DashboardView>('stats');
+  const [targetOrderId, setTargetOrderId] = useState<string | null>(null);
 
   const renderView = () => {
     switch (currentView) {
       case 'orders':
-        return <OrdersView />;
+        return (
+          <OrdersView
+            targetOrderId={targetOrderId}
+            onTargetConsumed={() => setTargetOrderId(null)}
+          />
+        );
       case 'products':
         return <ProductsView />;
       case 'add-item':
@@ -28,8 +34,8 @@ const Dashboard = () => {
         return <SecuritySettingsPage />;
       case 'stats':
         return <StatsView />;
-      default: // Fallback for any unhandled view, or if 'stats' is still somehow set
-        return <StatsView />; // Default to OrdersView if stats is hidden
+      default:
+        return <StatsView />;
     }
   };
 
@@ -37,10 +43,10 @@ const Dashboard = () => {
     <SidebarProvider>
             <div className="min-h-screen flex w-full bg-gradient-ominous">
         <DashboardSidebar currentView={currentView} onViewChange={setCurrentView} />
-        
+
         <div className="flex-1 flex flex-col">
-          <DashboardHeader onViewChange={setCurrentView} />
-          
+          <DashboardHeader onViewChange={setCurrentView} onTargetOrder={setTargetOrderId} />
+
           <main className="flex-1 p-6">
             {renderView()}
           </main>

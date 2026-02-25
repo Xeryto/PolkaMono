@@ -14,7 +14,12 @@ import { useAuth } from "@/context/AuthContext";
 import { formatCurrency } from "@/lib/currency";
 import { getOrderStatusLabel, getOrderStatusColor } from "@/lib/orderStatus";
 
-export function OrdersView() {
+interface OrdersViewProps {
+  targetOrderId?: string | null;
+  onTargetConsumed?: () => void;
+}
+
+export function OrdersView({ targetOrderId, onTargetConsumed }: OrdersViewProps) {
   const [orders, setOrders] = useState<api.OrderSummary[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
@@ -38,7 +43,7 @@ export function OrdersView() {
 
       try {
         setIsLoading(true);
-        const fetchedOrders = await api.getOrders(token); // Pass token
+        const fetchedOrders = await api.getOrders(token);
         setOrders(fetchedOrders);
       } catch (error: any) {
         console.error("Failed to fetch orders:", error);
@@ -83,6 +88,23 @@ export function OrdersView() {
       cancelled = true;
     };
   }, [selectedOrderId, token, toast]);
+
+  // Scroll to and highlight targeted order when navigating from bell notification
+  useEffect(() => {
+    if (!targetOrderId) return;
+    const el = document.querySelector(`[data-order-id="${targetOrderId}"]`);
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      el.classList.add('ring-2', 'ring-brown-light', 'transition-all');
+      const timer = setTimeout(() => {
+        el.classList.remove('ring-2', 'ring-brown-light');
+        onTargetConsumed?.();
+      }, 2000);
+      return () => clearTimeout(timer);
+    } else {
+      onTargetConsumed?.();
+    }
+  }, [targetOrderId, onTargetConsumed]);
 
   if (isLoadingDetail || selectedOrder) {
     if (selectedOrder) {
@@ -132,6 +154,7 @@ export function OrdersView() {
               {orders.map((order) => (
                 <div
                   key={order.id}
+                  data-order-id={order.id}
                   className="flex items-center justify-between p-2 rounded-lg hover:bg-muted/50 cursor-pointer"
                   onClick={() => setSelectedOrderId(order.id)}
                 >
