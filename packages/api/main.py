@@ -3907,6 +3907,123 @@ def admin_send_notification(
     return None
 
 
+@app.get("/api/v1/admin/returns", response_model=List[schemas.AdminReturnItem])
+def admin_get_returns(
+    admin: AuthAccount = Depends(get_current_admin),
+    db: Session = Depends(get_db),
+):
+    """Admin: list all returned order items across all brands."""
+    from models import OrderItem, Order, Brand, ProductVariant, OrderStatusEvent
+    rows = (
+        db.query(OrderItem, Order, Brand, ProductVariant)
+        .join(Order, OrderItem.order_id == Order.id)
+        .join(Brand, Order.brand_id == Brand.id)
+        .join(ProductVariant, OrderItem.product_variant_id == ProductVariant.id)
+        .filter(OrderItem.status == "returned")
+        .all()
+    )
+    result = []
+    for item, order, brand, pv in rows:
+        # Try to find most recent RETURNED status event for this order as returned_at
+        event = (
+            db.query(OrderStatusEvent)
+            .filter(OrderStatusEvent.order_id == order.id, OrderStatusEvent.to_status == "returned")
+            .order_by(OrderStatusEvent.created_at.desc())
+            .first()
+        )
+        returned_at = event.created_at if event else order.updated_at
+        product_name = pv.color_variant.product.name if pv.color_variant and pv.color_variant.product else "—"
+        result.append(schemas.AdminReturnItem(
+            item_id=item.id,
+            order_id=order.id,
+            product_name=product_name,
+            brand_name=brand.name,
+            returned_at=returned_at,
+        ))
+    result.sort(key=lambda x: x.returned_at or datetime.min, reverse=True)
+    return result
+
+
+@app.get("/api/v1/admin/orders/lookup", response_model=schemas.AdminOrderLookupResponse)
+def admin_order_lookup(
+    order_id: str,
+    admin: AuthAccount = Depends(get_current_admin),
+    db: Session = Depends(get_db),
+):
+    """Admin: look up any order by ID, returns full order info (all items + statuses)."""
+    from models import OrderItem, Brand, ProductVariant
+    order = db.query(Order).filter(Order.id == order_id).first()
+    if not order:
+        raise HTTPException(status_code=404, detail="Заказ не найден")
+    brand_name = order.brand.name if order.brand else "—"
+    items = []
+    for item in order.items:
+        pv = db.query(ProductVariant).filter(ProductVariant.id == item.product_variant_id).first()
+        product_name = pv.color_variant.product.name if pv and pv.color_variant and pv.color_variant.product else "—"
+        items.append({
+            "item_id": item.id,
+            "product_name": product_name,
+            "quantity": item.quantity,
+            "current_status": item.status,
+        })
+    return schemas.AdminOrderLookupResponse(
+        order_id=order.id,
+        brand_name=brand_name,
+        items=items,
+    )
+
+
+@app.post("/api/v1/admin/returns/log", status_code=204)
+def admin_log_return(
+    body: schemas.AdminLogReturnRequest,
+    admin: AuthAccount = Depends(get_current_admin),
+    db: Session = Depends(get_db),
+):
+    """Admin: mark order items as returned, update order status, notify brand."""
+    from models import OrderItem, Brand
+    order = db.query(Order).filter(Order.id == body.order_id).first()
+    if not order:
+        raise HTTPException(status_code=404, detail="Заказ не найден")
+    updated_count = 0
+    for item_id in body.item_ids:
+        item = db.query(OrderItem).filter(
+            OrderItem.id == item_id,
+            OrderItem.order_id == body.order_id,
+        ).first()
+        if not item:
+            raise HTTPException(status_code=404, detail=f"Позиция {item_id} не найдена в заказе")
+        if item.status == "returned":
+            continue  # already returned — skip silently
+        item.status = "returned"
+        updated_count += 1
+    # Determine new order status
+    all_items = db.query(OrderItem).filter(OrderItem.order_id == body.order_id).all()
+    all_returned = all(i.status == "returned" for i in all_items)
+    if all_returned:
+        payment_service.update_order_status(
+            db, body.order_id, OrderStatus.RETURNED,
+            actor_type="admin", actor_id=str(admin.id), note="admin logged return"
+        )
+    else:
+        order.status = "partially_returned"
+        payment_service.record_status_event(
+            db, order, OrderStatus.PARTIALLY_RETURNED,
+            actor_type="admin", actor_id=str(admin.id), note="admin logged partial return"
+        )
+    # Notify brand
+    if order.brand and order.brand.auth_account_id:
+        notification_service.create_notification(
+            db=db,
+            recipient_type="brand",
+            recipient_id=str(order.brand.id),
+            notif_type="return_logged",
+            message=f"Возврат по заказу #{body.order_id[:8]}: {len(body.item_ids)} товар(а) возвращены",
+            order_id=body.order_id,
+        )
+    db.commit()
+    return None
+
+
 @app.post("/api/v1/admin/notifications/send-buyers", status_code=204)
 def admin_send_buyer_push(
     body: AdminNotificationSend,

@@ -469,7 +469,7 @@ class StyleResponse(BaseModel):
 
 
 class UserBrandResponse(BaseModel):
-    id: int
+    id: str
     name: str
     slug: str
     logo: Optional[str] = None
@@ -729,3 +729,26 @@ class AdminLoginRequest(BaseModel):
 class AdminLoginResponse(BaseModel):
     token: str
     expires_at: datetime
+
+
+class AdminReturnItem(BaseModel):
+    item_id: str
+    order_id: str
+    product_name: str
+    brand_name: str
+    returned_at: Optional[datetime] = None
+
+
+class AdminReturnLog(BaseModel):
+    items: List[AdminReturnItem]
+
+
+class AdminOrderLookupResponse(BaseModel):
+    order_id: str
+    brand_name: str
+    items: List[dict]  # {item_id, product_name, quantity, current_status}
+
+
+class AdminLogReturnRequest(BaseModel):
+    order_id: str
+    item_ids: List[str]
