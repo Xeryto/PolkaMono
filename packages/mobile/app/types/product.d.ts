@@ -45,6 +45,11 @@ export interface CardItem {
   styles?: string[];
   /** Product-level images shown for all colors (merged with color images) */
   general_images?: string[];
+  sale_price?: number | null;
+  sale_type?: "percent" | "exact" | null;
+  sizing_table_image?: string | null;
+  delivery_time_min?: number | null;
+  delivery_time_max?: number | null;
 }
 
 // Keep Product as alias for backward compatibility

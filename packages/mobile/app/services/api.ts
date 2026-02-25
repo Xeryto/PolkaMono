@@ -371,6 +371,11 @@ export interface Product {
   article_number?: string;
   is_liked?: boolean;
   general_images?: string[];
+  sale_price?: number | null;
+  sale_type?: "percent" | "exact" | null;
+  sizing_table_image?: string | null;
+  delivery_time_min?: number | null;
+  delivery_time_max?: number | null;
 }
 
 export interface Brand {

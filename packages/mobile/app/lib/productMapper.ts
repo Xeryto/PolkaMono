@@ -58,6 +58,11 @@ export function mapProductToCardItem(product: api.Product, index?: number): Card
     category_id: product.category_id,
     styles: product.styles,
     general_images: product.general_images ?? [],
+    sale_price: product.sale_price ?? null,
+    sale_type: product.sale_type ?? null,
+    sizing_table_image: product.sizing_table_image ?? null,
+    delivery_time_min: product.delivery_time_min ?? null,
+    delivery_time_max: product.delivery_time_max ?? null,
   };
 }
 
