@@ -246,7 +246,7 @@ class UserProfileUpdate(BaseModel):
 
 
 class BrandResponse(BaseModel):
-    id: int
+    id: str
     name: str
     slug: str
     logo: Optional[str] = None
@@ -3904,6 +3904,34 @@ def admin_send_notification(
 ):
     """Admin-only: send a custom in-app notification to all active brands."""
     notification_service.send_admin_broadcast_to_brands(db=db, message=body.message)
+    return None
+
+
+@app.post("/api/v1/admin/notifications/send-buyers", status_code=204)
+def admin_send_buyer_push(
+    body: AdminNotificationSend,
+    admin: AuthAccount = Depends(get_current_admin),
+    db: Session = Depends(get_db),
+):
+    """Broadcast push notification to all buyers with push enabled and marketing_notifications=True."""
+    eligible_users = (
+        db.query(User)
+        .join(UserPreferences, UserPreferences.user_id == User.id, isouter=True)
+        .filter(User.expo_push_token.isnot(None))
+        .filter(
+            or_(
+                UserPreferences.marketing_notifications == True,  # noqa: E712
+                UserPreferences.id.is_(None),
+            )
+        )
+        .all()
+    )
+    for user in eligible_users:
+        notification_service.send_expo_push_notification(
+            push_token=user.expo_push_token,
+            title="Полка",
+            body=body.message,
+        )
     return None
 
 

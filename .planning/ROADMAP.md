@@ -137,18 +137,18 @@ Plans:
 - [ ] 08-03-PLAN.md — Mobile: expo-notifications install, push token registration in App.tsx, API endpoint
 - [ ] 08-04-PLAN.md — API: buyer push on SHIPPED + admin broadcast endpoint + AdminNotificationsPage in portal
 
-#### Phase 9: Admin Dashboard + Mobile Enrichment Display ✅ COMPLETE (partial)
+#### Phase 9: Admin Dashboard + Mobile Enrichment Display
 **Goal**: Admin can oversee all orders and send notifications; mobile buyers see sale prices, sizing tables, and delivery times on product cards
 **Depends on**: Phase 8
 **Requirements**: ADMIN-01, ADMIN-02, ADMIN-03, ADMIN-04, PROD-02, PROD-05, PROD-07
 **Success Criteria** (what must be TRUE):
   1. ✅ Admin can access dedicated routes inside the brand portal (protected by admin flag)
-  2. ⏳ Admin can log a return for any order (deferred to v1.2)
-  3. ✅ Admin can send manual in-app notifications to brands; push to buyers deferred to v1.2
-  4. ⏳ Mobile product card shows a crossed-out original price when a sale is active (deferred to v1.2)
-  5. ⏳ Mobile product card backside shows sizing table image and delivery time (deferred to v1.2)
+  2. Admin can log a return for any order (returns log table + log-return flow)
+  3. Admin can send manual notifications to brands (in-app) and buyers (push)
+  4. Mobile product card shows a crossed-out original price when a sale is active
+  5. Mobile product card backside shows sizing table image and delivery time
 
-**What was built (2026-02-25):**
+**What was built (2026-02-25 — plan 01):**
 - Admin login page (`/admin`) with JWT auth stored in localStorage
 - `AdminAuthContext` + `AdminProtectedRoute` guarding `/admin/dashboard`
 - `AdminDashboard` shell with sidebar navigation
@@ -157,12 +157,13 @@ Plans:
 - Backend: `POST /api/v1/admin/auth/login`, `POST /api/v1/admin/notifications/send`, `POST /api/v1/admin/orders/{id}/cancel`
 - `get_current_admin()` dependency (JWT + `is_admin: True` flag)
 
-**Remaining (deferred to v1.2):** ADMIN-02 (orders view), ADMIN-03 (return logging), ADMIN-04 (buyer push broadcast), PROD-02/05/07 (mobile enrichment display)
-
-**Plans**: 1 plan
+**Plans**: 4 plans
 
 Plans:
 - [x] 09-01-PLAN.md — Admin login, auth context, protected route, dashboard shell, broadcast UI, API endpoints
+- [ ] 09-02-PLAN.md — Admin returns log table + log-return flow (backend API + frontend view)
+- [ ] 09-03-PLAN.md — Admin buyer push broadcast tab in Notifications view
+- [ ] 09-04-PLAN.md — Mobile: sale price display, sizing table image, delivery time on card + cart
 
 ## Progress
 
@@ -176,4 +177,4 @@ Plans:
 | 6. Product Enrichment (API + Web) | v1.1 | 3/3 | Complete | 2026-02-24 |
 | 7. Account Management + 2FA | v1.1 | 4/4 | Complete | 2026-02-24 |
 | 8. Notifications | v1.1 | 4/4 | Complete | 2026-02-25 |
-| 9. Admin Dashboard + Mobile Display | v1.1 | 1/1 | Partial (core done; mobile enrichment deferred) | 2026-02-25 |
+| 9. Admin Dashboard + Mobile Display | v1.1 | 1/4 | In progress | - |
