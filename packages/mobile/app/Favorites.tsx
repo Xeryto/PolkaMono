@@ -2526,6 +2526,7 @@ const createStyles = (theme: ThemeColors) => StyleSheet.create({
     flex: 1,
     height: "100%",
     paddingVertical: 10,
+    color: theme.text.primary,
   },
   favoritesCancelButtonContainer: {
     marginRight: -16,

@@ -4607,10 +4607,10 @@ const createStyles = (theme: ThemeColors) => StyleSheet.create({
   floatingLabel: {
     fontFamily: "IgraSans",
     fontSize: 16,
-    color: theme.modal.backdrop,
+    color: theme.text.disabled,
   },
   floatingLabelRight: {
-    color: theme.modal.backdrop,
+    color: theme.text.disabled,
   },
   disabledOvalInput: {
     backgroundColor: theme.border.light,
