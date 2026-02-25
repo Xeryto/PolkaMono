@@ -2253,12 +2253,22 @@ async def update_order_tracking(
         order.tracking_link = tracking_data.tracking_link.strip() or None
 
     # Transition to SHIPPED when tracking is complete and order was PAID
+    was_paid = order.status == OrderStatus.PAID
     if (
-        order.status == OrderStatus.PAID
+        was_paid
         and order.tracking_number
         and order.tracking_link
     ):
         payment_service.update_order_status(str(order.id), OrderStatus.SHIPPED.value)  # type: ignore
+        # Notify buyer
+        if order.user_id:
+            brand_name = order.brand.name if order.brand else "бренда"
+            notification_service.send_buyer_shipped_notification(
+                db=db,
+                order_id=str(order.id),
+                brand_name=brand_name,
+                user_id=str(order.user_id),
+            )
 
     db.commit()
     return {"message": "Tracking information updated successfully"}
@@ -3856,6 +3866,27 @@ async def admin_cancel_order(
     )
     db.commit()
     return {"message": "Заказ отменён администратором"}
+
+
+class AdminNotificationSend(BaseModel):
+    message: str = Field(..., min_length=1, max_length=500)
+
+
+@app.post("/api/v1/admin/notifications/send", status_code=204)
+def admin_send_notification(
+    body: AdminNotificationSend,
+    current_user=Depends(get_current_brand_user),
+    db: Session = Depends(get_db),
+):
+    """Admin-only: send a custom in-app notification to all active brands.
+
+    Brands use the web portal (no Expo push tokens). Delivery is in-app only.
+    Admin-to-buyer push is out of scope for Phase 8.
+    """
+    if not _is_admin(current_user):
+        raise HTTPException(status_code=403, detail="Admin only")
+    notification_service.send_admin_broadcast_to_brands(db=db, message=body.message)
+    return None
 
 
 class OrderStatusEventResponse(BaseModel):

@@ -3,6 +3,9 @@ from datetime import datetime, timedelta
 from typing import Optional
 from sqlalchemy.orm import Session
 from models import Notification
+import httpx
+
+EXPO_PUSH_URL = "https://exp.host/--/api/v2/push/send"
 
 NOTIFICATION_TTL_DAYS = 7
 MAX_NOTIFICATIONS_RETURNED = 20
@@ -53,3 +56,59 @@ def send_return_logged_notification(db: Session, brand_id: int, order_id: str) -
         message="Оформлен возврат по вашему заказу",
         order_id=order_id,
     )
+
+
+def send_expo_push_notification(
+    push_token: str,
+    title: str,
+    body: str,
+    data: Optional[dict] = None,
+) -> None:
+    """Send a push notification via Expo Push API. Fire-and-forget — errors are logged not raised."""
+    if not push_token or not push_token.startswith("ExponentPushToken"):
+        return  # not a valid Expo token
+    payload = {
+        "to": push_token,
+        "title": title,
+        "body": body,
+        "sound": "default",
+        "data": data or {},
+    }
+    try:
+        with httpx.Client(timeout=5.0) as client:
+            client.post(EXPO_PUSH_URL, json=payload, headers={"Accept": "application/json"})
+    except Exception as exc:
+        print(f"notification_service - push failed: {exc}")
+
+
+def send_buyer_shipped_notification(db: Session, order_id: str, brand_name: str, user_id: str) -> None:
+    """Send Expo push to the buyer when their order is shipped."""
+    from models import User
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user or not user.expo_push_token:
+        return
+    send_expo_push_notification(
+        push_token=user.expo_push_token,
+        title="Заказ отправлен",
+        body=f"Ваш заказ от {brand_name} отправлен",
+        data={"order_id": order_id},
+    )
+
+
+def send_admin_broadcast_to_brands(db: Session, message: str) -> None:
+    """Create an in-app notification for every active brand.
+
+    Brands are web portal users and have no Expo push tokens — delivery is
+    in-app only (bell dropdown). Admin-to-buyer push broadcast is out of scope
+    for Phase 8 and handled by ADMIN-04 in Phase 9.
+    """
+    from models import Brand
+    brands = db.query(Brand).filter(Brand.is_inactive == False).all()
+    for brand in brands:
+        create_notification(
+            db=db,
+            recipient_type="brand",
+            recipient_id=str(brand.id),
+            notif_type="admin_custom",
+            message=message,
+        )
