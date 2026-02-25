@@ -574,3 +574,19 @@ class OrderStatusEvent(Base):
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 
     order = relationship("Order", back_populates="status_events")
+
+
+class Notification(Base):
+    """In-app notification for brands (and future: users)."""
+    __tablename__ = "notifications"
+    __table_args__ = {"extend_existing": True}
+
+    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    recipient_type = Column(String(20), nullable=False)  # "brand" or "user"
+    recipient_id = Column(String, nullable=False, index=True)  # brand.id (int as str) or user.id
+    type = Column(String(50), nullable=False)  # "new_order", "return_logged", "admin_custom"
+    message = Column(String(500), nullable=False)
+    order_id = Column(String, nullable=True)  # FK-like reference (not a real FK; order IDs are strings)
+    is_read = Column(Boolean, default=False, nullable=False)
+    expires_at = Column(DateTime, nullable=False)  # now + 7 days at creation
+    created_at = Column(DateTime, default=datetime.utcnow)
