@@ -41,11 +41,9 @@ import VerificationCodeScreen from "./app/screens/VerificationCodeScreen";
 import PasswordResetVerificationScreen from "./app/screens/PasswordResetVerificationScreen";
 import RecentPiecesScreen from "./app/screens/RecentPiecesScreen";
 import FriendRecommendationsScreen from "./app/screens/FriendRecommendationsScreen";
-import NotifyPermissionScreen from "./app/screens/NotifyPermissionScreen";
 
 import * as SplashScreen from "expo-splash-screen";
 import * as Notifications from "expo-notifications";
-import * as Device from "expo-device";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import * as cartStorage from "./app/cartStorage";
 import * as api from "./app/services/api";
@@ -205,12 +203,6 @@ Notifications.setNotificationHandler({
 });
 
 async function registerForPushNotificationsAsync(): Promise<string | null> {
-  if (!Device.isDevice) {
-    // Push notifications only work on physical devices
-    console.log("App - Push: not a physical device, skipping");
-    return null;
-  }
-
   const { status: existingStatus } = await Notifications.getPermissionsAsync();
   let finalStatus = existingStatus;
 
@@ -741,7 +733,6 @@ function AppContent() {
         "profile_confirm",
         "profile_brands",
         "profile_styles",
-        "notify_permission",
         "email_verification",
       ];
       const isOnAuthenticatedScreen = authenticatedPhases.includes(
@@ -839,7 +830,6 @@ function AppContent() {
     | "profile_confirm"
     | "profile_brands"
     | "profile_styles"
-    | "notify_permission"
     | "main";
   type Overlay = "none" | "static" | "up" | "down";
 
@@ -912,21 +902,13 @@ function AppContent() {
     return () => subscription.remove();
   }, [navState.phase]);
 
-  // On first entry to "main", show soft notification prompt if permission undetermined
+  // On first entry to "main", request native notification permission directly
   useEffect(() => {
     if (navState.phase !== "main") return;
     if (notifyPermissionCheckedRef.current) return;
     notifyPermissionCheckedRef.current = true;
 
-    if (!Device.isDevice) return;
-
-    Notifications.getPermissionsAsync().then(({ status }) => {
-      if (status === "undetermined") {
-        transitionTo("notify_permission");
-      } else {
-        triggerPushRegistration();
-      }
-    });
+    triggerPushRegistration();
   }, [navState.phase]);
 
   // Consume pending order navigation once 'main' phase is active
@@ -1854,14 +1836,6 @@ function AppContent() {
     }
   };
 
-  const handleNotifyAllow = () => {
-    transitionTo("main");
-    triggerPushRegistration();
-  };
-
-  const handleNotifySkip = () => {
-    transitionTo("main");
-  };
 
   const handleForgotPassword = async (usernameOrEmail: string) => {
     console.log("Password reset requested for:", usernameOrEmail);
@@ -1973,13 +1947,6 @@ function AppContent() {
             onBack={() => {
               transitionTo("profile_brands");
             }}
-          />
-        )}
-
-        {navState.phase === "notify_permission" && (
-          <NotifyPermissionScreen
-            onAllow={handleNotifyAllow}
-            onSkip={handleNotifySkip}
           />
         )}
 

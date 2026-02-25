@@ -814,18 +814,16 @@ const Favorites = ({ navigation }: FavoritesProps) => {
           response.request_id,
         );
 
-        // If we got a request ID, also add it to the main friends list
-        if (response.request_id) {
-          const newFriendItem: FriendItem = {
-            id: searchItem.id,
-            username: searchItem.username,
-            email: searchItem.email,
-            avatar_url: searchItem.avatar_url,
-            status: "request_sent",
-            requestId: response.request_id,
-          };
-          setFriendItems((prev) => [...prev, newFriendItem]);
-        }
+        // Add to main friends list so it shows when returning from search
+        const newFriendItem: FriendItem = {
+          id: searchItem.id,
+          username: searchItem.username,
+          email: searchItem.email,
+          avatar_url: searchItem.avatar_url,
+          status: "request_sent",
+          requestId: response.request_id,
+        };
+        setFriendItems((prev) => [...prev, newFriendItem]);
       }
 
       Alert.alert("успех", "заявка в друзья отправлена");
@@ -843,13 +841,14 @@ const Favorites = ({ navigation }: FavoritesProps) => {
 
       await api.cancelFriendRequest(requestId);
 
-      // Find the cancelled request and update its status instead of removing
+      // Find the cancelled request and remove from main list, update search to not_friend
       const cancelledItem = friendItems.find(
         (item) => item.requestId === requestId,
       );
       if (cancelledItem) {
-        // Update status to 'not_friend' instead of removing
-        updateFriendItemStatus(cancelledItem.id, "not_friend");
+        // Remove from main friends list (they're no longer relevant there)
+        setFriendItems((prev) => prev.filter((item) => item.id !== cancelledItem.id));
+        // Update search results to show "not_friend" so user can re-add if desired
         updateSearchItemStatus(cancelledItem.id, "not_friend");
       }
 

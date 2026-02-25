@@ -129,6 +129,34 @@ const computeDeliveryForItems = (
   });
 };
 
+interface BrandShippingSummary {
+  brandName: string;
+  originalCost: number;
+  actualCost: number;
+  isFree: boolean;
+}
+
+const computeBrandShippingSummaries = (
+  items: CartItem[],
+  brandsMap: BrandMap,
+): BrandShippingSummary[] => {
+  const grouped: Record<string, { brandName: string; subtotal: number; brandId: string }> = {};
+  for (const item of items) {
+    const bid = item.brand_id ?? "";
+    if (!grouped[bid]) {
+      grouped[bid] = { brandName: item.brand_name ?? bid, subtotal: 0, brandId: bid };
+    }
+    grouped[bid].subtotal += item.price * (item.quantity ?? 1);
+  }
+  return Object.values(grouped).map(({ brandName, subtotal, brandId }) => {
+    const brand = brandsMap[brandId];
+    const originalCost = brand?.shipping_price ?? DEFAULT_SHIPPING_PRICE;
+    const minFree = brand?.min_free_shipping;
+    const isFree = minFree != null && subtotal >= minFree;
+    return { brandName, originalCost, actualCost: isFree ? 0 : originalCost, isFree };
+  });
+};
+
 interface CancelButtonProps {
   onRemove: (cartItemId: string) => void;
   cartItemId: string;
@@ -407,6 +435,11 @@ const Cart = ({ navigation }: CartProps) => {
     const { delivery, cartItemId, ...cardItem } = item; // Exclude CartItem-specific fields
     navigation.navigate("Home", { addCardItem: cardItem as Product });
   };
+
+  const brandSummaries = useMemo(
+    () => computeBrandShippingSummaries(cartItems, brandsMap),
+    [cartItems, brandsMap],
+  );
 
   const calculateRawTotal = () =>
     cartItems.reduce(
@@ -694,8 +727,7 @@ const Cart = ({ navigation }: CartProps) => {
                     </Pressable>
                   </Animated.View>
                 ))}
-              </ScrollView>
-              <Animated.View style={styles.checkoutContainer}>
+
                 <Animated.View
                   style={styles.summaryContainer}
                   entering={FadeInDown.duration(
@@ -708,7 +740,29 @@ const Cart = ({ navigation }: CartProps) => {
                       ИТОГО {calculateTotal()}
                     </Text>
                   </View>
+                  <View style={styles.deliverySummaryContainer}>
+                    <Text style={styles.deliverySummaryLabel}>ДОСТАВКА</Text>
+                    {brandSummaries.map((summary) => (
+                      <View key={summary.brandName} style={styles.deliverySummaryRow}>
+                        <Text style={styles.deliverySummaryBrand}>{summary.brandName}</Text>
+                        {summary.isFree ? (
+                          <View style={{ flexDirection: "row", gap: 8 }}>
+                            <Text style={styles.deliverySummaryOriginalPrice}>
+                              {summary.originalCost.toFixed(2)} ₽
+                            </Text>
+                            <Text style={styles.deliverySummaryPrice}>0.00 ₽</Text>
+                          </View>
+                        ) : (
+                          <Text style={styles.deliverySummaryPrice}>
+                            {summary.actualCost.toFixed(2)} ₽
+                          </Text>
+                        )}
+                      </View>
+                    ))}
+                  </View>
                 </Animated.View>
+              </ScrollView>
+              <Animated.View style={styles.checkoutContainer}>
                 {paymentError && (
                   <Animated.View
                     entering={FadeIn.duration(ANIMATION_DURATIONS.STANDARD)}
@@ -887,6 +941,7 @@ const createStyles = (theme: ThemeColors) => StyleSheet.create({
   summaryContainer: {
     marginBottom: 10,
     width: "87%",
+    alignSelf: "center",
     alignItems: "center",
     justifyContent: "center",
   },
@@ -901,6 +956,40 @@ const createStyles = (theme: ThemeColors) => StyleSheet.create({
     fontFamily: "IgraSans",
     fontSize: 30,
     color: theme.text.primary,
+  },
+  deliverySummaryContainer: {
+    width: "100%",
+    alignItems: "flex-start",
+    marginTop: 10,
+  },
+  deliverySummaryLabel: {
+    fontFamily: "IgraSans",
+    fontSize: 20,
+    color: theme.text.primary,
+    marginBottom: 6,
+  },
+  deliverySummaryRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    width: "100%",
+    marginBottom: 4,
+  },
+  deliverySummaryBrand: {
+    fontFamily: "IgraSans",
+    fontSize: 16,
+    color: theme.text.primary,
+  },
+  deliverySummaryPrice: {
+    fontFamily: "REM",
+    fontSize: 16,
+    color: theme.text.primary,
+  },
+  deliverySummaryOriginalPrice: {
+    fontFamily: "REM",
+    fontSize: 16,
+    color: theme.text.secondary,
+    textDecorationLine: "line-through" as const,
   },
   checkoutButton: {
     width: "100%",

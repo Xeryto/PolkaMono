@@ -1996,11 +1996,10 @@ const MainPage = ({ navigation, route }: MainPageProps) => {
               </View>
             ) : null}
             {formatDeliveryTime(card.delivery_time_min, card.delivery_time_max) ? (
-              <View style={{ marginTop: 8, marginBottom: 4 }}>
-                <Text style={{ fontFamily: 'IgraSans', fontSize: 12, color: theme.text.secondary }}>
-                  {`доставка: ${formatDeliveryTime(card.delivery_time_min, card.delivery_time_max)}`}
-                </Text>
-              </View>
+              <ExpandableSection
+                title="доставка"
+                content={formatDeliveryTime(card.delivery_time_min, card.delivery_time_max)!}
+              />
             ) : null}
           </ScrollView>
 

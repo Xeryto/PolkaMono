@@ -308,10 +308,12 @@ const Search = ({ navigation }: SearchProps) => {
 
   // Helper function to load and map popular items - wrapped in useCallback to prevent recreation on every render
   const loadPopularItems = useCallback(async () => {
+    const myRequestId = ++requestIdRef.current;
     console.log("Search - Loading popular items");
     setIsLoadingResults(true);
     try {
       const popularItems = await apiWrapper.getPopularItems(16, "SearchPage");
+      if (myRequestId !== requestIdRef.current) return;
       if (popularItems && popularItems.length > 0) {
         // Deduplicate by product ID (defensive measure)
         const seenIds = new Map<string, api.Product>();
@@ -338,12 +340,15 @@ const Search = ({ navigation }: SearchProps) => {
         persistentSearchStorage.results = [];
       }
     } catch (error) {
+      if (myRequestId !== requestIdRef.current) return;
       console.error("Error loading popular items:", error);
       // On error, keep results empty
       setSearchResults([]);
       persistentSearchStorage.results = [];
     } finally {
-      setIsLoadingResults(false);
+      if (myRequestId === requestIdRef.current) {
+        setIsLoadingResults(false);
+      }
     }
   }, []); // Empty deps - function doesn't depend on any props/state
 

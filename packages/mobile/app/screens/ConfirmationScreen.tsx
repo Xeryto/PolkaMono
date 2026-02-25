@@ -156,19 +156,15 @@ const ConfirmationScreen: React.FC<ConfirmationScreenProps> = ({
                       }}
                       disabled={isSubmitting}
                     >
-                      {selectedOption === "female" && isSubmitting ? (
-                        <ActivityIndicator size="small" color={theme.gender.femaleText} />
-                      ) : (
-                        <Text
-                          style={[
-                            styles.optionButtonTextF,
-                            selectedOption === "female" &&
-                              styles.selectedButtonTextF,
-                          ]}
-                        >
-                          Ж
-                        </Text>
-                      )}
+                      <Text
+                        style={[
+                          styles.optionButtonTextF,
+                          selectedOption === "female" &&
+                            styles.selectedButtonTextF,
+                        ]}
+                      >
+                        Ж
+                      </Text>
                     </Pressable>
                   </Animated.View>
                 </View>

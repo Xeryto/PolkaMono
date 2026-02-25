@@ -131,6 +131,7 @@ const Wall = ({ navigation, onLogout }: WallProps) => {
   const [isLoadingOrders, setIsLoadingOrders] = useState(false);
   const [orderError, setOrderError] = useState<string | null>(null);
   const [selectedSize, setSelectedSize] = useState("M");
+  const [hasSavedSize, setHasSavedSize] = useState(false);
   const [showSizeSelection, setShowSizeSelection] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [isSearchActive, setIsSearchActive] = useState(false);
@@ -274,6 +275,10 @@ const Wall = ({ navigation, onLogout }: WallProps) => {
         // Set selected size from profile object
         if (profile.profile?.selected_size) {
           setSelectedSize(profile.profile.selected_size);
+          setHasSavedSize(true);
+          sizeContainerWidth.setValue(height * 0.1);
+        } else {
+          sizeContainerWidth.setValue(width * 0.3);
         }
 
         // Set selected brands from profile
@@ -492,11 +497,12 @@ const Wall = ({ navigation, onLogout }: WallProps) => {
 
   const handleSizeSelect = (size: string) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    setHasSavedSize(true);
     updateUserSize(size);
 
     RNAnimated.parallel([
       RNAnimated.timing(sizeContainerWidth, {
-        toValue: 45,
+        toValue: height * 0.1,
         duration: ANIMATION_DURATIONS.STANDARD,
         easing: ANIMATION_EASING.STANDARD,
         useNativeDriver: false,
@@ -614,7 +620,12 @@ const Wall = ({ navigation, onLogout }: WallProps) => {
         <RNAnimated.View
           style={[styles.sizeIndicator, { opacity: sizeIndicatorOpacity }]}
         >
-          <Text style={styles.sizeIndicatorText}>{selectedSize}</Text>
+          {!hasSavedSize && (
+            <Text style={styles.sizeChooseText}>выбери</Text>
+          )}
+          {hasSavedSize && (
+            <Text style={styles.sizeIndicatorText}>{selectedSize}</Text>
+          )}
         </RNAnimated.View>
       </RNAnimated.View>
     </View>
@@ -649,7 +660,7 @@ const Wall = ({ navigation, onLogout }: WallProps) => {
 
           {isSelected && (
             <View style={styles.tickContainer}>
-              <Tick width={20} height={20} />
+              <Tick width={20} height={20} color={theme.text.primary} />
             </View>
           )}
         </View>
@@ -854,7 +865,7 @@ const Wall = ({ navigation, onLogout }: WallProps) => {
                         <View style={styles.rightContainer}>
                           <View style={styles.circle}>
                             <Canvas style={{ width: 41, height: 41, backgroundColor: "transparent" }}>
-                              <RoundedRect x={0} y={0} width={41} height={41} r={20.5} color="white">
+                              <RoundedRect x={0} y={0} width={41} height={41} r={20.5} color={theme.background.primary}>
                                 <Shadow dx={0} dy={4} blur={4} color="rgba(0,0,0,0.5)" inner />
                               </RoundedRect>
                             </Canvas>
@@ -888,20 +899,32 @@ const Wall = ({ navigation, onLogout }: WallProps) => {
           <Text style={[styles.orderStatusText, { marginLeft: 20 }]}>
             статус
           </Text>
-          <Animated.View
-            entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
-              ANIMATION_DELAYS.VERY_LARGE + ANIMATION_DELAYS.EXTENDED,
-            )}
-            style={styles.orderStatus}
+          <TouchableOpacity
+            disabled={!(api.isCheckoutResponse(orderDetail)
+              ? orderDetail.orders[0]?.tracking_link
+              : orderDetail.tracking_link)}
+            onPress={() => {
+              const link = api.isCheckoutResponse(orderDetail)
+                ? orderDetail.orders[0]?.tracking_link
+                : orderDetail.tracking_link;
+              if (link) Linking.openURL(link);
+            }}
           >
-            <Text style={styles.orderStatusText}>
-              {api.getOrderStatusLabel(
-                api.isCheckoutResponse(orderDetail)
-                  ? orderDetail.orders[0]?.status
-                  : orderDetail.status,
+            <Animated.View
+              entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
+                ANIMATION_DELAYS.VERY_LARGE + ANIMATION_DELAYS.EXTENDED,
               )}
-            </Text>
-          </Animated.View>
+              style={styles.orderStatus}
+            >
+              <Text style={styles.orderStatusText}>
+                {api.getOrderStatusLabel(
+                  api.isCheckoutResponse(orderDetail)
+                    ? orderDetail.orders[0]?.status
+                    : orderDetail.status,
+                )}
+              </Text>
+            </Animated.View>
+          </TouchableOpacity>
         </Animated.View>
           </>
         )}
@@ -1001,6 +1024,11 @@ const Wall = ({ navigation, onLogout }: WallProps) => {
                   <Text style={styles.orderSummary}>
                     итого: {order.total_amount.toFixed(2)} ₽
                   </Text>
+                  {order.tracking_link && (
+                    <TouchableOpacity onPress={() => Linking.openURL(order.tracking_link!)}>
+                      <Text style={styles.trackingLink}>отслеживание →</Text>
+                    </TouchableOpacity>
+                  )}
                 </Animated.View>
               ))}
             </ScrollView>
@@ -1266,7 +1294,7 @@ const Wall = ({ navigation, onLogout }: WallProps) => {
               style={styles.scrollHintContainer}
             >
               <Text style={styles.scrollHintText}>листай</Text>
-              <Scroll width={26} height={26} />
+              <Scroll width={26} height={26} color={theme.text.primary} />
             </Animated.View>
           )}
 
@@ -1658,13 +1686,21 @@ const createStyles = (theme: ThemeColors) => StyleSheet.create({
     textDecorationStyle: "solid",
   },
   sizeIndicator: {
-    width: height * 0.1,
     height: height * 0.1,
     borderRadius: 41,
     justifyContent: "center",
     alignItems: "center",
+    flexDirection: "row",
+    gap: 8,
     position: "absolute",
     right: 0,
+    left: 0,
+    paddingHorizontal: 20,
+  },
+  sizeChooseText: {
+    color: theme.text.tertiary,
+    fontFamily: "IgraSans",
+    fontSize: 18,
   },
   sizeIndicatorText: {
     color: theme.text.primary,
@@ -1876,6 +1912,13 @@ const createStyles = (theme: ThemeColors) => StyleSheet.create({
     fontSize: 20,
     color: theme.text.primary,
     marginLeft: 20,
+  },
+  trackingLink: {
+    fontFamily: "IgraSans",
+    fontSize: 14,
+    color: theme.primary,
+    marginLeft: 20,
+    marginTop: 4,
   },
   orderDetailsContainer: {
     width: "100%",

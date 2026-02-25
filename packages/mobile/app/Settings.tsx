@@ -16,6 +16,7 @@ import {
   Platform,
   Linking,
   Alert,
+  Modal,
   NativeSyntheticEvent,
   NativeScrollEvent,
   Switch,
@@ -98,7 +99,6 @@ interface SettingsProps {
     | "my_info"
     | "notifications"
     | "privacy"
-    | "theme"
     | "documents"
     | null; // Initial section to show when embedded
 }
@@ -294,6 +294,7 @@ const Settings = ({
   const { theme, themeMode, setThemeMode } = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
   const [selectedSize, setSelectedSize] = useState("M");
+  const [showThemePopup, setShowThemePopup] = useState(false);
   const [activeSection, setActiveSection] = useState<
     | "payment"
     | "support"
@@ -301,7 +302,6 @@ const Settings = ({
     | "my_info"
     | "notifications"
     | "privacy"
-    | "theme"
     | "documents"
     | "delete_account"
     | null
@@ -807,6 +807,17 @@ const Settings = ({
             "Settings - Loaded favorite brands from profile:",
             brandNames,
           );
+        }
+
+        // Pre-load privacy & notification prefs so entering those sections
+        // doesn't trigger a state change (and thus a spurious animation).
+        const prefs = profile.preferences;
+        if (prefs) {
+          setSizePrivacy(prefs.size_privacy || "friends");
+          setRecommendationsPrivacy(prefs.recommendations_privacy || "friends");
+          setLikesPrivacy(prefs.likes_privacy || "friends");
+          setOrderNotifications(prefs.order_notifications ?? true);
+          setMarketingNotifications(prefs.marketing_notifications ?? true);
         }
       } else {
         setSelectedBrands([]);
@@ -1653,7 +1664,7 @@ const Settings = ({
 
           {isSelected && (
             <View style={styles.tickContainer}>
-              <Tick width={20} height={20} />
+              <Tick width={20} height={20} color={theme.text.primary} />
             </View>
           )}
         </View>
@@ -1732,7 +1743,6 @@ const Settings = ({
       | "my_info"
       | "notifications"
       | "privacy"
-      | "theme"
       | "documents",
     delay: number,
   ) => (
@@ -1764,7 +1774,6 @@ const Settings = ({
       { title: "поддержка", section: "support" as const, delay: 150 },
       { title: "уведомления", section: "notifications" as const, delay: 200 },
       { title: "приватность", section: "privacy" as const, delay: 250 },
-      { title: "тема", section: "theme" as const, delay: 275 },
       { title: "документы", section: "documents" as const, delay: 300 },
     ];
 
@@ -1839,7 +1848,7 @@ const Settings = ({
               style={styles.scrollHintContainer}
             >
               <Text style={styles.scrollHintText}>листай</Text>
-              <Scroll width={26} height={26} />
+              <Scroll width={26} height={26} color={theme.text.primary} />
             </Animated.View>
           )}
 
@@ -1855,10 +1864,28 @@ const Settings = ({
               </View>
             ))}
 
+            {/* Theme Popup Button */}
+            <Animated.View
+              entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
+                ANIMATION_DELAYS.MEDIUM + 275,
+              )}
+              style={styles.mainButtonContainer}
+            >
+              <Pressable
+                style={styles.mainButton}
+                onPress={async () => {
+                  await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  setShowThemePopup(true);
+                }}
+              >
+                <Text style={styles.mainButtonText}>тема</Text>
+              </Pressable>
+            </Animated.View>
+
             {/* Delete Account Button */}
             <Animated.View
               entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
-                ANIMATION_DELAYS.MEDIUM + 300,
+                ANIMATION_DELAYS.MEDIUM + 325,
               )}
               style={styles.mainButtonContainer}
             >
@@ -2621,7 +2648,7 @@ const Settings = ({
     </View>
   );
 
-  const renderThemeContent = () => {
+  const renderThemePopup = () => {
     const themeOptions: Array<{ id: 'system' | 'light' | 'dark'; label: string }> = [
       { id: 'system', label: 'системная' },
       { id: 'light', label: 'светлая' },
@@ -2629,66 +2656,50 @@ const Settings = ({
     ];
 
     return (
-      <View style={styles.contentContainer}>
-        <Animated.View
-          style={styles.backButton}
-          entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
-            ANIMATION_DELAYS.LARGE,
-          )}
+      <Modal
+        visible={showThemePopup}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowThemePopup(false)}
+      >
+        <Pressable
+          style={styles.themePopupOverlay}
+          onPress={() => setShowThemePopup(false)}
         >
-          <TouchableOpacity onPress={() => setActiveSection(null)}>
-            <BackIcon width={22} height={22} />
-          </TouchableOpacity>
-        </Animated.View>
-
-        <View style={styles.notificationsContainer}>
-          <Animated.View
-            entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
-              ANIMATION_DELAYS.STANDARD,
-            )}
-            style={styles.privacySectionTitle}
-          >
-            <Text style={styles.privacySectionTitleText}>выбор темы</Text>
-          </Animated.View>
-
-          {themeOptions.map((option, index) => (
-            <Animated.View
-              key={option.id}
-              entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
-                ANIMATION_DELAYS.STANDARD + (index + 1) * 50,
-              )}
-              style={styles.notificationItemContainer}
-            >
-              <Pressable
-                style={styles.notificationItem}
-                onPress={async () => {
-                  await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                  await setThemeMode(option.id);
-                }}
-              >
-                <Text style={styles.notificationItemText}>{option.label}</Text>
-                <View style={styles.switchContainer}>
-                  <Switch
-                    value={themeMode === option.id}
-                    onValueChange={async (value) => {
-                      if (value) {
-                        await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                        await setThemeMode(option.id);
-                      }
-                    }}
-                    trackColor={{
-                      false: theme.border.light,
-                      true: theme.primary,
-                    }}
-                    thumbColor={theme.text.inverse}
-                    ios_backgroundColor={theme.border.light}
-                  />
-                </View>
-              </Pressable>
-            </Animated.View>
-          ))}
-        </View>
-      </View>
+          <Pressable style={styles.themePopupContainer} onPress={(e) => e.stopPropagation()}>
+            <Text style={styles.themePopupTitle}>выбор темы</Text>
+            {themeOptions.map((option) => {
+              const isSelected = themeMode === option.id;
+              return (
+                <Pressable
+                  key={option.id}
+                  style={[
+                    styles.themePopupOption,
+                    isSelected && styles.themePopupOptionSelected,
+                  ]}
+                  onPress={async () => {
+                    await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                    await setThemeMode(option.id);
+                    setShowThemePopup(false);
+                  }}
+                >
+                  <Text
+                    style={[
+                      styles.themePopupOptionText,
+                      isSelected && styles.themePopupOptionTextSelected,
+                    ]}
+                  >
+                    {option.label}
+                  </Text>
+                  {isSelected && (
+                    <Tick width={20} height={20} color={theme.primary} />
+                  )}
+                </Pressable>
+              );
+            })}
+          </Pressable>
+        </Pressable>
+      </Modal>
     );
   };
 
@@ -3381,8 +3392,6 @@ const Settings = ({
         return renderNotificationsContent();
       case "privacy":
         return renderPrivacyContent();
-      case "theme":
-        return renderThemeContent();
       case "delete_account":
         return renderDeleteAccountContent();
       case "payment":
@@ -3416,7 +3425,12 @@ const Settings = ({
 
   // If embedded, render only content without outer container
   if (embedded) {
-    return <View style={styles.embeddedContainer}>{renderContent()}</View>;
+    return (
+      <View style={styles.embeddedContainer}>
+        {renderContent()}
+        {renderThemePopup()}
+      </View>
+    );
   }
 
   return (
@@ -3442,6 +3456,7 @@ const Settings = ({
           </Text>
         </View>
       </Animated.View>
+      {renderThemePopup()}
     </View>
   );
 };
@@ -4702,6 +4717,48 @@ const createStyles = (theme: ThemeColors) => StyleSheet.create({
     bottom: 0,
     right: 0,
     zIndex: 10,
+  },
+  themePopupOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.45)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  themePopupContainer: {
+    width: "75%",
+    backgroundColor: theme.background.elevated,
+    borderRadius: 24,
+    paddingVertical: 24,
+    paddingHorizontal: 20,
+  },
+  themePopupTitle: {
+    fontFamily: "IgraSans",
+    fontSize: 20,
+    color: theme.text.primary,
+    textAlign: "center",
+    marginBottom: 20,
+  },
+  themePopupOption: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    borderRadius: 16,
+    marginBottom: 8,
+    backgroundColor: theme.surface.cartItem,
+  },
+  themePopupOptionSelected: {
+    borderWidth: 1.5,
+    borderColor: theme.primary,
+  },
+  themePopupOptionText: {
+    fontFamily: "IgraSans",
+    fontSize: 18,
+    color: theme.text.primary,
+  },
+  themePopupOptionTextSelected: {
+    color: theme.primary,
   },
 });
 

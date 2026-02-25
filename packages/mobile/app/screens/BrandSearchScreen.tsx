@@ -228,7 +228,7 @@ const BrandSearchScreen: React.FC<BrandSearchScreenProps> = ({
 
         {selectedBrands.includes(item.id) && (
           <View style={styles.tickContainer}>
-            <Tick width={20} height={20} />
+            <Tick width={20} height={20} color={theme.text.primary} />
           </View>
         )}
       </View>

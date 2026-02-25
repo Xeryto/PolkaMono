@@ -229,7 +229,7 @@ const StylesSelectionScreen: React.FC<StylesSelectionScreenProps> = ({
                     style={styles.scrollHintContainer}
                   >
                     <Text style={styles.scrollHintText}>листай</Text>
-                    <Scroll width={26} height={26} />
+                    <Scroll width={26} height={26} color={theme.text.primary} />
                   </Animated.View>
                 )}
 

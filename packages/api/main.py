@@ -154,8 +154,8 @@ def product_to_schema(product, is_liked=None):
         brand_return_policy=product.brand.return_policy,
         is_liked=is_liked,
         general_images=product.general_images or [],
-        delivery_time_min=product.delivery_time_min,
-        delivery_time_max=product.delivery_time_max,
+        delivery_time_min=product.delivery_time_min if product.delivery_time_min is not None else product.brand.delivery_time_min,
+        delivery_time_max=product.delivery_time_max if product.delivery_time_max is not None else product.brand.delivery_time_max,
         sale_price=product.sale_price,
         sale_type=product.sale_type,
         sizing_table_image=product.sizing_table_image,
@@ -2745,7 +2745,7 @@ async def update_user_preferences(
 @app.get("/api/v1/brands", response_model=List[BrandResponse])
 async def get_brands(db: Session = Depends(get_db)):
     """Get all available brands"""
-    brands = db.query(Brand).filter(not Brand.is_inactive).all()
+    brands = db.query(Brand).filter(Brand.is_inactive == False).all()
     return [
         BrandResponse(
             id=str(brand.id),
@@ -2902,7 +2902,7 @@ async def get_user_favorites(
         .join(Brand)
         .filter(
             UserLikedProduct.user_id == current_user.id,
-            not Brand.is_inactive,
+            Brand.is_inactive == False,
         )
         .all()
     )
@@ -2936,7 +2936,7 @@ async def get_recent_swipes(
         .join(Brand)
         .filter(
             Product.id.in_(product_ids),
-            not Brand.is_inactive,
+            Brand.is_inactive == False,
         )
         .all()
     )
@@ -2970,7 +2970,7 @@ async def get_recommendations_for_user(
     all_products = (
         db.query(Product)
         .join(Brand)
-        .filter(not Brand.is_inactive)
+        .filter(Brand.is_inactive == False)
         .order_by(func.random())
         .limit(limit)
         .all()
@@ -3001,7 +3001,7 @@ async def get_recommendations_for_friend(
     all_products = (
         db.query(Product)
         .join(Brand)
-        .filter(not Brand.is_inactive)
+        .filter(Brand.is_inactive == False)
         .order_by(func.random())
         .limit(8)
         .all()
@@ -3050,7 +3050,7 @@ async def get_popular_products(
     products = (
         db.query(Product)
         .join(Brand)
-        .filter(not Brand.is_inactive)
+        .filter(Brand.is_inactive == False)
         .order_by(
             Product.purchase_count.desc(),
             Product.created_at.desc(),  # Secondary sort by creation date for consistency
@@ -3086,7 +3086,7 @@ async def search_products(
     db: Session = Depends(get_db),
 ):
     """Search for products based on query and filters. Supports multiple values per filter (OR logic)."""
-    products_query = db.query(Product).join(Brand).filter(not Brand.is_inactive)
+    products_query = db.query(Product).join(Brand).filter(Brand.is_inactive == False)
 
     # Apply search query
     if query:
