@@ -43,9 +43,12 @@ import RecentPiecesScreen from "./app/screens/RecentPiecesScreen";
 import FriendRecommendationsScreen from "./app/screens/FriendRecommendationsScreen";
 
 import * as SplashScreen from "expo-splash-screen";
+import * as Notifications from "expo-notifications";
+import * as Device from "expo-device";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import * as cartStorage from "./app/cartStorage";
 import * as api from "./app/services/api";
+import { registerPushToken } from "./app/services/api";
 import { useSession } from "./app/hooks/useSession";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { sessionManager } from "./app/services/api";
@@ -189,6 +192,52 @@ const NavButton = ({ onPress, children, isActive }: NavButtonProps) => {
     </Pressable>
   );
 };
+
+// Configure how notifications are displayed when the app is in the foreground
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowBanner: true,
+    shouldShowList: true,
+    shouldPlaySound: true,
+    shouldSetBadge: false,
+  }),
+});
+
+async function registerForPushNotificationsAsync(): Promise<string | null> {
+  if (!Device.isDevice) {
+    // Push notifications only work on physical devices
+    console.log("App - Push: not a physical device, skipping");
+    return null;
+  }
+
+  const { status: existingStatus } = await Notifications.getPermissionsAsync();
+  let finalStatus = existingStatus;
+
+  if (existingStatus !== "granted") {
+    const { status } = await Notifications.requestPermissionsAsync();
+    finalStatus = status;
+  }
+
+  if (finalStatus !== "granted") {
+    console.log("App - Push: permission not granted");
+    return null;
+  }
+
+  // Get Expo push token
+  const projectId = "74d77e39-6b44-4eab-ba2a-5a9a5afb5968"; // from app.json extra.eas.projectId
+  const tokenData = await Notifications.getExpoPushTokenAsync({ projectId });
+  const token = tokenData.data;
+
+  if (Platform.OS === "android") {
+    await Notifications.setNotificationChannelAsync("default", {
+      name: "default",
+      importance: Notifications.AndroidImportance.MAX,
+      vibrationPattern: [0, 250, 250, 250],
+    });
+  }
+
+  return token;
+}
 
 // Prevent the splash screen from auto-hiding
 SplashScreen.preventAutoHideAsync();
@@ -467,12 +516,15 @@ function MainNavigator({
 function MainAppNavigator({
   onLogout,
   comingFromSignup,
+  navigationRef: externalNavigationRef,
 }: {
   onLogout: () => void;
   comingFromSignup: boolean;
+  navigationRef?: React.RefObject<any>;
 }) {
   const { theme, colorScheme } = useTheme();
-  const navigationRef = React.useRef<any>(null);
+  const internalNavigationRef = React.useRef<any>(null);
+  const navigationRef = externalNavigationRef ?? internalNavigationRef;
   const [currentRoute, setCurrentRoute] = React.useState<string>("Home");
   const insets = useSafeAreaInsets();
 
@@ -584,6 +636,11 @@ function AppContent() {
   const [showLoading, setShowLoading] = useState(true);
   const [showAuthLoading, setShowAuthLoading] = useState(false);
   const [isAppReady, setIsAppReady] = useState(false);
+
+  // Ref for NavigationContainer inside MainAppNavigator (lifted for tap-to-navigate)
+  const mainNavigationRef = React.useRef<any>(null);
+  // Stores order_id from a notification tap that arrived before 'main' phase was ready
+  const pendingOrderIdRef = React.useRef<string | null>(null);
 
   // Use the new session management hook
   const {
@@ -772,6 +829,35 @@ function AppContent() {
   const currentPhaseRef = useRef<AppPhase>("boot");
   useEffect(() => {
     currentPhaseRef.current = navState.phase;
+  }, [navState.phase]);
+
+  // Handle notification tap: navigate to order immediately or defer if not yet in 'main'
+  useEffect(() => {
+    const subscription = Notifications.addNotificationResponseReceivedListener(response => {
+      const data = response.notification.request.content.data as { order_id?: string };
+      if (!data?.order_id) return;
+
+      if (navState.phase === "main" && mainNavigationRef.current) {
+        mainNavigationRef.current.navigate("Wall", { openOrderId: data.order_id });
+        console.log("App - Push tapped: navigating to order", data.order_id);
+      } else {
+        pendingOrderIdRef.current = data.order_id;
+        console.log("App - Push tapped: deferred navigation for order", data.order_id);
+      }
+    });
+    return () => subscription.remove();
+  }, [navState.phase]);
+
+  // Consume pending order navigation once 'main' phase is active
+  useEffect(() => {
+    if (navState.phase === "main" && pendingOrderIdRef.current && mainNavigationRef.current) {
+      const orderId = pendingOrderIdRef.current;
+      pendingOrderIdRef.current = null;
+      setTimeout(() => {
+        mainNavigationRef.current?.navigate("Wall", { openOrderId: orderId });
+        console.log("App - Push deferred navigation: order", orderId);
+      }, 300);
+    }
   }, [navState.phase]);
 
   const transitionTo = (phase: AppPhase, overlay?: Overlay) => {
@@ -1022,6 +1108,19 @@ function AppContent() {
     // Screen navigation handled by React Navigation
   };
 
+  // Fire-and-forget: request push permission and register token with API
+  const triggerPushRegistration = () => {
+    registerForPushNotificationsAsync()
+      .then(token => {
+        if (token) {
+          registerPushToken(token).catch(err =>
+            console.log("App - Push token registration failed:", err)
+          );
+        }
+      })
+      .catch(err => console.log("App - Push registration error:", err));
+  };
+
   const handleLogin = async () => {
     // Prevent multiple simultaneous login flows
     if (isAuthFlowInProgress) {
@@ -1130,6 +1229,7 @@ function AppContent() {
       } else {
         dispatchNav({ type: "SET_OVERLAY", overlay: "down" });
         transitionTo("main");
+        triggerPushRegistration();
       }
     } catch (error) {
       console.error("Error checking profile completion after login:", error);
@@ -1181,6 +1281,7 @@ function AppContent() {
                 setComingFromSignup(false);
                 dispatchNav({ type: "SET_OVERLAY", overlay: "down" });
                 transitionTo("main");
+                triggerPushRegistration();
               },
             },
           ],
@@ -1193,6 +1294,7 @@ function AppContent() {
       setComingFromSignup(false);
       dispatchNav({ type: "SET_OVERLAY", overlay: "down" });
       transitionTo("main");
+      triggerPushRegistration();
     } finally {
       setIsAuthFlowInProgress(false);
     }
@@ -1288,6 +1390,7 @@ function AppContent() {
       } else {
         dispatchNav({ type: "SET_OVERLAY", overlay: "down" });
         transitionTo("main");
+        triggerPushRegistration();
       }
     } catch (error) {
       console.error(
@@ -1342,6 +1445,7 @@ function AppContent() {
                 setComingFromSignup(false);
                 dispatchNav({ type: "SET_OVERLAY", overlay: "down" });
                 transitionTo("main");
+                triggerPushRegistration();
               },
             },
           ],
@@ -1356,6 +1460,7 @@ function AppContent() {
       setComingFromSignup(false);
       dispatchNav({ type: "SET_OVERLAY", overlay: "down" });
       transitionTo("main");
+      triggerPushRegistration();
     } finally {
       setIsAuthFlowInProgress(false);
     }
@@ -1603,6 +1708,7 @@ function AppContent() {
       } else {
         dispatchNav({ type: "SET_OVERLAY", overlay: "down" });
         transitionTo("main");
+        triggerPushRegistration();
       }
     } catch (error) {
       console.error(
@@ -1659,6 +1765,7 @@ function AppContent() {
                 // Only skip to main if user explicitly chooses to
                 dispatchNav({ type: "SET_OVERLAY", overlay: "down" });
                 transitionTo("main");
+                triggerPushRegistration();
               },
             },
           ],
@@ -1669,6 +1776,7 @@ function AppContent() {
       // For other errors, proceed with normal flow
       dispatchNav({ type: "SET_OVERLAY", overlay: "down" });
       transitionTo("main");
+      triggerPushRegistration();
     } finally {
       setIsAuthFlowInProgress(false);
     }
@@ -1792,6 +1900,7 @@ function AppContent() {
           <MainAppNavigator
             onLogout={handleLogout}
             comingFromSignup={comingFromSignup}
+            navigationRef={mainNavigationRef}
           />
         )}
 

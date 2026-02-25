@@ -596,6 +596,20 @@ export const logoutUser = async (): Promise<void> => {
   }
 };
 
+/** Register Expo push token for the authenticated user (fire-and-forget safe). */
+export const registerPushToken = async (token: string): Promise<void> => {
+  const session = await sessionManager.getValidSession();
+  if (!session || !session.token) return;
+  await fetch(`${API_URL}/api/v1/users/push-token`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${session.token}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ token }),
+  });
+};
+
 /** Permanently delete the current user account (anonymizes PII, keeps orders). Clears session on success. */
 export const deleteAccount = async (): Promise<void> => {
   await apiRequest('/api/v1/users/me', 'DELETE', undefined, true);
