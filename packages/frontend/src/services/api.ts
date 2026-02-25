@@ -615,3 +615,27 @@ export const verify2FA = async (session_token: string, code: string): Promise<OT
 export const resend2FA = async (session_token: string): Promise<{ message: string; resends_remaining: number }> => {
   return apiRequest('/api/v1/brands/auth/2fa/resend', 'POST', { session_token }, false);
 };
+
+// -- Phase 8: Notifications --
+
+export interface NotificationItem {
+  id: string;
+  type: string;
+  message: string;
+  order_id: string | null;
+  is_read: boolean;
+  created_at: string; // ISO datetime string
+}
+
+export interface NotificationsResponse {
+  notifications: NotificationItem[];
+  unread_count: number;
+}
+
+export async function fetchNotifications(token: string): Promise<NotificationsResponse> {
+  return apiRequest('/api/v1/notifications/', 'GET', undefined, true, token);
+}
+
+export async function markNotificationsRead(token: string): Promise<void> {
+  await apiRequest('/api/v1/notifications/read', 'POST', {}, true, token);
+}
