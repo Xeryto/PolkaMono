@@ -6,6 +6,7 @@ import uuid
 from datetime import datetime, timedelta
 from typing import List, Literal, Optional
 
+import notification_service
 import payment_service
 import schemas
 from auth_service import auth_service
@@ -28,6 +29,7 @@ from models import (
     FriendRequestStatus,
     Friendship,
     Gender,
+    Notification,
     OAuthAccount,
     Order,
     OrderItem,
@@ -3664,6 +3666,14 @@ async def create_order_test_endpoint(
             description=order_data.description,
             items=order_data.items,
         )
+        # Fire new_order notifications for each brand order in the checkout
+        paid_orders = db.query(Order).filter(Order.checkout_id == checkout_id).all()
+        for _ord in paid_orders:
+            notification_service.send_brand_new_order_notification(
+                db=db,
+                brand_id=_ord.brand_id,
+                order_id=str(_ord.id),
+            )
         return schemas.OrderTestCreateResponse(order_id=checkout_id)
     except Exception as e:
         raise HTTPException(
@@ -3900,6 +3910,50 @@ async def get_checkout_by_id(
     return _checkout_to_full_response(checkout)
 
 
+# --- Brand Notifications ---
+
+@app.get("/api/v1/notifications/", response_model=schemas.NotificationsResponse)
+def get_brand_notifications(
+    current_user=Depends(get_current_brand_user),
+    db: Session = Depends(get_db),
+):
+    """Return up to 20 non-expired notifications for the authenticated brand."""
+    now = datetime.utcnow()
+    notifs = (
+        db.query(Notification)
+        .filter(
+            Notification.recipient_type == "brand",
+            Notification.recipient_id == str(current_user.id),
+            Notification.expires_at > now,
+        )
+        .order_by(Notification.created_at.desc())
+        .limit(20)
+        .all()
+    )
+    unread_count = sum(1 for n in notifs if not n.is_read)
+    return schemas.NotificationsResponse(
+        notifications=notifs,
+        unread_count=unread_count,
+    )
+
+
+@app.post("/api/v1/notifications/read", status_code=204)
+def mark_all_notifications_read(
+    current_user=Depends(get_current_brand_user),
+    db: Session = Depends(get_db),
+):
+    """Mark all unread notifications for the brand as read (called when bell dropdown opens)."""
+    now = datetime.utcnow()
+    db.query(Notification).filter(
+        Notification.recipient_type == "brand",
+        Notification.recipient_id == str(current_user.id),
+        Notification.is_read == False,
+        Notification.expires_at > now,
+    ).update({"is_read": True})
+    db.commit()
+    return None
+
+
 @app.post("/api/v1/payments/webhook")
 async def payment_webhook(request: Request, db: Session = Depends(get_db)):
     """Handle YooKassa payment webhooks"""
@@ -3921,6 +3975,13 @@ async def payment_webhook(request: Request, db: Session = Depends(get_db)):
         print(f"Payment succeeded - Order ID: {order_id}")
         if order_id:
             payment_service.update_order_status(db, order_id, OrderStatus.PAID)
+            _order = db.query(Order).filter(Order.id == order_id).first()
+            if _order:
+                notification_service.send_brand_new_order_notification(
+                    db=db,
+                    brand_id=_order.brand_id,
+                    order_id=str(_order.id),
+                )
     elif event == "payment.canceled":
         payment = payload.get("object", {})
         order_id = payment.get("metadata", {}).get("order_id")

@@ -702,3 +702,20 @@ class BrandVerifyOTP(BaseModel):
 
 class BrandResendOTP(BaseModel):
     session_token: str  # Random hex token from the 202 login response
+
+
+class NotificationItem(BaseModel):
+    id: str
+    type: str
+    message: str
+    order_id: Optional[str] = None
+    is_read: bool
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class NotificationsResponse(BaseModel):
+    notifications: List[NotificationItem]
+    unread_count: int
