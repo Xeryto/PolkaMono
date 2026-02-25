@@ -16,12 +16,12 @@
 ### Product Enrichment
 
 - [x] **PROD-01**: Brand can set a sale price per product (% off or exact price); sale is stored and served via API
-- [ ] **PROD-02**: Mobile app shows crossed-out original price when a sale is active
+- [x] **PROD-02**: Mobile app shows crossed-out original price when a sale is active
 - [x] **PROD-03**: Brand can remove an active sale from the products page
 - [x] **PROD-04**: Brand can upload a sizing table image per product
-- [ ] **PROD-05**: Mobile app shows sizing table image on the back of the product card (Main page flip)
+- [x] **PROD-05**: Mobile app shows sizing table image on the back of the product card (Main page flip)
 - [x] **PROD-06**: Brand can set a delivery time range per product (overrides brand default)
-- [ ] **PROD-07**: Delivery time is shown on the back of the product card (Main page) and in the cart
+- [x] **PROD-07**: Delivery time is shown on the back of the product card (Main page) and in the cart
 
 ### Brand Profile
 
@@ -62,7 +62,7 @@
 - [ ] **ADMIN-01**: Admin has dedicated routes inside the brand portal (protected by admin flag)
 - [ ] **ADMIN-02**: Admin can view all orders across all brands
 - [ ] **ADMIN-03**: Admin can log a return for any order (marks returned/partially returned; stock not auto-restored)
-- [ ] **ADMIN-04**: Admin can send manual notifications (push + in-app) to buyers, brands, or both
+- [x] **ADMIN-04**: Admin can send manual notifications (push + in-app) to buyers, brands, or both
 
 ## v2 Requirements
 
@@ -122,10 +122,10 @@
 | ADMIN-01 | Phase 9 | Pending |
 | ADMIN-02 | Phase 9 | Pending |
 | ADMIN-03 | Phase 9 | Pending |
-| ADMIN-04 | Phase 9 | Pending |
-| PROD-02 | Phase 9 | Pending |
-| PROD-05 | Phase 9 | Pending |
-| PROD-07 | Phase 9 | Pending |
+| ADMIN-04 | Phase 9 | Complete |
+| PROD-02 | Phase 9 | Complete |
+| PROD-05 | Phase 9 | Complete |
+| PROD-07 | Phase 9 | Complete |
 
 **Coverage:**
 - v1.1 requirements: 34 total
