@@ -50,7 +50,7 @@
 
 ### Notifications
 
-- [ ] **NOTIF-01**: Notification bell in brand portal shows recent notifications (new orders, manual admin notifications)
+- [x] **NOTIF-01**: Notification bell in brand portal shows recent notifications (new orders, manual admin notifications)
 - [x] **NOTIF-02**: Notifications are stored in DB per recipient
 - [x] **NOTIF-03**: New order triggers a notification to the brand
 - [ ] **NOTIF-04**: Admin can send manual push notifications to buyers, brands, or both
@@ -114,7 +114,7 @@
 | 2FA-02 | Phase 7 | Complete |
 | 2FA-03 | Phase 7 | Complete |
 | NOTIF-02 | Phase 8 | Complete |
-| NOTIF-01 | Phase 8 | Pending |
+| NOTIF-01 | Phase 8 | Complete |
 | NOTIF-03 | Phase 8 | Complete |
 | NOTIF-05 | Phase 8 | Pending |
 | NOTIF-04 | Phase 8 | Pending |
