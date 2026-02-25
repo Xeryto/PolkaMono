@@ -1,19 +1,22 @@
 import { useState } from "react";
 import { useAdminAuth } from "@/context/AdminAuthContext";
 import { AdminNotificationsView } from "./AdminNotificationsView";
+import { AdminOrdersView } from "./AdminOrdersView";
 import { Button } from "@/components/ui/button";
-import { Bell, LogOut } from "lucide-react";
+import { Bell, LogOut, RotateCcw } from "lucide-react";
 
-type AdminView = "notifications";
+type AdminView = "notifications" | "orders";
 
 const AdminDashboard = () => {
   const { logout } = useAdminAuth();
-  const [currentView] = useState<AdminView>("notifications");
+  const [currentView, setCurrentView] = useState<AdminView>("notifications");
 
   const renderView = () => {
     switch (currentView) {
       case "notifications":
         return <AdminNotificationsView />;
+      case "orders":
+        return <AdminOrdersView />;
       default:
         return <AdminNotificationsView />;
     }
@@ -29,10 +32,26 @@ const AdminDashboard = () => {
 
         <nav className="flex-1 p-3 space-y-1">
           <button
-            className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm bg-foreground/10 text-foreground"
+            onClick={() => setCurrentView("notifications")}
+            className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors ${
+              currentView === "notifications"
+                ? "bg-foreground/10 text-foreground"
+                : "text-muted-foreground hover:text-foreground hover:bg-foreground/5"
+            }`}
           >
             <Bell className="h-4 w-4" />
             Notifications
+          </button>
+          <button
+            onClick={() => setCurrentView("orders")}
+            className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors ${
+              currentView === "orders"
+                ? "bg-foreground/10 text-foreground"
+                : "text-muted-foreground hover:text-foreground hover:bg-foreground/5"
+            }`}
+          >
+            <RotateCcw className="h-4 w-4" />
+            Возвраты
           </button>
         </nav>
 
