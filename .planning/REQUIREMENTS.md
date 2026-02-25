@@ -53,9 +53,9 @@
 - [x] **NOTIF-01**: Notification bell in brand portal shows recent notifications (new orders, manual admin notifications)
 - [x] **NOTIF-02**: Notifications are stored in DB per recipient
 - [x] **NOTIF-03**: New order triggers a notification to the brand
-- [ ] **NOTIF-04**: Admin can send manual push notifications to buyers, brands, or both
+- [x] **NOTIF-04**: Admin can send manual push notifications to buyers, brands, or both
 - [x] **NOTIF-05**: Mobile app receives push notifications (Expo Push Notifications, production-grade)
-- [ ] **NOTIF-06**: Buyer receives push notification when their order status changes (shipped, etc.)
+- [x] **NOTIF-06**: Buyer receives push notification when their order status changes (shipped, etc.)
 
 ### Admin Dashboard
 
@@ -117,8 +117,8 @@
 | NOTIF-01 | Phase 8 | Complete |
 | NOTIF-03 | Phase 8 | Complete |
 | NOTIF-05 | Phase 8 | Complete |
-| NOTIF-04 | Phase 8 | Pending |
-| NOTIF-06 | Phase 8 | Pending |
+| NOTIF-04 | Phase 8 | Complete |
+| NOTIF-06 | Phase 8 | Complete |
 | ADMIN-01 | Phase 9 | Pending |
 | ADMIN-02 | Phase 9 | Pending |
 | ADMIN-03 | Phase 9 | Pending |

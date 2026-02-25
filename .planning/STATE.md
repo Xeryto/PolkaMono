@@ -9,12 +9,12 @@ See: .planning/PROJECT.md (updated 2026-02-23)
 
 ## Current Position
 
-Phase: 8 of 9 (Notifications)
-Plan: 3 of 4 in current phase
-Status: In progress
-Last activity: 2026-02-24 — completed plan 08-03 (Push notification infrastructure: expo-notifications installed, expo_push_token on User, POST /api/v1/users/push-token, tap-to-navigate listener)
+Phase: 8 of 9 (Notifications) — COMPLETE
+Plan: 4 of 4 in current phase (all done)
+Status: Phase complete, ready for Phase 9
+Last activity: 2026-02-24 — completed plan 08-04 (Expo push on SHIPPED + admin broadcast UI)
 
-Progress: [████░░░░░░] 35% (v1.1)
+Progress: [█████░░░░░] 44% (v1.1)
 
 ## Performance Metrics
 
@@ -44,6 +44,7 @@ Progress: [████░░░░░░] 35% (v1.1)
 | Phase 08-notifications P03 | 30 | 2 tasks | 7 files |
 | Phase 08-notifications P02 | 2 | 2 tasks | 4 files |
 | Phase 08-notifications P03 | 30 | 2 tasks | 7 files |
+| Phase 08-notifications P04 | 15 | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -99,6 +100,9 @@ See PROJECT.md Key Decisions table for full log. Active decisions for v1.1:
 - [08-02] fetchNotifications/markNotificationsRead use apiRequest helper with token param (not raw fetch + localStorage) — consistent with existing api.ts pattern
 - [08-02] onTargetOrder propagated via props (not context) — simpler, no extra context overhead
 - [Phase 08-03]: [08-03] app.json notification icon uses icon.png fallback; setNotificationHandler uses shouldShowBanner+shouldShowList (SDK 0.32); triggerPushRegistration() helper at all transitionTo(main) sites; navigationRef lifted to AppContent; Tap listener passes openOrderId to Wall (receiving screen deferred to 08-04)
+- [Phase 08-04]: [08-04] send_expo_push_notification() fire-and-forget via httpx; errors logged not raised
+- [Phase 08-04]: [08-04] SHIPPED hook uses order.user_id directly — no Checkout query
+- [Phase 08-04]: [08-04] Admin broadcast = in-app to brands only; buyer push broadcast deferred to ADMIN-04 Phase 9
 
 ### Pending Todos
 
@@ -119,5 +123,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-24
-Stopped at: Completed 08-03-PLAN.md — push notification infrastructure complete
+Stopped at: Completed 08-04-PLAN.md — Expo push on SHIPPED + admin broadcast UI (Phase 8 complete)
 Resume file: None
