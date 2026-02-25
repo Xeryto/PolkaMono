@@ -69,7 +69,7 @@ export function OrderDetailsPage({ order, onBack, onOrderUpdated }: OrderDetails
     }
   }, [order]);
 
-  const handleItemClick = (item: any) => {
+  const handleItemClick = (item: api.OrderItemResponse) => {
     // NEW Handler
     setSelectedOrderItem(item);
     setIsModalOpen(true);
@@ -119,11 +119,12 @@ export function OrderDetailsPage({ order, onBack, onOrderUpdated }: OrderDetails
         title: "Success",
         description: "Tracking information updated successfully.",
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Failed to update tracking information:", error);
+      const err = error as { message?: string };
       toast({
         title: "Error",
-        description: error.message || "Failed to update tracking information.",
+        description: err.message || "Failed to update tracking information.",
         variant: "destructive",
       });
     } finally {
@@ -142,10 +143,11 @@ export function OrderDetailsPage({ order, onBack, onOrderUpdated }: OrderDetails
         title: "Success",
         description: "Order marked as returned. Stock has been restored.",
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const err = error as { message?: string };
       toast({
         title: "Error",
-        description: error.message || "Failed to mark order as returned.",
+        description: err.message || "Failed to mark order as returned.",
         variant: "destructive",
       });
     } finally {

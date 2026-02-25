@@ -9,6 +9,8 @@ from typing import List, Literal, Optional
 import notification_service
 import payment_service
 import schemas
+from apscheduler.schedulers.background import BackgroundScheduler
+from apscheduler.triggers.interval import IntervalTrigger
 from auth_service import auth_service
 
 # Import our modules
@@ -59,8 +61,6 @@ from sqlalchemy import func, or_, text
 from sqlalchemy.orm import Session, joinedload
 from storage_service import generate_key, generate_presigned_upload_url
 from storage_service import is_configured as s3_configured
-from apscheduler.schedulers.background import BackgroundScheduler
-from apscheduler.triggers.interval import IntervalTrigger
 
 # Constants for image upload validation
 ALLOWED_IMAGE_CONTENT_TYPES = {"image/jpeg", "image/png", "image/webp", "image/gif"}
@@ -199,7 +199,12 @@ def _expire_orders_job():
         db.close()
 
 
-scheduler.add_job(_expire_orders_job, IntervalTrigger(hours=1), id="expire_orders", replace_existing=True)
+scheduler.add_job(
+    _expire_orders_job,
+    IntervalTrigger(hours=1),
+    id="expire_orders",
+    replace_existing=True,
+)
 scheduler.start()
 
 
@@ -435,11 +440,19 @@ def get_current_admin(
     """Require a valid admin JWT (issued by /api/v1/admin/auth/login)."""
     payload = auth_service.verify_token_payload(credentials.credentials)
     if not payload or not payload.get("is_admin"):
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required")
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required"
+        )
     acc_id = payload.get("sub")
-    acc = db.query(AuthAccount).filter(AuthAccount.id == acc_id, AuthAccount.is_admin == True).first()
+    acc = (
+        db.query(AuthAccount)
+        .filter(AuthAccount.id == acc_id, AuthAccount.is_admin)
+        .first()
+    )
     if not acc:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin account not found")
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="Admin account not found"
+        )
     return acc
 
 
@@ -477,8 +490,12 @@ async def get_brand_profile(
         else None,  # type: ignore
         payout_account=str(brand.payout_account) if brand.payout_account else None,  # type: ignore
         payout_account_locked=brand.payout_account_locked,
-        delivery_time_min=int(brand.delivery_time_min) if brand.delivery_time_min else None,  # type: ignore
-        delivery_time_max=int(brand.delivery_time_max) if brand.delivery_time_max else None,  # type: ignore
+        delivery_time_min=int(brand.delivery_time_min)
+        if brand.delivery_time_min
+        else None,  # type: ignore
+        delivery_time_max=int(brand.delivery_time_max)
+        if brand.delivery_time_max
+        else None,  # type: ignore
         is_inactive=bool(brand.is_inactive),
         scheduled_deletion_at=brand.scheduled_deletion_at,  # type: ignore
         two_factor_enabled=bool(brand.auth_account.two_factor_enabled),
@@ -908,14 +925,20 @@ async def admin_login(
 ):
     """Authenticate admin account. Returns JWT with is_admin=True in payload."""
     acc = auth_service.get_admin_by_email(db, body.email)
-    if not acc or not auth_service.verify_password(body.password, acc.password_hash or ""):
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
+    if not acc or not auth_service.verify_password(
+        body.password, acc.password_hash or ""
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials"
+        )
     expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     token = auth_service.create_access_token(
         data={"sub": str(acc.id), "is_admin": True},
         expires_delta=expires,
     )
-    return schemas.AdminLoginResponse(token=token, expires_at=datetime.utcnow() + expires)
+    return schemas.AdminLoginResponse(
+        token=token, expires_at=datetime.utcnow() + expires
+    )
 
 
 @app.post("/api/v1/brands/auth/login")
@@ -927,6 +950,7 @@ async def brand_login(
 ):
     """Login brand — returns JWT directly, or 202+session_token if 2FA is enabled."""
     import secrets as _secrets
+
     from fastapi.responses import JSONResponse
 
     brand = (
@@ -969,9 +993,13 @@ async def brand_login(
             )
         # Generate OTP and a cryptographically secure session token
         otp = "".join([str(_secrets.randbelow(10)) for _ in range(6)])
-        session_token = _secrets.token_hex(32)  # 64 hex chars — stored in DB, not derivable from email
+        session_token = _secrets.token_hex(
+            32
+        )  # 64 hex chars — stored in DB, not derivable from email
         acc.otp_code = otp
-        acc.otp_code_expires_at = datetime.utcnow() + timedelta(minutes=settings.OTP_EXPIRE_MINUTES)
+        acc.otp_code_expires_at = datetime.utcnow() + timedelta(
+            minutes=settings.OTP_EXPIRE_MINUTES
+        )
         acc.otp_session_token = session_token
         acc.failed_otp_attempts = 0
         acc.otp_resend_count = 0
@@ -1006,7 +1034,9 @@ async def brand_verify_2fa(
         .first()
     )
     if not acc:
-        raise HTTPException(status_code=400, detail="Неверный или истёкший session_token")
+        raise HTTPException(
+            status_code=400, detail="Неверный или истёкший session_token"
+        )
 
     brand = db.query(Brand).filter(Brand.auth_account_id == acc.id).first()
     if not brand:
@@ -1014,17 +1044,26 @@ async def brand_verify_2fa(
 
     # Lockout check
     if acc.otp_locked_until and acc.otp_locked_until > datetime.utcnow():
-        raise HTTPException(status_code=423, detail="Аккаунт временно заблокирован. Попробуйте через 15 минут.")
+        raise HTTPException(
+            status_code=423,
+            detail="Аккаунт временно заблокирован. Попробуйте через 15 минут.",
+        )
 
     # Expiry check
-    if not acc.otp_code or not acc.otp_code_expires_at or acc.otp_code_expires_at < datetime.utcnow():
+    if (
+        not acc.otp_code
+        or not acc.otp_code_expires_at
+        or acc.otp_code_expires_at < datetime.utcnow()
+    ):
         raise HTTPException(status_code=400, detail="Код истёк. Войдите снова.")
 
     # Code check
     if acc.otp_code != payload.code:
         acc.failed_otp_attempts = (acc.failed_otp_attempts or 0) + 1
         if acc.failed_otp_attempts >= settings.OTP_MAX_FAILED_ATTEMPTS:
-            acc.otp_locked_until = datetime.utcnow() + timedelta(minutes=settings.OTP_LOCKOUT_MINUTES)
+            acc.otp_locked_until = datetime.utcnow() + timedelta(
+                minutes=settings.OTP_LOCKOUT_MINUTES
+            )
         db.commit()
         raise HTTPException(status_code=400, detail="Неверный код")
 
@@ -1057,7 +1096,9 @@ async def brand_resend_2fa(
         .first()
     )
     if not acc:
-        raise HTTPException(status_code=400, detail="Неверный или истёкший session_token")
+        raise HTTPException(
+            status_code=400, detail="Неверный или истёкший session_token"
+        )
 
     # Check resend limit
     resend_count = acc.otp_resend_count or 0
@@ -1072,12 +1113,17 @@ async def brand_resend_2fa(
         elapsed = (datetime.utcnow() - acc.otp_resend_window_start).total_seconds()
         if elapsed < settings.OTP_RESEND_COOLDOWN_SECONDS:
             wait = int(settings.OTP_RESEND_COOLDOWN_SECONDS - elapsed)
-            raise HTTPException(status_code=429, detail=f"Подождите {wait} секунд перед повторной отправкой.")
+            raise HTTPException(
+                status_code=429,
+                detail=f"Подождите {wait} секунд перед повторной отправкой.",
+            )
 
     # Send new OTP
     otp = "".join([str(_secrets.randbelow(10)) for _ in range(6)])
     acc.otp_code = otp
-    acc.otp_code_expires_at = datetime.utcnow() + timedelta(minutes=settings.OTP_EXPIRE_MINUTES)
+    acc.otp_code_expires_at = datetime.utcnow() + timedelta(
+        minutes=settings.OTP_EXPIRE_MINUTES
+    )
     acc.otp_resend_count = resend_count + 1
     acc.otp_resend_window_start = datetime.utcnow()
     db.commit()
@@ -1226,6 +1272,7 @@ async def brand_reset_password_with_code(
 
 # -- Phase 7: Brand Account Management + 2FA --
 
+
 @app.patch("/api/v1/brands/me/inactive")
 async def toggle_brand_inactive(
     payload: schemas.BrandInactiveToggle,
@@ -1251,7 +1298,9 @@ async def request_brand_deletion(
     - Personal data purge happens when scheduled_deletion_at passes (via future job or on-login check)
     """
     if current_user.scheduled_deletion_at is not None:
-        raise HTTPException(status_code=400, detail="Account deletion already scheduled")
+        raise HTTPException(
+            status_code=400, detail="Account deletion already scheduled"
+        )
     grace_end = datetime.utcnow() + timedelta(minutes=5)
     current_user.is_inactive = True
     current_user.scheduled_deletion_at = grace_end
@@ -1270,20 +1319,28 @@ async def brand_change_password(
 ):
     """Change brand password; rejects current password reuse and last 5 passwords"""
     acc = current_user.auth_account
-    if not acc.password_hash or not auth_service.verify_password(payload.current_password, acc.password_hash):
+    if not acc.password_hash or not auth_service.verify_password(
+        payload.current_password, acc.password_hash
+    ):
         raise HTTPException(status_code=400, detail="Текущий пароль неверный")
     if auth_service.verify_password(payload.new_password, acc.password_hash):
-        raise HTTPException(status_code=400, detail="Нельзя использовать текущий пароль")
+        raise HTTPException(
+            status_code=400, detail="Нельзя использовать текущий пароль"
+        )
     if acc.password_history:
         for h in acc.password_history:
             if auth_service.verify_password(payload.new_password, h):
-                raise HTTPException(status_code=400, detail="Нельзя использовать ранее использованный пароль")
+                raise HTTPException(
+                    status_code=400,
+                    detail="Нельзя использовать ранее использованный пароль",
+                )
     if not acc.password_history:
         acc.password_history = []
     acc.password_history.append(acc.password_hash)
     if len(acc.password_history) > 5:
         acc.password_history = acc.password_history[-5:]
     from sqlalchemy.orm.attributes import flag_modified
+
     flag_modified(acc, "password_history")
     acc.password_hash = auth_service.hash_password(payload.new_password)
     db.commit()
@@ -1299,12 +1356,15 @@ async def brand_enable_2fa(
 ):
     """Initiate 2FA enable — generates OTP and emails it. Brand must confirm with /2fa/confirm."""
     import secrets as _secrets
+
     acc = current_user.auth_account
     if acc.two_factor_enabled:
         raise HTTPException(status_code=400, detail="2FA уже включена")
     code = "".join([str(_secrets.randbelow(10)) for _ in range(6)])
     acc.otp_code = code
-    acc.otp_code_expires_at = datetime.utcnow() + timedelta(minutes=settings.OTP_EXPIRE_MINUTES)
+    acc.otp_code_expires_at = datetime.utcnow() + timedelta(
+        minutes=settings.OTP_EXPIRE_MINUTES
+    )
     db.commit()
     mail_service.send_email(
         to_email=acc.email,
@@ -1345,7 +1405,9 @@ async def brand_disable_2fa(
     acc = current_user.auth_account
     if not acc.two_factor_enabled:
         raise HTTPException(status_code=400, detail="2FA не включена")
-    if not acc.password_hash or not auth_service.verify_password(payload.password, acc.password_hash):
+    if not acc.password_hash or not auth_service.verify_password(
+        payload.password, acc.password_hash
+    ):
         raise HTTPException(status_code=400, detail="Неверный пароль")
     acc.two_factor_enabled = False
     acc.otp_code = None
@@ -1811,7 +1873,7 @@ def register_push_token(
     db: Session = Depends(get_db),
 ):
     """Store Expo push token for the authenticated user (buyers only)."""
-    if not hasattr(current_user, 'expo_push_token'):
+    if not hasattr(current_user, "expo_push_token"):
         raise HTTPException(status_code=400, detail="Not a user account")
     current_user.expo_push_token = body.token
     db.commit()
@@ -2001,7 +2063,9 @@ async def create_product(
     article_number = None
     max_attempts = 10
     for attempt in range(max_attempts):
-        candidate_article = generate_article_number(str(current_user.name), product_data.name)  # type: ignore
+        candidate_article = generate_article_number(
+            str(current_user.name), product_data.name
+        )  # type: ignore
         existing = (
             db.query(Product)
             .filter(Product.article_number == candidate_article)
@@ -2031,7 +2095,7 @@ async def create_product(
         price=product_data.price,
         material=product_data.material,
         article_number=article_number,
-        brand_id=current_user.id,         # always the authenticated brand
+        brand_id=current_user.id,  # always the authenticated brand
         category_id=product_data.category_id,
         general_images=product_data.general_images or [],
         delivery_time_min=product_data.delivery_time_min,
@@ -2109,7 +2173,9 @@ async def update_product(
 
     # Ensure the product belongs to the current brand user
     if product.brand_id != current_user.id:
-        raise HTTPException(status_code=403, detail="Product does not belong to your brand")
+        raise HTTPException(
+            status_code=403, detail="Product does not belong to your brand"
+        )
 
     # Update product fields
     for field, value in product_data.dict(exclude_unset=True).items():
@@ -2159,7 +2225,9 @@ async def update_product(
                     cv.display_order = order_index
                     # Upsert size variants
                     existing_variants_by_size = {v.size: v for v in cv.variants}
-                    incoming_sizes = {v_data["size"] for v_data in cv_data.get("variants") or []}
+                    incoming_sizes = {
+                        v_data["size"] for v_data in cv_data.get("variants") or []
+                    }
                     for size, v in existing_variants_by_size.items():
                         if size not in incoming_sizes:
                             if v.id not in referenced_variant_ids:
@@ -2171,11 +2239,13 @@ async def update_product(
                         if existing_v:
                             existing_v.stock_quantity = v_data["stock_quantity"]
                         else:
-                            db.add(ProductVariant(
-                                product_color_variant_id=cv.id,
-                                size=v_data["size"],
-                                stock_quantity=v_data["stock_quantity"],
-                            ))
+                            db.add(
+                                ProductVariant(
+                                    product_color_variant_id=cv.id,
+                                    size=v_data["size"],
+                                    stock_quantity=v_data["stock_quantity"],
+                                )
+                            )
                 else:
                     # New color variant
                     new_cv = ProductColorVariant(
@@ -2188,11 +2258,13 @@ async def update_product(
                     db.add(new_cv)
                     db.flush()
                     for v_data in cv_data.get("variants") or []:
-                        db.add(ProductVariant(
-                            product_color_variant_id=new_cv.id,
-                            size=v_data["size"],
-                            stock_quantity=v_data["stock_quantity"],
-                        ))
+                        db.add(
+                            ProductVariant(
+                                product_color_variant_id=new_cv.id,
+                                size=v_data["size"],
+                                stock_quantity=v_data["stock_quantity"],
+                            )
+                        )
             db.commit()
         elif field == "styles":
             db.query(ProductStyle).filter(
@@ -2288,11 +2360,7 @@ async def update_order_tracking(
 
     # Transition to SHIPPED when tracking is complete and order was PAID
     was_paid = order.status == OrderStatus.PAID
-    if (
-        was_paid
-        and order.tracking_number
-        and order.tracking_link
-    ):
+    if was_paid and order.tracking_number and order.tracking_link:
         payment_service.update_order_status(db, str(order.id), OrderStatus.SHIPPED)
         # Notify buyer
         if order.user_id:
@@ -2677,7 +2745,7 @@ async def update_user_preferences(
 @app.get("/api/v1/brands", response_model=List[BrandResponse])
 async def get_brands(db: Session = Depends(get_db)):
     """Get all available brands"""
-    brands = db.query(Brand).filter(Brand.is_inactive == False).all()
+    brands = db.query(Brand).filter(not Brand.is_inactive).all()
     return [
         BrandResponse(
             id=str(brand.id),
@@ -2834,7 +2902,7 @@ async def get_user_favorites(
         .join(Brand)
         .filter(
             UserLikedProduct.user_id == current_user.id,
-            Brand.is_inactive == False,
+            not Brand.is_inactive,
         )
         .all()
     )
@@ -2863,10 +2931,15 @@ async def get_recent_swipes(
     product_ids = [swipe.product_id for swipe in recent_swipes]
 
     # Get products in the same order (exclude inactive brands)
-    products = db.query(Product).join(Brand).filter(
-        Product.id.in_(product_ids),
-        Brand.is_inactive == False,
-    ).all()
+    products = (
+        db.query(Product)
+        .join(Brand)
+        .filter(
+            Product.id.in_(product_ids),
+            not Brand.is_inactive,
+        )
+        .all()
+    )
 
     # Create a map for quick lookup
     product_map = {product.id: product for product in products}
@@ -2895,7 +2968,12 @@ async def get_recommendations_for_user(
     # This is a placeholder for a real recommendation engine.
     # For now, return a few random products and mark if liked by the user
     all_products = (
-        db.query(Product).join(Brand).filter(Brand.is_inactive == False).order_by(func.random()).limit(limit).all()
+        db.query(Product)
+        .join(Brand)
+        .filter(not Brand.is_inactive)
+        .order_by(func.random())
+        .limit(limit)
+        .all()
     )  # Get random products (exclude inactive brands)
     liked_product_ids = {ulp.product_id for ulp in current_user.liked_products}
 
@@ -2921,7 +2999,12 @@ async def get_recommendations_for_friend(
         )
 
     all_products = (
-        db.query(Product).join(Brand).filter(Brand.is_inactive == False).order_by(func.random()).limit(8).all()
+        db.query(Product)
+        .join(Brand)
+        .filter(not Brand.is_inactive)
+        .order_by(func.random())
+        .limit(8)
+        .all()
     )  # Get 8 random products (exclude inactive brands)
     liked_product_ids = {ulp.product_id for ulp in current_user.liked_products}
 
@@ -2967,7 +3050,7 @@ async def get_popular_products(
     products = (
         db.query(Product)
         .join(Brand)
-        .filter(Brand.is_inactive == False)
+        .filter(not Brand.is_inactive)
         .order_by(
             Product.purchase_count.desc(),
             Product.created_at.desc(),  # Secondary sort by creation date for consistency
@@ -3003,7 +3086,7 @@ async def search_products(
     db: Session = Depends(get_db),
 ):
     """Search for products based on query and filters. Supports multiple values per filter (OR logic)."""
-    products_query = db.query(Product).join(Brand).filter(Brand.is_inactive == False)
+    products_query = db.query(Product).join(Brand).filter(not Brand.is_inactive)
 
     # Apply search query
     if query:
@@ -3843,8 +3926,6 @@ async def get_order_by_id(
     )
 
 
-
-
 @app.delete("/api/v1/orders/{order_id}/cancel", response_model=MessageResponse)
 async def buyer_cancel_order(
     order_id: str,
@@ -3853,20 +3934,31 @@ async def buyer_cancel_order(
 ):
     """Buyer cancels their own CREATED (unpaid) order. Stock is restored."""
     if isinstance(current_user, Brand):
-        raise HTTPException(status_code=403, detail="Brands cannot cancel buyer orders via this endpoint")
-    order = db.query(Order).filter(Order.id == order_id, Order.user_id == str(current_user.id)).first()
+        raise HTTPException(
+            status_code=403,
+            detail="Brands cannot cancel buyer orders via this endpoint",
+        )
+    order = (
+        db.query(Order)
+        .filter(Order.id == order_id, Order.user_id == str(current_user.id))
+        .first()
+    )
     if not order:
         raise HTTPException(status_code=404, detail="Заказ не найден")
     if order.status != OrderStatus.CREATED:
         raise HTTPException(
             status_code=400,
-            detail=f"Только неоплаченные заказы можно отменить. Статус заказа: {order.status.value}"
+            detail=f"Только неоплаченные заказы можно отменить. Статус заказа: {order.status.value}",
         )
     if order.expires_at and order.expires_at < datetime.utcnow():
         raise HTTPException(status_code=400, detail="Срок оплаты заказа истёк")
     payment_service.update_order_status(
-        db, order_id, OrderStatus.CANCELED,
-        actor_type="user", actor_id=str(current_user.id), note="buyer cancelled"
+        db,
+        order_id,
+        OrderStatus.CANCELED,
+        actor_type="user",
+        actor_id=str(current_user.id),
+        note="buyer cancelled",
     )
     db.commit()
     return {"message": "Заказ успешно отменён"}
@@ -3885,8 +3977,12 @@ async def admin_cancel_order(
     if order.status == OrderStatus.CANCELED:
         raise HTTPException(status_code=400, detail="Заказ уже отменён")
     payment_service.update_order_status(
-        db, order_id, OrderStatus.CANCELED,
-        actor_type="admin", actor_id=str(admin.id), note="admin cancelled"
+        db,
+        order_id,
+        OrderStatus.CANCELED,
+        actor_type="admin",
+        actor_id=str(admin.id),
+        note="admin cancelled",
     )
     db.commit()
     return {"message": "Заказ отменён администратором"}
@@ -3913,7 +4009,8 @@ def admin_get_returns(
     db: Session = Depends(get_db),
 ):
     """Admin: list all returned order items across all brands."""
-    from models import OrderItem, Order, Brand, ProductVariant, OrderStatusEvent
+    from models import Brand, Order, OrderItem, OrderStatusEvent, ProductVariant
+
     rows = (
         db.query(OrderItem, Order, Brand, ProductVariant)
         .join(Order, OrderItem.order_id == Order.id)
@@ -3927,19 +4024,28 @@ def admin_get_returns(
         # Try to find most recent RETURNED status event for this order as returned_at
         event = (
             db.query(OrderStatusEvent)
-            .filter(OrderStatusEvent.order_id == order.id, OrderStatusEvent.to_status == "returned")
+            .filter(
+                OrderStatusEvent.order_id == order.id,
+                OrderStatusEvent.to_status == "returned",
+            )
             .order_by(OrderStatusEvent.created_at.desc())
             .first()
         )
         returned_at = event.created_at if event else order.updated_at
-        product_name = pv.color_variant.product.name if pv.color_variant and pv.color_variant.product else "—"
-        result.append(schemas.AdminReturnItem(
-            item_id=item.id,
-            order_id=order.id,
-            product_name=product_name,
-            brand_name=brand.name,
-            returned_at=returned_at,
-        ))
+        product_name = (
+            pv.color_variant.product.name
+            if pv.color_variant and pv.color_variant.product
+            else "—"
+        )
+        result.append(
+            schemas.AdminReturnItem(
+                item_id=item.id,
+                order_id=order.id,
+                product_name=product_name,
+                brand_name=brand.name,
+                returned_at=returned_at,
+            )
+        )
     result.sort(key=lambda x: x.returned_at or datetime.min, reverse=True)
     return result
 
@@ -3951,21 +4057,32 @@ def admin_order_lookup(
     db: Session = Depends(get_db),
 ):
     """Admin: look up any order by ID, returns full order info (all items + statuses)."""
-    from models import OrderItem, Brand, ProductVariant
+    from models import ProductVariant
+
     order = db.query(Order).filter(Order.id == order_id).first()
     if not order:
         raise HTTPException(status_code=404, detail="Заказ не найден")
     brand_name = order.brand.name if order.brand else "—"
     items = []
     for item in order.items:
-        pv = db.query(ProductVariant).filter(ProductVariant.id == item.product_variant_id).first()
-        product_name = pv.color_variant.product.name if pv and pv.color_variant and pv.color_variant.product else "—"
-        items.append({
-            "item_id": item.id,
-            "product_name": product_name,
-            "quantity": item.quantity,
-            "current_status": item.status,
-        })
+        pv = (
+            db.query(ProductVariant)
+            .filter(ProductVariant.id == item.product_variant_id)
+            .first()
+        )
+        product_name = (
+            pv.color_variant.product.name
+            if pv and pv.color_variant and pv.color_variant.product
+            else "—"
+        )
+        items.append(
+            {
+                "item_id": item.id,
+                "product_name": product_name,
+                "quantity": item.quantity,
+                "current_status": item.status,
+            }
+        )
     return schemas.AdminOrderLookupResponse(
         order_id=order.id,
         brand_name=brand_name,
@@ -3980,18 +4097,25 @@ def admin_log_return(
     db: Session = Depends(get_db),
 ):
     """Admin: mark order items as returned, update order status, notify brand."""
-    from models import OrderItem, Brand
+    from models import OrderItem
+
     order = db.query(Order).filter(Order.id == body.order_id).first()
     if not order:
         raise HTTPException(status_code=404, detail="Заказ не найден")
     updated_count = 0
     for item_id in body.item_ids:
-        item = db.query(OrderItem).filter(
-            OrderItem.id == item_id,
-            OrderItem.order_id == body.order_id,
-        ).first()
+        item = (
+            db.query(OrderItem)
+            .filter(
+                OrderItem.id == item_id,
+                OrderItem.order_id == body.order_id,
+            )
+            .first()
+        )
         if not item:
-            raise HTTPException(status_code=404, detail=f"Позиция {item_id} не найдена в заказе")
+            raise HTTPException(
+                status_code=404, detail=f"Позиция {item_id} не найдена в заказе"
+            )
         if item.status == "returned":
             continue  # already returned — skip silently
         item.status = "returned"
@@ -4001,14 +4125,22 @@ def admin_log_return(
     all_returned = all(i.status == "returned" for i in all_items)
     if all_returned:
         payment_service.update_order_status(
-            db, body.order_id, OrderStatus.RETURNED,
-            actor_type="admin", actor_id=str(admin.id), note="admin logged return"
+            db,
+            body.order_id,
+            OrderStatus.RETURNED,
+            actor_type="admin",
+            actor_id=str(admin.id),
+            note="admin logged return",
         )
     else:
         order.status = "partially_returned"
         payment_service.record_status_event(
-            db, order, OrderStatus.PARTIALLY_RETURNED,
-            actor_type="admin", actor_id=str(admin.id), note="admin logged partial return"
+            db,
+            order,
+            OrderStatus.PARTIALLY_RETURNED,
+            actor_type="admin",
+            actor_id=str(admin.id),
+            note="admin logged partial return",
         )
     # Notify brand
     if order.brand and order.brand.auth_account_id:
@@ -4062,14 +4194,16 @@ class OrderStatusEventResponse(BaseModel):
     created_at: datetime
 
 
-@app.get("/api/v1/orders/{order_id}/history", response_model=List[OrderStatusEventResponse])
+@app.get(
+    "/api/v1/orders/{order_id}/history", response_model=List[OrderStatusEventResponse]
+)
 async def get_order_status_history(
     order_id: str,
     current_user=Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     """Return status event history for an order. Brand sees own orders; admin sees all."""
-    from models import OrderStatusEvent
+
     order = db.query(Order).filter(Order.id == order_id).first()
     if not order:
         raise HTTPException(status_code=404, detail="Заказ не найден")
@@ -4080,16 +4214,22 @@ async def get_order_status_history(
         if order.user_id != str(current_user.id):
             raise HTTPException(status_code=403, detail="Доступ запрещён")
     from models import OrderStatusEvent as OSE
-    events = db.query(OSE).filter(OSE.order_id == order_id).order_by(OSE.created_at).all()
-    return [OrderStatusEventResponse(
-        id=str(e.id),
-        from_status=e.from_status,
-        to_status=e.to_status,
-        actor_type=e.actor_type,
-        actor_id=e.actor_id,
-        note=e.note,
-        created_at=e.created_at,
-    ) for e in events]
+
+    events = (
+        db.query(OSE).filter(OSE.order_id == order_id).order_by(OSE.created_at).all()
+    )
+    return [
+        OrderStatusEventResponse(
+            id=str(e.id),
+            from_status=e.from_status,
+            to_status=e.to_status,
+            actor_type=e.actor_type,
+            actor_id=e.actor_id,
+            note=e.note,
+            created_at=e.created_at,
+        )
+        for e in events
+    ]
 
 
 @app.get("/api/v1/checkouts/{checkout_id}", response_model=schemas.CheckoutResponse)
@@ -4123,6 +4263,7 @@ async def get_checkout_by_id(
 
 
 # --- Brand Notifications ---
+
 
 @app.get("/api/v1/notifications/", response_model=schemas.NotificationsResponse)
 def get_brand_notifications(
@@ -4159,7 +4300,7 @@ def mark_all_notifications_read(
     db.query(Notification).filter(
         Notification.recipient_type == "brand",
         Notification.recipient_id == str(current_user.id),
-        Notification.is_read == False,
+        not Notification.is_read,
         Notification.expires_at > now,
     ).update({"is_read": True})
     db.commit()

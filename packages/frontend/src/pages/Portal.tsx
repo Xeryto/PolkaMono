@@ -72,8 +72,9 @@ const Portal = () => {
       const response = await api.brandLogin(credentials);
 
       // Check for 2FA challenge (otp_required in response)
-      if ((response as any).otp_required) {
-        setOtpSessionToken((response as any).session_token);
+      const resp = response as { otp_required?: boolean; session_token?: string };
+      if (resp.otp_required) {
+        setOtpSessionToken(resp.session_token ?? '');
         setShowOtpStep(true);
         setResendCountdown(60);
         setResendCount(1);
@@ -83,15 +84,16 @@ const Portal = () => {
       // Normal login: delegate to AuthContext login
       await login(credentials);
       navigate("/dashboard");
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Brand login failed:", error);
+      const err = error as { message?: string; status?: number };
       let errorMessage = "Произошла ошибка при входе в систему.";
-      if (error.status === 401) {
+      if (err.status === 401) {
         errorMessage = "Неверные учетные данные. Проверьте правильность email и кода доступа.";
-      } else if (error.status === 0) {
+      } else if (err.status === 0) {
         errorMessage = "Проблемы с подключением к интернету. Проверьте соединение и попробуйте снова.";
-      } else if (error.message) {
-        errorMessage = error.message;
+      } else if (err.message) {
+        errorMessage = err.message;
       }
       toast({ title: "Ошибка входа", description: errorMessage, variant: "destructive" });
     } finally {
@@ -107,8 +109,8 @@ const Portal = () => {
     try {
       const result = await api.verify2FA(otpSessionToken, otpCode);
       handleLoginSuccess(result.token, result.user);
-    } catch (error: any) {
-      setOtpError(error.message || "Неверный код");
+    } catch (error: unknown) {
+      setOtpError((error as { message?: string }).message || "Неверный код");
     } finally {
       setIsSubmitting(false);
     }
@@ -122,8 +124,8 @@ const Portal = () => {
       setResendCountdown(60);
       setResendCount((c) => c + 1);
       setOtpError("");
-    } catch (error: any) {
-      toast({ title: "Ошибка", description: error.message || "Не удалось отправить код.", variant: "destructive" });
+    } catch (error: unknown) {
+      toast({ title: "Ошибка", description: (error as { message?: string }).message || "Не удалось отправить код.", variant: "destructive" });
     } finally {
       setIsSubmitting(false);
     }

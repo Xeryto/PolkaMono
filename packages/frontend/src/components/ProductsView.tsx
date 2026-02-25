@@ -70,7 +70,8 @@ export function ProductsView() {
     if (token) {
       fetchProducts(token);
     }
-  }, [token]); // Remove fetchProducts from dependencies to prevent infinite loop
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token]);
 
   const handleProductClick = (product: api.ProductResponse) => {
     setSelectedProduct(product);

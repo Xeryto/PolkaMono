@@ -89,11 +89,12 @@ export function ProfileSettingsPage() {
         setIsLoading(true);
         const fetchedProfile = await api.getBrandProfile(token);
         setProfile(fetchedProfile);
-      } catch (error: any) {
+      } catch (error: unknown) {
         console.error("Failed to fetch brand profile:", error);
+        const err = error as { message?: string };
         toast({
           title: "Error",
-          description: error.message || "Не удалось загрузить профиль.",
+          description: err.message || "Не удалось загрузить профиль.",
           variant: "destructive",
         });
       } finally {
@@ -179,14 +180,15 @@ export function ProfileSettingsPage() {
         title: "Успех",
         description: "Профиль бренда успешно обновлен!",
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Failed to update brand profile:", error);
-      if (error.fieldErrors) {
-        setFieldErrors(error.fieldErrors);
+      const err = error as { message?: string; fieldErrors?: Record<string, string> };
+      if (err.fieldErrors) {
+        setFieldErrors(err.fieldErrors);
       }
       toast({
         title: "Ошибка",
-        description: error.message || "Не удалось обновить профиль бренда.",
+        description: err.message || "Не удалось обновить профиль бренда.",
         variant: "destructive",
       });
     } finally {

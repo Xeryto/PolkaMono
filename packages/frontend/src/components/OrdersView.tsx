@@ -45,11 +45,12 @@ export function OrdersView({ targetOrderId, onTargetConsumed }: OrdersViewProps)
         setIsLoading(true);
         const fetchedOrders = await api.getOrders(token);
         setOrders(fetchedOrders);
-      } catch (error: any) {
+      } catch (error: unknown) {
         console.error("Failed to fetch orders:", error);
+        const err = error as { message?: string };
         toast({
           title: "Ошибка",
-          description: error.message || "Не удалось загрузить заказы.",
+          description: err.message || "Не удалось загрузить заказы.",
           variant: "destructive",
         });
       } finally {

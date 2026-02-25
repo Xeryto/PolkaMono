@@ -40,7 +40,7 @@ export interface CardItem {
   brand_return_policy: string;
   article_number?: string;
   available_sizes?: string[];
-  brand_id?: number;
+  brand_id?: string;
   category_id?: string;
   styles?: string[];
   /** Product-level images shown for all colors (merged with color images) */

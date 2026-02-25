@@ -79,13 +79,13 @@ function hasDuplicateSizes(
 
 export function AddNewItemPage() {
   const [name, setName] = useState("");
-  const { token } = useAuth();
+  const { token, user } = useAuth();
   const [price, setPrice] = useState("");
   const [description, setDescription] = useState("");
   const [selectedMaterials, setSelectedMaterials] = useState<string[]>([]);
-  const [styles, setStyles] = useState<any[]>([]);
+  const [styles, setStyles] = useState<api.StyleResponse[]>([]);
   const [selectedStyle, setSelectedStyle] = useState("");
-  const [categories, setCategories] = useState<any[]>([]);
+  const [categories, setCategories] = useState<api.CategoryResponse[]>([]);
   const [selectedCategory, setSelectedCategory] = useState("");
   const [colorVariations, setColorVariations] = useState<ColorVariationForm[]>([
     defaultColorVariation(),
@@ -117,6 +117,7 @@ export function AddNewItemPage() {
       }
     };
     fetchData();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const updateColorVariation = (
@@ -188,7 +189,7 @@ export function AddNewItemPage() {
     setColorVariations((prev) => {
       const next = [...prev];
       const vars = [...next[colorIndex].variants];
-      (vars[variantIndex] as any)[field] = value;
+      (vars[variantIndex] as unknown as Record<string, string | number>)[field] = value;
       next[colorIndex] = { ...next[colorIndex], variants: vars };
       return next;
     });
@@ -351,7 +352,7 @@ export function AddNewItemPage() {
           selectedMaterials.length > 0
             ? selectedMaterials.join(", ")
             : undefined,
-        brand_id: 1,
+        brand_id: user?.id ?? '',
         category_id: selectedCategory,
         styles: selectedStyle ? [selectedStyle] : [],
         color_variants: colorVariantsWithUrls,
@@ -377,14 +378,15 @@ export function AddNewItemPage() {
       setGeneralImageFiles([]);
       setDeliveryTimeMin(undefined);
       setDeliveryTimeMax(undefined);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Failed to add product:", error);
-      if ((error as any).fieldErrors) {
-        setFieldErrors((error as any).fieldErrors);
+      const err = error as { message?: string; fieldErrors?: Record<string, string> };
+      if (err.fieldErrors) {
+        setFieldErrors(err.fieldErrors);
       }
       toast({
         title: "Ошибка",
-        description: error.message || "Не удалось добавить товар.",
+        description: err.message || "Не удалось добавить товар.",
         variant: "destructive",
       });
     } finally {
@@ -498,14 +500,14 @@ export function AddNewItemPage() {
               <div className="flex-1">
                 <Label className="text-xs text-muted-foreground">От (дней)</Label>
                 <Select
-                  value={deliveryTimeMin !== undefined ? String(deliveryTimeMin) : ""}
-                  onValueChange={(v) => setDeliveryTimeMin(v ? Number(v) : undefined)}
+                  value={deliveryTimeMin !== undefined ? String(deliveryTimeMin) : "none"}
+                  onValueChange={(v) => setDeliveryTimeMin(v === "none" ? undefined : Number(v))}
                 >
                   <SelectTrigger className="mt-1 h-10">
                     <SelectValue placeholder="По умолчанию" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">По умолчанию</SelectItem>
+                    <SelectItem value="none">По умолчанию</SelectItem>
                     {DELIVERY_TIME_OPTIONS.map((o) => (
                       <SelectItem key={o.value} value={String(o.value)}>{o.label}</SelectItem>
                     ))}
@@ -515,14 +517,14 @@ export function AddNewItemPage() {
               <div className="flex-1">
                 <Label className="text-xs text-muted-foreground">До (дней)</Label>
                 <Select
-                  value={deliveryTimeMax !== undefined ? String(deliveryTimeMax) : ""}
-                  onValueChange={(v) => setDeliveryTimeMax(v ? Number(v) : undefined)}
+                  value={deliveryTimeMax !== undefined ? String(deliveryTimeMax) : "none"}
+                  onValueChange={(v) => setDeliveryTimeMax(v === "none" ? undefined : Number(v))}
                 >
                   <SelectTrigger className="mt-1 h-10">
                     <SelectValue placeholder="По умолчанию" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">По умолчанию</SelectItem>
+                    <SelectItem value="none">По умолчанию</SelectItem>
                     {DELIVERY_TIME_OPTIONS.map((o) => (
                       <SelectItem key={o.value} value={String(o.value)}>{o.label}</SelectItem>
                     ))}

@@ -37,16 +37,17 @@ const BrandForgotPasswordPage = () => {
     try {
       await api.brandRequestPasswordReset(email.trim());
       setIsSuccess(true);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Password reset request failed:", error);
+      const err = error as { message?: string; status?: number };
 
       let errorMessage = "Произошла ошибка при отправке кода сброса пароля.";
 
-      if (error.status === 0) {
+      if (err.status === 0) {
         errorMessage =
           "Проблемы с подключением к интернету. Проверьте соединение и попробуйте снова.";
-      } else if (error.message) {
-        errorMessage = error.message;
+      } else if (err.message) {
+        errorMessage = err.message;
       }
 
       toast({

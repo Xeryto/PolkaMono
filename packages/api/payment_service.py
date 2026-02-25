@@ -85,7 +85,7 @@ def generate_order_number(db: Session, suffix: str = "") -> str:
             return order_number
 
 
-def _compute_shipping_for_brand(db: Session, brand_id: int, subtotal: float) -> float:
+def _compute_shipping_for_brand(db: Session, brand_id: str, subtotal: float) -> float:
     """Compute shipping cost for a brand from profile. Free if subtotal >= min_free_shipping."""
     brand = db.query(Brand).filter(Brand.id == brand_id).first()
     if not brand:
@@ -121,7 +121,8 @@ def create_payment(
         total_amount=str(amount),
         currency=currency,
         status=OrderStatus.CREATED,
-        expires_at=datetime.utcnow() + timedelta(hours=settings.ORDER_PENDING_EXPIRY_HOURS),
+        expires_at=datetime.utcnow()
+        + timedelta(hours=settings.ORDER_PENDING_EXPIRY_HOURS),
         # Store delivery information at order creation time
         delivery_full_name=user.full_name,
         delivery_email=user.delivery_email,
@@ -263,7 +264,7 @@ def create_order_test(
     delivery_address = _build_delivery_address(shipping_info)
 
     # Group items by brand and validate stock
-    brand_items: dict[int, list[tuple[ProductVariant, int, float]]] = {}
+    brand_items: dict[str, list[tuple[ProductVariant, int, float]]] = {}
     for item in items:
         variant = (
             db.query(ProductVariant)
@@ -348,7 +349,8 @@ def create_order_test(
             shipping_cost=shipping_cost,
             total_amount=order_total,
             status=OrderStatus.CREATED,
-            expires_at=datetime.utcnow() + timedelta(hours=settings.ORDER_PENDING_EXPIRY_HOURS),
+            expires_at=datetime.utcnow()
+            + timedelta(hours=settings.ORDER_PENDING_EXPIRY_HOURS),
             delivery_full_name=delivery_full_name,
             delivery_email=delivery_email,
             delivery_phone=delivery_phone,
@@ -499,14 +501,16 @@ def expire_pending_orders(db: Session) -> int:
         db.query(Order)
         .filter(
             Order.status == OrderStatus.CREATED,
-            Order.expires_at != None,
+            Order.expires_at is not None,
             Order.expires_at < now,
         )
         .all()
     )
     count = 0
     for order in expired:
-        update_order_status(db, order.id, OrderStatus.CANCELED, actor_type="system", note="auto-expired")
+        update_order_status(
+            db, order.id, OrderStatus.CANCELED, actor_type="system", note="auto-expired"
+        )
         count += 1
     if count:
         db.commit()

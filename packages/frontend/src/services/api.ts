@@ -61,7 +61,7 @@ export interface ShoppingInfo {
 }
 
 export interface BrandResponse {
-  id: number;
+  id: string;
   name: string;
   email: string;
   slug: string;
@@ -134,7 +134,7 @@ export interface ProductResponse {
   description?: string;
   price: number;
   material?: string;
-  brand_id: number;
+  brand_id: string;
   category_id: string;
   styles: string[];
   color_variants: ProductColorVariantSchema[];
@@ -204,7 +204,7 @@ export interface OrderResponse {
 export interface OrderPartResponse {
   id: string;
   number: string;
-  brand_id: number;
+  brand_id: string;
   brand_name?: string;
   subtotal: number;
   shipping_cost: number;
@@ -243,12 +243,18 @@ export interface StyleResponse {
   image?: string;
 }
 
+export interface CategoryResponse {
+  id: string;
+  name: string;
+  description?: string;
+}
+
 export interface ToggleFavoriteRequest {
   product_id: string;
   action: 'like' | 'unlike';
 }
 
-export interface UserRecommendationsResponse extends Array<ProductResponse> {}
+export type UserRecommendationsResponse = ProductResponse[];
 
 /**
  * FastAPI 422 responses have detail as either a string or an array of
@@ -290,7 +296,7 @@ const handleApiResponse = async (response: Response) => {
 const apiRequest = async (
   endpoint: string,
   method: 'GET' | 'POST' | 'PUT' | 'DELETE' = 'GET',
-  body?: any,
+  body?: Record<string, unknown>,
   requireAuth: boolean = true,
   token: string | null = null, // Add token parameter
   requestOptions: RequestOptions = {}
@@ -355,7 +361,7 @@ export const createProduct = async (productData: {
   name: string;
   description?: string;
   price: number;
-  brand_id: number;
+  brand_id: string;
   category_id: string;
   styles: string[];
   color_variants: ProductColorVariantCreate[];
@@ -370,7 +376,7 @@ export const updateProduct = async (productId: string, productData: {
   name?: string;
   description?: string;
   price?: number;
-  brand_id?: number;
+  brand_id?: string;
   category_id?: string;
   styles?: string[];
   color_variants?: ProductColorVariantCreate[];
@@ -389,15 +395,15 @@ export const getBrandProducts = async (token: string, requestOptions?: RequestOp
   return await apiRequest('/api/v1/brands/products', 'GET', undefined, true, token, requestOptions);
 };
 
-export const getStyles = async (): Promise<any[]> => {
-  return await apiRequest('/api/v1/styles', 'GET', undefined, false); // Styles might not require auth
+export const getStyles = async (): Promise<StyleResponse[]> => {
+  return await apiRequest('/api/v1/styles', 'GET', undefined, false);
 };
 
-export const getCategories = async (): Promise<any[]> => {
-  return await apiRequest('/api/v1/categories', 'GET', undefined, false); // Categories might not require auth
+export const getCategories = async (): Promise<CategoryResponse[]> => {
+  return await apiRequest('/api/v1/categories', 'GET', undefined, false);
 };
 
-export const uploadProductImages = async (productId: string, formData: FormData, token: string): Promise<any> => {
+export const uploadProductImages = async (productId: string, formData: FormData, token: string): Promise<ProductResponse> => {
   const response = await fetch(`${API_URL}/api/v1/brands/products/${productId}/images`, {
     method: 'POST',
     headers: {
@@ -444,9 +450,9 @@ export const uploadFileToPresignedUrl = async (
       headers: { 'Content-Type': contentType },
       body: file,
     });
-  } catch (err: any) {
+  } catch (err: unknown) {
     // Network error or CORS block (browser often reports as "failed to fetch")
-    const msg = err?.message || '';
+    const msg = (err instanceof Error ? err.message : '') || '';
     const hint = msg.toLowerCase().includes('fetch') || msg.toLowerCase().includes('cors')
       ? ' Add your frontend origin (e.g. http://localhost:5173) to the S3 bucket CORS AllowedOrigins.'
       : '';
@@ -459,16 +465,16 @@ export const uploadFileToPresignedUrl = async (
 };
 
 // Order related
-export const updateOrderItemSKU = async (orderItemId: string, sku: string, token: string): Promise<any> => { // Add token parameter
+export const updateOrderItemSKU = async (orderItemId: string, sku: string, token: string): Promise<OrderItemResponse> => {
   return await apiRequest(`/api/v1/brands/order-items/${orderItemId}/sku`, 'PUT', { sku: sku }, true, token);
 };
 
-export const updateOrderTracking = async (orderId: string, trackingData: { tracking_number?: string; tracking_link?: string }, token: string): Promise<any> => {
+export const updateOrderTracking = async (orderId: string, trackingData: { tracking_number?: string; tracking_link?: string }, token: string): Promise<OrderResponse> => {
   return await apiRequest(`/api/v1/brands/orders/${orderId}/tracking`, 'PUT', trackingData, true, token);
 };
 
 /** Mark a SHIPPED order as RETURNED (brand received the returned item). Restores stock. */
-export const markOrderReturned = async (orderId: string, token: string): Promise<any> => {
+export const markOrderReturned = async (orderId: string, token: string): Promise<OrderResponse> => {
   return await apiRequest(`/api/v1/brands/orders/${orderId}/return`, 'PUT', undefined, true, token);
 };
 

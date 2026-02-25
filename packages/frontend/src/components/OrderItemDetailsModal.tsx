@@ -65,10 +65,11 @@ export const OrderItemDetailsModal: React.FC<OrderItemDetailsModalProps> = ({
       });
       onSKUUpdated(orderItem.id, skuInput);
       onClose();
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const err = error as { message?: string };
       toast({
         title: "Error",
-        description: error.message || "Failed to update SKU.",
+        description: err.message || "Failed to update SKU.",
         variant: "destructive",
       });
     } finally {

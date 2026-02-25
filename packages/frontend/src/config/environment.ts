@@ -85,22 +85,22 @@ export const isStaging = (): boolean => ENV_CONFIG.IS_STAGING;
 
 // Logging utility
 export const log = {
-  debug: (message: string, ...args: any[]) => {
+  debug: (message: string, ...args: unknown[]) => {
     if (ENV_CONFIG.DEBUG_MODE && ['debug'].includes(ENV_CONFIG.LOG_LEVEL)) {
       console.log(`[DEBUG] ${message}`, ...args);
     }
   },
-  info: (message: string, ...args: any[]) => {
+  info: (message: string, ...args: unknown[]) => {
     if (['debug', 'info'].includes(ENV_CONFIG.LOG_LEVEL)) {
       console.info(`[INFO] ${message}`, ...args);
     }
   },
-  warn: (message: string, ...args: any[]) => {
+  warn: (message: string, ...args: unknown[]) => {
     if (['debug', 'info', 'warn'].includes(ENV_CONFIG.LOG_LEVEL)) {
       console.warn(`[WARN] ${message}`, ...args);
     }
   },
-  error: (message: string, ...args: any[]) => {
+  error: (message: string, ...args: unknown[]) => {
     console.error(`[ERROR] ${message}`, ...args);
   },
 };

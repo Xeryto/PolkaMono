@@ -11,7 +11,7 @@ interface MultiSelectProps {
     label: string;
     value: string;
     icon?: React.ComponentType<{ className?: string }>;
-    [key: string]: any; // Allow for additional properties like 'hex'
+    [key: string]: unknown; // Allow for additional properties like 'hex'
   }[];
   value: string[];
   onValueChange: (value: string[]) => void;
@@ -21,13 +21,13 @@ interface MultiSelectProps {
     label: string;
     value: string;
     icon?: React.ComponentType<{ className?: string }>;
-    [key: string]: any;
+    [key: string]: unknown;
   }) => React.ReactNode;
   renderBadge?: (option: {
     label: string;
     value: string;
     icon?: React.ComponentType<{ className?: string }>;
-    [key: string]: any;
+    [key: string]: unknown;
   }) => React.ReactNode;
 }
 

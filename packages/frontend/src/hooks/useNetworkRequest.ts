@@ -7,7 +7,7 @@ interface UseNetworkRequestOptions {
   retryDelay?: number;
   retryBackoff?: boolean;
   onError?: (error: Error) => void;
-  onSuccess?: (data: any) => void;
+  onSuccess?: (data: T) => void;
   onRetry?: (attempt: number) => void;
 }
 
@@ -15,15 +15,15 @@ interface UseNetworkRequestReturn<T> {
   data: T | null;
   isLoading: boolean;
   error: Error | null;
-  execute: (...args: any[]) => Promise<T | null>;
+  execute: (...args: unknown[]) => Promise<T | null>;
   retry: () => Promise<T | null>;
   reset: () => void;
   isRetrying: boolean;
   attemptCount: number;
 }
 
-export const useNetworkRequest = <T = any>(
-  requestFn: (...args: any[]) => Promise<T>,
+export const useNetworkRequest = <T = unknown>(
+  requestFn: (...args: unknown[]) => Promise<T>,
   options: UseNetworkRequestOptions = {}
 ): UseNetworkRequestReturn<T> => {
   const {
@@ -42,10 +42,10 @@ export const useNetworkRequest = <T = any>(
   const [isRetrying, setIsRetrying] = useState(false);
   const [attemptCount, setAttemptCount] = useState(0);
   
-  const lastArgsRef = useRef<any[]>([]);
+  const lastArgsRef = useRef<unknown[]>([]);
   const abortControllerRef = useRef<AbortController | null>(null);
 
-  const execute = useCallback(async (...args: any[]): Promise<T | null> => {
+  const execute = useCallback(async (...args: unknown[]): Promise<T | null> => {
     // Store args for retry
     lastArgsRef.current = args;
     
@@ -84,7 +84,8 @@ export const useNetworkRequest = <T = any>(
       setIsLoading(false);
       setIsRetrying(false);
     }
-  }, [timeout, retries, retryDelay, retryBackoff, onError, onSuccess]); // Remove requestFn from dependencies
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [timeout, retries, retryDelay, retryBackoff, onError, onSuccess]);
 
   const retry = useCallback(async (): Promise<T | null> => {
     if (lastArgsRef.current.length === 0) {

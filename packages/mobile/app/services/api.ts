@@ -362,7 +362,7 @@ export interface Product {
   description?: string;
   price: number;
   material?: string;
-  brand_id: number;
+  brand_id: string;
   category_id: string;
   styles: string[];
   color_variants: ProductColorVariantApi[];
@@ -379,7 +379,7 @@ export interface Product {
 }
 
 export interface Brand {
-  id: number;
+  id: string;
   name: string;
   slug: string;
   logo: string;
@@ -830,7 +830,7 @@ export const updateUserPreferences = async (
   return response;
 };
 
-export const updateUserBrands = async (brandIds: number[]): Promise<any> => {
+export const updateUserBrands = async (brandIds: string[]): Promise<any> => {
   const response = await apiRequest('/api/v1/user/brands', 'POST', {
     brand_ids: brandIds
   }, true, {
@@ -1245,7 +1245,7 @@ export interface Order extends OrderSummary {
 export interface OrderPart {
   id: string;
   number: string;
-  brand_id: number;
+  brand_id: string;
   brand_name?: string;
   brand_is_inactive?: boolean;
   subtotal: number;

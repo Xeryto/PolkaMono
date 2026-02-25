@@ -953,7 +953,7 @@ const Settings = ({
   };
 
   // Update user favorite brands
-  const updateUserBrands = async (brandIds: number[]) => {
+  const updateUserBrands = async (brandIds: string[]) => {
     try {
       await api.updateUserBrands(brandIds);
       // Update local state with brand names
@@ -1390,7 +1390,7 @@ const Settings = ({
         userProfile?.favorite_brands?.map((b) => b.id) || [];
 
       // Determine new brand IDs and operation type
-      let newBrandIds: number[];
+      let newBrandIds: string[];
       let isAdding = false;
       if (currentBrandIds.includes(brandObj.id)) {
         newBrandIds = currentBrandIds.filter((id) => id !== brandObj.id);

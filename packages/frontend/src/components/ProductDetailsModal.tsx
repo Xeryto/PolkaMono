@@ -73,8 +73,8 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
   const [selectedStyles, setSelectedStyles] = useState<string[]>(product.styles || []);
-  const [styles, setStyles] = useState<any[]>([]);
-  const [categories, setCategories] = useState<any[]>([]);
+  const [styles, setStyles] = useState<api.StyleResponse[]>([]);
+  const [categories, setCategories] = useState<api.CategoryResponse[]>([]);
   const [selectedCategory, setSelectedCategory] = useState(product.category_id || "");
   const [saleType, setSaleType] = useState<'percent' | 'exact' | 'none'>(
     (product.sale_type as 'percent' | 'exact') || 'none'
@@ -323,7 +323,7 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({
     setColorVariations((prev) => {
       const next = [...prev];
       const vars = [...(next[colorIndex].variants || [])];
-      (vars[variantIndex] as any)[field] = value;
+      (vars[variantIndex] as unknown as Record<string, string | number>)[field] = value;
       next[colorIndex] = { ...next[colorIndex], variants: vars };
       return next;
     });

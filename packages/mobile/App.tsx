@@ -41,6 +41,7 @@ import VerificationCodeScreen from "./app/screens/VerificationCodeScreen";
 import PasswordResetVerificationScreen from "./app/screens/PasswordResetVerificationScreen";
 import RecentPiecesScreen from "./app/screens/RecentPiecesScreen";
 import FriendRecommendationsScreen from "./app/screens/FriendRecommendationsScreen";
+import NotifyPermissionScreen from "./app/screens/NotifyPermissionScreen";
 
 import * as SplashScreen from "expo-splash-screen";
 import * as Notifications from "expo-notifications";
@@ -688,6 +689,8 @@ function AppContent() {
   const mainNavigationRef = React.useRef<any>(null);
   // Stores order_id from a notification tap that arrived before 'main' phase was ready
   const pendingOrderIdRef = React.useRef<string | null>(null);
+  // Prevents re-checking notification permission on subsequent transitions to "main"
+  const notifyPermissionCheckedRef = React.useRef(false);
 
   // Use the new session management hook
   const {
@@ -738,6 +741,7 @@ function AppContent() {
         "profile_confirm",
         "profile_brands",
         "profile_styles",
+        "notify_permission",
         "email_verification",
       ];
       const isOnAuthenticatedScreen = authenticatedPhases.includes(
@@ -812,7 +816,7 @@ function AppContent() {
   const [showStylesSelectionScreen, setShowStylesSelectionScreen] =
     useState(false);
   const [gender, setGender] = useState<"male" | "female" | null>(null);
-  const [selectedBrands, setSelectedBrands] = useState<number[]>([]);
+  const [selectedBrands, setSelectedBrands] = useState<string[]>([]);
   const [userEmail, setUserEmail] = useState<string>("");
   const [forgotPasswordEmail, setForgotPasswordEmail] = useState<string>("");
   const [passwordResetCode, setPasswordResetCode] = useState<string>("");
@@ -835,6 +839,7 @@ function AppContent() {
     | "profile_confirm"
     | "profile_brands"
     | "profile_styles"
+    | "notify_permission"
     | "main";
   type Overlay = "none" | "static" | "up" | "down";
 
@@ -907,11 +912,21 @@ function AppContent() {
     return () => subscription.remove();
   }, [navState.phase]);
 
-  // Register push token once when main phase is reached
+  // On first entry to "main", show soft notification prompt if permission undetermined
   useEffect(() => {
-    if (navState.phase === "main") {
-      triggerPushRegistration();
-    }
+    if (navState.phase !== "main") return;
+    if (notifyPermissionCheckedRef.current) return;
+    notifyPermissionCheckedRef.current = true;
+
+    if (!Device.isDevice) return;
+
+    Notifications.getPermissionsAsync().then(({ status }) => {
+      if (status === "undetermined") {
+        transitionTo("notify_permission");
+      } else {
+        triggerPushRegistration();
+      }
+    });
   }, [navState.phase]);
 
   // Consume pending order navigation once 'main' phase is active
@@ -1115,7 +1130,7 @@ function AppContent() {
   };
 
   // Helper function to get user selected brands
-  const getUserSelectedBrands = async (): Promise<number[]> => {
+  const getUserSelectedBrands = async (): Promise<string[]> => {
     try {
       const user = await api.getCurrentUser();
       return user.favorite_brands?.map((brand) => brand.id) || [];
@@ -1616,7 +1631,7 @@ function AppContent() {
     new Promise<void>((resolve) => setTimeout(resolve, 0));
 
   // Handle brand search completion
-  const handleBrandSearchComplete = async (brands: number[]) => {
+  const handleBrandSearchComplete = async (brands: string[]) => {
     setIsProfileStepSaving(true);
     console.log(`User selected brands: ${brands.join(", ")}`);
     setSelectedBrands(brands);
@@ -1839,6 +1854,15 @@ function AppContent() {
     }
   };
 
+  const handleNotifyAllow = () => {
+    transitionTo("main");
+    triggerPushRegistration();
+  };
+
+  const handleNotifySkip = () => {
+    transitionTo("main");
+  };
+
   const handleForgotPassword = async (usernameOrEmail: string) => {
     console.log("Password reset requested for:", usernameOrEmail);
     setForgotPasswordEmail(usernameOrEmail);
@@ -1949,6 +1973,13 @@ function AppContent() {
             onBack={() => {
               transitionTo("profile_brands");
             }}
+          />
+        )}
+
+        {navState.phase === "notify_permission" && (
+          <NotifyPermissionScreen
+            onAllow={handleNotifyAllow}
+            onSkip={handleNotifySkip}
           />
         )}
 

@@ -39,9 +39,9 @@ const { width, height } = Dimensions.get("window");
 const LOGO_SIZE = Math.min(width, height) * 0.275;
 
 interface BrandSearchScreenProps {
-  onComplete: (selectedBrands: number[]) => void;
+  onComplete: (selectedBrands: string[]) => void;
   onBack?: () => void;
-  initialBrands?: number[];
+  initialBrands?: string[];
   isSaving?: boolean;
 }
 
@@ -56,8 +56,8 @@ const BrandSearchScreen: React.FC<BrandSearchScreenProps> = ({
 
   const [searchQuery, setSearchQuery] = useState("");
   const [isSearchActive, setIsSearchActive] = useState(false);
-  const [selectedBrands, setSelectedBrands] = useState<number[]>(initialBrands);
-  const [brands, setBrands] = useState<{ id: number; name: string }[]>([]);
+  const [selectedBrands, setSelectedBrands] = useState<string[]>(initialBrands);
+  const [brands, setBrands] = useState<{ id: string; name: string }[]>([]);
   const [visibleBubblesHeight, setVisibleBubblesHeight] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -137,7 +137,7 @@ const BrandSearchScreen: React.FC<BrandSearchScreenProps> = ({
     setIsSearchActive(true);
   };
 
-  const handleBrandSelect = (brand: number) => {
+  const handleBrandSelect = (brand: string) => {
     setSelectedBrands((prev) => {
       // If brand is already selected, remove it
       if (prev.includes(brand)) {
@@ -186,7 +186,7 @@ const BrandSearchScreen: React.FC<BrandSearchScreenProps> = ({
       : brands;
 
   // Render a selected brand bubble
-  const renderBrandBubble = (brandId: number, index: number) => {
+  const renderBrandBubble = (brandId: string, index: number) => {
     const brand = brands.find((b) => b.id === brandId);
     if (!brand) return null;
 
@@ -216,7 +216,7 @@ const BrandSearchScreen: React.FC<BrandSearchScreenProps> = ({
   const renderBrandItem = ({
     item,
   }: {
-    item: { id: number; name: string };
+    item: { id: string; name: string };
   }) => (
     <Pressable
       style={({ pressed }) => [styles.brandItem, pressed && styles.pressedItem]}

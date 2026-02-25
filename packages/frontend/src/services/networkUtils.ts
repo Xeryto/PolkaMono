@@ -100,7 +100,7 @@ export const fetchWithTimeoutAndRetry = async (
       // Don't retry on certain errors
       if (lastError instanceof NetworkTimeoutError || 
           lastError.name === 'AbortError' ||
-          (lastError as any)?.code === 'NETWORK_ERROR') {
+          (lastError as { code?: string })?.code === 'NETWORK_ERROR') {
         
         // If this was the last attempt, throw the error
         if (attempt === retries + 1) {
@@ -138,9 +138,9 @@ export const isRetryableError = (error: Error): boolean => {
   return error instanceof NetworkTimeoutError ||
          error.name === 'AbortError' ||
          error.name === 'NetworkRetryError' ||
-         (error as any)?.code === 'NETWORK_ERROR' ||
-         (error as any)?.message?.includes('timeout') ||
-         (error as any)?.message?.includes('network');
+         (error as { code?: string })?.code === 'NETWORK_ERROR' ||
+         error.message?.includes('timeout') ||
+         error.message?.includes('network');
 };
 
 // Utility to get user-friendly error message

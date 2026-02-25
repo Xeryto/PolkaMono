@@ -29,11 +29,12 @@ export function StatsView() {
         setIsLoading(true);
         const fetchedStats = await api.getBrandStats(token);
         setStats(fetchedStats);
-      } catch (error: any) {
+      } catch (error: unknown) {
         console.error("Failed to fetch stats:", error);
+        const err = error as { message?: string };
         toast({
           title: "Ошибка",
-          description: error.message || "Не удалось загрузить статистику.",
+          description: err.message || "Не удалось загрузить статистику.",
           variant: "destructive",
         });
       } finally {

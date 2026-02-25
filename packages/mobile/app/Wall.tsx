@@ -362,7 +362,7 @@ const Wall = ({ navigation, onLogout }: WallProps) => {
   };
 
   // Update user favorite brands
-  const updateUserBrands = async (brandIds: number[]) => {
+  const updateUserBrands = async (brandIds: string[]) => {
     try {
       await api.updateUserBrands(brandIds);
       const allBrands = await apiWrapper.getBrands("WallPage");
@@ -401,7 +401,7 @@ const Wall = ({ navigation, onLogout }: WallProps) => {
       const currentBrandIds =
         userProfile?.favorite_brands?.map((b) => b.id) || [];
 
-      let newBrandIds: number[];
+      let newBrandIds: string[];
       let isAdding = false;
       if (currentBrandIds.includes(brandObj.id)) {
         newBrandIds = currentBrandIds.filter((id) => id !== brandObj.id);

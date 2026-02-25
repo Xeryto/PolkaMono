@@ -71,29 +71,30 @@ const BrandResetPasswordPage = () => {
     try {
       await api.brandResetPasswordWithCode(email, code.trim(), password);
       setIsSuccess(true);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Password reset failed:", error);
+      const err = error as { message?: string; status?: number };
 
       let errorMessage = "Произошла ошибка при сбросе пароля.";
 
-      if (error.status === 400) {
-        if (error.message?.includes("Invalid brand email/name or code")) {
+      if (err.status === 400) {
+        if (err.message?.includes("Invalid brand email/name or code")) {
           errorMessage =
             "Неверный код подтверждения. Проверьте код и попробуйте снова.";
-        } else if (error.message?.includes("Verification code has expired")) {
+        } else if (err.message?.includes("Verification code has expired")) {
           errorMessage = "Код подтверждения истек. Запросите новый код.";
         } else if (
-          error.message?.includes("You cannot reuse your current password")
+          err.message?.includes("You cannot reuse your current password")
         ) {
           errorMessage = "Вы не можете использовать текущий пароль.";
         } else if (
-          error.message?.includes("You cannot reuse a previous password")
+          err.message?.includes("You cannot reuse a previous password")
         ) {
           errorMessage = "Вы не можете использовать предыдущий пароль.";
         } else {
-          errorMessage = error.message;
+          errorMessage = err.message ?? errorMessage;
         }
-      } else if (error.status === 0) {
+      } else if (err.status === 0) {
         errorMessage =
           "Проблемы с подключением к интернету. Проверьте соединение и попробуйте снова.";
       }

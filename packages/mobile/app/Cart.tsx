@@ -678,7 +678,7 @@ const Cart = ({ navigation }: CartProps) => {
                               width={41}
                               height={41}
                               r={20.5}
-                              color="white"
+                              color={theme.background.primary}
                             >
                               <Shadow
                                 dx={0}

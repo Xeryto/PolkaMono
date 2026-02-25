@@ -1,9 +1,11 @@
 """Notification creation and delivery service."""
+
 from datetime import datetime, timedelta
 from typing import Optional
-from sqlalchemy.orm import Session
-from models import Notification
+
 import httpx
+from models import Notification
+from sqlalchemy.orm import Session
 
 EXPO_PUSH_URL = "https://exp.host/--/api/v2/push/send"
 
@@ -34,7 +36,9 @@ def create_notification(
     return notif
 
 
-def send_brand_new_order_notification(db: Session, brand_id: str, order_id: str) -> None:
+def send_brand_new_order_notification(
+    db: Session, brand_id: str, order_id: str
+) -> None:
     """Fire 'new_order' notification to the brand that just received an order."""
     create_notification(
         db=db,
@@ -76,14 +80,19 @@ def send_expo_push_notification(
     }
     try:
         with httpx.Client(timeout=5.0) as client:
-            client.post(EXPO_PUSH_URL, json=payload, headers={"Accept": "application/json"})
+            client.post(
+                EXPO_PUSH_URL, json=payload, headers={"Accept": "application/json"}
+            )
     except Exception as exc:
         print(f"notification_service - push failed: {exc}")
 
 
-def send_buyer_shipped_notification(db: Session, order_id: str, brand_name: str, user_id: str) -> None:
+def send_buyer_shipped_notification(
+    db: Session, order_id: str, brand_name: str, user_id: str
+) -> None:
     """Send Expo push to the buyer when their order is shipped."""
     from models import User
+
     user = db.query(User).filter(User.id == user_id).first()
     if not user or not user.expo_push_token:
         return
@@ -103,7 +112,8 @@ def send_admin_broadcast_to_brands(db: Session, message: str) -> None:
     for Phase 8 and handled by ADMIN-04 in Phase 9.
     """
     from models import Brand
-    brands = db.query(Brand).filter(Brand.is_inactive == False).all()
+
+    brands = db.query(Brand).filter(not Brand.is_inactive).all()
     for brand in brands:
         create_notification(
             db=db,

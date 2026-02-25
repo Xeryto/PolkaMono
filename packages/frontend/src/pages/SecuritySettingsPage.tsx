@@ -84,8 +84,8 @@ export function SecuritySettingsPage() {
       try {
         const data = await api.getBrandProfile(token);
         setProfile(data);
-      } catch (err: any) {
-        toast({ title: "Ошибка", description: err.message || "Не удалось загрузить профиль.", variant: "destructive" });
+      } catch (err: unknown) {
+        toast({ title: "Ошибка", description: (err as { message?: string }).message || "Не удалось загрузить профиль.", variant: "destructive" });
       } finally {
         setIsLoading(false);
       }
@@ -120,8 +120,8 @@ export function SecuritySettingsPage() {
         title: "Успех",
         description: newState ? "Аккаунт деактивирован." : "Аккаунт активирован.",
       });
-    } catch (err: any) {
-      toast({ title: "Ошибка", description: err.message || "Не удалось изменить статус.", variant: "destructive" });
+    } catch (err: unknown) {
+      toast({ title: "Ошибка", description: (err as { message?: string }).message || "Не удалось изменить статус.", variant: "destructive" });
     } finally {
       setTogglingInactive(false);
       setInactiveDialogOpen(false);
@@ -155,11 +155,12 @@ export function SecuritySettingsPage() {
       await api.changeBrandPassword(pwForm.current_password, pwForm.new_password, token);
       setPwForm({ current_password: "", new_password: "", confirm_new_password: "" });
       toast({ title: "Успех", description: "Пароль успешно изменён." });
-    } catch (err: any) {
-      if (err.status === 400) {
+    } catch (err: unknown) {
+      const e = err as { message?: string; status?: number };
+      if (e.status === 400) {
         setPwErrors({ current_password: "Текущий пароль неверный" });
       } else {
-        toast({ title: "Ошибка", description: err.message || "Не удалось изменить пароль.", variant: "destructive" });
+        toast({ title: "Ошибка", description: e.message || "Не удалось изменить пароль.", variant: "destructive" });
       }
     } finally {
       setPwLoading(false);
@@ -177,8 +178,8 @@ export function SecuritySettingsPage() {
       setOtpError("");
       setResendCountdown(60);
       setResendCount(1);
-    } catch (err: any) {
-      toast({ title: "Ошибка", description: err.message || "Не удалось включить 2FA.", variant: "destructive" });
+    } catch (err: unknown) {
+      toast({ title: "Ошибка", description: (err as { message?: string }).message || "Не удалось включить 2FA.", variant: "destructive" });
     } finally {
       setTwoFALoading(false);
     }
@@ -194,8 +195,8 @@ export function SecuritySettingsPage() {
       setTwoFAState("idle");
       setOtpCode("");
       toast({ title: "Успех", description: "2FA включена." });
-    } catch (err: any) {
-      setOtpError(err.message || "Неверный код");
+    } catch (err: unknown) {
+      setOtpError((err as { message?: string }).message || "Неверный код");
     } finally {
       setTwoFALoading(false);
     }
@@ -209,8 +210,8 @@ export function SecuritySettingsPage() {
       setResendCountdown(60);
       setResendCount((c) => c + 1);
       setOtpError("");
-    } catch (err: any) {
-      toast({ title: "Ошибка", description: err.message || "Не удалось отправить код.", variant: "destructive" });
+    } catch (err: unknown) {
+      toast({ title: "Ошибка", description: (err as { message?: string }).message || "Не удалось отправить код.", variant: "destructive" });
     } finally {
       setTwoFALoading(false);
     }
@@ -226,8 +227,8 @@ export function SecuritySettingsPage() {
       setTwoFAState("idle");
       setDisablePassword("");
       toast({ title: "Успех", description: "2FA отключена." });
-    } catch (err: any) {
-      setDisableError(err.message || "Неверный пароль");
+    } catch (err: unknown) {
+      setDisableError((err as { message?: string }).message || "Неверный пароль");
     } finally {
       setTwoFALoading(false);
     }
@@ -246,8 +247,8 @@ export function SecuritySettingsPage() {
       });
       logout();
       navigate("/portal");
-    } catch (err: any) {
-      toast({ title: "Ошибка", description: err.message || "Не удалось удалить аккаунт.", variant: "destructive" });
+    } catch (err: unknown) {
+      toast({ title: "Ошибка", description: (err as { message?: string }).message || "Не удалось удалить аккаунт.", variant: "destructive" });
     } finally {
       setDeleteLoading(false);
       setDeleteStep("idle");
@@ -458,7 +459,7 @@ export function SecuritySettingsPage() {
       </Card>
 
       {/* Section 4 — Delete Account */}
-      <Card className="bg-card border-border/30 shadow-lg border-destructive/30">
+      <Card className="bg-card border-border/30 shadow-lg">
         <CardHeader>
           <CardTitle className="text-destructive">Удаление аккаунта</CardTitle>
         </CardHeader>
