@@ -60,8 +60,8 @@
 ### Admin Dashboard
 
 - [ ] **ADMIN-01**: Admin has dedicated routes inside the brand portal (protected by admin flag)
-- [ ] **ADMIN-02**: Admin can view all orders across all brands
-- [ ] **ADMIN-03**: Admin can log a return for any order (marks returned/partially returned; stock not auto-restored)
+- [x] **ADMIN-02**: Admin can view all orders across all brands
+- [x] **ADMIN-03**: Admin can log a return for any order (marks returned/partially returned; stock not auto-restored)
 - [x] **ADMIN-04**: Admin can send manual notifications (push + in-app) to buyers, brands, or both
 
 ## v2 Requirements
@@ -120,8 +120,8 @@
 | NOTIF-04 | Phase 8 | Complete |
 | NOTIF-06 | Phase 8 | Complete |
 | ADMIN-01 | Phase 9 | Pending |
-| ADMIN-02 | Phase 9 | Pending |
-| ADMIN-03 | Phase 9 | Pending |
+| ADMIN-02 | Phase 9 | Complete |
+| ADMIN-03 | Phase 9 | Complete |
 | ADMIN-04 | Phase 9 | Complete |
 | PROD-02 | Phase 9 | Complete |
 | PROD-05 | Phase 9 | Complete |
