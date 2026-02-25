@@ -160,5 +160,5 @@ Plans:
 | 5. Brand Profile Restructure | 3/3 | Complete   | 2026-02-24 | - |
 | 6. Product Enrichment (API + Web) | 3/3 | Complete    | 2026-02-24 | - |
 | 7. Account Management + 2FA | 4/4 | Complete   | 2026-02-24 | - |
-| 8. Notifications | v1.1 | 0/4 | Not started | - |
+| 8. Notifications | 1/4 | In Progress|  | - |
 | 9. Admin Dashboard + Mobile Display | v1.1 | 0/TBD | Not started | - |

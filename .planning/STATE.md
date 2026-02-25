@@ -5,16 +5,16 @@
 See: .planning/PROJECT.md (updated 2026-02-23)
 
 **Core value:** Brands can run their storefront end-to-end; buyers get a smooth, trustworthy purchase experience.
-**Current focus:** Milestone v1.1 — Phase 7: Account Management + 2FA
+**Current focus:** Milestone v1.1 — Phase 8: Notifications
 
 ## Current Position
 
-Phase: 7 of 9 (Account Management + 2FA)
-Plan: 4 of 4 in current phase
-Status: Checkpoint — awaiting human verification
-Last activity: 2026-02-24 — completed plan 07-04 tasks 1-3 (SecuritySettingsPage + Portal 2FA); paused at human-verify checkpoint
+Phase: 8 of 9 (Notifications)
+Plan: 1 of 4 in current phase
+Status: In progress
+Last activity: 2026-02-25 — completed plan 08-01 (Notification backend: DB model, migration, notification_service, API endpoints, payment wiring)
 
-Progress: [████░░░░░░] 30% (v1.1)
+Progress: [████░░░░░░] 35% (v1.1)
 
 ## Performance Metrics
 
@@ -40,6 +40,7 @@ Progress: [████░░░░░░] 30% (v1.1)
 | Phase 07-account-management-2fa P02 | 12 | 3 tasks | 2 files |
 | Phase 07-account-management-2fa P03 | 15 | 2 tasks | 2 files |
 | Phase 07-account-management-2fa P04 | 4 | 3 tasks | 5 files |
+| Phase 08-notifications P01 | 10 | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -89,6 +90,9 @@ See PROJECT.md Key Decisions table for full log. Active decisions for v1.1:
 - [07-04] handleLoginSuccess uses window.location.href hard redirect after 2FA verify (AuthContext re-reads localStorage)
 - [07-04] BrandResponse extended with is_inactive + two_factor_enabled (already returned by API)
 - [07-04] resendCount initialized to 1 on first OTP send; disabled when >= 3
+- [08-01] Migration uses IF NOT EXISTS guard — notifications table pre-existed in DB; idempotent upgrade
+- [08-01] notification_service.py uses Optional[str] not str|None (Python 3.9 compat)
+- [08-01] Test order notifications fired in endpoint after create_order_test() returns, querying checkout orders by checkout_id
 
 ### Pending Todos
 
@@ -108,6 +112,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-02-24
-Stopped at: 07-04-PLAN.md — checkpoint:human-verify (tasks 1-3 complete, awaiting functional verification)
+Last session: 2026-02-25
+Stopped at: Completed 08-01-PLAN.md — notification backend foundation complete
 Resume file: None
