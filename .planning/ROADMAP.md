@@ -129,7 +129,13 @@ Plans:
   3. A new order triggers an automatic notification to the relevant brand
   4. The mobile app is registered for Expo Push Notifications and receives pushes in production
   5. A buyer receives a push notification when their order status changes (e.g. shipped)
-**Plans**: TBD
+**Plans**: 4 plans
+
+Plans:
+- [ ] 08-01-PLAN.md — DB: Notification model + migration, notification_service.py, brand API endpoints, new-order trigger
+- [ ] 08-02-PLAN.md — Web: DashboardHeader bell with unread badge, dropdown list, mark-read, order navigation
+- [ ] 08-03-PLAN.md — Mobile: expo-notifications install, push token registration in App.tsx, API endpoint
+- [ ] 08-04-PLAN.md — API: buyer push on SHIPPED + admin broadcast endpoint + AdminNotificationsPage in portal
 
 #### Phase 9: Admin Dashboard + Mobile Enrichment Display
 **Goal**: Admin can oversee all orders and send notifications; mobile buyers see sale prices, sizing tables, and delivery times on product cards
@@ -154,5 +160,5 @@ Plans:
 | 5. Brand Profile Restructure | 3/3 | Complete   | 2026-02-24 | - |
 | 6. Product Enrichment (API + Web) | 3/3 | Complete    | 2026-02-24 | - |
 | 7. Account Management + 2FA | 4/4 | Complete   | 2026-02-24 | - |
-| 8. Notifications | v1.1 | 0/TBD | Not started | - |
+| 8. Notifications | v1.1 | 0/4 | Not started | - |
 | 9. Admin Dashboard + Mobile Display | v1.1 | 0/TBD | Not started | - |
