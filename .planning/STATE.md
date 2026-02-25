@@ -10,9 +10,9 @@ See: .planning/PROJECT.md (updated 2026-02-23)
 ## Current Position
 
 Phase: 8 of 9 (Notifications)
-Plan: 2 of 4 in current phase
+Plan: 3 of 4 in current phase
 Status: In progress
-Last activity: 2026-02-25 — completed plan 08-02 (Notification bell UI: fetchNotifications/markNotificationsRead, DashboardHeader bell dropdown, targetOrderId wiring, OrdersView scroll/highlight)
+Last activity: 2026-02-24 — completed plan 08-03 (Push notification infrastructure: expo-notifications installed, expo_push_token on User, POST /api/v1/users/push-token, tap-to-navigate listener)
 
 Progress: [████░░░░░░] 35% (v1.1)
 
@@ -41,7 +41,9 @@ Progress: [████░░░░░░] 35% (v1.1)
 | Phase 07-account-management-2fa P03 | 15 | 2 tasks | 2 files |
 | Phase 07-account-management-2fa P04 | 4 | 3 tasks | 5 files |
 | Phase 08-notifications P01 | 10 | 2 tasks | 5 files |
+| Phase 08-notifications P03 | 30 | 2 tasks | 7 files |
 | Phase 08-notifications P02 | 2 | 2 tasks | 4 files |
+| Phase 08-notifications P03 | 30 | 2 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -96,6 +98,7 @@ See PROJECT.md Key Decisions table for full log. Active decisions for v1.1:
 - [08-01] Test order notifications fired in endpoint after create_order_test() returns, querying checkout orders by checkout_id
 - [08-02] fetchNotifications/markNotificationsRead use apiRequest helper with token param (not raw fetch + localStorage) — consistent with existing api.ts pattern
 - [08-02] onTargetOrder propagated via props (not context) — simpler, no extra context overhead
+- [Phase 08-03]: [08-03] app.json notification icon uses icon.png fallback; setNotificationHandler uses shouldShowBanner+shouldShowList (SDK 0.32); triggerPushRegistration() helper at all transitionTo(main) sites; navigationRef lifted to AppContent; Tap listener passes openOrderId to Wall (receiving screen deferred to 08-04)
 
 ### Pending Todos
 
@@ -115,6 +118,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-02-25
-Stopped at: Completed 08-02-PLAN.md — notification bell UI complete
+Last session: 2026-02-24
+Stopped at: Completed 08-03-PLAN.md — push notification infrastructure complete
 Resume file: None
