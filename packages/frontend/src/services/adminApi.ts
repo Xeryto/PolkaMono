@@ -31,3 +31,15 @@ export async function sendAdminNotification(token: string, message: string): Pro
   });
   if (!res.ok && res.status !== 204) throw new Error("Failed to send notification");
 }
+
+export async function sendAdminBuyerPush(token: string, message: string): Promise<void> {
+  const res = await fetch(`${API_URL}/api/v1/admin/notifications/send-buyers`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ message }),
+  });
+  if (!res.ok && res.status !== 204) throw new Error("Failed to send buyer push");
+}
