@@ -8,9 +8,8 @@ import { StatsView } from "@/components/StatsView";
 import { AddNewItemPage } from "@/pages/AddNewItemPage";
 import { ProfileSettingsPage } from "@/pages/ProfileSettingsPage";
 import { SecuritySettingsPage } from "@/pages/SecuritySettingsPage";
-import { AdminNotificationsPage } from "@/pages/AdminNotificationsPage";
 
-type DashboardView = 'stats' | 'orders' | 'products' | 'add-item' | 'profile' | 'security' | 'admin-notifications';
+type DashboardView = 'stats' | 'orders' | 'products' | 'add-item' | 'profile' | 'security';
 
 const Dashboard = () => {
   const [currentView, setCurrentView] = useState<DashboardView>('stats');
@@ -33,8 +32,6 @@ const Dashboard = () => {
         return <ProfileSettingsPage />;
       case 'security':
         return <SecuritySettingsPage />;
-      case 'admin-notifications':
-        return <AdminNotificationsPage />;
       case 'stats':
         return <StatsView />;
       default:

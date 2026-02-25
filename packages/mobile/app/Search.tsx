@@ -1628,7 +1628,7 @@ const createStyles = (theme: ThemeColors) => StyleSheet.create({
   popularItemsText: {
     fontFamily: "Igra Sans",
     fontSize: 38,
-    color: theme.text.tertiary,
+    color: theme.text.coldgrey,
     textAlign: "left",
     marginTop: 20,
     marginBottom: 10,

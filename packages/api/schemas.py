@@ -138,7 +138,7 @@ class OrderPartResponse(BaseModel):
 
     id: str
     number: str
-    brand_id: int
+    brand_id: str
     brand_name: Optional[str] = None
     brand_is_inactive: bool = False
     subtotal: float
@@ -235,7 +235,7 @@ class ProductCreateRequest(BaseModel):
     name: str = Field(..., max_length=255)
     description: Optional[str] = Field(None, max_length=1000)
     price: float
-    brand_id: int
+    brand_id: str
     category_id: str = Field(..., max_length=50)
     styles: Optional[List[str]] = []
     color_variants: List[ProductColorVariantCreate]
@@ -286,7 +286,7 @@ class ProductUpdateRequest(BaseModel):
     name: Optional[str] = Field(None, max_length=255)
     description: Optional[str] = Field(None, max_length=1000)
     price: Optional[float] = None
-    brand_id: Optional[int] = None
+    brand_id: Optional[str] = None
     category_id: Optional[str] = Field(None, max_length=50)
     styles: Optional[List[str]] = None
     color_variants: Optional[List[ProductColorVariantCreate]] = None
@@ -323,7 +323,7 @@ class Product(BaseModel):
     id: Optional[str] = None
     name: str
     price: float
-    brand_id: int
+    brand_id: str
     category_id: str
     styles: List[str] = []
     color_variants: List[ProductColorVariantSchema] = []
@@ -575,7 +575,7 @@ class BrandUpdate(BaseModel):
 
 
 class BrandResponse(BaseModel):
-    id: int
+    id: str
     name: str
     email: EmailStr
     slug: str
@@ -719,3 +719,13 @@ class NotificationItem(BaseModel):
 class NotificationsResponse(BaseModel):
     notifications: List[NotificationItem]
     unread_count: int
+
+
+class AdminLoginRequest(BaseModel):
+    email: EmailStr
+    password: str
+
+
+class AdminLoginResponse(BaseModel):
+    token: str
+    expires_at: datetime

@@ -262,7 +262,7 @@ class CategoryResponse(BaseModel):
 
 
 class UserBrandsUpdate(BaseModel):
-    brand_ids: List[int]
+    brand_ids: List[str]
 
 
 class UserStylesUpdate(BaseModel):
@@ -428,20 +428,35 @@ def get_current_brand_user(
     return current_user
 
 
+def get_current_admin(
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    db: Session = Depends(get_db),
+) -> AuthAccount:
+    """Require a valid admin JWT (issued by /api/v1/admin/auth/login)."""
+    payload = auth_service.verify_token_payload(credentials.credentials)
+    if not payload or not payload.get("is_admin"):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required")
+    acc_id = payload.get("sub")
+    acc = db.query(AuthAccount).filter(AuthAccount.id == acc_id, AuthAccount.is_admin == True).first()
+    if not acc:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin account not found")
+    return acc
+
+
 @app.get("/api/v1/brands/profile", response_model=schemas.BrandResponse)
 async def get_brand_profile(
     current_brand_user: User = Depends(get_current_brand_user),
     db: Session = Depends(get_db),
 ):
     """Get the authenticated brand user's profile"""
-    brand = db.query(Brand).filter(Brand.id == int(str(current_brand_user.id))).first()  # type: ignore
+    brand = db.query(Brand).filter(Brand.id == str(current_brand_user.id)).first()  # type: ignore
     if not brand:
         raise HTTPException(
             status_code=404, detail="Бренд не найден. Проверьте правильность данных."
         )
 
     return schemas.BrandResponse(
-        id=int(brand.id),  # type: ignore
+        id=str(brand.id),
         name=str(brand.name),  # type: ignore
         email=brand.auth_account.email,
         slug=str(brand.slug),  # type: ignore
@@ -611,7 +626,7 @@ async def update_brand_profile(
     db: Session = Depends(get_db),
 ):
     """Update the authenticated brand user's profile"""
-    brand = db.query(Brand).filter(Brand.id == int(str(current_brand_user.id))).first()  # type: ignore
+    brand = db.query(Brand).filter(Brand.id == str(current_brand_user.id)).first()  # type: ignore
     if not brand:
         raise HTTPException(
             status_code=404, detail="Бренд не найден. Проверьте правильность данных."
@@ -681,7 +696,7 @@ async def update_brand_profile(
     db.refresh(brand)
 
     return schemas.BrandResponse(
-        id=int(brand.id),  # type: ignore
+        id=str(brand.id),
         name=str(brand.name),  # type: ignore
         email=brand.auth_account.email,
         slug=str(brand.slug),  # type: ignore
@@ -882,6 +897,25 @@ def _issue_brand_jwt(brand: Brand) -> AuthResponse:
             updated_at=brand.updated_at,
         ),
     )
+
+
+@app.post("/api/v1/admin/auth/login", response_model=schemas.AdminLoginResponse)
+@limiter.limit("10/minute")
+async def admin_login(
+    request: Request,
+    body: schemas.AdminLoginRequest,
+    db: Session = Depends(get_db),
+):
+    """Authenticate admin account. Returns JWT with is_admin=True in payload."""
+    acc = auth_service.get_admin_by_email(db, body.email)
+    if not acc or not auth_service.verify_password(body.password, acc.password_hash or ""):
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
+    expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+    token = auth_service.create_access_token(
+        data={"sub": str(acc.id), "is_admin": True},
+        expires_delta=expires,
+    )
+    return schemas.AdminLoginResponse(token=token, expires_at=datetime.utcnow() + expires)
 
 
 @app.post("/api/v1/brands/auth/login")
@@ -1712,7 +1746,7 @@ async def get_user_profile(
         updated_at=current_user.updated_at,
         favorite_brands=[
             schemas.UserBrandResponse(
-                id=int(brand.id),  # type: ignore
+                id=str(brand.id),
                 name=str(brand.name),  # type: ignore
                 slug=str(brand.slug),  # type: ignore
                 logo=str(brand.logo) if brand.logo else None,  # type: ignore
@@ -2222,14 +2256,14 @@ async def update_order_tracking(
     db: Session = Depends(get_db),
 ):
     """Update tracking number and link for an order. Once both are set and order is PAID, status becomes SHIPPED."""
-    order = db.query(Order).filter(Order.id == int(str(order_id))).first()  # type: ignore
+    order = db.query(Order).filter(Order.id == order_id).first()
     if not order:
         raise HTTPException(
             status_code=404,
             detail="Заказ не найден. Проверьте правильность номера заказа.",
         )
 
-    brand_id_filter = int(current_user.id)
+    brand_id_filter = str(current_user.id)
     order_belongs_to_brand = (
         db.query(OrderItem)
         .join(ProductVariant, OrderItem.product_variant_id == ProductVariant.id)
@@ -2259,7 +2293,7 @@ async def update_order_tracking(
         and order.tracking_number
         and order.tracking_link
     ):
-        payment_service.update_order_status(str(order.id), OrderStatus.SHIPPED.value)  # type: ignore
+        payment_service.update_order_status(db, str(order.id), OrderStatus.SHIPPED)
         # Notify buyer
         if order.user_id:
             brand_name = order.brand.name if order.brand else "бренда"
@@ -2281,11 +2315,11 @@ async def mark_order_returned(
     db: Session = Depends(get_db),
 ):
     """Mark an order as RETURNED after the brand has received the returned item. Only SHIPPED orders can be returned."""
-    order = db.query(Order).filter(Order.id == int(str(order_id))).first()  # type: ignore
+    order = db.query(Order).filter(Order.id == order_id).first()
     if not order:
         raise HTTPException(status_code=404, detail="Заказ не найден.")
 
-    brand_id_filter = int(current_user.id)
+    brand_id_filter = str(current_user.id)
     order_belongs_to_brand = (
         db.query(OrderItem)
         .join(ProductVariant, OrderItem.product_variant_id == ProductVariant.id)
@@ -2340,7 +2374,7 @@ async def update_order_item_sku(
     if not variant:
         raise HTTPException(status_code=404, detail="Product variant not found")
     product = variant.product
-    if not product or product.brand_id != int(current_user.id):
+    if not product or product.brand_id != str(current_user.id):
         raise HTTPException(
             status_code=403, detail="Order item does not belong to your brand"
         )
@@ -2646,7 +2680,7 @@ async def get_brands(db: Session = Depends(get_db)):
     brands = db.query(Brand).filter(Brand.is_inactive == False).all()
     return [
         BrandResponse(
-            id=int(brand.id),  # type: ignore
+            id=str(brand.id),
             name=str(brand.name),  # type: ignore
             slug=str(brand.slug),  # type: ignore
             logo=str(brand.logo) if brand.logo else None,  # type: ignore
@@ -3809,14 +3843,6 @@ async def get_order_by_id(
     )
 
 
-def _is_admin(current_user) -> bool:
-    """True if the authenticated principal is the designated admin brand."""
-    if not isinstance(current_user, Brand):
-        return False
-    admin_email = getattr(settings, "ADMIN_EMAIL", None)
-    if admin_email and current_user.auth_account and current_user.auth_account.email == admin_email:
-        return True
-    return False
 
 
 @app.delete("/api/v1/orders/{order_id}/cancel", response_model=MessageResponse)
@@ -3849,12 +3875,10 @@ async def buyer_cancel_order(
 @app.post("/api/v1/admin/orders/{order_id}/cancel", response_model=MessageResponse)
 async def admin_cancel_order(
     order_id: str,
-    current_user=Depends(get_current_user),
+    admin: AuthAccount = Depends(get_current_admin),
     db: Session = Depends(get_db),
 ):
     """Admin cancels any order regardless of status."""
-    if not _is_admin(current_user):
-        raise HTTPException(status_code=403, detail="Admin access required")
     order = db.query(Order).filter(Order.id == order_id).first()
     if not order:
         raise HTTPException(status_code=404, detail="Заказ не найден")
@@ -3862,7 +3886,7 @@ async def admin_cancel_order(
         raise HTTPException(status_code=400, detail="Заказ уже отменён")
     payment_service.update_order_status(
         db, order_id, OrderStatus.CANCELED,
-        actor_type="admin", actor_id=str(current_user.id), note="admin cancelled"
+        actor_type="admin", actor_id=str(admin.id), note="admin cancelled"
     )
     db.commit()
     return {"message": "Заказ отменён администратором"}
@@ -3875,16 +3899,10 @@ class AdminNotificationSend(BaseModel):
 @app.post("/api/v1/admin/notifications/send", status_code=204)
 def admin_send_notification(
     body: AdminNotificationSend,
-    current_user=Depends(get_current_brand_user),
+    admin: AuthAccount = Depends(get_current_admin),
     db: Session = Depends(get_db),
 ):
-    """Admin-only: send a custom in-app notification to all active brands.
-
-    Brands use the web portal (no Expo push tokens). Delivery is in-app only.
-    Admin-to-buyer push is out of scope for Phase 8.
-    """
-    if not _is_admin(current_user):
-        raise HTTPException(status_code=403, detail="Admin only")
+    """Admin-only: send a custom in-app notification to all active brands."""
     notification_service.send_admin_broadcast_to_brands(db=db, message=body.message)
     return None
 
@@ -3911,7 +3929,7 @@ async def get_order_status_history(
     if not order:
         raise HTTPException(status_code=404, detail="Заказ не найден")
     if isinstance(current_user, Brand):
-        if order.brand_id != current_user.id and not _is_admin(current_user):
+        if order.brand_id != current_user.id:
             raise HTTPException(status_code=403, detail="Доступ запрещён")
     else:
         if order.user_id != str(current_user.id):

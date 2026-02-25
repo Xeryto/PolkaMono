@@ -630,8 +630,55 @@ function MainAppNavigator({
   );
 }
 
+const { width: WIN_W, height: WIN_H } = Dimensions.get('window');
+const TRANSITION_LOGO_SIZE = Math.min(WIN_W, WIN_H) * 0.3;
+
+// Full-screen overlay shown during theme transitions. Appears instantly (no fade-in)
+// then fades itself out, revealing the already-applied new theme underneath.
+const ThemeTransitionScreen: React.FC = () => {
+  const { theme, hideTransitionOverlay } = useTheme();
+  const fadeAnim = useRef(new Animated.Value(1)).current;
+  const hideRef = useRef(hideTransitionOverlay);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      Animated.timing(fadeAnim, {
+        toValue: 0,
+        duration: 400,
+        useNativeDriver: true,
+      }).start(() => hideRef.current());
+    }, 400);
+    return () => clearTimeout(timer);
+  }, []);
+
+  return (
+    <Animated.View
+      pointerEvents="none"
+      style={{
+        ...StyleSheet.absoluteFillObject,
+        backgroundColor: theme.background.loading,
+        justifyContent: 'center',
+        alignItems: 'center',
+        zIndex: 9999,
+        opacity: fadeAnim,
+      }}
+    >
+      <Logo width={TRANSITION_LOGO_SIZE} height={TRANSITION_LOGO_SIZE} />
+      <Text style={{ fontFamily: 'IgraSans', fontSize: 13, color: theme.text.secondary, marginTop: 20 }}>
+        Powered by AI
+      </Text>
+      <Text style={{
+        fontFamily: 'IgraSans', fontSize: 13, color: theme.text.secondary,
+        position: 'absolute', bottom: WIN_H * 0.05, textAlign: 'center', width: '100%', paddingHorizontal: 20,
+      }}>
+        ПОЛКА
+      </Text>
+    </Animated.View>
+  );
+};
+
 function AppContent() {
-  const { fadeAnim } = useTheme();
+  const { showTransitionOverlay } = useTheme();
   const [fontsLoaded, setFontsLoaded] = useState(false);
   const [showLoading, setShowLoading] = useState(true);
   const [showAuthLoading, setShowAuthLoading] = useState(false);
@@ -831,6 +878,18 @@ function AppContent() {
     currentPhaseRef.current = navState.phase;
   }, [navState.phase]);
 
+  // Cold-start: seed pendingOrderIdRef if app was killed and opened via push tap
+  useEffect(() => {
+    Notifications.getLastNotificationResponseAsync().then(response => {
+      if (!response) return;
+      const data = response.notification.request.content.data as { order_id?: string };
+      if (data?.order_id) {
+        pendingOrderIdRef.current = data.order_id;
+        console.log("App - Cold-start push tap: deferred navigation for order", data.order_id);
+      }
+    });
+  }, []);
+
   // Handle notification tap: navigate to order immediately or defer if not yet in 'main'
   useEffect(() => {
     const subscription = Notifications.addNotificationResponseReceivedListener(response => {
@@ -846,6 +905,13 @@ function AppContent() {
       }
     });
     return () => subscription.remove();
+  }, [navState.phase]);
+
+  // Register push token once when main phase is reached
+  useEffect(() => {
+    if (navState.phase === "main") {
+      triggerPushRegistration();
+    }
   }, [navState.phase]);
 
   // Consume pending order navigation once 'main' phase is active
@@ -1229,7 +1295,6 @@ function AppContent() {
       } else {
         dispatchNav({ type: "SET_OVERLAY", overlay: "down" });
         transitionTo("main");
-        triggerPushRegistration();
       }
     } catch (error) {
       console.error("Error checking profile completion after login:", error);
@@ -1281,7 +1346,6 @@ function AppContent() {
                 setComingFromSignup(false);
                 dispatchNav({ type: "SET_OVERLAY", overlay: "down" });
                 transitionTo("main");
-                triggerPushRegistration();
               },
             },
           ],
@@ -1294,7 +1358,6 @@ function AppContent() {
       setComingFromSignup(false);
       dispatchNav({ type: "SET_OVERLAY", overlay: "down" });
       transitionTo("main");
-      triggerPushRegistration();
     } finally {
       setIsAuthFlowInProgress(false);
     }
@@ -1390,7 +1453,6 @@ function AppContent() {
       } else {
         dispatchNav({ type: "SET_OVERLAY", overlay: "down" });
         transitionTo("main");
-        triggerPushRegistration();
       }
     } catch (error) {
       console.error(
@@ -1445,7 +1507,6 @@ function AppContent() {
                 setComingFromSignup(false);
                 dispatchNav({ type: "SET_OVERLAY", overlay: "down" });
                 transitionTo("main");
-                triggerPushRegistration();
               },
             },
           ],
@@ -1460,7 +1521,6 @@ function AppContent() {
       setComingFromSignup(false);
       dispatchNav({ type: "SET_OVERLAY", overlay: "down" });
       transitionTo("main");
-      triggerPushRegistration();
     } finally {
       setIsAuthFlowInProgress(false);
     }
@@ -1708,7 +1768,6 @@ function AppContent() {
       } else {
         dispatchNav({ type: "SET_OVERLAY", overlay: "down" });
         transitionTo("main");
-        triggerPushRegistration();
       }
     } catch (error) {
       console.error(
@@ -1765,7 +1824,6 @@ function AppContent() {
                 // Only skip to main if user explicitly chooses to
                 dispatchNav({ type: "SET_OVERLAY", overlay: "down" });
                 transitionTo("main");
-                triggerPushRegistration();
               },
             },
           ],
@@ -1776,7 +1834,6 @@ function AppContent() {
       // For other errors, proceed with normal flow
       dispatchNav({ type: "SET_OVERLAY", overlay: "down" });
       transitionTo("main");
-      triggerPushRegistration();
     } finally {
       setIsAuthFlowInProgress(false);
     }
@@ -1817,7 +1874,6 @@ function AppContent() {
   // User interface based on phase; overlays rendered on top
   return (
     <SafeAreaProvider>
-      <Animated.View style={{ flex: 1, opacity: fadeAnim }}>
       <GestureHandlerRootView style={{ flex: 1 }}>
         {navState.phase === "boot" && <SimpleAuthLoadingScreen />}
 
@@ -1911,8 +1967,8 @@ function AppContent() {
         {navState.overlay === "down" && (
           <LoadingScreen onFinish={handleLoadingFinish} />
         )}
+        {showTransitionOverlay && <ThemeTransitionScreen />}
       </GestureHandlerRootView>
-      </Animated.View>
     </SafeAreaProvider>
   );
 }

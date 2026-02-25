@@ -5,16 +5,16 @@
 See: .planning/PROJECT.md (updated 2026-02-23)
 
 **Core value:** Brands can run their storefront end-to-end; buyers get a smooth, trustworthy purchase experience.
-**Current focus:** Milestone v1.1 — Phase 8: Notifications
+**Current focus:** Milestone v1.1 — Phase 9: Admin Dashboard (complete; deferred items to v1.2)
 
 ## Current Position
 
-Phase: 8 of 9 (Notifications) — COMPLETE
-Plan: 4 of 4 in current phase (all done)
-Status: Phase complete, ready for Phase 9
-Last activity: 2026-02-24 — completed plan 08-04 (Expo push on SHIPPED + admin broadcast UI)
+Phase: 9 of 9 (Admin Dashboard + Mobile Enrichment) — CORE COMPLETE
+Plan: 1 of 1 in current phase (done)
+Status: v1.1 milestone complete (mobile enrichment display deferred to v1.2)
+Last activity: 2026-02-25 — admin login/auth/dashboard/broadcast + migration fixes + brand_id UUID schema fix
 
-Progress: [█████░░░░░] 44% (v1.1)
+Progress: [██████████] ~89% (v1.1 core; deferred items move to v1.2)
 
 ## Performance Metrics
 
@@ -103,10 +103,21 @@ See PROJECT.md Key Decisions table for full log. Active decisions for v1.1:
 - [Phase 08-04]: [08-04] send_expo_push_notification() fire-and-forget via httpx; errors logged not raised
 - [Phase 08-04]: [08-04] SHIPPED hook uses order.user_id directly — no Checkout query
 - [Phase 08-04]: [08-04] Admin broadcast = in-app to brands only; buyer push broadcast deferred to ADMIN-04 Phase 9
+- [09-01] Admin auth uses separate localStorage key ("adminToken") + AdminAuthContext — isolated from brand auth
+- [09-01] Admin login POST /api/v1/admin/auth/login; get_current_admin() verifies is_admin flag in JWT
+- [09-01] AdminProtectedRoute redirects to /admin on missing/expired token
+- [09-01] AdminDashboard shell has sidebar nav; currently one view (Notifications/Broadcast)
+- [09-01] Brand.id migrated to UUID VARCHAR via 09b_brand_uuid destructive dev migration; schemas.py brand_id fields updated int→str
+- [09-01] Migration chain fixed: initial migration creates full schema; incremental migrations now guard with IF NOT EXISTS via sa.inspect()
 
 ### Pending Todos
 
-None.
+- v1.2: ADMIN-02 orders view (all brands)
+- v1.2: ADMIN-03 return logging
+- v1.2: ADMIN-04 buyer push broadcast from admin
+- v1.2: PROD-02 mobile crossed-out sale price
+- v1.2: PROD-05 mobile sizing table image on product card
+- v1.2: PROD-07 mobile delivery time on product card + cart
 
 ### Blockers/Concerns
 
@@ -122,6 +133,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-02-24
-Stopped at: Completed 08-04-PLAN.md — Expo push on SHIPPED + admin broadcast UI (Phase 8 complete)
+Last session: 2026-02-25
+Stopped at: Phase 9 core complete — admin login/dashboard/broadcast built; migration chain fixed; brand_id UUID schema fix
 Resume file: None

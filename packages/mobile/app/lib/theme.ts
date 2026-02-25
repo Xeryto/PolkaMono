@@ -46,6 +46,7 @@ export interface ThemeColors {
     placeholderDark: string; // Dark placeholder
     inverse: string;         // Text on dark backgrounds
     grey: string;            // Grey text for icons/muted elements
+    coldgrey: string;        // Cold grey text for icons/muted elements
   };
 
   // Button Colors
@@ -205,6 +206,7 @@ const lightColors: ThemeColors = {
     placeholderDark: 'rgba(0, 0, 0, 1)',
     inverse: '#FFFFFF',
     grey: '#808080',
+    coldgrey: '#73706D',
   },
 
   // Button Colors
@@ -364,6 +366,7 @@ const darkColors: ThemeColors = {
     placeholderDark: 'rgba(245, 237, 228, 1)',
     inverse: '#F5EDE4',
     grey: '#9A8878',
+    coldgrey: '#73706D',
   },
 
   // Button Colors

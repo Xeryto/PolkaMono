@@ -34,7 +34,7 @@ def create_notification(
     return notif
 
 
-def send_brand_new_order_notification(db: Session, brand_id: int, order_id: str) -> None:
+def send_brand_new_order_notification(db: Session, brand_id: str, order_id: str) -> None:
     """Fire 'new_order' notification to the brand that just received an order."""
     create_notification(
         db=db,
@@ -46,7 +46,7 @@ def send_brand_new_order_notification(db: Session, brand_id: int, order_id: str)
     )
 
 
-def send_return_logged_notification(db: Session, brand_id: int, order_id: str) -> None:
+def send_return_logged_notification(db: Session, brand_id: str, order_id: str) -> None:
     """Fire 'return_logged' notification to brand when admin logs a return."""
     create_notification(
         db=db,

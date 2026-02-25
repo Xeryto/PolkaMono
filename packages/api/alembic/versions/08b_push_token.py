@@ -15,7 +15,10 @@ depends_on = None
 
 
 def upgrade():
-    op.add_column('users', sa.Column('expo_push_token', sa.String(200), nullable=True))
+    inspector = sa.inspect(op.get_bind())
+    cols = [c['name'] for c in inspector.get_columns('users')]
+    if 'expo_push_token' not in cols:
+        op.add_column('users', sa.Column('expo_push_token', sa.String(200), nullable=True))
 
 
 def downgrade():

@@ -277,5 +277,34 @@ class AuthService:
         db.commit()
         return token
 
+    @staticmethod
+    def create_admin_account(db: Session, email: str, password: str) -> AuthAccount:
+        """Create a standalone admin AuthAccount (no linked User or Brand)."""
+        existing = db.query(AuthAccount).filter(AuthAccount.email == email).first()
+        if existing:
+            if not existing.is_admin:
+                existing.is_admin = True
+                existing.password_hash = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+                db.commit()
+            return existing
+        acc = AuthAccount(
+            email=email,
+            password_hash=bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8'),
+            is_admin=True,
+            is_email_verified=True,
+        )
+        db.add(acc)
+        db.commit()
+        db.refresh(acc)
+        return acc
+
+    @staticmethod
+    def get_admin_by_email(db: Session, email: str) -> Optional[AuthAccount]:
+        """Return an admin AuthAccount by email, or None."""
+        return db.query(AuthAccount).filter(
+            AuthAccount.email == email,
+            AuthAccount.is_admin == True,
+        ).first()
+
 # Create auth service instance
 auth_service = AuthService()

@@ -10,8 +10,11 @@ import Dashboard from "./pages/Dashboard";
 import { StatisticsPage } from "./pages/StatisticsPage";
 import NotFound from "./pages/NotFound";
 import ProtectedRoute from "./components/ProtectedRoute";
+import AdminProtectedRoute from "./components/AdminProtectedRoute";
 import BrandForgotPasswordPage from "./pages/BrandForgotPasswordPage";
 import BrandResetPasswordPage from "./pages/BrandResetPasswordPage";
+import AdminLogin from "./pages/AdminLogin";
+import AdminDashboard from "./pages/admin/AdminDashboard";
 
 const queryClient = new QueryClient();
 
@@ -35,6 +38,10 @@ const App = () => (
         <Route element={<ProtectedRoute />}>
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/statistics" element={<StatisticsPage />} />
+        </Route>
+        <Route path="/admin" element={<AdminLogin />} />
+        <Route element={<AdminProtectedRoute />}>
+          <Route path="/admin/dashboard" element={<AdminDashboard />} />
         </Route>
         {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
         <Route path="*" element={<NotFound />} />

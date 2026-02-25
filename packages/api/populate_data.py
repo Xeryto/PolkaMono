@@ -125,9 +125,15 @@ def generate_order_item_sku(product_name: str, size: str, order_counter: int) ->
     return f"{sku_base}-{size}-{order_counter:03d}"
 
 def populate_initial_data():
-    
+
     db: Session = SessionLocal()
     try:
+        # Seed admin account
+        from config import settings
+        if settings.ADMIN_EMAIL and settings.ADMIN_PASSWORD:
+            auth_service.create_admin_account(db, settings.ADMIN_EMAIL, settings.ADMIN_PASSWORD)
+            print(f"Admin account seeded: {settings.ADMIN_EMAIL}")
+
         # Populate Brands
         # Hash a default password for all brands
         default_password_hash = auth_service.hash_password("brandpassword123")

@@ -40,6 +40,7 @@ class AuthAccount(Base):
     password_reset_token = Column(String, nullable=True)
     password_reset_expires = Column(DateTime, nullable=True)
     password_history = Column(ARRAY(String), default=list)
+    is_admin = Column(Boolean, default=False, nullable=False)
     two_factor_enabled = Column(Boolean, default=False, nullable=False)
     otp_code = Column(String(6), nullable=True)               # Current pending 2FA OTP (6-digit code)
     otp_code_expires_at = Column(DateTime, nullable=True)     # Expires 5 min from send
@@ -175,7 +176,7 @@ class Brand(Base):
     __tablename__ = "brands"
     __table_args__ = {"extend_existing": True}
 
-    id = Column(Integer, primary_key=True, autoincrement=True)
+    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
     name = Column(String(100), unique=True, nullable=False)
     auth_account_id = Column(String, ForeignKey("auth_accounts.id", ondelete="CASCADE"), nullable=False, unique=True, index=True)
     slug = Column(String(100), unique=True, nullable=False)
@@ -231,7 +232,7 @@ class UserBrand(Base):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     user_id = Column(String, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
-    brand_id = Column(Integer, ForeignKey("brands.id", ondelete="CASCADE"), nullable=False)
+    brand_id = Column(String, ForeignKey("brands.id", ondelete="CASCADE"), nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
 
     user = relationship("User", back_populates="favorite_brands")
@@ -281,7 +282,7 @@ class Product(Base):
     sale_price = Column(Float, nullable=True)        # Reduced price (exact) or discount pct; None = no sale
     sale_type = Column(String(10), nullable=True)     # 'percent' or 'exact'; None when no active sale
     sizing_table_image = Column(String, nullable=True)  # S3 public URL of sizing table image
-    brand_id = Column(Integer, ForeignKey("brands.id", ondelete="RESTRICT"), nullable=False)
+    brand_id = Column(String, ForeignKey("brands.id", ondelete="RESTRICT"), nullable=False)
     category_id = Column(String(50), ForeignKey("categories.id", ondelete="RESTRICT"), nullable=False)
     purchase_count = Column(Integer, nullable=False, default=0)  # Denormalized for performance
     general_images = Column(ARRAY(String), nullable=True)  # Images shown for all color variants
@@ -493,7 +494,7 @@ class Order(Base):
 
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
     checkout_id = Column(String, ForeignKey("checkouts.id", ondelete="CASCADE"), nullable=True)  # Nullable for migration
-    brand_id = Column(Integer, ForeignKey("brands.id", ondelete="RESTRICT"), nullable=True)  # Nullable for migration
+    brand_id = Column(String, ForeignKey("brands.id", ondelete="RESTRICT"), nullable=True)  # Nullable for migration
     order_number = Column(String, unique=True, nullable=False)
     user_id = Column(String, ForeignKey("users.id", ondelete="RESTRICT"), nullable=True)  # Denorm for legacy/queries
     subtotal = Column(Float, nullable=True)  # Items only; nullable for migration

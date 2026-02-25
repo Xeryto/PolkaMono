@@ -1,5 +1,5 @@
-import React, { createContext, useContext, useState, useEffect, useRef, ReactNode } from 'react';
-import { Animated, Appearance } from 'react-native';
+import React, { createContext, useContext, useState, useEffect, useRef, useCallback, ReactNode } from 'react';
+import { Appearance } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getTheme, setColorScheme, ColorScheme } from './theme';
 import type { ThemeColors } from './theme';
@@ -11,7 +11,8 @@ interface ThemeContextType {
   themeMode: ThemeMode;
   colorScheme: ColorScheme;
   setThemeMode: (mode: ThemeMode) => Promise<void>;
-  fadeAnim: Animated.Value;
+  showTransitionOverlay: boolean;
+  hideTransitionOverlay: () => void;
 }
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
@@ -26,14 +27,12 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
   const [themeMode, setThemeModeState] = useState<ThemeMode>('system');
   const [colorScheme, setColorSchemeState] = useState<ColorScheme>('light');
   const [theme, setTheme] = useState<ThemeColors>(getTheme());
-  const fadeAnim = useRef(new Animated.Value(1)).current;
+  const [showTransitionOverlay, setShowTransitionOverlay] = useState(false);
 
-  // Load saved theme preference on mount
   useEffect(() => {
     loadThemePreference();
   }, []);
 
-  // Listen to system theme changes
   useEffect(() => {
     const subscription = Appearance.addChangeListener(({ colorScheme: systemScheme }) => {
       if (themeMode === 'system') {
@@ -41,7 +40,6 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
         applyColorScheme(scheme);
       }
     });
-
     return () => subscription.remove();
   }, [themeMode]);
 
@@ -50,13 +48,10 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
       const savedMode = await AsyncStorage.getItem(THEME_STORAGE_KEY);
       if (savedMode && (savedMode === 'system' || savedMode === 'light' || savedMode === 'dark')) {
         setThemeModeState(savedMode as ThemeMode);
-
-        // Apply the appropriate color scheme without animation (initial load)
         if (savedMode === 'system') {
-          const systemScheme = Appearance.getColorScheme() ?? Appearance.getColorScheme() ?? 'light';
+          const systemScheme = Appearance.getColorScheme() ?? 'light';
           const scheme = systemScheme === 'dark' ? 'dark' : 'light';
           applyColorSchemeImmediate(scheme);
-          // Re-check after a tick in case Appearance wasn't ready yet
           setTimeout(() => {
             const recheckScheme = Appearance.getColorScheme();
             if (recheckScheme) applyColorSchemeImmediate(recheckScheme === 'dark' ? 'dark' : 'light');
@@ -65,7 +60,6 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
           applyColorSchemeImmediate(savedMode as ColorScheme);
         }
       } else {
-        // Default to system theme
         const systemScheme = Appearance.getColorScheme() ?? 'light';
         const scheme = systemScheme === 'dark' ? 'dark' : 'light';
         applyColorSchemeImmediate(scheme);
@@ -76,56 +70,44 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
       }
     } catch (error) {
       console.error('Error loading theme preference:', error);
-      // Fallback to light theme
       applyColorSchemeImmediate('light');
     }
   };
 
-  // Apply scheme immediately without animation (used for initial load)
   const applyColorSchemeImmediate = (scheme: ColorScheme) => {
     setColorScheme(scheme);
     setColorSchemeState(scheme);
     setTheme(getTheme());
   };
 
-  // Apply scheme with 200ms fade transition (used for user-triggered changes)
-  const applyColorScheme = (scheme: ColorScheme) => {
-    Animated.timing(fadeAnim, {
-      toValue: 0,
-      duration: 100,
-      useNativeDriver: true,
-    }).start(() => {
-      setColorScheme(scheme);
-      setColorSchemeState(scheme);
-      setTheme(getTheme());
-      Animated.timing(fadeAnim, {
-        toValue: 1,
-        duration: 100,
-        useNativeDriver: true,
-      }).start();
-    });
+  // Apply theme + show overlay in one React batch. The overlay appears instantly
+  // at full opacity (covering the old theme), then fades itself out.
+  const applyColorScheme = (scheme: ColorScheme, mode?: ThemeMode) => {
+    setColorScheme(scheme);
+    setColorSchemeState(scheme);
+    if (mode !== undefined) setThemeModeState(mode);
+    setTheme(getTheme());
+    setShowTransitionOverlay(true);
   };
 
   const setThemeMode = async (mode: ThemeMode) => {
     try {
       await AsyncStorage.setItem(THEME_STORAGE_KEY, mode);
-      setThemeModeState(mode);
-
-      // Apply the appropriate color scheme based on mode (with animation)
-      if (mode === 'system') {
-        const systemScheme = Appearance.getColorScheme();
-        const scheme = systemScheme === 'dark' ? 'dark' : 'light';
-        applyColorScheme(scheme);
-      } else {
-        applyColorScheme(mode as ColorScheme);
-      }
+      const targetScheme: ColorScheme = mode === 'system'
+        ? (Appearance.getColorScheme() === 'dark' ? 'dark' : 'light')
+        : mode as ColorScheme;
+      applyColorScheme(targetScheme, mode);
     } catch (error) {
       console.error('Error saving theme preference:', error);
     }
   };
 
+  const hideTransitionOverlay = useCallback(() => {
+    setShowTransitionOverlay(false);
+  }, []);
+
   return (
-    <ThemeContext.Provider value={{ theme, themeMode, colorScheme, setThemeMode, fadeAnim }}>
+    <ThemeContext.Provider value={{ theme, themeMode, colorScheme, setThemeMode, showTransitionOverlay, hideTransitionOverlay }}>
       {children}
     </ThemeContext.Provider>
   );

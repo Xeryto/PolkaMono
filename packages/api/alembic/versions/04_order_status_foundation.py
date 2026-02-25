@@ -29,29 +29,35 @@ def upgrade() -> None:
     # If the column is plain VARCHAR the new status strings will just be stored
     # as-is — no additional DDL needed for the enum case.
 
-    # 2. Add expires_at column to orders table (nullable).
-    op.add_column(
-        'orders',
-        sa.Column('expires_at', sa.DateTime(), nullable=True)
-    )
+    # 2. Add expires_at column to orders table (nullable) — skip if already exists.
+    has_col = conn.execute(text(
+        "SELECT 1 FROM information_schema.columns "
+        "WHERE table_name='orders' AND column_name='expires_at'"
+    )).scalar()
+    if not has_col:
+        op.add_column('orders', sa.Column('expires_at', sa.DateTime(), nullable=True))
 
-    # 3. Create order_status_events table.
-    op.create_table(
-        'order_status_events',
-        sa.Column('id', sa.String(), nullable=False),
-        sa.Column('order_id', sa.String(), nullable=False),
-        sa.Column('from_status', sa.String(30), nullable=True),
-        sa.Column('to_status', sa.String(30), nullable=False),
-        sa.Column('actor_type', sa.String(20), nullable=False),
-        sa.Column('actor_id', sa.String(), nullable=True),
-        sa.Column('note', sa.String(500), nullable=True),
-        sa.Column('created_at', sa.DateTime(), nullable=False, server_default=sa.text('now()')),
-        sa.ForeignKeyConstraint(['order_id'], ['orders.id'], ondelete='CASCADE'),
-        sa.PrimaryKeyConstraint('id'),
-    )
-
-    # 4. Index on order_id for efficient per-order queries.
-    op.create_index('ix_order_status_events_order_id', 'order_status_events', ['order_id'])
+    # 3. Create order_status_events table — skip if already exists.
+    has_table = conn.execute(text(
+        "SELECT 1 FROM information_schema.tables "
+        "WHERE table_name='order_status_events'"
+    )).scalar()
+    if not has_table:
+        op.create_table(
+            'order_status_events',
+            sa.Column('id', sa.String(), nullable=False),
+            sa.Column('order_id', sa.String(), nullable=False),
+            sa.Column('from_status', sa.String(30), nullable=True),
+            sa.Column('to_status', sa.String(30), nullable=False),
+            sa.Column('actor_type', sa.String(20), nullable=False),
+            sa.Column('actor_id', sa.String(), nullable=True),
+            sa.Column('note', sa.String(500), nullable=True),
+            sa.Column('created_at', sa.DateTime(), nullable=False, server_default=sa.text('now()')),
+            sa.ForeignKeyConstraint(['order_id'], ['orders.id'], ondelete='CASCADE'),
+            sa.PrimaryKeyConstraint('id'),
+        )
+        # 4. Index on order_id for efficient per-order queries.
+        op.create_index('ix_order_status_events_order_id', 'order_status_events', ['order_id'])
 
 
 def downgrade() -> None:
