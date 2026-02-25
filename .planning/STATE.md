@@ -45,6 +45,7 @@ Progress: [██████████] ~89% (v1.1 core; deferred items move 
 | Phase 08-notifications P02 | 2 | 2 tasks | 4 files |
 | Phase 08-notifications P03 | 30 | 2 tasks | 7 files |
 | Phase 08-notifications P04 | 15 | 2 tasks | 5 files |
+| Phase 09-admin-dashboard-mobile-enrichment P03 | 8 | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -109,12 +110,12 @@ See PROJECT.md Key Decisions table for full log. Active decisions for v1.1:
 - [09-01] AdminDashboard shell has sidebar nav; currently one view (Notifications/Broadcast)
 - [09-01] Brand.id migrated to UUID VARCHAR via 09b_brand_uuid destructive dev migration; schemas.py brand_id fields updated int→str
 - [09-01] Migration chain fixed: initial migration creates full schema; incremental migrations now guard with IF NOT EXISTS via sa.inspect()
+- [Phase 09-03]: [09-03] Reuse AdminNotificationSend schema for buyer push; isouter join includes users with no prefs row; per-tab isolated state
 
 ### Pending Todos
 
 - v1.2: ADMIN-02 orders view (all brands)
 - v1.2: ADMIN-03 return logging
-- v1.2: ADMIN-04 buyer push broadcast from admin
 - v1.2: PROD-02 mobile crossed-out sale price
 - v1.2: PROD-05 mobile sizing table image on product card
 - v1.2: PROD-07 mobile delivery time on product card + cart
@@ -134,5 +135,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-25
-Stopped at: Phase 9 core complete — admin login/dashboard/broadcast built; migration chain fixed; brand_id UUID schema fix
+Stopped at: Completed 09-03-PLAN.md — buyer push broadcast endpoint + two-tab AdminNotificationsView
 Resume file: None
