@@ -59,8 +59,21 @@ const getRandomDeliveryTime = (itemId: string): string => {
   return DELIVERY_TIMES[hash] ?? "1-3 дня";
 };
 
+/** Return real delivery time from product data, or fallback to random. */
+const getDeliveryTimeForItem = (item: {
+  id: string;
+  delivery_time_min?: number | null;
+  delivery_time_max?: number | null;
+}): string => {
+  const { delivery_time_min: min, delivery_time_max: max } = item;
+  if (min != null && max != null) return `${min}–${max} дней`;
+  if (min != null) return `от ${min} дней`;
+  if (max != null) return `до ${max} дней`;
+  return getRandomDeliveryTime(item.id);
+};
+
 /** Map brand id -> Brand (for shipping_price, min_free_shipping). */
-type BrandMap = Record<number, api.Brand>;
+type BrandMap = Record<string, api.Brand>;
 
 /**
  * Compute delivery info for cart items using brand profile data and free shipping policy.
@@ -69,25 +82,27 @@ type BrandMap = Record<number, api.Brand>;
  */
 const computeDeliveryForItems = (
   items: Array<{
-    brand_id?: number;
+    brand_id?: string;
     price: number;
     quantity: number;
     id: string;
     cartItemId?: string;
+    delivery_time_min?: number | null;
+    delivery_time_max?: number | null;
   }>,
   brandsMap: BrandMap,
 ): DeliveryInfo[] => {
   // Per-brand: subtotal and shipping cost (0 if free shipping)
-  const brandSubtotals: Record<number, number> = {};
-  const brandShippingCosts: Record<number, number> = {};
+  const brandSubtotals: Record<string, number> = {};
+  const brandShippingCosts: Record<string, number> = {};
 
   for (const item of items) {
-    const bid = item.brand_id ?? 0;
+    const bid = item.brand_id ?? "";
     const subtotal = item.price * (item.quantity ?? 1);
     brandSubtotals[bid] = (brandSubtotals[bid] ?? 0) + subtotal;
   }
 
-  for (const bid of Object.keys(brandSubtotals).map(Number)) {
+  for (const bid of Object.keys(brandSubtotals)) {
     const subtotal = brandSubtotals[bid];
     const brand = brandsMap[bid];
     const minFree = brand?.min_free_shipping;
@@ -101,7 +116,7 @@ const computeDeliveryForItems = (
 
   // Allocate brand shipping to items proportionally, return in same order
   return items.map((item) => {
-    const bid = item.brand_id ?? 0;
+    const bid = item.brand_id ?? "";
     const subtotal = item.price * (item.quantity ?? 1);
     const brandSubtotal = brandSubtotals[bid] ?? subtotal;
     const brandShipping = brandShippingCosts[bid] ?? DEFAULT_SHIPPING_PRICE;
@@ -109,7 +124,7 @@ const computeDeliveryForItems = (
       brandSubtotal > 0 ? (subtotal / brandSubtotal) * brandShipping : 0;
     return {
       cost: Math.round(allocatedCost * 100) / 100,
-      estimatedTime: getRandomDeliveryTime(item.id),
+      estimatedTime: getDeliveryTimeForItem(item),
     };
   });
 };

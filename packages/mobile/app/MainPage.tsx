@@ -102,6 +102,13 @@ const SIZE_PANEL_CLOSED_WIDTH = 52;
 // Loading card ID constant
 const LOADING_CARD_ID = "__loading_card__";
 
+const formatDeliveryTime = (min?: number | null, max?: number | null): string | null => {
+  if (min == null && max == null) return null;
+  if (min != null && max != null) return `${min}–${max} дней`;
+  if (min != null) return `от ${min} дней`;
+  return `до ${max} дней`;
+};
+
 // Helper function to create a loading card
 const createLoadingCard = (): CardItem => ({
   id: LOADING_CARD_ID,
@@ -1972,6 +1979,29 @@ const MainPage = ({ navigation, route }: MainPageProps) => {
                 card.brand_return_policy || "политика возврата не указана"
               }
             />
+            {card.sizing_table_image ? (
+              <View style={{ marginTop: 12, marginBottom: 4 }}>
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  bounces={false}
+                  style={{ borderRadius: 8 }}
+                >
+                  <Image
+                    source={{ uri: card.sizing_table_image }}
+                    style={{ width: 280, height: 160, borderRadius: 8 }}
+                    resizeMode="contain"
+                  />
+                </ScrollView>
+              </View>
+            ) : null}
+            {formatDeliveryTime(card.delivery_time_min, card.delivery_time_max) ? (
+              <View style={{ marginTop: 8, marginBottom: 4 }}>
+                <Text style={{ fontFamily: 'IgraSans', fontSize: 12, color: theme.text.secondary }}>
+                  {`доставка: ${formatDeliveryTime(card.delivery_time_min, card.delivery_time_max)}`}
+                </Text>
+              </View>
+            ) : null}
           </ScrollView>
 
           {/* Back bottom strip: same inset as front (20px), four even slots, panel overlays when expanded */}
@@ -2382,6 +2412,14 @@ const MainPage = ({ navigation, route }: MainPageProps) => {
 
   // Removed loading screen - render immediately for smooth transitions
 
+  const currentCard = cards[currentCardIndex];
+  const hasSale = currentCard?.sale_price != null && currentCard.sale_price > 0;
+  const displaySalePrice = hasSale
+    ? (currentCard!.sale_type === "percent"
+        ? currentCard!.price * (1 - currentCard!.sale_price! / 100)
+        : currentCard!.sale_price!)
+    : null;
+
   return (
     <Animated.View
       style={[styles.container]}
@@ -2412,11 +2450,22 @@ const MainPage = ({ navigation, route }: MainPageProps) => {
             {cards.length > 0 ? (
               <>
                 <Text style={styles.brandName} numberOfLines={1}>
-                  {cards[currentCardIndex]?.brand_name || "бренд не указан"}
+                  {currentCard?.brand_name || "бренд не указан"}
                 </Text>
-                <Text style={styles.price}>
-                  {`${cards[currentCardIndex]?.price.toFixed(2) || "0.00"} ₽`}
-                </Text>
+                {hasSale ? (
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                    <Text style={[styles.price, styles.priceStrikethrough]}>
+                      {`${currentCard!.price.toFixed(0)} ₽`}
+                    </Text>
+                    <Text style={[styles.price, styles.priceSale]}>
+                      {`${displaySalePrice!.toFixed(0)} ₽`}
+                    </Text>
+                  </View>
+                ) : (
+                  <Text style={styles.price}>
+                    {`${currentCard?.price.toFixed(2) || "0.00"} ₽`}
+                  </Text>
+                )}
               </>
             ) : (
               <>
@@ -2801,6 +2850,16 @@ const createStyles = (theme: ThemeColors) => StyleSheet.create({
     textAlign: "left",
     color: "white",
     //marginBottom: 10, // Space below the price
+  },
+  priceStrikethrough: {
+    textDecorationLine: "line-through",
+    color: theme.text.secondary,
+    fontSize: 13,
+  },
+  priceSale: {
+    color: "#C0392B",
+    fontSize: 15,
+    fontFamily: "IgraSans",
   },
   sizeContainer: {
     width: "100%",
