@@ -69,6 +69,7 @@ class User(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     items_swiped = Column(Integer, default=0, nullable=False)  # Denormalized counter for stats (Option 2)
+    expo_push_token = Column(String(200), nullable=True)  # Expo push notification token
 
     # Relationships
     auth_account = relationship("AuthAccount", back_populates="user", uselist=False, lazy="joined")

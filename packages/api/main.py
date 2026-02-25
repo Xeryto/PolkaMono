@@ -50,7 +50,7 @@ from models import (
     UserSwipe,
 )
 from oauth_service import oauth_service
-from pydantic import BaseModel, ValidationError, validator
+from pydantic import BaseModel, Field, ValidationError, validator
 from schemas import UserCreate
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
@@ -1764,6 +1764,24 @@ async def get_user_profile(
         if preferences
         else None,
     )
+
+
+class PushTokenUpdate(BaseModel):
+    token: str = Field(..., max_length=200)
+
+
+@app.post("/api/v1/users/push-token", status_code=204)
+def register_push_token(
+    body: PushTokenUpdate,
+    current_user=Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Store Expo push token for the authenticated user (buyers only)."""
+    if not hasattr(current_user, 'expo_push_token'):
+        raise HTTPException(status_code=400, detail="Not a user account")
+    current_user.expo_push_token = body.token
+    db.commit()
+    return None
 
 
 @app.delete("/api/v1/users/me", status_code=status.HTTP_200_OK)

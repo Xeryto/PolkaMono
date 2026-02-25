@@ -46,7 +46,12 @@
     "plugins": [
       "expo-web-browser",
       "expo-build-properties",
-      "expo-secure-store"
+      "expo-secure-store",
+      ["expo-notifications", {
+        "icon": "./app/assets/icon.png",
+        "color": "#ffffff",
+        "sounds": []
+      }]
     ]
   }
 }
