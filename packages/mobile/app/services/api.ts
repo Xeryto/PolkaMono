@@ -376,6 +376,7 @@ export interface Product {
   sizing_table_image?: string | null;
   delivery_time_min?: number | null;
   delivery_time_max?: number | null;
+  country_of_manufacture?: string | null;
 }
 
 export interface Brand {
@@ -1310,9 +1311,9 @@ export const getOrders = async (): Promise<OrderSummary[]> => {
   return await apiRequest('/api/v1/orders', 'GET');
 };
 
-/** Fetch full checkout details (user's order). List from getOrders() returns checkout ids; use this to load detail. */
-export const getOrderById = async (checkoutId: string): Promise<OrderOrCheckout> => {
-  return await apiRequest(`/api/v1/checkouts/${checkoutId}`, 'GET');
+/** Fetch full order details by order id. */
+export const getOrderById = async (orderId: string): Promise<Order> => {
+  return await apiRequest(`/api/v1/orders/${orderId}`, 'GET');
 };
 
 export const getProductDetails = async (productId: string): Promise<Product> => {

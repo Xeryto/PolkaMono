@@ -240,6 +240,7 @@ class ProductCreateRequest(BaseModel):
     styles: Optional[List[str]] = []
     color_variants: List[ProductColorVariantCreate]
     material: Optional[str] = Field(None, max_length=100)
+    country_of_manufacture: Optional[str] = Field(None, max_length=100)
     article_number: Optional[str] = Field(
         None, max_length=50
     )  # Auto-generated if not provided
@@ -291,6 +292,7 @@ class ProductUpdateRequest(BaseModel):
     styles: Optional[List[str]] = None
     color_variants: Optional[List[ProductColorVariantCreate]] = None
     material: Optional[str] = Field(None, max_length=100)
+    country_of_manufacture: Optional[str] = Field(None, max_length=100)
     general_images: Optional[List[str]] = None
     delivery_time_min: Optional[int] = None
     delivery_time_max: Optional[int] = None
@@ -329,6 +331,7 @@ class Product(BaseModel):
     color_variants: List[ProductColorVariantSchema] = []
     description: Optional[str] = None
     material: Optional[str] = None
+    country_of_manufacture: Optional[str] = None
     article_number: Optional[str] = None
     brand_name: Optional[str] = None
     brand_return_policy: Optional[str] = None

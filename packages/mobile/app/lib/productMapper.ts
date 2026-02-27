@@ -63,6 +63,7 @@ export function mapProductToCardItem(product: api.Product, index?: number): Card
     sizing_table_image: product.sizing_table_image ?? null,
     delivery_time_min: product.delivery_time_min ?? null,
     delivery_time_max: product.delivery_time_max ?? null,
+    country_of_manufacture: product.country_of_manufacture ?? '',
   };
 }
 

@@ -50,6 +50,7 @@ export interface CardItem {
   sizing_table_image?: string | null;
   delivery_time_min?: number | null;
   delivery_time_max?: number | null;
+  country_of_manufacture?: string;
 }
 
 // Keep Product as alias for backward compatibility

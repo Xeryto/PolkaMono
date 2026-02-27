@@ -6,7 +6,7 @@
     "orientation": "portrait",
     "icon": "./app/assets/icon.png",
     "userInterfaceStyle": "automatic",
-    "scheme": "polkamobile",
+    "scheme": "polka",
     "newArchEnabled": true,
     "splash": {
       "image": "./app/assets/splash-icon.png",

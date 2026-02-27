@@ -91,10 +91,13 @@ def send_buyer_shipped_notification(
     db: Session, order_id: str, brand_name: str, user_id: str
 ) -> None:
     """Send Expo push to the buyer when their order is shipped."""
-    from models import User
+    from models import User, UserPreferences
 
     user = db.query(User).filter(User.id == user_id).first()
     if not user or not user.expo_push_token:
+        return
+    prefs = db.query(UserPreferences).filter(UserPreferences.user_id == user_id).first()
+    if prefs and not prefs.order_notifications:
         return
     send_expo_push_notification(
         push_token=user.expo_push_token,

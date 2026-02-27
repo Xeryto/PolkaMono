@@ -105,6 +105,13 @@ const CORNER_BOX_SIZE = 52;
 const CORNER_OVERLAY_SIZE = CARD_CORNER_INSET + CORNER_BOX_SIZE; // 72
 const SIZE_PANEL_CLOSED_WIDTH = 52;
 
+const formatDeliveryTime = (min?: number | null, max?: number | null): string | null => {
+  if (min == null && max == null) return null;
+  if (min != null && max != null) return `${min}–${max} дней`;
+  if (min != null) return `от ${min} дней`;
+  return `до ${max} дней`;
+};
+
 const createLoadingCard = (): CardItem => ({
   id: LOADING_CARD_ID,
   name: "загрузка...",
@@ -1370,13 +1377,39 @@ const FriendRecommendationsScreen = ({
               theme={theme}
             />
             <ExpandableSection title="материалы" content={card.materials} theme={theme} />
+            {card.country_of_manufacture ? (
+              <ExpandableSection title="страна производства" content={card.country_of_manufacture} theme={theme} />
+            ) : null}
             <ExpandableSection
               title="политика возврата"
               content={
-                card.brand_return_policy || "информация о возврате отсутствует"
+                card.brand_return_policy || "политика возврата не указана"
               }
               theme={theme}
             />
+            {card.sizing_table_image ? (
+              <View style={{ marginTop: 12, marginBottom: 4 }}>
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  bounces={false}
+                  style={{ borderRadius: 8 }}
+                >
+                  <Image
+                    source={{ uri: card.sizing_table_image }}
+                    style={{ width: 280, height: 160, borderRadius: 8 }}
+                    resizeMode="contain"
+                  />
+                </ScrollView>
+              </View>
+            ) : null}
+            {formatDeliveryTime(card.delivery_time_min, card.delivery_time_max) ? (
+              <ExpandableSection
+                title="доставка"
+                content={formatDeliveryTime(card.delivery_time_min, card.delivery_time_max)!}
+                theme={theme}
+              />
+            ) : null}
           </ScrollView>
         </View>
       );

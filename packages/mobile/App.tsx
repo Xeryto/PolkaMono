@@ -11,8 +11,6 @@ import {
   Easing,
   Platform,
   Alert,
-  Modal,
-  Button,
 } from "react-native";
 import {
   SafeAreaProvider,
@@ -44,6 +42,17 @@ import FriendRecommendationsScreen from "./app/screens/FriendRecommendationsScre
 
 import * as SplashScreen from "expo-splash-screen";
 import * as Notifications from "expo-notifications";
+
+let isNotificationsAvailable = false;
+try {
+  // Test if the native module is linked by accessing a method
+  Notifications.getPermissionsAsync && (isNotificationsAvailable = true);
+  // Actually verify native module exists (will throw if missing)
+  require("expo-modules-core").requireNativeModule("ExpoPushTokenManager");
+} catch {
+  console.warn("expo-notifications native module not available, push disabled");
+  isNotificationsAvailable = false;
+}
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import * as cartStorage from "./app/cartStorage";
 import * as api from "./app/services/api";
@@ -116,7 +125,7 @@ export type RootStackParamList = {
   Cart: undefined;
   Search: undefined;
   Favorites: undefined;
-  Wall: undefined;
+  Wall: { openOrderId?: string } | undefined;
   RecentPieces: undefined;
   FriendRecommendations: {
     friendId?: string;
@@ -193,16 +202,25 @@ const NavButton = ({ onPress, children, isActive }: NavButtonProps) => {
 };
 
 // Configure how notifications are displayed when the app is in the foreground
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowBanner: true,
-    shouldShowList: true,
-    shouldPlaySound: true,
-    shouldSetBadge: false,
-  }),
-});
+if (isNotificationsAvailable) {
+  Notifications.setNotificationHandler({
+    handleNotification: async () => ({
+      shouldShowBanner: true,
+      shouldShowList: true,
+      shouldPlaySound: true,
+      shouldSetBadge: false,
+    }),
+  });
+}
 
 async function registerForPushNotificationsAsync(): Promise<string | null> {
+  if (!isNotificationsAvailable) {
+    console.log(
+      "App - Push: native module not available, skipping registration",
+    );
+    return null;
+  }
+
   const { status: existingStatus } = await Notifications.getPermissionsAsync();
   let finalStatus = existingStatus;
 
@@ -453,6 +471,7 @@ function MainNavigator({
             <WallPage
               navigation={createNavigationAdapter(nav, route)}
               onLogout={onLogout}
+              openOrderId={route.params?.openOrderId}
             />
           </ScreenWrapper>
         )}
@@ -523,107 +542,109 @@ function MainAppNavigator({
 
   return (
     <>
-    <StatusBar barStyle={colorScheme === 'dark' ? 'light-content' : 'dark-content'} />
-    <NavigationContainer
-      ref={navigationRef}
-      theme={{
-        dark: false,
-        colors: {
-          primary: theme.primary,
-          background: "transparent",
-          card: "transparent",
-          text: theme.text.primary,
-          border: "transparent",
-          notification: theme.primary,
-        },
-      }}
-      onStateChange={(state) => {
-        if (state) {
-          const route = state.routes[state.index];
-          setCurrentRoute(route.name);
-        }
-      }}
-    >
-      <LinearGradient
-        colors={theme.gradients.main as any}
-        locations={theme.gradients.mainLocations as any}
-        style={styles.gradient}
-        start={{ x: 0, y: 0.2 }}
-        end={{ x: 1, y: 0.8 }}
+      <StatusBar
+        barStyle={colorScheme === "dark" ? "light-content" : "dark-content"}
+      />
+      <NavigationContainer
+        ref={navigationRef}
+        theme={{
+          dark: false,
+          colors: {
+            primary: theme.primary,
+            background: "transparent",
+            card: "transparent",
+            text: theme.text.primary,
+            border: "transparent",
+            notification: theme.primary,
+          },
+        }}
+        onStateChange={(state) => {
+          if (state) {
+            const route = state.routes[state.index];
+            setCurrentRoute(route.name);
+          }
+        }}
       >
-        <SafeAreaView style={styles.container} edges={["top"]}>
-          <View style={styles.screenContainer}>
-            <MainNavigator
-              onLogout={onLogout}
-              comingFromSignup={comingFromSignup}
-              navigationRef={navigationRef}
-              setCurrentRoute={setCurrentRoute}
-            />
-          </View>
+        <LinearGradient
+          colors={theme.gradients.main as any}
+          locations={theme.gradients.mainLocations as any}
+          style={styles.gradient}
+          start={{ x: 0, y: 0.2 }}
+          end={{ x: 1, y: 0.8 }}
+        >
+          <SafeAreaView style={styles.container} edges={["top"]}>
+            <View style={styles.screenContainer}>
+              <MainNavigator
+                onLogout={onLogout}
+                comingFromSignup={comingFromSignup}
+                navigationRef={navigationRef}
+                setCurrentRoute={setCurrentRoute}
+              />
+            </View>
 
-          {/* Custom Bottom Tab Bar - extends to bottom, padding for home indicator */}
-          <View
-            style={[
-              styles.navbar,
-              {
-                paddingBottom: Math.max(15, insets.bottom),
-                backgroundColor: theme.background.tab,
-              },
-            ]}
-          >
-            <NavButton
-              onPress={() => {
-                navigationRef.current?.navigate("Cart");
-              }}
-              isActive={currentRoute === "Cart"}
+            {/* Custom Bottom Tab Bar - extends to bottom, padding for home indicator */}
+            <View
+              style={[
+                styles.navbar,
+                {
+                  paddingBottom: Math.max(15, insets.bottom),
+                  backgroundColor: theme.background.tab,
+                },
+              ]}
             >
-              <Cart width={32.75} height={32} />
-            </NavButton>
+              <NavButton
+                onPress={() => {
+                  navigationRef.current?.navigate("Cart");
+                }}
+                isActive={currentRoute === "Cart"}
+              >
+                <Cart width={32.75} height={32} />
+              </NavButton>
 
-            <NavButton
-              onPress={() => {
-                navigationRef.current?.navigate("Search");
-              }}
-              isActive={currentRoute === "Search"}
-            >
-              <Search width={24.75} height={24.75} />
-            </NavButton>
+              <NavButton
+                onPress={() => {
+                  navigationRef.current?.navigate("Search");
+                }}
+                isActive={currentRoute === "Search"}
+              >
+                <Search width={24.75} height={24.75} />
+              </NavButton>
 
-            <NavButton
-              onPress={() => {
-                navigationRef.current?.navigate("Home");
-              }}
-              isActive={currentRoute === "Home"}
-            >
-              <Logo width={21} height={28} />
-            </NavButton>
+              <NavButton
+                onPress={() => {
+                  navigationRef.current?.navigate("Home");
+                }}
+                isActive={currentRoute === "Home"}
+              >
+                <Logo width={21} height={28} />
+              </NavButton>
 
-            <NavButton
-              onPress={() => {
-                navigationRef.current?.navigate("Favorites");
-              }}
-              isActive={currentRoute === "Favorites"}
-            >
-              <Heart width={28.74} height={25.07} />
-            </NavButton>
+              <NavButton
+                onPress={() => {
+                  navigationRef.current?.navigate("Favorites");
+                }}
+                isActive={currentRoute === "Favorites"}
+              >
+                <Heart width={28.74} height={25.07} />
+              </NavButton>
 
-            <NavButton
-              onPress={() => {
-                navigationRef.current?.navigate("Wall");
-              }}
-              isActive={currentRoute === "Wall"}
-            >
-              <Me width={30.25} height={30.25} />
-            </NavButton>
-          </View>
-        </SafeAreaView>
-      </LinearGradient>
-    </NavigationContainer>
+              <NavButton
+                onPress={() => {
+                  navigationRef.current?.navigate("Wall");
+                }}
+                isActive={currentRoute === "Wall"}
+              >
+                <Me width={30.25} height={30.25} />
+              </NavButton>
+            </View>
+          </SafeAreaView>
+        </LinearGradient>
+      </NavigationContainer>
     </>
   );
 }
 
-const { width: WIN_W, height: WIN_H } = Dimensions.get('window');
+const { width: WIN_W, height: WIN_H } = Dimensions.get("window");
 const TRANSITION_LOGO_SIZE = Math.min(WIN_W, WIN_H) * 0.3;
 
 // Full-screen overlay shown during theme transitions. Appears instantly (no fade-in)
@@ -650,20 +671,35 @@ const ThemeTransitionScreen: React.FC = () => {
       style={{
         ...StyleSheet.absoluteFillObject,
         backgroundColor: theme.background.loading,
-        justifyContent: 'center',
-        alignItems: 'center',
+        justifyContent: "center",
+        alignItems: "center",
         zIndex: 9999,
         opacity: fadeAnim,
       }}
     >
       <Logo width={TRANSITION_LOGO_SIZE} height={TRANSITION_LOGO_SIZE} />
-      <Text style={{ fontFamily: 'IgraSans', fontSize: 13, color: theme.text.secondary, marginTop: 20 }}>
+      <Text
+        style={{
+          fontFamily: "IgraSans",
+          fontSize: 13,
+          color: theme.text.secondary,
+          marginTop: 20,
+        }}
+      >
         Powered by AI
       </Text>
-      <Text style={{
-        fontFamily: 'IgraSans', fontSize: 13, color: theme.text.secondary,
-        position: 'absolute', bottom: WIN_H * 0.05, textAlign: 'center', width: '100%', paddingHorizontal: 20,
-      }}>
+      <Text
+        style={{
+          fontFamily: "IgraSans",
+          fontSize: 13,
+          color: theme.text.secondary,
+          position: "absolute",
+          bottom: WIN_H * 0.05,
+          textAlign: "center",
+          width: "100%",
+          paddingHorizontal: 20,
+        }}
+      >
         ПОЛКА
       </Text>
     </Animated.View>
@@ -874,31 +910,49 @@ function AppContent() {
   }, [navState.phase]);
 
   // Cold-start: seed pendingOrderIdRef if app was killed and opened via push tap
+  const handledPushIdRef = React.useRef<string | null>(null);
   useEffect(() => {
-    Notifications.getLastNotificationResponseAsync().then(response => {
+    if (!isNotificationsAvailable) return;
+    Notifications.getLastNotificationResponseAsync().then((response) => {
       if (!response) return;
-      const data = response.notification.request.content.data as { order_id?: string };
-      if (data?.order_id) {
+      const data = response.notification.request.content.data as {
+        order_id?: string;
+      };
+      if (data?.order_id && handledPushIdRef.current !== data.order_id) {
         pendingOrderIdRef.current = data.order_id;
-        console.log("App - Cold-start push tap: deferred navigation for order", data.order_id);
+        console.log(
+          "App - Cold-start push tap: deferred navigation for order",
+          data.order_id,
+        );
       }
     });
   }, []);
 
   // Handle notification tap: navigate to order immediately or defer if not yet in 'main'
   useEffect(() => {
-    const subscription = Notifications.addNotificationResponseReceivedListener(response => {
-      const data = response.notification.request.content.data as { order_id?: string };
-      if (!data?.order_id) return;
+    if (!isNotificationsAvailable) return;
+    const subscription = Notifications.addNotificationResponseReceivedListener(
+      (response) => {
+        const data = response.notification.request.content.data as {
+          order_id?: string;
+        };
+        if (!data?.order_id) return;
 
-      if (navState.phase === "main" && mainNavigationRef.current) {
-        mainNavigationRef.current.navigate("Wall", { openOrderId: data.order_id });
-        console.log("App - Push tapped: navigating to order", data.order_id);
-      } else {
-        pendingOrderIdRef.current = data.order_id;
-        console.log("App - Push tapped: deferred navigation for order", data.order_id);
-      }
-    });
+        handledPushIdRef.current = data.order_id;
+        if (navState.phase === "main" && mainNavigationRef.current) {
+          mainNavigationRef.current.navigate("Wall", {
+            openOrderId: data.order_id,
+          });
+          console.log("App - Push tapped: navigating to order", data.order_id);
+        } else {
+          pendingOrderIdRef.current = data.order_id;
+          console.log(
+            "App - Push tapped: deferred navigation for order",
+            data.order_id,
+          );
+        }
+      },
+    );
     return () => subscription.remove();
   }, [navState.phase]);
 
@@ -913,7 +967,11 @@ function AppContent() {
 
   // Consume pending order navigation once 'main' phase is active
   useEffect(() => {
-    if (navState.phase === "main" && pendingOrderIdRef.current && mainNavigationRef.current) {
+    if (
+      navState.phase === "main" &&
+      pendingOrderIdRef.current &&
+      mainNavigationRef.current
+    ) {
       const orderId = pendingOrderIdRef.current;
       pendingOrderIdRef.current = null;
       setTimeout(() => {
@@ -1174,14 +1232,14 @@ function AppContent() {
   // Fire-and-forget: request push permission and register token with API
   const triggerPushRegistration = () => {
     registerForPushNotificationsAsync()
-      .then(token => {
+      .then((token) => {
         if (token) {
-          registerPushToken(token).catch(err =>
-            console.log("App - Push token registration failed:", err)
+          registerPushToken(token).catch((err) =>
+            console.log("App - Push token registration failed:", err),
           );
         }
       })
-      .catch(err => console.log("App - Push registration error:", err));
+      .catch((err) => console.log("App - Push registration error:", err));
   };
 
   const handleLogin = async () => {
@@ -1835,7 +1893,6 @@ function AppContent() {
       setIsAuthFlowInProgress(false);
     }
   };
-
 
   const handleForgotPassword = async (usernameOrEmail: string) => {
     console.log("Password reset requested for:", usernameOrEmail);

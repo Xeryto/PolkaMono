@@ -1973,6 +1973,9 @@ const MainPage = ({ navigation, route }: MainPageProps) => {
               content={translateColorToRussian(card.color)}
             />
             <ExpandableSection title="материалы" content={card.materials} />
+            {card.country_of_manufacture ? (
+              <ExpandableSection title="страна производства" content={card.country_of_manufacture} />
+            ) : null}
             <ExpandableSection
               title="политика возврата"
               content={

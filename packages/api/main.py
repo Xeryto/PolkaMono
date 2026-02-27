@@ -149,6 +149,7 @@ def product_to_schema(product, is_liked=None):
             for cv in product.color_variants
         ],
         material=product.material,
+        country_of_manufacture=product.country_of_manufacture,
         article_number=product.article_number,
         brand_name=product.brand.name,
         brand_return_policy=product.brand.return_policy,
@@ -2094,6 +2095,7 @@ async def create_product(
         description=product_data.description,
         price=product_data.price,
         material=product_data.material,
+        country_of_manufacture=product_data.country_of_manufacture,
         article_number=article_number,
         brand_id=current_user.id,  # always the authenticated brand
         category_id=product_data.category_id,
@@ -3851,14 +3853,13 @@ async def get_orders(
         )
         return [_order_to_summary(o) for o in orders]
     else:
-        checkouts = (
-            db.query(Checkout)
-            .options(joinedload(Checkout.orders))
-            .filter(Checkout.user_id == str(current_user.id))
-            .order_by(Checkout.created_at.desc())
+        orders = (
+            db.query(Order)
+            .filter(Order.user_id == str(current_user.id))
+            .order_by(Order.created_at.desc())
             .all()
         )
-        return [_checkout_to_summary(c) for c in checkouts]
+        return [_order_to_summary(o) for o in orders]
 
 
 _order_load = (
@@ -3890,19 +3891,19 @@ async def get_order_by_id(
     current_user: any = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """Get full order details for a brand (items, delivery). Caller must be a brand; order must belong to that brand."""
-    if not isinstance(current_user, Brand):
-        raise HTTPException(
-            status_code=403, detail="Only brands can fetch order by order id"
-        )
+    """Get full order details. Brands see their own orders; users see orders they placed."""
     order = db.query(Order).options(*_order_load).filter(Order.id == order_id).first()
-    if not order or order.brand_id != current_user.id:
+    if not order:
         raise HTTPException(status_code=404, detail="Order not found")
+    if isinstance(current_user, Brand):
+        if order.brand_id != current_user.id:
+            raise HTTPException(status_code=404, detail="Order not found")
+    else:
+        if order.user_id != str(current_user.id):
+            raise HTTPException(status_code=404, detail="Order not found")
     allocated = _allocated_shipping_for_order(order)
     order_items = []
     for idx, item in enumerate(order.items):
-        if item.product_variant.product.brand_id != current_user.id:
-            continue
         allocated_cost = allocated[idx] if idx < len(allocated) else 0.0
         order_items.append(_build_order_item_response(item, allocated_cost))
     fn, em, ph, addr, city, pc = _order_delivery(order)

@@ -67,6 +67,7 @@ interface SimpleNavigation {
 interface WallProps {
   navigation: SimpleNavigation;
   onLogout?: () => void;
+  openOrderId?: string;
 }
 
 const CartItemImage = ({ item }: { item: api.OrderItem }) => {
@@ -111,7 +112,7 @@ const CartItemImage = ({ item }: { item: api.OrderItem }) => {
   );
 };
 
-const Wall = ({ navigation, onLogout }: WallProps) => {
+const Wall = ({ navigation, onLogout, openOrderId }: WallProps) => {
   const { theme } = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
 
@@ -125,7 +126,7 @@ const Wall = ({ navigation, onLogout }: WallProps) => {
 
   // Orders state: list is summaries only; full order loaded when user taps one
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
-  const [orderDetail, setOrderDetail] = useState<api.OrderOrCheckout | null>(null);
+  const [orderDetail, setOrderDetail] = useState<api.Order | null>(null);
   const [isLoadingOrderDetail, setIsLoadingOrderDetail] = useState(false);
   const [orders, setOrders] = useState<api.OrderSummary[]>([]);
   const [isLoadingOrders, setIsLoadingOrders] = useState(false);
@@ -232,11 +233,26 @@ const Wall = ({ navigation, onLogout }: WallProps) => {
     loadSwipeCount();
   }, []);
 
+  // Open specific order when navigated via push notification
+  const pushOrderIdRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (openOrderId) {
+      pushOrderIdRef.current = openOrderId;
+      setCurrentView("orders");
+      setSelectedOrderId(openOrderId);
+    }
+  }, [openOrderId]);
+
   // Load orders when orders view is shown
   useEffect(() => {
     if (currentView === "orders") {
-      setSelectedOrderId(null);
-      setOrderDetail(null);
+      // Don't reset selection if we just arrived via push
+      if (pushOrderIdRef.current) {
+        pushOrderIdRef.current = null;
+      } else {
+        setSelectedOrderId(null);
+        setOrderDetail(null);
+      }
       loadOrders();
     }
   }, [currentView]);
@@ -802,53 +818,14 @@ const Wall = ({ navigation, onLogout }: WallProps) => {
           style={styles.orderItemsList}
           showsVerticalScrollIndicator={false}
         >
-          {(api.isCheckoutResponse(orderDetail)
-            ? orderDetail.orders
-            : [{ items: orderDetail.items, brand_is_inactive: false, brand_name: undefined }]
-          ).map((orderPart, partIndex) => {
-            const isInactive = !!(orderPart as api.OrderPart).brand_is_inactive;
-            return (
-              <View key={(orderPart as api.OrderPart).id ?? partIndex}>
-                {isInactive && (
-                  <View style={styles.inactiveBrandBanner}>
-                    <Text style={styles.inactiveBrandBannerText}>
-                      бренд временно приостановил работу — товары недоступны для покупки
-                    </Text>
-                  </View>
-                )}
-                {orderPart.items.map((item, index) => (
+          {orderDetail.items.map((item, index) => (
                   <Animated.View
                     key={item.id}
                     entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
-                      ANIMATION_DELAYS.STANDARD + (partIndex * 10 + index) * ANIMATION_DELAYS.SMALL,
+                      ANIMATION_DELAYS.STANDARD + index * ANIMATION_DELAYS.SMALL,
                     )}
-                    style={[styles.cartItem, isInactive && styles.cartItemInactive]}
+                    style={styles.cartItem}
                   >
-                    {isInactive ? (
-                      <View style={styles.itemPressable}>
-                        <View style={styles.itemContent}>
-                          <View style={[styles.imageContainer, styles.imageContainerInactive]}>
-                            <CartItemImage item={item} />
-                          </View>
-                          <View style={styles.itemDetails}>
-                            <Text style={[styles.itemName, styles.itemTextInactive]} numberOfLines={1} ellipsizeMode="tail">
-                              {item.name}
-                            </Text>
-                            <Text style={[styles.itemPrice, styles.itemTextInactive]}>{`${item.price.toFixed(2)} ₽`}</Text>
-                            <Text style={[styles.itemSize, styles.itemTextInactive]}>{item.size}</Text>
-                          </View>
-                        </View>
-                        <View style={styles.rightContainer}>
-                          <View style={styles.circle}>
-                            <Canvas style={{ width: 41, height: 41, backgroundColor: "transparent" }}>
-                              <RoundedRect x={0} y={0} width={41} height={41} r={20.5} color="white">
-                                <Shadow dx={0} dy={4} blur={4} color="rgba(0,0,0,0.5)" inner />
-                              </RoundedRect>
-                            </Canvas>
-                          </View>
-                        </View>
-                      </View>
-                    ) : (
                       <Pressable style={styles.itemPressable} onPress={() => handleItemPress(item)}>
                         <View style={styles.itemContent}>
                           <View style={styles.imageContainer}>
@@ -872,12 +849,8 @@ const Wall = ({ navigation, onLogout }: WallProps) => {
                           </View>
                         </View>
                       </Pressable>
-                    )}
                   </Animated.View>
                 ))}
-              </View>
-            );
-          })}
         </ScrollView>
 
         <Animated.View
@@ -900,14 +873,9 @@ const Wall = ({ navigation, onLogout }: WallProps) => {
             статус
           </Text>
           <TouchableOpacity
-            disabled={!(api.isCheckoutResponse(orderDetail)
-              ? orderDetail.orders[0]?.tracking_link
-              : orderDetail.tracking_link)}
+            disabled={!orderDetail.tracking_link}
             onPress={() => {
-              const link = api.isCheckoutResponse(orderDetail)
-                ? orderDetail.orders[0]?.tracking_link
-                : orderDetail.tracking_link;
-              if (link) Linking.openURL(link);
+              if (orderDetail.tracking_link) Linking.openURL(orderDetail.tracking_link);
             }}
           >
             <Animated.View
@@ -917,11 +885,7 @@ const Wall = ({ navigation, onLogout }: WallProps) => {
               style={styles.orderStatus}
             >
               <Text style={styles.orderStatusText}>
-                {api.getOrderStatusLabel(
-                  api.isCheckoutResponse(orderDetail)
-                    ? orderDetail.orders[0]?.status
-                    : orderDetail.status,
-                )}
+                {api.getOrderStatusLabel(orderDetail.status)}
               </Text>
             </Animated.View>
           </TouchableOpacity>

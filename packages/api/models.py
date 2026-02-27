@@ -276,6 +276,7 @@ class Product(Base):
     description = Column(String(1000), nullable=True)
     price = Column(Float, nullable=False)
     material = Column(String(100), nullable=True)
+    country_of_manufacture = Column(String(100), nullable=True)
     article_number = Column(String(50), nullable=True)  # Article number for user-facing identification, search, and sharing
     delivery_time_min = Column(Integer, nullable=True)  # per-product override; None = use brand default
     delivery_time_max = Column(Integer, nullable=True)

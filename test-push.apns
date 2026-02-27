@@ -1,0 +1,13 @@
+{
+  "Simulator Target Bundle": "com.danyvsthewrld.PolkaMobile",
+  "aps": {
+    "alert": {
+      "title": "Заказ отправлен",
+      "body": "Ваш заказ от Nike отправлен"
+    },
+    "sound": "default"
+  },
+  "body": {
+    "order_id": "ffdff9d7-1d9a-4aff-9167-80a6f665c76f"
+  }
+}
