@@ -1,4 +1,5 @@
 import json
+import logging
 import random
 import re
 import time
@@ -19,6 +20,8 @@ from database import get_db, init_db
 from fastapi import Depends, FastAPI, HTTPException, Query, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import RedirectResponse
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.responses import Response
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from mail_service import mail_service
 from models import (
@@ -163,24 +166,44 @@ def product_to_schema(product, is_liked=None):
     )
 
 
+logger = logging.getLogger(__name__)
+
 limiter = Limiter(key_func=get_remote_address)
+
+_is_production = settings.ENVIRONMENT == "production"
+
 app = FastAPI(
     title="PolkaAPI - Authentication Backend",
     description="A modern, fast, and secure authentication API with OAuth support for mobile and web applications",
     version="1.0.0",
-    docs_url="/docs",
-    redoc_url="/redoc",
+    docs_url=None if _is_production else "/docs",
+    redoc_url=None if _is_production else "/redoc",
 )
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+
+class SecurityHeadersMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next):
+        response: Response = await call_next(request)
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        response.headers["X-Frame-Options"] = "DENY"
+        response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+        response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
+        if _is_production:
+            response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+        return response
+
+
+app.add_middleware(SecurityHeadersMiddleware)
 
 # CORS middleware for React Native app
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.BACKEND_CORS_ORIGINS,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type", "Accept"],
 )
 
 # APScheduler: background job for order expiry
@@ -200,10 +223,88 @@ def _expire_orders_job():
         db.close()
 
 
+def _purge_deleted_brands_job():
+    """Background job: anonymize brands past their scheduled_deletion_at."""
+    db = next(get_db())
+    try:
+        now = datetime.utcnow()
+        brands = (
+            db.query(Brand)
+            .filter(
+                Brand.scheduled_deletion_at.isnot(None),
+                Brand.scheduled_deletion_at <= now,
+            )
+            .all()
+        )
+        if not brands:
+            return
+        for brand in brands:
+            brand_id = brand.id
+            product_ids = [
+                p.id for p in db.query(Product.id).filter(Product.brand_id == brand_id).all()
+            ]
+            if product_ids:
+                # Remove user interactions with brand's products
+                db.query(UserLikedProduct).filter(UserLikedProduct.product_id.in_(product_ids)).delete(synchronize_session=False)
+                db.query(UserSwipe).filter(UserSwipe.product_id.in_(product_ids)).delete(synchronize_session=False)
+                db.query(ProductStyle).filter(ProductStyle.product_id.in_(product_ids)).delete(synchronize_session=False)
+                # Zero out stock, clear images
+                db.query(ProductVariant).filter(
+                    ProductVariant.product_color_variant_id.in_(
+                        db.query(ProductColorVariant.id).filter(ProductColorVariant.product_id.in_(product_ids))
+                    )
+                ).update({ProductVariant.stock_quantity: 0}, synchronize_session=False)
+                db.query(ProductColorVariant).filter(ProductColorVariant.product_id.in_(product_ids)).update(
+                    {ProductColorVariant.images: None}, synchronize_session=False
+                )
+                db.query(Product).filter(Product.id.in_(product_ids)).update(
+                    {Product.general_images: None}, synchronize_session=False
+                )
+            # Remove user favorites for this brand
+            db.query(UserBrand).filter(UserBrand.brand_id == brand_id).delete(synchronize_session=False)
+            # Anonymize brand PII
+            brand.name = f"deleted_{brand_id}"
+            brand.slug = f"deleted_{brand_id}"
+            brand.logo = None
+            brand.description = None
+            brand.inn = None
+            brand.registration_address = None
+            brand.payout_account = None
+            brand.return_policy = None
+            # Anonymize auth account
+            acc = brand.auth_account
+            if acc:
+                acc.email = f"deleted_brand_{brand_id}@anonymized.local"
+                acc.password_hash = None
+                acc.email_verification_code = None
+                acc.email_verification_code_expires_at = None
+                acc.password_reset_token = None
+                acc.password_reset_expires = None
+                acc.password_history = []
+                acc.refresh_token_hash = None
+                acc.refresh_token_expires_at = None
+                acc.otp_code = None
+                acc.otp_code_expires_at = None
+                acc.otp_session_token = None
+        db.commit()
+        print(f"[scheduler] purged {len(brands)} brand(s)")
+    except Exception as e:
+        db.rollback()
+        print(f"[scheduler] purge_deleted_brands error: {e}")
+    finally:
+        db.close()
+
+
 scheduler.add_job(
     _expire_orders_job,
     IntervalTrigger(hours=1),
     id="expire_orders",
+    replace_existing=True,
+)
+scheduler.add_job(
+    _purge_deleted_brands_job,
+    IntervalTrigger(hours=1),
+    id="purge_deleted_brands",
     replace_existing=True,
 )
 scheduler.start()
@@ -350,6 +451,7 @@ class AuthResponse(BaseModel):
     token: str
     expires_at: datetime
     user: schemas.UserProfileResponse
+    refresh_token: Optional[str] = None
 
 
 class OAuthProviderResponse(BaseModel):
@@ -357,34 +459,6 @@ class OAuthProviderResponse(BaseModel):
     client_id: str
     redirect_url: str
     scope: str
-
-
-@app.get("/api/v1/payments/status", response_model=PaymentStatusResponse)
-async def get_payment_status(payment_id: str, db: Session = Depends(get_db)):
-    """Get the status of a payment by its ID and update it from YooKassa"""
-    order = db.query(Order).filter(Order.id == payment_id).first()
-    if not order:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Payment not found"
-        )
-
-    # Fetch real-time status from YooKassa
-    yookassa_status = payment_service.get_yookassa_payment_status(str(order.payment_id))  # type: ignore
-    if yookassa_status:
-        # Update local order status if different
-        if order.status.value.lower() != yookassa_status.lower():
-            print(
-                f"Updating order {order.id} status from {order.status.value} to {yookassa_status} based on YooKassa."
-            )
-            order.status = OrderStatus(
-                yookassa_status.upper()
-            )  # Assuming YooKassa status matches OrderStatus enum
-            db.commit()
-            db.refresh(order)
-    else:
-        print(f"Could not fetch real-time status for order {order.id} from YooKassa.")
-
-    return PaymentStatusResponse(status=order.status.value)
 
 
 # Dependency to get current user (can be User or Brand)
@@ -432,6 +506,47 @@ def get_current_brand_user(
             status_code=status.HTTP_403_FORBIDDEN, detail="Not a brand account"
         )
     return current_user
+
+
+@app.get("/api/v1/payments/status", response_model=PaymentStatusResponse)
+async def get_payment_status(
+    payment_id: str,
+    current_user=Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Get the status of a payment by its ID and update it from YooKassa"""
+    order = db.query(Order).filter(Order.id == payment_id).first()
+    if not order:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Payment not found"
+        )
+
+    # Verify ownership
+    is_brand = isinstance(current_user, Brand)
+    if is_brand:
+        if str(order.brand_id) != str(current_user.id):
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden")
+    else:
+        if str(order.user_id) != str(current_user.id):
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden")
+
+    # Fetch real-time status from YooKassa
+    yookassa_status = payment_service.get_yookassa_payment_status(str(order.payment_id))  # type: ignore
+    if yookassa_status:
+        # Update local order status if different
+        if order.status.value.lower() != yookassa_status.lower():
+            print(
+                f"Updating order {order.id} status from {order.status.value} to {yookassa_status} based on YooKassa."
+            )
+            order.status = OrderStatus(
+                yookassa_status.upper()
+            )  # Assuming YooKassa status matches OrderStatus enum
+            db.commit()
+            db.refresh(order)
+    else:
+        print(f"Could not fetch real-time status for order {order.id} from YooKassa.")
+
+    return PaymentStatusResponse(status=order.status.value)
 
 
 def get_current_admin(
@@ -744,14 +859,16 @@ async def update_brand_profile(
 
 # API Endpoints
 @app.get("/api/v1/auth/check-username/{username}")
-async def check_username_availability(username: str, db: Session = Depends(get_db)):
+@limiter.limit("20/minute")
+async def check_username_availability(request: Request, username: str, db: Session = Depends(get_db)):
     """Check if username is available"""
     existing_user = auth_service.get_user_by_username(db, username)
     return {"available": existing_user is None}
 
 
 @app.get("/api/v1/auth/check-email/{email}")
-async def check_email_availability(email: str, db: Session = Depends(get_db)):
+@limiter.limit("20/minute")
+async def check_email_availability(request: Request, email: str, db: Session = Depends(get_db)):
     """Check if email is available"""
     existing_user = auth_service.get_user_by_email(db, email)
     return {"available": existing_user is None}
@@ -762,7 +879,8 @@ async def check_email_availability(email: str, db: Session = Depends(get_db)):
     response_model=AuthResponse,
     status_code=status.HTTP_201_CREATED,
 )
-async def register(user_data: UserCreate, db: Session = Depends(get_db)):
+@limiter.limit("5/minute")
+async def register(request: Request, user_data: UserCreate, db: Session = Depends(get_db)):
     """Register a new user"""
     # Check if user already exists
     if auth_service.get_user_by_email(db, user_data.email):
@@ -805,9 +923,11 @@ async def register(user_data: UserCreate, db: Session = Depends(get_db)):
 
     # Get avatar_url from profile if it exists
     avatar_url = user.profile.avatar_url if user.profile else None
+    refresh_token = auth_service.create_refresh_token(db, user.auth_account)
     return AuthResponse(
         token=access_token,
         expires_at=datetime.utcnow() + access_token_expires,
+        refresh_token=refresh_token,
         user=schemas.UserProfileResponse(
             id=user.id,
             username=user.username,
@@ -822,7 +942,8 @@ async def register(user_data: UserCreate, db: Session = Depends(get_db)):
 
 
 @app.post("/api/v1/auth/login", response_model=AuthResponse)
-async def login(user_data: UserLogin, db: Session = Depends(get_db)):
+@limiter.limit("10/minute")
+async def login(request: Request, user_data: UserLogin, db: Session = Depends(get_db)):
     """Login user with email or username and password"""
 
     # Determine if the identifier is an email or username
@@ -839,16 +960,23 @@ async def login(user_data: UserLogin, db: Session = Depends(get_db)):
     if not user or not user.auth_account.password_hash:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Неверные учетные данные. Проверьте правильность email/имени пользователя и пароля.",
+            detail="Invalid credentials.",
         )
+
+    # Check login lockout
+    auth_service.check_login_lockout(db, user.auth_account)
 
     if not auth_service.verify_password(
         user_data.password, user.auth_account.password_hash
     ):
+        auth_service.record_failed_login(db, user.auth_account)
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Неверный пароль. Проверьте правильность введенного пароля.",
+            detail="Invalid credentials.",
         )
+
+    # Reset failed login attempts on success
+    auth_service.reset_failed_login(db, user.auth_account)
 
     # Create access token
     access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
@@ -858,9 +986,11 @@ async def login(user_data: UserLogin, db: Session = Depends(get_db)):
 
     # Get avatar_url from profile if it exists
     avatar_url = user.profile.avatar_url if user.profile else None
+    refresh_token = auth_service.create_refresh_token(db, user.auth_account)
     return AuthResponse(
         token=access_token,
         expires_at=datetime.utcnow() + access_token_expires,
+        refresh_token=refresh_token,
         user=schemas.UserProfileResponse(
             id=user.id,
             username=user.username,
@@ -875,7 +1005,8 @@ async def login(user_data: UserLogin, db: Session = Depends(get_db)):
 
 
 @app.post("/api/v1/auth/oauth/login", response_model=AuthResponse)
-async def oauth_login(oauth_data: OAuthLogin, db: Session = Depends(get_db)):
+@limiter.limit("10/minute")
+async def oauth_login(request: Request, oauth_data: OAuthLogin, db: Session = Depends(get_db)):
     """Login with OAuth provider"""
     result = await auth_service.handle_oauth_login(
         db, oauth_data.provider, oauth_data.token
@@ -887,23 +1018,90 @@ async def oauth_login(oauth_data: OAuthLogin, db: Session = Depends(get_db)):
             detail="Invalid OAuth token or provider not supported",
         )
 
+    # Issue refresh token for the OAuth user
+    user = auth_service.get_user_by_email(db, result["user"]["email"])
+    refresh_token = auth_service.create_refresh_token(db, user.auth_account) if user else None
+
     return AuthResponse(
         token=result["token"],
         expires_at=result["expires_at"],
+        refresh_token=refresh_token,
         user=schemas.UserProfileResponse(**result["user"]),
     )
 
 
-def _issue_brand_jwt(brand: Brand) -> AuthResponse:
+class RefreshTokenRequest(BaseModel):
+    refresh_token: str
+
+
+@app.post("/api/v1/auth/refresh", response_model=AuthResponse)
+@limiter.limit("10/minute")
+async def refresh_token(request: Request, body: RefreshTokenRequest, db: Session = Depends(get_db)):
+    """Exchange a valid refresh token for new access + refresh tokens (rotation)."""
+    acc = auth_service.verify_refresh_token(db, body.refresh_token)
+    if not acc:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid or expired refresh token")
+
+    # Determine linked principal (User or Brand)
+    if acc.user:
+        user = acc.user
+        if user.deleted_at is not None:
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Account deleted")
+        token_data = {"sub": user.id}
+        avatar_url = user.profile.avatar_url if user.profile else None
+        profile = schemas.UserProfileResponse(
+            id=user.id,
+            username=user.username,
+            email=acc.email,
+            avatar_url=avatar_url,
+            is_active=user.is_active,
+            is_email_verified=acc.is_email_verified,
+            created_at=user.created_at,
+            updated_at=user.updated_at,
+        )
+    elif acc.brand:
+        brand = acc.brand
+        token_data = {"sub": str(brand.id), "is_brand": True}
+        profile = schemas.UserProfileResponse(
+            id=str(brand.id),
+            username=brand.name,
+            email=acc.email,
+            is_active=True,
+            is_email_verified=True,
+            is_brand=True,
+            created_at=brand.created_at,
+            updated_at=brand.updated_at,
+        )
+    else:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="No linked account")
+
+    # Issue new access token
+    access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+    access_token = auth_service.create_access_token(data=token_data, expires_delta=access_token_expires)
+
+    # Rotate refresh token
+    new_refresh_token = auth_service.create_refresh_token(db, acc)
+
+    return AuthResponse(
+        token=access_token,
+        expires_at=datetime.utcnow() + access_token_expires,
+        refresh_token=new_refresh_token,
+        user=profile,
+    )
+
+
+def _issue_brand_jwt(brand: Brand, db: Session = None) -> AuthResponse:
     """Issue JWT for a successfully authenticated brand."""
     access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = auth_service.create_access_token(
         data={"sub": str(brand.id), "is_brand": True},
         expires_delta=access_token_expires,
     )
+    refresh_token = auth_service.create_refresh_token(db, brand.auth_account) if db else None
     return AuthResponse(
         token=access_token,
         expires_at=datetime.utcnow() + access_token_expires,
+        refresh_token=refresh_token,
         user=schemas.UserProfileResponse(
             id=str(brand.id),
             username=brand.name,
@@ -1017,7 +1215,7 @@ async def brand_login(
         )
 
     # No 2FA — issue JWT directly
-    return _issue_brand_jwt(brand)
+    return _issue_brand_jwt(brand, db)
 
 
 @app.post("/api/v1/brands/auth/2fa/verify")
@@ -1078,7 +1276,7 @@ async def brand_verify_2fa(
     acc.otp_resend_window_start = None
     db.commit()
 
-    return _issue_brand_jwt(brand)
+    return _issue_brand_jwt(brand, db)
 
 
 @app.post("/api/v1/brands/auth/2fa/resend")
@@ -1302,12 +1500,12 @@ async def request_brand_deletion(
         raise HTTPException(
             status_code=400, detail="Account deletion already scheduled"
         )
-    grace_end = datetime.utcnow() + timedelta(minutes=5)
+    grace_end = datetime.utcnow() + timedelta(days=settings.BRAND_DELETION_GRACE_DAYS)
     current_user.is_inactive = True
     current_user.scheduled_deletion_at = grace_end
     db.commit()
     return schemas.BrandDeleteResponse(
-        message="Account scheduled for deletion. You have 5 minutes to reactivate by logging in.",
+        message=f"Account scheduled for deletion. You have {settings.BRAND_DELETION_GRACE_DAYS} days to reactivate by logging in.",
         scheduled_deletion_at=grace_end,
     )
 
@@ -1554,8 +1752,9 @@ async def request_verification(
 
 
 @app.post("/api/v1/auth/verify-email")
+@limiter.limit("10/minute")
 async def verify_email(
-    verification_data: schemas.EmailVerificationRequest, db: Session = Depends(get_db)
+    request: Request, verification_data: schemas.EmailVerificationRequest, db: Session = Depends(get_db)
 ):
     user = auth_service.get_user_by_email(db, verification_data.email)
     if not user:
@@ -1614,8 +1813,9 @@ async def forgot_password(
 
 
 @app.post("/api/v1/auth/reset-password")
+@limiter.limit("5/minute")
 async def reset_password(
-    reset_password_request: schemas.ResetPasswordRequest, db: Session = Depends(get_db)
+    request: Request, reset_password_request: schemas.ResetPasswordRequest, db: Session = Depends(get_db)
 ):
     user = (
         db.query(User)
@@ -1660,7 +1860,9 @@ async def reset_password(
 
 
 @app.post("/api/v1/auth/validate-password-reset-code")
+@limiter.limit("5/minute")
 async def validate_password_reset_code(
+    request: Request,
     validation_request: schemas.ValidatePasswordResetCodeRequest,
     db: Session = Depends(get_db),
 ):
@@ -1689,7 +1891,9 @@ async def validate_password_reset_code(
 
 
 @app.post("/api/v1/auth/reset-password-with-code")
+@limiter.limit("5/minute")
 async def reset_password_with_code(
+    request: Request,
     reset_password_request: schemas.ResetPasswordWithCodeRequest,
     db: Session = Depends(get_db),
 ):
@@ -1876,6 +2080,7 @@ def register_push_token(
     """Store Expo push token for the authenticated user (buyers only)."""
     if not hasattr(current_user, "expo_push_token"):
         raise HTTPException(status_code=400, detail="Not a user account")
+    print(f"push-token - user {current_user.id} registering token: {body.token}")
     current_user.expo_push_token = body.token
     db.commit()
     return None
@@ -3619,9 +3824,9 @@ async def create_payment_endpoint(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=e.errors()
         )
     except Exception as e:
-        print(f"An unexpected error occurred: {e}")
+        logger.exception("Payment creation failed")
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Payment creation failed. Please try again."
         )
 
 
@@ -3823,9 +4028,10 @@ async def create_order_test_endpoint(
             )
         return schemas.OrderTestCreateResponse(order_id=checkout_id)
     except Exception as e:
+        logger.exception("Test order creation failed")
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e),
+            detail="Order creation failed. Please try again.",
         )
 
 
@@ -4301,7 +4507,7 @@ def mark_all_notifications_read(
     db.query(Notification).filter(
         Notification.recipient_type == "brand",
         Notification.recipient_id == str(current_user.id),
-        not Notification.is_read,
+        Notification.is_read == False,
         Notification.expires_at > now,
     ).update({"is_read": True})
     db.commit()

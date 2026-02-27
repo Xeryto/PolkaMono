@@ -43,10 +43,19 @@ const BrandResetPasswordPage = () => {
       newErrors.code = "Код должен содержать минимум 4 символа";
     }
 
+    const passwordRegex = /^(?=.*[A-Za-z])(?=.*\d).+$/;
+    const illegalCharRegex = /[^a-zA-Z0-9#$\-_!]/;
+
     if (!password.trim()) {
       newErrors.password = "Новый пароль обязателен";
     } else if (password.length < 6) {
       newErrors.password = "Пароль должен содержать минимум 6 символов";
+    } else if (!passwordRegex.test(password)) {
+      newErrors.password = "Пароль должен содержать буквы и цифры";
+    } else if (password.includes(" ")) {
+      newErrors.password = "Пароль не должен содержать пробелов";
+    } else if (illegalCharRegex.test(password)) {
+      newErrors.password = "Пароль содержит недопустимые символы";
     }
 
     if (!confirmPassword.trim()) {

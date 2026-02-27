@@ -70,7 +70,8 @@ def send_expo_push_notification(
 ) -> None:
     """Send a push notification via Expo Push API. Fire-and-forget — errors are logged not raised."""
     if not push_token or not push_token.startswith("ExponentPushToken"):
-        return  # not a valid Expo token
+        print(f"notification_service - skipping push: invalid token '{push_token}'")
+        return
     payload = {
         "to": push_token,
         "title": title,
@@ -78,11 +79,13 @@ def send_expo_push_notification(
         "sound": "default",
         "data": data or {},
     }
+    print(f"notification_service - sending push to {push_token[:30]}... title='{title}' data={data}")
     try:
         with httpx.Client(timeout=5.0) as client:
-            client.post(
+            resp = client.post(
                 EXPO_PUSH_URL, json=payload, headers={"Accept": "application/json"}
             )
+        print(f"notification_service - Expo response {resp.status_code}: {resp.text}")
     except Exception as exc:
         print(f"notification_service - push failed: {exc}")
 
@@ -94,11 +97,17 @@ def send_buyer_shipped_notification(
     from models import User, UserPreferences
 
     user = db.query(User).filter(User.id == user_id).first()
-    if not user or not user.expo_push_token:
+    if not user:
+        print(f"notification_service - shipped: user {user_id} not found")
+        return
+    if not user.expo_push_token:
+        print(f"notification_service - shipped: user {user_id} has no push token")
         return
     prefs = db.query(UserPreferences).filter(UserPreferences.user_id == user_id).first()
     if prefs and not prefs.order_notifications:
+        print(f"notification_service - shipped: user {user_id} disabled order notifications")
         return
+    print(f"notification_service - shipped: sending to user {user_id}, token={user.expo_push_token[:30]}...")
     send_expo_push_notification(
         push_token=user.expo_push_token,
         title="Заказ отправлен",
@@ -116,7 +125,7 @@ def send_admin_broadcast_to_brands(db: Session, message: str) -> None:
     """
     from models import Brand
 
-    brands = db.query(Brand).filter(not Brand.is_inactive).all()
+    brands = db.query(Brand).filter(Brand.is_inactive == False).all()
     for brand in brands:
         create_notification(
             db=db,

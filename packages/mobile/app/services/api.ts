@@ -549,7 +549,8 @@ export const registerUser = async (
   // Store session
   await sessionManager.storeSession(
     response.token,
-    response.expires_at
+    response.expires_at,
+    response.refresh_token
   );
 
   // Clear global caches for new user to prevent contamination from previous users
@@ -577,7 +578,8 @@ export const loginUser = async (
   // Store session
   await sessionManager.storeSession(
     response.token,
-    response.expires_at
+    response.expires_at,
+    response.refresh_token
   );
 
   // Clear global caches for new user session to ensure fresh data
@@ -642,7 +644,8 @@ export const oauthLogin = async (provider: string, token: string): Promise<AuthR
   // Store session
   await sessionManager.storeSession(
     response.token,
-    response.expires_at
+    response.expires_at,
+    response.refresh_token
   );
 
   // Store user profile

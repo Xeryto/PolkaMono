@@ -43,11 +43,8 @@ import FriendRecommendationsScreen from "./app/screens/FriendRecommendationsScre
 import * as SplashScreen from "expo-splash-screen";
 import * as Notifications from "expo-notifications";
 
-let isNotificationsAvailable = false;
+let isNotificationsAvailable = true;
 try {
-  // Test if the native module is linked by accessing a method
-  Notifications.getPermissionsAsync && (isNotificationsAvailable = true);
-  // Actually verify native module exists (will throw if missing)
   require("expo-modules-core").requireNativeModule("ExpoPushTokenManager");
 } catch {
   console.warn("expo-notifications native module not available, push disabled");
@@ -1233,10 +1230,13 @@ function AppContent() {
   const triggerPushRegistration = () => {
     registerForPushNotificationsAsync()
       .then((token) => {
+        console.log("App - Push token obtained:", token);
         if (token) {
-          registerPushToken(token).catch((err) =>
-            console.log("App - Push token registration failed:", err),
-          );
+          registerPushToken(token)
+            .then(() => console.log("App - Push token registered with API"))
+            .catch((err) =>
+              console.log("App - Push token registration failed:", err),
+            );
         }
       })
       .catch((err) => console.log("App - Push registration error:", err));

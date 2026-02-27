@@ -43,37 +43,35 @@ function formatRelativeTime(isoString: string): string {
 export function DashboardHeader({ onViewChange, onTargetOrder }: DashboardHeaderProps) {
   const { logout, token } = useAuth();
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
-  const [unreadCount, setUnreadCount] = useState(0);
   const [bellOpen, setBellOpen] = useState(false);
+  const unreadCount = notifications.filter(n => !n.is_read).length;
 
   const loadNotifications = useCallback(async () => {
     if (!token) return;
     try {
       const data = await fetchNotifications(token);
       setNotifications(data.notifications);
-      setUnreadCount(data.unread_count);
     } catch {
       // silently fail — bell just shows empty
     }
   }, [token]);
 
-  // Poll every 30 seconds for new notifications
+  // Poll every 30 seconds; pause when tab is hidden, refresh on return
   useEffect(() => {
     loadNotifications();
-    const interval = setInterval(loadNotifications, 30_000);
-    return () => clearInterval(interval);
+    const interval = setInterval(() => {
+      if (!document.hidden) loadNotifications();
+    }, 30_000);
+    const onVisible = () => { if (!document.hidden) loadNotifications(); };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => { clearInterval(interval); document.removeEventListener("visibilitychange", onVisible); };
   }, [loadNotifications]);
 
-  const handleBellOpen = useCallback(async (open: boolean) => {
+  const handleBellOpen = useCallback((open: boolean) => {
     setBellOpen(open);
     if (open && unreadCount > 0 && token) {
-      try {
-        await markNotificationsRead(token);
-        setUnreadCount(0);
-        setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
-      } catch {
-        // ignore
-      }
+      setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
+      markNotificationsRead(token).catch(() => {});
     }
   }, [unreadCount, token]);
 

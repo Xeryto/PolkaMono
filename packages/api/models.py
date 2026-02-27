@@ -49,6 +49,10 @@ class AuthAccount(Base):
     otp_locked_until = Column(DateTime, nullable=True)        # 15-min lockout after too many fails
     otp_resend_count = Column(Integer, default=0, nullable=False)     # Resets each login attempt
     otp_resend_window_start = Column(DateTime, nullable=True) # When current resend window started
+    failed_login_attempts = Column(Integer, default=0, nullable=False)
+    login_locked_until = Column(DateTime, nullable=True)
+    refresh_token_hash = Column(String(255), nullable=True)
+    refresh_token_expires_at = Column(DateTime, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 

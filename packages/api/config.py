@@ -32,6 +32,10 @@ class Settings:
     OTP_LOCKOUT_MINUTES: int = int(os.getenv("OTP_LOCKOUT_MINUTES", "15"))
     OTP_MAX_RESENDS: int = int(os.getenv("OTP_MAX_RESENDS", "3"))
     OTP_RESEND_COOLDOWN_SECONDS: int = int(os.getenv("OTP_RESEND_COOLDOWN_SECONDS", "60"))
+    LOGIN_MAX_FAILED_ATTEMPTS: int = int(os.getenv("LOGIN_MAX_FAILED_ATTEMPTS", "5"))
+    LOGIN_LOCKOUT_MINUTES: int = int(os.getenv("LOGIN_LOCKOUT_MINUTES", "15"))
+    REFRESH_TOKEN_EXPIRE_DAYS: int = int(os.getenv("REFRESH_TOKEN_EXPIRE_DAYS", "60"))
+    BRAND_DELETION_GRACE_DAYS: int = int(os.getenv("BRAND_DELETION_GRACE_DAYS", "30"))
     
     # Database Configuration
     DATABASE_URL: str = os.getenv("DATABASE_URL")
@@ -50,7 +54,9 @@ class Settings:
         cors_origins_env = os.getenv("BACKEND_CORS_ORIGINS")
         if cors_origins_env:
             return [origin.strip() for origin in cors_origins_env.split(",")]
-            
+        if self.ENVIRONMENT == "production":
+            return []
+        return ["http://localhost:3000", "http://localhost:8081"]
     
     @property
     def BACKEND_CORS_ORIGINS(self) -> List[str]:

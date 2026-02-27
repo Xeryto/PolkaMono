@@ -95,6 +95,7 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({
   const [deliveryTimeMax, setDeliveryTimeMax] = useState<string>(
     product.delivery_time_max != null ? String(product.delivery_time_max) : ''
   );
+  const [countryOfManufacture, setCountryOfManufacture] = useState(product.country_of_manufacture || "");
   const [activeTab, setActiveTab] = useState<string>('info');
 
   const hasDuplicateSizes = (variants: { size: string; stock_quantity: number }[]) => {
@@ -127,6 +128,7 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({
     setDeliveryOverride(product.delivery_time_min != null || product.delivery_time_max != null);
     setDeliveryTimeMin(product.delivery_time_min != null ? String(product.delivery_time_min) : '');
     setDeliveryTimeMax(product.delivery_time_max != null ? String(product.delivery_time_max) : '');
+    setCountryOfManufacture(product.country_of_manufacture || "");
     setActiveTab('info');
   }, [product]);
 
@@ -291,6 +293,7 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({
           sizing_table_image: finalSizingTableImage,
           delivery_time_min: deliveryOverride && deliveryTimeMin !== '' ? parseInt(deliveryTimeMin) : null,
           delivery_time_max: deliveryOverride && deliveryTimeMax !== '' ? parseInt(deliveryTimeMax) : null,
+          country_of_manufacture: countryOfManufacture || null,
         },
         token!
       );
@@ -502,6 +505,16 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({
                     onValueChange={setSelectedMaterials}
                     placeholder="Выберите материалы"
                     className="mt-1"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="country_of_manufacture">Страна производства</Label>
+                  <Input
+                    id="country_of_manufacture"
+                    placeholder="напр., Италия"
+                    className="mt-1"
+                    value={countryOfManufacture}
+                    onChange={(e) => setCountryOfManufacture(e.target.value)}
                   />
                 </div>
               </div>

@@ -862,6 +862,11 @@ const Wall = ({ navigation, onLogout, openOrderId }: WallProps) => {
           <Text style={styles.orderTotalText}>
             ИТОГО {orderDetail.total_amount.toFixed(2)} ₽
           </Text>
+          {(orderDetail.shipping_cost ?? 0) > 0 && (
+            <Text style={styles.orderDeliveryText}>
+              ДОСТАВКА {orderDetail.shipping_cost!.toFixed(2)} ₽
+            </Text>
+          )}
         </Animated.View>
         <Animated.View
           entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
@@ -2003,6 +2008,12 @@ const createStyles = (theme: ThemeColors) => StyleSheet.create({
     fontFamily: "IgraSans",
     fontSize: 34,
     color: theme.text.primary,
+  },
+  orderDeliveryText: {
+    fontFamily: "IgraSans",
+    fontSize: 18,
+    color: theme.text.secondary,
+    marginTop: 4,
   },
   orderStatusContainer: {
     height: height * 0.1,

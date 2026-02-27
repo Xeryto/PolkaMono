@@ -25,10 +25,18 @@ import { useAuth } from "@/context/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { z } from "zod";
 
+const passwordRegex = /^(?=.*[A-Za-z])(?=.*\d).+$/;
+const illegalCharRegex = /[^a-zA-Z0-9#$\-_!]/;
+
 const passwordSchema = z
   .object({
     current_password: z.string().min(1, "Обязательное поле"),
-    new_password: z.string().min(8, "Минимум 8 символов"),
+    new_password: z
+      .string()
+      .min(6, "Минимум 6 символов")
+      .refine((v) => !v.includes(" "), "Пароль не должен содержать пробелов")
+      .refine((v) => passwordRegex.test(v), "Пароль должен содержать буквы и цифры")
+      .refine((v) => !illegalCharRegex.test(v), "Пароль содержит недопустимые символы"),
     confirm_new_password: z.string().min(1, "Обязательное поле"),
   })
   .refine((d) => d.new_password === d.confirm_new_password, {

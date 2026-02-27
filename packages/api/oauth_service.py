@@ -62,7 +62,7 @@ class OAuthService:
     async def get_google_user_info(self, token: str) -> Optional[Dict[str, Any]]:
         """Get Google user information from token"""
         try:
-            async with httpx.AsyncClient() as client:
+            async with httpx.AsyncClient(timeout=10.0) as client:
                 response = await client.get(
                     'https://www.googleapis.com/oauth2/v2/userinfo',
                     headers={'Authorization': f'Bearer {token}'}
@@ -83,7 +83,7 @@ class OAuthService:
     async def get_facebook_user_info(self, token: str) -> Optional[Dict[str, Any]]:
         """Get Facebook user information from token"""
         try:
-            async with httpx.AsyncClient() as client:
+            async with httpx.AsyncClient(timeout=10.0) as client:
                 response = await client.get(
                     'https://graph.facebook.com/me',
                     params={
@@ -107,7 +107,7 @@ class OAuthService:
     async def get_github_user_info(self, token: str) -> Optional[Dict[str, Any]]:
         """Get GitHub user information from token"""
         try:
-            async with httpx.AsyncClient() as client:
+            async with httpx.AsyncClient(timeout=10.0) as client:
                 # Get user info
                 response = await client.get(
                     'https://api.github.com/user',
@@ -148,9 +148,10 @@ class OAuthService:
     
     async def verify_apple_token(self, id_token: str) -> Optional[Dict[str, Any]]:
         """Verify Apple ID token and extract user information"""
+        # TODO: SECURITY — JWKS signature verification must be implemented before
+        # enabling Apple OAuth in production. Currently decodes without verifying
+        # the JWT signature, which allows forged tokens.
         try:
-            # In a production environment, you would verify the JWT signature
-            # For now, we'll decode without verification (not recommended for production)
             decoded = jwt.decode(id_token, options={"verify_signature": False})
             
             return {

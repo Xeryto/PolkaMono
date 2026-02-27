@@ -177,11 +177,35 @@ class ResetPasswordRequest(BaseModel):
     token: str
     new_password: str
 
+    @validator("new_password")
+    def validate_new_password(cls, v):
+        if len(v) < settings.MIN_PASSWORD_LENGTH:
+            raise ValueError(
+                f"Password must be at least {settings.MIN_PASSWORD_LENGTH} characters"
+            )
+        if " " in v:
+            raise ValueError("Password cannot contain spaces")
+        if not any(c.isalpha() for c in v) or not any(c.isdigit() for c in v):
+            raise ValueError("Password must contain both letters and numbers")
+        return v
+
 
 class ResetPasswordWithCodeRequest(BaseModel):
     identifier: str  # Can be either email or username
     code: str
     new_password: str
+
+    @validator("new_password")
+    def validate_new_password(cls, v):
+        if len(v) < settings.MIN_PASSWORD_LENGTH:
+            raise ValueError(
+                f"Password must be at least {settings.MIN_PASSWORD_LENGTH} characters"
+            )
+        if " " in v:
+            raise ValueError("Password cannot contain spaces")
+        if not any(c.isalpha() for c in v) or not any(c.isdigit() for c in v):
+            raise ValueError("Password must contain both letters and numbers")
+        return v
 
 
 class ValidatePasswordResetCodeRequest(BaseModel):
@@ -664,7 +688,19 @@ class PresignedUploadResponse(BaseModel):
 
 class BrandChangePassword(BaseModel):
     current_password: str
-    new_password: str = Field(min_length=8)
+    new_password: str
+
+    @validator("new_password")
+    def validate_new_password(cls, v):
+        if len(v) < settings.MIN_PASSWORD_LENGTH:
+            raise ValueError(
+                f"Password must be at least {settings.MIN_PASSWORD_LENGTH} characters"
+            )
+        if " " in v:
+            raise ValueError("Password cannot contain spaces")
+        if not any(c.isalpha() for c in v) or not any(c.isdigit() for c in v):
+            raise ValueError("Password must contain both letters and numbers")
+        return v
 
 
 class Brand2FAConfirm(BaseModel):

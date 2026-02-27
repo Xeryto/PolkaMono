@@ -7,6 +7,7 @@ from models import User, OAuthAccount, UserProfile, Gender, AuthAccount
 from oauth_service import oauth_service
 from config import settings
 import bcrypt
+import hashlib
 import jwt
 from datetime import datetime, timedelta
 import uuid
@@ -297,6 +298,62 @@ class AuthService:
         db.commit()
         db.refresh(acc)
         return acc
+
+    @staticmethod
+    def check_login_lockout(db: Session, auth_account: AuthAccount) -> None:
+        """Raise 423 if account is currently locked out. Reset counter if lockout expired."""
+        if auth_account.login_locked_until:
+            if auth_account.login_locked_until > datetime.utcnow():
+                remaining = int((auth_account.login_locked_until - datetime.utcnow()).total_seconds() // 60) + 1
+                from fastapi import HTTPException, status
+                raise HTTPException(
+                    status_code=status.HTTP_423_LOCKED,
+                    detail=f"Account locked. Try again in {remaining} minute(s).",
+                )
+            # Lockout expired — reset so user gets fresh attempts
+            auth_account.failed_login_attempts = 0
+            auth_account.login_locked_until = None
+            db.commit()
+
+    @staticmethod
+    def record_failed_login(db: Session, auth_account: AuthAccount) -> None:
+        """Increment failed attempts; lock if threshold reached."""
+        auth_account.failed_login_attempts = (auth_account.failed_login_attempts or 0) + 1
+        if auth_account.failed_login_attempts >= settings.LOGIN_MAX_FAILED_ATTEMPTS:
+            auth_account.login_locked_until = datetime.utcnow() + timedelta(minutes=settings.LOGIN_LOCKOUT_MINUTES)
+        db.commit()
+
+    @staticmethod
+    def reset_failed_login(db: Session, auth_account: AuthAccount) -> None:
+        """Reset failed login state on successful auth."""
+        auth_account.failed_login_attempts = 0
+        auth_account.login_locked_until = None
+        db.commit()
+
+    @staticmethod
+    def create_refresh_token(db: Session, auth_account: AuthAccount) -> str:
+        """Generate rotating refresh token, store hashed, return raw."""
+        raw = secrets.token_urlsafe(64)
+        auth_account.refresh_token_hash = hashlib.sha256(raw.encode()).hexdigest()
+        auth_account.refresh_token_expires_at = datetime.utcnow() + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
+        db.commit()
+        return raw
+
+    @staticmethod
+    def verify_refresh_token(db: Session, raw_token: str) -> Optional[AuthAccount]:
+        """Verify refresh token; return AuthAccount or None."""
+        token_hash = hashlib.sha256(raw_token.encode()).hexdigest()
+        acc = db.query(AuthAccount).filter(AuthAccount.refresh_token_hash == token_hash).first()
+        if not acc or not acc.refresh_token_expires_at or acc.refresh_token_expires_at < datetime.utcnow():
+            return None
+        return acc
+
+    @staticmethod
+    def revoke_refresh_token(db: Session, auth_account: AuthAccount) -> None:
+        """Invalidate refresh token."""
+        auth_account.refresh_token_hash = None
+        auth_account.refresh_token_expires_at = None
+        db.commit()
 
     @staticmethod
     def get_admin_by_email(db: Session, email: str) -> Optional[AuthAccount]:

@@ -1,4 +1,10 @@
-import React, { useState, useEffect, useCallback, useRef, useMemo } from "react";
+import React, {
+  useState,
+  useEffect,
+  useCallback,
+  useRef,
+  useMemo,
+} from "react";
 import {
   View,
   Text,
@@ -83,7 +89,7 @@ const HeartButton: React.FC<HeartButtonProps> = ({ isLiked, onToggleLike }) => {
     Haptics.impactAsync(
       isLiked
         ? Haptics.ImpactFeedbackStyle.Light
-        : Haptics.ImpactFeedbackStyle.Medium
+        : Haptics.ImpactFeedbackStyle.Medium,
     );
     RNAnimated.sequence([
       RNAnimated.spring(heartScale, {
@@ -150,7 +156,7 @@ const RecentPiecesScreen: React.FC<RecentPiecesScreenProps> = ({
       // Try to load from cache first
       const cachedData = await AsyncStorage.getItem(RECENT_PIECES_CACHE_KEY);
       const cachedTime = await AsyncStorage.getItem(
-        RECENT_PIECES_CACHE_TIME_KEY
+        RECENT_PIECES_CACHE_TIME_KEY,
       );
 
       if (cachedData && cachedTime) {
@@ -180,7 +186,7 @@ const RecentPiecesScreen: React.FC<RecentPiecesScreenProps> = ({
     try {
       const products = await api.getRecentSwipes(5);
       const cardItems = products.map((product, index) =>
-        mapProductToCardItem(product, index)
+        mapProductToCardItem(product, index),
       );
 
       // Only update if still mounted
@@ -198,11 +204,11 @@ const RecentPiecesScreen: React.FC<RecentPiecesScreenProps> = ({
       // Update cache
       await AsyncStorage.setItem(
         RECENT_PIECES_CACHE_KEY,
-        JSON.stringify(cardItems)
+        JSON.stringify(cardItems),
       );
       await AsyncStorage.setItem(
         RECENT_PIECES_CACHE_TIME_KEY,
-        Date.now().toString()
+        Date.now().toString(),
       );
     } catch (err) {
       console.error("Error fetching recent pieces:", err);
@@ -239,15 +245,15 @@ const RecentPiecesScreen: React.FC<RecentPiecesScreenProps> = ({
               const action = newLikedStatus ? "like" : "unlike";
               await api.toggleFavorite(pieceId, action);
               console.log(
-                `RecentPieces - Updated piece ${pieceId} like status to: ${newLikedStatus}`
+                `RecentPieces - Updated piece ${pieceId} like status to: ${newLikedStatus}`,
               );
             } catch (error) {
               console.error("Error toggling favorite:", error);
               // Revert on error
               setRecentPieces((revertPieces) =>
                 revertPieces.map((p) =>
-                  p.id === pieceId ? { ...p, isLiked: currentLikedStatus } : p
-                )
+                  p.id === pieceId ? { ...p, isLiked: currentLikedStatus } : p,
+                ),
               );
             }
           };
@@ -293,7 +299,7 @@ const RecentPiecesScreen: React.FC<RecentPiecesScreenProps> = ({
     return (
       <Animated.View
         entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
-          ANIMATION_DELAYS.MEDIUM + index * 50
+          ANIMATION_DELAYS.MEDIUM + index * 50,
         )}
         style={styles.pieceWrapper}
       >
@@ -387,23 +393,15 @@ const RecentPiecesScreen: React.FC<RecentPiecesScreenProps> = ({
   };
 
   return (
-    <LinearGradient
-      colors={theme.gradients.main as any}
-      locations={[0, 0.34, 0.5, 0.87]}
-      style={styles.container}
-      start={{ x: 0, y: 0.2 }}
-      end={{ x: 1, y: 0.8 }}
+    <Animated.View
+      style={styles.content}
+      entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
+        ANIMATION_DELAYS.LARGE,
+      )}
+      exiting={FadeOutDown.duration(ANIMATION_DURATIONS.MICRO)}
     >
-      <SafeAreaView style={styles.gradient} edges={["top", "bottom"]}>
-        <Animated.View
-          style={styles.content}
-          entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
-            ANIMATION_DELAYS.LARGE
-          )}
-          exiting={FadeOutDown.duration(ANIMATION_DURATIONS.MICRO)}
-        >
-          {/* Header with oval background */}
-          <View style={styles.header}>
+      {/* Header with oval background */}
+      <View style={styles.header}>
         <TouchableOpacity
           style={styles.backButton}
           onPress={() => {
@@ -450,227 +448,226 @@ const RecentPiecesScreen: React.FC<RecentPiecesScreenProps> = ({
       ) : (
         renderEmpty()
       )}
-        </Animated.View>
-      </SafeAreaView>
-    </LinearGradient>
+    </Animated.View>
   );
 };
 
-const createStyles = (theme: ThemeColors) => StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: theme.background.primary,
-  },
-  gradient: {
-    flex: 1,
-  },
-  content: {
-    flex: 1,
-    paddingHorizontal: 20,
-    paddingBottom: 15,
-  },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    height: height * 0.065,
-    paddingHorizontal: width * 0.06,
-    zIndex: 10,
-    marginBottom: 5,
-  },
-  backButton: {
-    padding: 10,
-    position: "absolute",
-    left: width * 0.05,
-  },
-  titleOvalShadowWrapper: {
-    height: "100%",
-    borderRadius: 30,
-    shadowColor: theme.shadow.default,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 5,
-  },
-  titleOvalWrapper: {
-    height: "100%",
-    width: "100%",
-    borderRadius: 30,
-    position: "relative",
-    overflow: "hidden",
-  },
-  titleOvalBorder: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    borderRadius: 30,
-  },
-  titleOvalInnerWrapper: {
-    width: "100%",
-    height: "100%",
-    padding: 3,
-    borderRadius: 30,
-  },
-  titleOvalContainer: {
-    width: "100%",
-    height: "100%",
-    borderRadius: 27,
-    justifyContent: "center",
-    alignItems: "center",
-    paddingHorizontal: 20,
-    paddingVertical: height * 0.015,
-  },
-  title: {
-    fontFamily: "IgraSans",
-    fontSize: 18,
-    lineHeight: 22,
-    color: theme.text.primary,
-    textAlign: "center",
-  },
-  listContent: {
-    paddingTop: 15,
-  },
-  pieceWrapper: {
-    width: "100%",
-    marginBottom: 15,
-    alignItems: "center",
-  },
-  roundedBoxContainer: {
-    width: "88%",
-    height: height * 0.225, // Smaller than MainPage
-    borderRadius: 41,
-    backgroundColor: theme.primary + "00",
-    borderWidth: 3,
-    borderColor: theme.primary + "66",
-    position: "relative",
-    overflow: "visible", // Changed from hidden to visible so whiteBox can extend
-    zIndex: 0,
-  },
-  gradientBackground: {
-    borderRadius: 38,
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    zIndex: 1,
-  },
-  whiteBox: {
-    width: "102%",
-    height: "70%", // Reduced size
-    borderRadius: 38,
-    backgroundColor: theme.background.primary,
-    shadowColor: theme.shadow.default,
-    shadowOffset: {
-      width: 0.25,
-      height: 4,
+const createStyles = (theme: ThemeColors) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: theme.background.primary,
     },
-    shadowOpacity: 0.5,
-    shadowRadius: 4,
-    elevation: 10,
-    position: "absolute",
-    top: -3,
-    left: -3,
-    flexDirection: "row",
-    overflow: "hidden",
-    justifyContent: "center",
-    alignItems: "center",
-    zIndex: 10, // Higher than border and gradient
-  },
-  imageContainer: {
-    width: "40%", // Smaller image container
-    maxHeight: "90%",
-    justifyContent: "center",
-    alignItems: "center",
-    padding: 15,
-  },
-  pieceImage: {
-    width: "100%",
-    height: "100%",
-  },
-  placeholderImage: {
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: theme.surface.button,
-  },
-  placeholderText: {
-    fontFamily: "REM",
-    fontSize: 12,
-    color: theme.text.secondary,
-    textAlign: "center",
-  },
-  iconsContainer: {
-    flex: 1,
-    flexDirection: "row", // Horizontal layout
-    justifyContent: "flex-end",
-    alignItems: "center",
-    gap: 20,
-    paddingRight: 20,
-  },
-  iconButton: {
-    padding: 5,
-  },
-  heartButton: {
-    padding: 5,
-  },
-  textSection: {
-    position: "absolute",
-    bottom: 12.5,
-    left: 18,
-    right: 18,
-    paddingTop: 5,
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    zIndex: 11, // Above white box
-  },
-  brandName: {
-    fontFamily: "IgraSans",
-    fontSize: 32,
-    textAlign: "left",
-    color: theme.text.inverse,
-    flex: 1,
-  },
-  price: {
-    fontFamily: "REM",
-    fontSize: 14,
-    textAlign: "right",
-    color: theme.text.inverse,
-    marginLeft: 10,
-  },
-  emptyContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    paddingVertical: 50,
-  },
-  emptyText: {
-    fontFamily: "REM",
-    fontSize: 16,
-    color: theme.text.secondary,
-    textAlign: "center",
-    marginTop: 20,
-  },
-  errorText: {
-    fontFamily: "REM",
-    fontSize: 16,
-    color: theme.status.error,
-    textAlign: "center",
-    marginBottom: 20,
-  },
-  retryButton: {
-    backgroundColor: theme.button.primary,
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 20,
-  },
-  retryButtonText: {
-    fontFamily: "IgraSans",
-    fontSize: 16,
-    color: theme.text.primary,
-  },
-});
+    gradient: {
+      flex: 1,
+    },
+    content: {
+      flex: 1,
+      paddingHorizontal: 20,
+      paddingBottom: 15,
+    },
+    header: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      height: height * 0.065,
+      paddingHorizontal: width * 0.06,
+      zIndex: 10,
+      marginBottom: 5,
+    },
+    backButton: {
+      padding: 10,
+      position: "absolute",
+      left: width * 0.05,
+    },
+    titleOvalShadowWrapper: {
+      height: "100%",
+      borderRadius: 30,
+      shadowColor: theme.shadow.default,
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.25,
+      shadowRadius: 4,
+      elevation: 5,
+    },
+    titleOvalWrapper: {
+      height: "100%",
+      width: "100%",
+      borderRadius: 30,
+      position: "relative",
+      overflow: "hidden",
+    },
+    titleOvalBorder: {
+      position: "absolute",
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      borderRadius: 30,
+    },
+    titleOvalInnerWrapper: {
+      width: "100%",
+      height: "100%",
+      padding: 3,
+      borderRadius: 30,
+    },
+    titleOvalContainer: {
+      width: "100%",
+      height: "100%",
+      borderRadius: 27,
+      justifyContent: "center",
+      alignItems: "center",
+      paddingHorizontal: 20,
+      paddingVertical: height * 0.015,
+    },
+    title: {
+      fontFamily: "IgraSans",
+      fontSize: 18,
+      lineHeight: 22,
+      color: theme.text.primary,
+      textAlign: "center",
+    },
+    listContent: {
+      paddingTop: 15,
+    },
+    pieceWrapper: {
+      width: "100%",
+      marginBottom: 15,
+      alignItems: "center",
+    },
+    roundedBoxContainer: {
+      width: "88%",
+      height: height * 0.225, // Smaller than MainPage
+      borderRadius: 41,
+      backgroundColor: theme.primary + "00",
+      borderWidth: 3,
+      borderColor: theme.primary + "66",
+      position: "relative",
+      overflow: "visible", // Changed from hidden to visible so whiteBox can extend
+      zIndex: 0,
+    },
+    gradientBackground: {
+      borderRadius: 38,
+      position: "absolute",
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      zIndex: 1,
+    },
+    whiteBox: {
+      width: "102%",
+      height: "70%", // Reduced size
+      borderRadius: 38,
+      backgroundColor: theme.background.primary,
+      shadowColor: theme.shadow.default,
+      shadowOffset: {
+        width: 0.25,
+        height: 4,
+      },
+      shadowOpacity: 0.5,
+      shadowRadius: 4,
+      elevation: 10,
+      position: "absolute",
+      top: -3,
+      left: -3,
+      flexDirection: "row",
+      overflow: "hidden",
+      justifyContent: "center",
+      alignItems: "center",
+      zIndex: 10, // Higher than border and gradient
+    },
+    imageContainer: {
+      width: "40%", // Smaller image container
+      maxHeight: "90%",
+      justifyContent: "center",
+      alignItems: "center",
+      padding: 15,
+    },
+    pieceImage: {
+      width: "100%",
+      height: "100%",
+    },
+    placeholderImage: {
+      justifyContent: "center",
+      alignItems: "center",
+      backgroundColor: theme.surface.button,
+    },
+    placeholderText: {
+      fontFamily: "REM",
+      fontSize: 12,
+      color: theme.text.secondary,
+      textAlign: "center",
+    },
+    iconsContainer: {
+      flex: 1,
+      flexDirection: "row", // Horizontal layout
+      justifyContent: "flex-end",
+      alignItems: "center",
+      gap: 20,
+      paddingRight: 20,
+    },
+    iconButton: {
+      padding: 5,
+    },
+    heartButton: {
+      padding: 5,
+    },
+    textSection: {
+      position: "absolute",
+      bottom: 12.5,
+      left: 18,
+      right: 18,
+      paddingTop: 5,
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      zIndex: 11, // Above white box
+    },
+    brandName: {
+      fontFamily: "IgraSans",
+      fontSize: 32,
+      textAlign: "left",
+      color: theme.text.inverse,
+      flex: 1,
+    },
+    price: {
+      fontFamily: "REM",
+      fontSize: 14,
+      textAlign: "right",
+      color: theme.text.inverse,
+      marginLeft: 10,
+    },
+    emptyContainer: {
+      flex: 1,
+      justifyContent: "center",
+      alignItems: "center",
+      paddingVertical: 50,
+    },
+    emptyText: {
+      fontFamily: "REM",
+      fontSize: 16,
+      color: theme.text.secondary,
+      textAlign: "center",
+      marginTop: 20,
+    },
+    errorText: {
+      fontFamily: "REM",
+      fontSize: 16,
+      color: theme.status.error,
+      textAlign: "center",
+      marginBottom: 20,
+    },
+    retryButton: {
+      backgroundColor: theme.button.primary,
+      paddingHorizontal: 20,
+      paddingVertical: 10,
+      borderRadius: 20,
+    },
+    retryButtonText: {
+      fontFamily: "IgraSans",
+      fontSize: 16,
+      color: theme.text.primary,
+    },
+  });
 
 export default RecentPiecesScreen;

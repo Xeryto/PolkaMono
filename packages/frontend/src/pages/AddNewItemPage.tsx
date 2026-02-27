@@ -94,6 +94,7 @@ export function AddNewItemPage() {
   const [generalImageFiles, setGeneralImageFiles] = useState<File[]>([]);
   const [deliveryTimeMin, setDeliveryTimeMin] = useState<number | undefined>(undefined);
   const [deliveryTimeMax, setDeliveryTimeMax] = useState<number | undefined>(undefined);
+  const [countryOfManufacture, setCountryOfManufacture] = useState("");
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
@@ -360,6 +361,7 @@ export function AddNewItemPage() {
           generalImageUrls.length > 0 ? generalImageUrls : undefined,
         delivery_time_min: deliveryTimeMin,
         delivery_time_max: deliveryTimeMax,
+        country_of_manufacture: countryOfManufacture || undefined,
       };
 
       await api.createProduct(productData, token);
@@ -378,6 +380,7 @@ export function AddNewItemPage() {
       setGeneralImageFiles([]);
       setDeliveryTimeMin(undefined);
       setDeliveryTimeMax(undefined);
+      setCountryOfManufacture("");
     } catch (error: unknown) {
       console.error("Failed to add product:", error);
       const err = error as { message?: string; fieldErrors?: Record<string, string> };
@@ -454,6 +457,17 @@ export function AddNewItemPage() {
               onValueChange={setSelectedMaterials}
               placeholder="Выберите материалы"
               className="mt-1"
+            />
+          </div>
+
+          <div>
+            <Label htmlFor="country_of_manufacture">Страна производства</Label>
+            <Input
+              id="country_of_manufacture"
+              placeholder="напр., Италия"
+              className="mt-1"
+              value={countryOfManufacture}
+              onChange={(e) => setCountryOfManufacture(e.target.value)}
             />
           </div>
 
