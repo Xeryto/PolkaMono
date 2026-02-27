@@ -9,6 +9,7 @@ from typing import List, Literal, Optional
 
 import notification_service
 import payment_service
+import recommendation_service
 import schemas
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.interval import IntervalTrigger
@@ -27,6 +28,7 @@ from mail_service import mail_service
 from models import (
     AuthAccount,
     Brand,
+    BrandWithdrawal,
     Category,
     Checkout,
     ExclusiveAccessEmail,
@@ -60,7 +62,7 @@ from schemas import UserCreate
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.util import get_remote_address
-from sqlalchemy import func, or_, text
+from sqlalchemy import case, func, or_, text
 from sqlalchemy.orm import Session, joinedload
 from storage_service import generate_key, generate_presigned_upload_url
 from storage_service import is_configured as s3_configured
@@ -622,6 +624,7 @@ async def get_brand_profile(
 
 class BrandStatsResponse(BaseModel):
     total_sold: float
+    total_returned: float
     total_withdrawn: float
     current_balance: float
 
@@ -637,6 +640,15 @@ class SwipeTrackingRequest(BaseModel):
     product_id: str
 
 
+# Statuses representing orders that were paid at some point
+_REVENUE_STATUSES = [
+    OrderStatus.PAID,
+    OrderStatus.SHIPPED,
+    OrderStatus.PARTIALLY_RETURNED,
+    OrderStatus.RETURNED,
+]
+
+
 @app.get("/api/v1/brands/stats", response_model=BrandStatsResponse)
 async def get_brand_stats(
     current_brand_user: Brand = Depends(get_current_brand_user),
@@ -644,36 +656,49 @@ async def get_brand_stats(
 ):
     """Get statistics for the authenticated brand user"""
 
-    # 1. Get total amount sold
-    orders_with_brand_products = (
-        db.query(Order)
-        .join(OrderItem)
-        .join(ProductVariant, OrderItem.product_variant_id == ProductVariant.id)
-        .join(
-            ProductColorVariant,
-            ProductVariant.product_color_variant_id == ProductColorVariant.id,
+    # Item-level revenue aggregation (only paid+ orders)
+    row = (
+        db.query(
+            func.coalesce(func.sum(OrderItem.price * OrderItem.quantity), 0.0).label("gross"),
+            func.coalesce(
+                func.sum(
+                    case(
+                        (OrderItem.status == "returned", OrderItem.price * OrderItem.quantity),
+                        else_=0.0,
+                    )
+                ),
+                0.0,
+            ).label("returned"),
         )
+        .join(Order, OrderItem.order_id == Order.id)
+        .join(ProductVariant, OrderItem.product_variant_id == ProductVariant.id)
+        .join(ProductColorVariant, ProductVariant.product_color_variant_id == ProductColorVariant.id)
         .join(Product, ProductColorVariant.product_id == Product.id)
-        .filter(Product.brand_id == current_brand_user.id)
-        .distinct()
-        .all()
+        .filter(
+            Product.brand_id == current_brand_user.id,
+            Order.status.in_(_REVENUE_STATUSES),
+        )
+        .one()
     )
 
-    total_sold = 0.0
-    for order in orders_with_brand_products:
-        for item in order.items:
-            # Ensure the product variant belongs to a product of the current brand
-            if item.product_variant.product.brand_id == current_brand_user.id:
-                total_sold += item.price
+    # Shipping revenue (Order.brand_id exists directly)
+    shipping_total = (
+        db.query(func.coalesce(func.sum(Order.shipping_cost), 0.0))
+        .filter(
+            Order.brand_id == current_brand_user.id,
+            Order.status.in_(_REVENUE_STATUSES),
+        )
+        .scalar()
+    ) or 0.0
 
-    # 2. Get total withdrawn
-    total_withdrawn = current_brand_user.amount_withdrawn
-
-    # 3. Calculate current balance
-    current_balance = total_sold - total_withdrawn
+    total_sold = float(row.gross) + float(shipping_total)
+    total_returned = float(row.returned)
+    total_withdrawn = float(current_brand_user.amount_withdrawn or 0)
+    current_balance = total_sold - total_returned - total_withdrawn
 
     return BrandStatsResponse(
         total_sold=total_sold,
+        total_returned=total_returned,
         total_withdrawn=total_withdrawn,
         current_balance=current_balance,
     )
@@ -3172,20 +3197,10 @@ async def get_recommendations_for_user(
     db: Session = Depends(get_db),
 ):
     """Provide recommended items for the current user"""
-    # This is a placeholder for a real recommendation engine.
-    # For now, return a few random products and mark if liked by the user
-    all_products = (
-        db.query(Product)
-        .join(Brand)
-        .filter(Brand.is_inactive == False)
-        .order_by(func.random())
-        .limit(limit)
-        .all()
-    )  # Get random products (exclude inactive brands)
+    products = recommendation_service.get_recommendations_for_user(db, current_user, limit)
     liked_product_ids = {ulp.product_id for ulp in current_user.liked_products}
-
     return [
-        product_to_schema(p, is_liked=p.id in liked_product_ids) for p in all_products
+        product_to_schema(p, is_liked=p.id in liked_product_ids) for p in products
     ]
 
 
@@ -3205,18 +3220,10 @@ async def get_recommendations_for_friend(
             status_code=status.HTTP_404_NOT_FOUND, detail="Friend not found."
         )
 
-    all_products = (
-        db.query(Product)
-        .join(Brand)
-        .filter(Brand.is_inactive == False)
-        .order_by(func.random())
-        .limit(8)
-        .all()
-    )  # Get 8 random products (exclude inactive brands)
+    products = recommendation_service.get_recommendations_for_friend(db, friend_user, current_user)
     liked_product_ids = {ulp.product_id for ulp in current_user.liked_products}
-
     return [
-        product_to_schema(p, is_liked=p.id in liked_product_ids) for p in all_products
+        product_to_schema(p, is_liked=p.id in liked_product_ids) for p in products
     ]
 
 
@@ -4340,7 +4347,7 @@ def admin_log_return(
             note="admin logged return",
         )
     else:
-        order.status = "partially_returned"
+        order.status = OrderStatus.PARTIALLY_RETURNED
         payment_service.record_status_event(
             db,
             order,
@@ -4389,6 +4396,82 @@ def admin_send_buyer_push(
             body=body.message,
         )
     return None
+
+
+# --- Admin Withdrawal Endpoints ---
+
+
+@app.post("/api/v1/admin/withdrawals", status_code=201)
+@limiter.limit("10/minute")
+def admin_record_withdrawal(
+    request: Request,
+    body: schemas.AdminRecordWithdrawalRequest,
+    admin: AuthAccount = Depends(get_current_admin),
+    db: Session = Depends(get_db),
+):
+    """Admin: record a brand withdrawal."""
+    brand = db.query(Brand).filter(Brand.id == body.brand_id).first()
+    if not brand:
+        raise HTTPException(status_code=404, detail="Бренд не найден")
+    withdrawal = BrandWithdrawal(
+        brand_id=body.brand_id,
+        amount=body.amount,
+        note=body.note,
+        admin_id=str(admin.id),
+    )
+    db.add(withdrawal)
+    brand.amount_withdrawn = float(brand.amount_withdrawn or 0) + body.amount
+    db.commit()
+    db.refresh(withdrawal)
+    return {"id": withdrawal.id, "amount": withdrawal.amount}
+
+
+@app.get("/api/v1/admin/withdrawals", response_model=schemas.BrandWithdrawalListResponse)
+def admin_list_withdrawals(
+    brand_id: Optional[str] = Query(None),
+    admin: AuthAccount = Depends(get_current_admin),
+    db: Session = Depends(get_db),
+):
+    """Admin: list withdrawal history, optionally filtered by brand."""
+    q = db.query(BrandWithdrawal).join(Brand, BrandWithdrawal.brand_id == Brand.id).join(
+        AuthAccount, BrandWithdrawal.admin_id == AuthAccount.id
+    )
+    if brand_id:
+        q = q.filter(BrandWithdrawal.brand_id == brand_id)
+    rows = q.order_by(BrandWithdrawal.created_at.desc()).limit(200).all()
+    return schemas.BrandWithdrawalListResponse(
+        withdrawals=[
+            schemas.BrandWithdrawalItem(
+                id=w.id,
+                brand_id=w.brand_id,
+                brand_name=w.brand.name,
+                amount=w.amount,
+                note=w.note,
+                admin_email=w.admin.email,
+                created_at=w.created_at,
+            )
+            for w in rows
+        ]
+    )
+
+
+@app.get("/api/v1/admin/brands/search")
+def admin_search_brands(
+    q: str = Query(..., min_length=1),
+    admin: AuthAccount = Depends(get_current_admin),
+    db: Session = Depends(get_db),
+):
+    """Admin: search brands by name."""
+    brands = (
+        db.query(Brand)
+        .filter(Brand.name.ilike(f"%{q}%"))
+        .limit(10)
+        .all()
+    )
+    return [
+        {"id": b.id, "name": b.name, "amount_withdrawn": float(b.amount_withdrawn or 0)}
+        for b in brands
+    ]
 
 
 class OrderStatusEventResponse(BaseModel):

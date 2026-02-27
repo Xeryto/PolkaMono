@@ -86,6 +86,7 @@ export interface BrandResponse {
 
 export interface BrandStatsResponse {
   total_sold: number;
+  total_returned: number;
   total_withdrawn: number;
   current_balance: number;
 }

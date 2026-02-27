@@ -1,5 +1,5 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { RussianRuble, TrendingDown, TrendingUp } from "lucide-react";
+import { RotateCcw, RussianRuble, TrendingDown, TrendingUp } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import * as api from "@/services/api";
@@ -58,7 +58,7 @@ export function StatsView() {
       <h2 className="text-2xl font-bold text-card-custom-text">Статистика</h2>
 
       {/* Key Metrics */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <Card className="bg-card-custom border-border/30 shadow-lg">
           <CardHeader className="pb-2">
             <div className="flex items-center justify-between">
@@ -71,6 +71,22 @@ export function StatsView() {
           <CardContent>
             <div className="text-2xl font-bold text-card-custom-text">
               {formatCurrency(stats.total_sold)}
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-card-custom border-border/30 shadow-lg">
+          <CardHeader className="pb-2">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-sm font-medium text-card-custom-text/70">
+                Возвраты
+              </CardTitle>
+              <RotateCcw className="h-4 w-4 text-muted-foreground" />
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-card-custom-text">
+              {formatCurrency(stats.total_returned)}
             </div>
           </CardContent>
         </Card>

@@ -791,3 +791,33 @@ class AdminOrderLookupResponse(BaseModel):
 class AdminLogReturnRequest(BaseModel):
     order_id: str
     item_ids: List[str]
+
+
+class AdminRecordWithdrawalRequest(BaseModel):
+    brand_id: str
+    amount: float
+    note: Optional[str] = Field(None, max_length=500)
+
+    @field_validator("amount", mode="before")
+    @classmethod
+    def validate_amount(cls, v):
+        if v is None or v <= 0:
+            raise ValueError("Сумма должна быть больше нуля")
+        return v
+
+
+class BrandWithdrawalItem(BaseModel):
+    id: str
+    brand_id: str
+    brand_name: str
+    amount: float
+    note: Optional[str] = None
+    admin_email: str
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class BrandWithdrawalListResponse(BaseModel):
+    withdrawals: List[BrandWithdrawalItem]

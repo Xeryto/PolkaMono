@@ -976,11 +976,12 @@ const Wall = ({ navigation, onLogout, openOrderId }: WallProps) => {
                       style={styles.returnButton}
                       onPress={() => {
                         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                        const orderDate = new Date(order.date).toLocaleDateString('ru-RU');
                         const subject = encodeURIComponent(
                           `Return Request - Order #${order.number}`,
                         );
                         const body = encodeURIComponent(
-                          `Здравствуйте,\n\nХочу инициировать возврат по заказу №${order.number}.\n\nС уважением`,
+                          `Здравствуйте,\n\nХочу инициировать возврат по заказу №${order.number}.\n\nID заказа: ${order.id}\nДата: ${orderDate}\nСумма: ${order.total_amount.toFixed(2)} ₽\n\nС уважением`,
                         );
                         Linking.openURL(
                           `mailto:support@polkamarket.ru?subject=${subject}&body=${body}`,

@@ -583,6 +583,22 @@ class OrderStatusEvent(Base):
     order = relationship("Order", back_populates="status_events")
 
 
+class BrandWithdrawal(Base):
+    """Audit trail for admin-recorded brand withdrawals."""
+    __tablename__ = "brand_withdrawals"
+    __table_args__ = {"extend_existing": True}
+
+    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    brand_id = Column(String, ForeignKey("brands.id", ondelete="RESTRICT"), nullable=False, index=True)
+    amount = Column(Float, nullable=False)
+    note = Column(String(500), nullable=True)
+    admin_id = Column(String, ForeignKey("auth_accounts.id", ondelete="RESTRICT"), nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    brand = relationship("Brand")
+    admin = relationship("AuthAccount")
+
+
 class Notification(Base):
     """In-app notification for brands (and future: users)."""
     __tablename__ = "notifications"

@@ -2,10 +2,11 @@ import { useState } from "react";
 import { useAdminAuth } from "@/context/AdminAuthContext";
 import { AdminNotificationsView } from "./AdminNotificationsView";
 import { AdminOrdersView } from "./AdminOrdersView";
+import { AdminWithdrawalsView } from "./AdminWithdrawalsView";
 import { Button } from "@/components/ui/button";
-import { Bell, LogOut, RotateCcw } from "lucide-react";
+import { Bell, LogOut, RotateCcw, Wallet } from "lucide-react";
 
-type AdminView = "notifications" | "orders";
+type AdminView = "notifications" | "orders" | "withdrawals";
 
 const AdminDashboard = () => {
   const { logout } = useAdminAuth();
@@ -17,6 +18,8 @@ const AdminDashboard = () => {
         return <AdminNotificationsView />;
       case "orders":
         return <AdminOrdersView />;
+      case "withdrawals":
+        return <AdminWithdrawalsView />;
       default:
         return <AdminNotificationsView />;
     }
@@ -52,6 +55,17 @@ const AdminDashboard = () => {
           >
             <RotateCcw className="h-4 w-4" />
             Возвраты
+          </button>
+          <button
+            onClick={() => setCurrentView("withdrawals")}
+            className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors ${
+              currentView === "withdrawals"
+                ? "bg-foreground/10 text-foreground"
+                : "text-muted-foreground hover:text-foreground hover:bg-foreground/5"
+            }`}
+          >
+            <Wallet className="h-4 w-4" />
+            Выводы
           </button>
         </nav>
 

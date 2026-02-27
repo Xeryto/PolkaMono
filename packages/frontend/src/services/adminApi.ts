@@ -94,3 +94,61 @@ export async function logAdminReturn(
   });
   if (!res.ok && res.status !== 204) throw new Error("Failed to log return");
 }
+
+// --- Withdrawal Management ---
+
+export interface BrandSearchResult {
+  id: string;
+  name: string;
+  amount_withdrawn: number;
+}
+
+export async function searchBrands(token: string, query: string): Promise<BrandSearchResult[]> {
+  const res = await fetch(
+    `${API_URL}/api/v1/admin/brands/search?q=${encodeURIComponent(query)}`,
+    { headers: { Authorization: `Bearer ${token}` } }
+  );
+  if (!res.ok) throw new Error("Failed to search brands");
+  return res.json();
+}
+
+export interface WithdrawalRecord {
+  id: string;
+  brand_id: string;
+  brand_name: string;
+  amount: number;
+  note: string | null;
+  admin_email: string;
+  created_at: string;
+}
+
+export async function recordWithdrawal(
+  token: string,
+  brandId: string,
+  amount: number,
+  note?: string
+): Promise<{ id: string; amount: number }> {
+  const res = await fetch(`${API_URL}/api/v1/admin/withdrawals`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+    body: JSON.stringify({ brand_id: brandId, amount, note: note || null }),
+  });
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.detail || "Failed to record withdrawal");
+  }
+  return res.json();
+}
+
+export async function getWithdrawals(
+  token: string,
+  brandId?: string
+): Promise<WithdrawalRecord[]> {
+  const params = brandId ? `?brand_id=${encodeURIComponent(brandId)}` : "";
+  const res = await fetch(`${API_URL}/api/v1/admin/withdrawals${params}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) throw new Error("Failed to fetch withdrawals");
+  const data = await res.json();
+  return data.withdrawals;
+}
