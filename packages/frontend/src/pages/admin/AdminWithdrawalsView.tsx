@@ -126,7 +126,7 @@ export function AdminWithdrawalsView() {
       </div>
 
       {/* Brand search */}
-      <div className="bg-card-custom/40 rounded-xl border border-brown-light/20 p-5 space-y-4">
+      <div className="bg-card rounded-xl border border-border/30 p-5 space-y-4">
         <span className="text-sm font-semibold text-foreground block">Выбрать бренд</span>
         <div className="relative">
           <Input
@@ -138,10 +138,10 @@ export function AdminWithdrawalsView() {
               }
             }}
             placeholder="Поиск бренда по названию..."
-            className="bg-background/50 border-brown-light/30 text-foreground placeholder:text-muted-foreground"
+            className="bg-input border-border/50 text-foreground placeholder:text-muted-foreground"
           />
           {showDropdown && (
-            <div className="absolute z-10 mt-1 w-full bg-card-custom border border-brown-light/20 rounded-lg shadow-lg max-h-48 overflow-auto">
+            <div className="absolute z-10 mt-1 w-full bg-card border border-border/30 rounded-lg shadow-lg max-h-48 overflow-auto">
               {searchResults.map((b) => (
                 <button
                   key={b.id}
@@ -168,7 +168,7 @@ export function AdminWithdrawalsView() {
 
       {/* Withdrawal form */}
       {selectedBrand && (
-        <div className="bg-card-custom/40 rounded-xl border border-brown-light/20 p-5 space-y-4">
+        <div className="bg-card rounded-xl border border-border/30 p-5 space-y-4">
           <span className="text-sm font-semibold text-foreground block">Записать вывод</span>
 
           <div className="space-y-1">
@@ -183,7 +183,7 @@ export function AdminWithdrawalsView() {
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
               placeholder="0.00"
-              className="bg-background/50 border-brown-light/30 text-foreground placeholder:text-muted-foreground"
+              className="bg-input border-border/50 text-foreground placeholder:text-muted-foreground"
             />
           </div>
 
@@ -198,7 +198,7 @@ export function AdminWithdrawalsView() {
               placeholder="Комментарий к выводу..."
               maxLength={500}
               rows={2}
-              className="w-full rounded-md bg-background/50 border border-brown-light/30 text-foreground placeholder:text-muted-foreground px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-ring"
+              className="w-full rounded-md bg-input border border-border/50 text-foreground placeholder:text-muted-foreground px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-ring"
             />
           </div>
 
@@ -217,8 +217,8 @@ export function AdminWithdrawalsView() {
 
       {/* Withdrawal history */}
       {selectedBrand && (
-        <div className="bg-card-custom/40 rounded-xl border border-brown-light/20 overflow-hidden">
-          <div className="px-4 py-3 border-b border-brown-light/20">
+        <div className="bg-card rounded-xl border border-border/30 overflow-hidden">
+          <div className="px-4 py-3 border-b border-border/30">
             <span className="text-sm font-semibold text-foreground">История выводов</span>
           </div>
           {loadingHistory ? (
@@ -228,7 +228,7 @@ export function AdminWithdrawalsView() {
           ) : (
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-brown-light/20 text-muted-foreground text-xs uppercase">
+                <tr className="border-b border-border/30 text-muted-foreground text-xs uppercase">
                   <th className="px-4 py-2 text-left font-medium">Дата</th>
                   <th className="px-4 py-2 text-left font-medium">Сумма</th>
                   <th className="px-4 py-2 text-left font-medium">Примечание</th>
@@ -237,7 +237,7 @@ export function AdminWithdrawalsView() {
               </thead>
               <tbody>
                 {history.map((row) => (
-                  <tr key={row.id} className="border-b border-brown-light/10 last:border-0">
+                  <tr key={row.id} className="border-b border-border/20 last:border-0">
                     <td className="px-4 py-2 text-muted-foreground">{formatDate(row.created_at)}</td>
                     <td className="px-4 py-2 text-foreground font-medium">{formatCurrency(row.amount)}</td>
                     <td className="px-4 py-2 text-foreground">{row.note || "—"}</td>

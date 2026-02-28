@@ -116,8 +116,8 @@ export function AdminOrdersView() {
       </div>
 
       {/* Returns log table */}
-      <div className="bg-card-custom/40 rounded-xl border border-brown-light/20 overflow-hidden">
-        <div className="px-4 py-3 border-b border-brown-light/20">
+      <div className="bg-card rounded-xl border border-border/30 overflow-hidden">
+        <div className="px-4 py-3 border-b border-border/30">
           <span className="text-sm font-semibold text-foreground">Журнал возвратов</span>
         </div>
         {loadingReturns ? (
@@ -129,7 +129,7 @@ export function AdminOrdersView() {
         ) : (
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-brown-light/20 text-muted-foreground text-xs uppercase">
+              <tr className="border-b border-border/30 text-muted-foreground text-xs uppercase">
                 <th className="px-4 py-2 text-left font-medium">Order #</th>
                 <th className="px-4 py-2 text-left font-medium">Товар</th>
                 <th className="px-4 py-2 text-left font-medium">Бренд</th>
@@ -138,7 +138,7 @@ export function AdminOrdersView() {
             </thead>
             <tbody>
               {returns.map((row) => (
-                <tr key={row.item_id} className="border-b border-brown-light/10 last:border-0">
+                <tr key={row.item_id} className="border-b border-border/20 last:border-0">
                   <td className="px-4 py-2 font-mono text-xs text-foreground">
                     {row.order_id.slice(0, 8)}
                   </td>
@@ -153,7 +153,7 @@ export function AdminOrdersView() {
       </div>
 
       {/* Log a return form */}
-      <div className="bg-card-custom/40 rounded-xl border border-brown-light/20 p-5 space-y-4">
+      <div className="bg-card rounded-xl border border-border/30 p-5 space-y-4">
         <span className="text-sm font-semibold text-foreground block">Зафиксировать возврат</span>
 
         <div className="flex gap-2 items-end">
@@ -166,7 +166,7 @@ export function AdminOrdersView() {
               value={orderIdInput}
               onChange={(e) => setOrderIdInput(e.target.value)}
               placeholder="Введите ID заказа..."
-              className="bg-background/50 border-brown-light/30 text-foreground placeholder:text-muted-foreground"
+              className="bg-input border-border/50 text-foreground placeholder:text-muted-foreground"
               onKeyDown={(e) => e.key === "Enter" && handleSearch()}
             />
           </div>
@@ -196,10 +196,10 @@ export function AdminOrdersView() {
                     key={item.item_id}
                     className={`flex items-center gap-3 p-2 rounded-lg border cursor-pointer transition-colors ${
                       alreadyReturned
-                        ? "border-brown-light/10 opacity-50 cursor-not-allowed"
+                        ? "border-border/20 opacity-50 cursor-not-allowed"
                         : checked
                         ? "border-foreground/40 bg-foreground/5"
-                        : "border-brown-light/20 hover:border-brown-light/40"
+                        : "border-border/30 hover:border-border/50"
                     }`}
                   >
                     <input
@@ -214,8 +214,8 @@ export function AdminOrdersView() {
                     <span
                       className={`text-xs px-2 py-0.5 rounded-full font-medium ${
                         alreadyReturned
-                          ? "bg-red-100 text-red-700"
-                          : "bg-green-100 text-green-700"
+                          ? "bg-red-900/20 text-red-300"
+                          : "bg-green-900/20 text-green-300"
                       }`}
                     >
                       {alreadyReturned ? "возвращён" : item.current_status}

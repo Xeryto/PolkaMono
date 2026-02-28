@@ -25,7 +25,7 @@ interface DashboardHeaderProps {
 }
 
 function notifIcon(type: string) {
-  if (type === "new_order") return <ShoppingBag className="h-4 w-4 text-brown-light shrink-0" />;
+  if (type === "new_order") return <ShoppingBag className="h-4 w-4 text-brand shrink-0" />;
   if (type === "return_logged") return <Package className="h-4 w-4 text-orange-400 shrink-0" />;
   return <AlertCircle className="h-4 w-4 text-muted-foreground shrink-0" />;
 }
@@ -76,7 +76,7 @@ export function DashboardHeader({ onViewChange, onTargetOrder }: DashboardHeader
   }, [unreadCount, token]);
 
   return (
-    <header className="h-16 bg-card-custom/30 border-b border-brown-light/20 flex items-center justify-between px-4 sm:px-6 gap-2">
+    <header className="h-16 bg-card/50 border-b border-border/30 flex items-center justify-between px-4 sm:px-6 gap-2">
       <div className="flex items-center gap-2 min-w-0">
         <SidebarTrigger
           className="shrink-0 md:hidden"
@@ -90,16 +90,16 @@ export function DashboardHeader({ onViewChange, onTargetOrder }: DashboardHeader
       <div className="flex items-center gap-3">
         <DropdownMenu open={bellOpen} onOpenChange={handleBellOpen}>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" className="hover:bg-brown-dark/50 relative">
+            <Button variant="ghost" size="icon" className="relative">
               <Bell className="h-4 w-4" />
               {unreadCount > 0 && (
-                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-bold rounded-full min-w-[16px] h-4 flex items-center justify-center px-1">
+                <span className="absolute -top-1 -right-1 bg-destructive text-destructive-foreground text-[10px] font-bold rounded-full min-w-[16px] h-4 flex items-center justify-center px-1">
                   {unreadCount > 99 ? "99+" : unreadCount}
                 </span>
               )}
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-80 bg-[hsl(var(--card-custom))] border-brown-light/40 text-card-foreground shadow-lg">
+          <DropdownMenuContent align="end" className="w-80 bg-card border-border text-card-foreground shadow-lg">
             <DropdownMenuLabel className="flex items-center gap-2">
               <Bell className="h-4 w-4" /> Уведомления
             </DropdownMenuLabel>
@@ -112,7 +112,7 @@ export function DashboardHeader({ onViewChange, onTargetOrder }: DashboardHeader
               notifications.map((notif) => (
                 <DropdownMenuItem
                   key={notif.id}
-                  className={`flex items-start gap-2 px-3 py-2 cursor-pointer ${!notif.is_read ? "bg-brown-dark/10" : ""}`}
+                  className={`flex items-start gap-2 px-3 py-2 cursor-pointer ${!notif.is_read ? "bg-accent/50" : ""}`}
                   onSelect={() => {
                     onTargetOrder(notif.order_id ?? null);
                     onViewChange("orders");
@@ -131,17 +131,13 @@ export function DashboardHeader({ onViewChange, onTargetOrder }: DashboardHeader
 
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="hover:bg-brown-dark/50"
-            >
+            <Button variant="ghost" size="icon">
               <User className="h-4 w-4" />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent
             align="end"
-            className="bg-[hsl(var(--card-custom))] border-brown-light/40 text-card-foreground shadow-lg"
+            className="bg-card border-border text-card-foreground shadow-lg"
           >
             <DropdownMenuLabel>Аккаунт бренда</DropdownMenuLabel>
             <DropdownMenuSeparator />

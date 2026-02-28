@@ -89,7 +89,7 @@ export function AdminNotificationsView() {
 
       {/* Brands tab */}
       {activeTab === "brands" && (
-        <div className="bg-card-custom/40 rounded-xl border border-brown-light/20 p-5 space-y-4">
+        <div className="bg-card rounded-xl border border-border/30 p-5 space-y-4">
           <div className="space-y-2">
             <Label htmlFor="brand-notif-message" className="text-sm font-medium text-foreground">
               Message to all brands
@@ -101,7 +101,7 @@ export function AdminNotificationsView() {
               onChange={(e) => setBrandMessage(e.target.value)}
               maxLength={500}
               rows={4}
-              className="resize-none bg-background/50 border-brown-light/30 text-foreground placeholder:text-muted-foreground"
+              className="resize-none bg-input border-border/50 text-foreground placeholder:text-muted-foreground"
             />
             <p className="text-xs text-muted-foreground text-right">{brandMessage.length}/500</p>
           </div>
@@ -121,7 +121,7 @@ export function AdminNotificationsView() {
 
       {/* Buyers tab */}
       {activeTab === "buyers" && (
-        <div className="bg-card-custom/40 rounded-xl border border-brown-light/20 p-5 space-y-4">
+        <div className="bg-card rounded-xl border border-border/30 p-5 space-y-4">
           <div className="space-y-2">
             <Label htmlFor="buyer-notif-message" className="text-sm font-medium text-foreground">
               Push-уведомление всем покупателям
@@ -133,7 +133,7 @@ export function AdminNotificationsView() {
               onChange={(e) => setBuyerMessage(e.target.value)}
               maxLength={500}
               rows={4}
-              className="resize-none bg-background/50 border-brown-light/30 text-foreground placeholder:text-muted-foreground"
+              className="resize-none bg-input border-border/50 text-foreground placeholder:text-muted-foreground"
             />
             <p className="text-xs text-muted-foreground text-right">{buyerMessage.length}/500</p>
           </div>

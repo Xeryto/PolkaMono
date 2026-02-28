@@ -114,7 +114,7 @@ export function ProductsView() {
     <div className="space-y-6">
       <h2 className="text-2xl font-bold text-foreground">Товары</h2>
 
-      <Card className="bg-card-custom border-border/30 shadow-lg">
+      <Card className="bg-card border-border/30 shadow-sm">
         <CardHeader>
           <CardTitle>Все товары</CardTitle>
           <CardDescription>Управление запасами товаров</CardDescription>
@@ -133,7 +133,7 @@ export function ProductsView() {
               {products.map((product) => (
                 <div
                   key={product.id}
-                  className="flex items-center justify-between p-2 rounded-lg hover:bg-muted/50 cursor-pointer"
+                  className="flex items-center justify-between p-3 rounded-lg hover:bg-accent/50 cursor-pointer transition-colors border border-transparent hover:border-border/30"
                   onClick={() => handleProductClick(product)}
                 >
                   <div className="flex-1">
@@ -142,7 +142,7 @@ export function ProductsView() {
                     </p>
                     <div className="flex flex-wrap gap-2 mt-1">
                       {product.color_variants?.length > 0 && (
-                        <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
+                        <span className="text-xs bg-blue-900/20 text-blue-300 px-2 py-1 rounded-full">
                           Цвета:{" "}
                           {product.color_variants
                             .map((cv) => translateColorToRussian(cv.color_name))
@@ -150,7 +150,7 @@ export function ProductsView() {
                         </span>
                       )}
                       {product.material && (
-                        <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full">
+                        <span className="text-xs bg-green-900/20 text-green-300 px-2 py-1 rounded-full">
                           Материал:{" "}
                           {translateMaterialToRussian(product.material)}
                         </span>
@@ -171,7 +171,7 @@ export function ProductsView() {
                   </div>
                   <div className="flex flex-col items-end gap-1">
                     {product.sale_price != null && (
-                      <span className="text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded-full">
+                      <span className="text-xs bg-red-900/20 text-red-300 px-2 py-0.5 rounded-full">
                         {product.sale_type === 'percent'
                           ? `-${product.sale_price}%`
                           : `${formatCurrency(product.sale_price)}`}
@@ -179,7 +179,7 @@ export function ProductsView() {
                     )}
                     {product.sale_price != null ? (
                       <div className="flex flex-col items-end">
-                        <p className="font-bold text-red-600">
+                        <p className="font-bold text-red-400">
                           {product.sale_type === 'percent'
                             ? formatCurrency(Math.round(product.price * (1 - product.sale_price / 100)))
                             : formatCurrency(product.sale_price)}

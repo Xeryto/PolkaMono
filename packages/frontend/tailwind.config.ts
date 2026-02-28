@@ -56,9 +56,15 @@ export default {
 					DEFAULT: 'hsl(var(--card))',
 					foreground: 'hsl(var(--card-foreground))'
 				},
-				'card-custom': 'var(--card-custom)',
-				'card-custom-text': 'var(--card-custom-text)',
-				'button-custom': 'var(--button-custom)',
+				surface: {
+					DEFAULT: 'hsl(var(--surface))',
+					elevated: 'hsl(var(--surface-elevated))'
+				},
+				brand: {
+					DEFAULT: 'hsl(var(--brand))',
+					dark: 'hsl(var(--brand-dark))',
+					muted: 'hsl(var(--brand-muted))'
+				},
 				sidebar: {
 					DEFAULT: 'hsl(var(--sidebar-background))',
 					foreground: 'hsl(var(--sidebar-foreground))',
@@ -69,27 +75,6 @@ export default {
 					border: 'hsl(var(--sidebar-border))',
 					ring: 'hsl(var(--sidebar-ring))'
 				},
-				brown: {
-					dark: 'hsl(var(--brown-dark))',
-					medium: 'hsl(var(--brown-medium))',
-					light: 'hsl(var(--brown-light))'
-				},
-                // Custom sidebar colors
-                sidebarHoverBg: '#333333',
-                sidebarHoverText: '#FFFFFF',
-                sidebarActiveBg: '#6A462F',
-                sidebarActiveText: '#FAE9CF',
-			},
-			backgroundImage: {
-				'gradient-ominous': 'var(--gradient-ominous)',
-				'gradient-power': 'var(--gradient-power)'
-			},
-			boxShadow: {
-				'ominous': 'var(--shadow-ominous)',
-				'power': 'var(--shadow-power)'
-			},
-			transitionTimingFunction: {
-				'ominous': 'var(--transition-ominous)'
 			},
 			borderRadius: {
 				lg: 'var(--radius)',
@@ -112,11 +97,21 @@ export default {
 					to: {
 						height: '0'
 					}
+				},
+				'fade-in': {
+					from: { opacity: '0', transform: 'translateY(8px)' },
+					to: { opacity: '1', transform: 'translateY(0)' }
+				},
+				'shimmer': {
+					'0%': { backgroundPosition: '-200% 0' },
+					'100%': { backgroundPosition: '200% 0' }
 				}
 			},
 			animation: {
 				'accordion-down': 'accordion-down 0.2s ease-out',
-				'accordion-up': 'accordion-up 0.2s ease-out'
+				'accordion-up': 'accordion-up 0.2s ease-out',
+				'fade-in': 'fade-in 0.3s ease-out',
+				'shimmer': 'shimmer 1.5s ease-in-out infinite'
 			}
 		}
 	},

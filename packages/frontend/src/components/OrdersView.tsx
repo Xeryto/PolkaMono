@@ -96,9 +96,9 @@ export function OrdersView({ targetOrderId, onTargetConsumed }: OrdersViewProps)
     const el = document.querySelector(`[data-order-id="${targetOrderId}"]`);
     if (el) {
       el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      el.classList.add('ring-2', 'ring-brown-light', 'transition-all');
+      el.classList.add('ring-2', 'ring-brand', 'transition-all');
       const timer = setTimeout(() => {
-        el.classList.remove('ring-2', 'ring-brown-light');
+        el.classList.remove('ring-2', 'ring-brand');
         onTargetConsumed?.();
       }, 2000);
       return () => clearTimeout(timer);
@@ -138,7 +138,7 @@ export function OrdersView({ targetOrderId, onTargetConsumed }: OrdersViewProps)
     <div className="space-y-6">
       <h2 className="text-2xl font-bold text-foreground">Заказы</h2>
 
-      <Card className="bg-card-custom border-border/30 shadow-lg">
+      <Card className="bg-card border-border/30 shadow-sm">
         <CardHeader>
           <CardTitle>Все заказы</CardTitle>
           <CardDescription>
@@ -147,16 +147,29 @@ export function OrdersView({ targetOrderId, onTargetConsumed }: OrdersViewProps)
         </CardHeader>
         <CardContent>
           {isLoading ? (
-            <div>Загрузка заказов...</div>
+            <div className="space-y-3">
+              {Array.from({ length: 3 }).map((_, i) => (
+                <div key={i} className="flex items-center justify-between p-3 rounded-lg">
+                  <div className="space-y-2">
+                    <div className="h-4 w-32 bg-muted/30 rounded animate-shimmer bg-[length:200%_100%] bg-gradient-to-r from-muted/20 via-muted/40 to-muted/20" />
+                    <div className="h-3 w-24 bg-muted/30 rounded animate-shimmer bg-[length:200%_100%] bg-gradient-to-r from-muted/20 via-muted/40 to-muted/20" />
+                  </div>
+                  <div className="h-6 w-20 bg-muted/30 rounded animate-shimmer bg-[length:200%_100%] bg-gradient-to-r from-muted/20 via-muted/40 to-muted/20" />
+                </div>
+              ))}
+            </div>
           ) : orders.length === 0 ? (
-            <div>Заказы не найдены.</div>
+            <div className="flex flex-col items-center py-12 text-center">
+              <p className="text-muted-foreground">Заказов пока нет</p>
+              <p className="text-sm text-muted-foreground/70 mt-1">Заказы появятся здесь, когда покупатели оформят покупку.</p>
+            </div>
           ) : (
             <div className="space-y-4">
               {orders.map((order) => (
                 <div
                   key={order.id}
                   data-order-id={order.id}
-                  className="flex items-center justify-between p-2 rounded-lg hover:bg-muted/50 cursor-pointer"
+                  className="flex items-center justify-between p-3 rounded-lg hover:bg-accent/50 cursor-pointer transition-colors border border-transparent hover:border-border/30"
                   onClick={() => setSelectedOrderId(order.id)}
                 >
                   <div>
