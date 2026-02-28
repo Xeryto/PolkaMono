@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
@@ -10,6 +10,11 @@ const Landing = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSignedUp, setIsSignedUp] = useState(false);
   const { toast } = useToast();
+
+  useEffect(() => {
+    document.documentElement.classList.add('dark');
+    return () => document.documentElement.classList.remove('dark');
+  }, []);
 
   const handleExclusiveSignup = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -48,7 +53,7 @@ const Landing = () => {
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           required
-          className="h-12 bg-white border-border/50 focus:border-brand text-foreground flex-1"
+          className="h-12 bg-input border-border/50 focus:border-brand text-foreground flex-1"
         />
         <Button
           type="submit"
@@ -219,7 +224,7 @@ const Landing = () => {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
-              className="h-10 bg-white border-border/50 flex-1 text-sm"
+              className="h-10 bg-input border-border/50 flex-1 text-sm"
             />
             <Button type="submit" size="sm" disabled={isSubmitting} className="h-10 px-4">
               {isSubmitting ? "..." : "Записаться"}
