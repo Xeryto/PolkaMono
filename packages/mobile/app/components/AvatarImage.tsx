@@ -1,5 +1,6 @@
 import React, { useMemo } from "react";
-import { View, Image, StyleSheet, ViewStyle, ImageStyle } from "react-native";
+import { View, StyleSheet, ViewStyle, ImageStyle } from "react-native";
+import { Image } from "expo-image";
 import MeAlt from "./svg/MeAlt";
 import { parseAvatarTransform, transformToPixels } from "../types/avatar";
 import { useTheme } from "../lib/ThemeContext";
@@ -57,7 +58,7 @@ export default function AvatarImage({
         <Image
           source={{ uri: avatarUrl }}
           style={[styles.image, imageStyle]}
-          resizeMode="cover"
+          contentFit="cover"
         />
       </View>
     );
@@ -84,7 +85,7 @@ export default function AvatarImage({
           <Image
             source={{ uri: avatarUrlFull! }}
             style={[styles.image, imageStyle]}
-            resizeMode="cover"
+            contentFit="cover"
           />
         </View>
       </View>
@@ -97,7 +98,7 @@ export default function AvatarImage({
       <Image
         source={{ uri: avatarUrlFull! }}
         style={[styles.image, imageStyle]}
-        resizeMode="cover"
+        contentFit="cover"
       />
     </View>
   );

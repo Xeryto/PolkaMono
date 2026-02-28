@@ -10,7 +10,6 @@ import type { ThemeColors } from "../lib/theme";
 import {
   View,
   StyleSheet,
-  Image,
   Text,
   Pressable,
   Dimensions,
@@ -24,6 +23,7 @@ import {
   NativeScrollEvent,
   TouchableOpacity,
 } from "react-native";
+import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import * as Haptics from "expo-haptics";
 import Animated, {
@@ -1065,7 +1065,7 @@ const FriendRecommendationsScreen = ({
                         <Image
                           source={imageSource}
                           style={styles.image}
-                          resizeMode="contain"
+                          contentFit="contain"
                         />
                       </View>
                     );
@@ -1077,7 +1077,7 @@ const FriendRecommendationsScreen = ({
                     key={card.id + "-" + currentImageIndex}
                     source={card.images[0]}
                     style={styles.image}
-                    resizeMode="contain"
+                    contentFit="contain"
                   />
                 </View>
               ) : (
@@ -1347,7 +1347,7 @@ const FriendRecommendationsScreen = ({
               <Image
                 source={card.images[0]}
                 style={styles.cardBackImage}
-                resizeMode="contain"
+                contentFit="contain"
               />
             ) : (
               <View style={[styles.cardBackImage, styles.imagePlaceholder]}>
@@ -1398,7 +1398,7 @@ const FriendRecommendationsScreen = ({
                   <Image
                     source={{ uri: card.sizing_table_image }}
                     style={{ width: 280, height: 160, borderRadius: 8 }}
-                    resizeMode="contain"
+                    contentFit="contain"
                   />
                 </ScrollView>
               </View>
@@ -1695,7 +1695,6 @@ const createStyles = (theme: ThemeColors) => StyleSheet.create({
   friendIcon: {
     width: height * 0.065 * 0.75,
     height: height * 0.065 * 0.75,
-    resizeMode: "contain",
     borderRadius: height * 0.065 * 0.5 * 0.75,
   },
   friendUsernameShadowWrapper: {
@@ -1808,7 +1807,6 @@ const createStyles = (theme: ThemeColors) => StyleSheet.create({
   image: {
     width: "100%",
     height: "100%",
-    resizeMode: "contain",
   },
   imagePressable: {
     width: "100%",

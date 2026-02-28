@@ -8,7 +8,6 @@ import React, {
 import {
   View,
   StyleSheet,
-  Image,
   Text,
   Pressable,
   Dimensions,
@@ -23,10 +22,12 @@ import {
   Share,
   Linking,
 } from "react-native";
+import { Image } from "expo-image";
 import { TouchableOpacity } from "react-native-gesture-handler";
 import * as Clipboard from "expo-clipboard";
 import { LinearGradient } from "expo-linear-gradient";
 import * as Haptics from "expo-haptics";
+import { SkeletonSwipeCard } from "./components/SkeletonCard";
 import Animated, {
   FadeInDown,
   FadeOutDown,
@@ -1595,9 +1596,8 @@ const MainPage = ({ navigation, route }: MainPageProps) => {
   // Enhance the renderEmptyState function to include text placeholders
   const renderEmptyState = () => {
     return (
-      <View style={[styles.whiteBox, styles.noCardsContainer]}>
-        <Text style={styles.noCardsText}>Загрузка новых карточек...</Text>
-        <Text style={styles.noCardsSubtext}>Пожалуйста, подождите</Text>
+      <View style={[styles.whiteBox, { overflow: "hidden" }]}>
+        <SkeletonSwipeCard />
       </View>
     );
   };
@@ -1616,9 +1616,8 @@ const MainPage = ({ navigation, route }: MainPageProps) => {
       // Handle loading card
       if (card.id === LOADING_CARD_ID) {
         return (
-          <View style={[styles.whiteBox, styles.noCardsContainer]}>
-            <Text style={styles.noCardsText}>Загрузка новых карточек...</Text>
-            <Text style={styles.noCardsSubtext}>Пожалуйста, подождите</Text>
+          <View style={{ flex: 1 }}>
+            <SkeletonSwipeCard />
           </View>
         );
       }
@@ -1663,7 +1662,7 @@ const MainPage = ({ navigation, route }: MainPageProps) => {
                         <Image
                           source={imageSource}
                           style={styles.image}
-                          resizeMode="contain"
+                          contentFit="contain"
                         />
                       </View>
                     );
@@ -1675,7 +1674,7 @@ const MainPage = ({ navigation, route }: MainPageProps) => {
                     key={card.id + "-" + currentImageIndex}
                     source={card.images[0]}
                     style={styles.image}
-                    resizeMode="contain"
+                    contentFit="contain"
                   />
                 </View>
               ) : (
@@ -1945,7 +1944,7 @@ const MainPage = ({ navigation, route }: MainPageProps) => {
               <Image
                 source={card.images[0]}
                 style={styles.cardBackImage}
-                resizeMode="contain"
+                contentFit="contain"
               />
             ) : (
               <View style={[styles.cardBackImage, styles.imagePlaceholder]}>
@@ -1993,7 +1992,7 @@ const MainPage = ({ navigation, route }: MainPageProps) => {
                   <Image
                     source={{ uri: card.sizing_table_image }}
                     style={{ width: 280, height: 160, borderRadius: 8 }}
-                    resizeMode="contain"
+                    contentFit="contain"
                   />
                 </ScrollView>
               </View>
@@ -2619,7 +2618,6 @@ const createStyles = (theme: ThemeColors) => StyleSheet.create({
   image: {
     width: "100%",
     height: "100%",
-    resizeMode: "contain",
   },
   imagePressable: {
     width: "100%",
@@ -2829,7 +2827,6 @@ const createStyles = (theme: ThemeColors) => StyleSheet.create({
   icon: {
     width: 33,
     height: 33,
-    resizeMode: "contain", // Ensure the image scales properly
   },
   text: {
     top: Platform.OS == "android" ? "82.5%" : "85%",
@@ -2840,20 +2837,20 @@ const createStyles = (theme: ThemeColors) => StyleSheet.create({
     fontFamily: "IgraSans", // Use the Igra Sans font
     fontSize: 38,
     textAlign: "left",
-    color: "white",
+    color: theme.text.inverse,
     //marginVertical: 5, // Space around the name
   },
   brandName: {
     fontFamily: "IgraSans", // Use the Igra Sans font
     fontSize: 38,
     textAlign: "left",
-    color: "white",
+    color: theme.text.inverse,
   },
   price: {
     fontFamily: "REM", // Use the REM font
     fontSize: 16,
     textAlign: "left",
-    color: "white",
+    color: theme.text.inverse,
     //marginBottom: 10, // Space below the price
   },
   priceStrikethrough: {
@@ -2862,7 +2859,7 @@ const createStyles = (theme: ThemeColors) => StyleSheet.create({
     fontSize: 13,
   },
   priceSale: {
-    color: "#C0392B",
+    color: theme.status.error,
     fontSize: 15,
     fontFamily: "IgraSans",
   },

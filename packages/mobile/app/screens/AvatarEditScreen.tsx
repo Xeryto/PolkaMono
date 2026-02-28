@@ -4,14 +4,15 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
-  Image,
   Dimensions,
   Alert,
   Platform,
   PanResponder,
   Animated as RNAnimated,
   ActivityIndicator,
+  Image as RNImage,
 } from "react-native";
+import { Image } from "expo-image";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import * as ImagePicker from "expo-image-picker";
 import * as ImageManipulator from "expo-image-manipulator";
@@ -268,7 +269,7 @@ const AvatarEditScreen: React.FC<AvatarEditScreenProps> = ({
       // Get original image dimensions
       const imageInfo = await new Promise<{ width: number; height: number }>(
         (resolve, reject) => {
-          Image.getSize(
+          RNImage.getSize(
             imageUriForProcessing,
             (width, height) => resolve({ width, height }),
             (error) => reject(error)
@@ -443,7 +444,7 @@ const AvatarEditScreen: React.FC<AvatarEditScreenProps> = ({
                   <Image
                     source={{ uri: selectedImage }}
                     style={styles.previewImage}
-                    resizeMode="cover"
+                    contentFit="cover"
                   />
                 </RNAnimated.View>
               ) : (

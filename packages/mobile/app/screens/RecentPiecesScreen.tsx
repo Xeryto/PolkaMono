@@ -11,12 +11,12 @@ import {
   StyleSheet,
   FlatList,
   TouchableOpacity,
-  Image,
   Dimensions,
   ActivityIndicator,
   Pressable,
   Animated as RNAnimated,
 } from "react-native";
+import { Image } from "expo-image";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 import Animated, { FadeInDown, FadeOutDown } from "react-native-reanimated";
@@ -321,7 +321,7 @@ const RecentPiecesScreen: React.FC<RecentPiecesScreenProps> = ({
                 <Image
                   source={imageSource}
                   style={styles.pieceImage}
-                  resizeMode="contain"
+                  contentFit="contain"
                 />
               ) : (
                 <View style={[styles.pieceImage, styles.placeholderImage]}>

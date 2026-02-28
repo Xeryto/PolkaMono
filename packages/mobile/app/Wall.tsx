@@ -5,7 +5,6 @@ import {
   StyleSheet,
   ScrollView,
   Pressable,
-  Image,
   Dimensions,
   TouchableOpacity,
   Animated as RNAnimated,
@@ -19,6 +18,7 @@ import {
   NativeSyntheticEvent,
   NativeScrollEvent,
 } from "react-native";
+import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import Animated, {
   FadeIn,
@@ -55,6 +55,7 @@ import { CardItem } from "./types/product";
 import { mapProductToCardItem } from "./lib/productMapper";
 import { useTheme } from "./lib/ThemeContext";
 import type { ThemeColors } from "./lib/theme";
+import { SkeletonOrderList, SkeletonOrderDetailList } from "./components/SkeletonCard";
 
 const { width, height } = Dimensions.get("window");
 
@@ -81,7 +82,7 @@ const CartItemImage = ({ item }: { item: api.OrderItem }) => {
   const [imageError, setImageError] = useState(false);
 
   const onImageLoad = (event: any) => {
-    const { width, height } = event.nativeEvent.source;
+    const { width, height } = event.source;
     setImageDimensions({ width, height });
   };
 
@@ -104,7 +105,7 @@ const CartItemImage = ({ item }: { item: api.OrderItem }) => {
       <Image
         source={imageSource}
         style={[styles.itemImage, { aspectRatio }]}
-        resizeMode="contain"
+        contentFit="contain"
         onLoad={onImageLoad}
         onError={onImageError}
       />
@@ -811,7 +812,7 @@ const Wall = ({ navigation, onLogout, openOrderId }: WallProps) => {
         style={styles.orderDetailsContainer}
       >
         {isLoadingOrderDetail || !orderDetail ? (
-          <Text style={styles.emptyStateText}>загрузка заказа...</Text>
+          <SkeletonOrderDetailList count={2} />
         ) : (
           <>
         <ScrollView
@@ -926,7 +927,7 @@ const Wall = ({ navigation, onLogout, openOrderId }: WallProps) => {
           style={styles.ordersContainer}
         >
           {isLoadingOrders ? (
-            <Text style={styles.emptyStateText}>загрузка заказов...</Text>
+            <SkeletonOrderList count={3} />
           ) : orderError ? (
             <Text style={styles.emptyStateText}>{orderError}</Text>
           ) : orders.length === 0 ? (
@@ -1484,7 +1485,6 @@ const createStyles = (theme: ThemeColors) => StyleSheet.create({
   profileImage: {
     width: "100%",
     height: "100%",
-    resizeMode: "contain",
   },
   penIconButton: {
     position: "absolute",

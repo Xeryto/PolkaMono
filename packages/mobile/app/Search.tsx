@@ -1,11 +1,10 @@
-import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import React, { useState, useEffect, useRef, useCallback, useMemo, memo } from "react";
 import {
   View,
   Text,
   StyleSheet,
   FlatList,
   Pressable,
-  Image,
   Dimensions,
   Platform,
   TouchableOpacity,
@@ -14,6 +13,7 @@ import {
   ActivityIndicator,
   TextInput,
 } from "react-native";
+import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import Animated, {
   FadeIn,
@@ -25,7 +25,6 @@ import { AntDesign } from "@expo/vector-icons";
 import * as api from "./services/api";
 import { apiWrapper } from "./services/apiWrapper";
 
-import { ImageSourcePropType } from "react-native";
 import { CardItem, ProductVariant } from "./types/product";
 import {
   ANIMATION_DURATIONS,
@@ -36,83 +35,14 @@ import { mapProductToCardItem } from "./lib/productMapper";
 import { useTheme } from "./lib/ThemeContext";
 import type { ThemeColors } from "./lib/theme";
 import { useStaleFocusEffect } from "./lib/useStaleFocusEffect";
+import PriceTag from "./components/PriceTag";
+import { SkeletonGrid } from "./components/SkeletonCard";
+import ErrorBanner, { getErrorMessage } from "./components/ErrorBanner";
 
 // Create animated text component using proper method for this version
 const AnimatedText = Animated.createAnimatedComponent(Text);
 
 const { width, height } = Dimensions.get("window");
-
-// Price tag component with dynamic sizing using the article's approach
-const PriceTag = ({ price }: { price: number }) => {
-  const { theme } = useTheme();
-  const styles = useMemo(() => createStyles(theme), [theme]);
-
-  const [textWidth, setTextWidth] = useState(0);
-  const [textHeight, setTextHeight] = useState(0);
-  const [isMeasured, setIsMeasured] = useState(false);
-
-  const handleTextLayout = (event: any) => {
-    const { width, height } = event.nativeEvent.layout;
-    if (
-      width > 0 &&
-      height > 0 &&
-      (!isMeasured || width !== textWidth || height !== textHeight)
-    ) {
-      setTextWidth(width);
-      setTextHeight(height);
-      setIsMeasured(true);
-    }
-  };
-
-  const TEXT_LENGTH = isMeasured ? textWidth : 70;
-  const TEXT_HEIGHT = isMeasured ? textHeight : 22;
-  const OFFSET = isMeasured ? TEXT_LENGTH / 2 - TEXT_HEIGHT / 2 : 0;
-
-  const translateX = isMeasured ? TEXT_LENGTH * 0.3 : 200;
-  const translateY = isMeasured ? TEXT_HEIGHT * 2.35 : 0;
-
-  return (
-    <View
-      style={[
-        styles.priceContainer,
-        {
-          position: "absolute",
-          right: 0,
-          top: 0,
-          width: isMeasured ? TEXT_HEIGHT : 200,
-          height: isMeasured ? TEXT_LENGTH : 100,
-          transform: [{ translateX: translateX }, { translateY: translateY }],
-          overflow: "visible",
-        },
-      ]}
-    >
-      {!isMeasured && (
-        <Text onLayout={handleTextLayout} style={styles.itemPrice}>
-          {`${price.toFixed(2)} ₽`}
-        </Text>
-      )}
-      {isMeasured && (
-        <Text
-          style={[
-            styles.itemPrice,
-            {
-              width: TEXT_LENGTH,
-              height: TEXT_HEIGHT,
-              overflow: "visible",
-              transform: [
-                { rotate: "90deg" },
-                { translateX: -OFFSET },
-                { translateY: OFFSET },
-              ],
-            },
-          ]}
-        >
-          {`${price.toFixed(2)} ₽`}
-        </Text>
-      )}
-    </View>
-  );
-};
 
 // Define a simpler navigation type that our custom navigation can satisfy
 interface SimpleNavigation {
@@ -211,7 +141,7 @@ const fetchMoreSearchResults = async (
     );
   } catch (error) {
     console.error("Error fetching product search results:", error);
-    return [];
+    throw error;
   }
 };
 
@@ -223,6 +153,53 @@ const persistentSearchStorage: {
   results: [],
   initialized: false,
 };
+
+interface SearchResultItemProps {
+  item: SearchItem;
+  index: number;
+  initialResultsCount: number;
+  onPress: (item: SearchItem, index: number) => void;
+  styles: ReturnType<typeof createStyles>;
+}
+
+const SearchResultItem = memo(
+  ({ item, index, initialResultsCount, onPress, styles }: SearchResultItemProps) => {
+    const isNewItem = index >= initialResultsCount;
+
+    return (
+      <Animated.View
+        entering={
+          isNewItem
+            ? FadeInDown.duration(ANIMATION_DURATIONS.STANDARD).delay(
+                ANIMATION_DELAYS.STANDARD +
+                  (index - initialResultsCount) * ANIMATION_DELAYS.SMALL,
+              )
+            : undefined
+        }
+        style={styles.searchItem}
+      >
+        <Pressable
+          style={styles.imageContainer}
+          onPress={() => onPress(item, index)}
+        >
+          {item.images && item.images.length > 0 ? (
+            <Image source={item.images[0]} style={styles.itemImage} contentFit="contain" />
+          ) : (
+            <View style={[styles.itemImage, styles.noProductImagePlaceholder]}>
+              <Text style={styles.noProductImageText}>Нет изображения</Text>
+            </View>
+          )}
+          <View style={styles.itemInfo}>
+            <Text style={styles.itemName} numberOfLines={1}>
+              {item.brand_name}
+            </Text>
+          </View>
+          <PriceTag price={item.price} />
+        </Pressable>
+      </Animated.View>
+    );
+  },
+);
 
 const Search = ({ navigation }: SearchProps) => {
   const { theme } = useTheme();
@@ -267,6 +244,7 @@ const Search = ({ navigation }: SearchProps) => {
   });
   const [isLoadingFilters, setIsLoadingFilters] = useState(true);
   const [isLoadingResults, setIsLoadingResults] = useState(false);
+  const [searchError, setSearchError] = useState<string | null>(null);
 
   // Pagination state for search results
   const [searchOffset, setSearchOffset] = useState<number>(0);
@@ -780,6 +758,7 @@ const Search = ({ navigation }: SearchProps) => {
 
               // CRITICAL: Set loading to false BEFORE setting results to ensure UI updates correctly
               setIsLoadingResults(false);
+              setSearchError(null);
 
               // Reset initial count ref for new search (new items will all be animated)
               initialResultsCountRef.current = 0;
@@ -821,6 +800,7 @@ const Search = ({ navigation }: SearchProps) => {
             // Only update state if this is still the latest request
             if (currentRequestId === requestIdRef.current) {
               setIsLoadingResults(false); // Hide loading spinner on error
+              setSearchError(getErrorMessage(error));
               setHasMoreResults(false); // No more results on error
               setSearchOffset(0);
               prevFiltersRef.current = selectedFilters;
@@ -988,45 +968,16 @@ const Search = ({ navigation }: SearchProps) => {
 
   // Memoize renderItem to prevent unnecessary re-renders
   const renderItem = useCallback(
-    ({ item, index }: { item: SearchItem; index: number }) => {
-      // Only animate items that are newly added (beyond initial count)
-      const isNewItem = index >= initialResultsCountRef.current;
-
-      return (
-        <Animated.View
-          entering={
-            isNewItem
-              ? FadeInDown.duration(ANIMATION_DURATIONS.STANDARD).delay(
-                  ANIMATION_DELAYS.STANDARD +
-                    (index - initialResultsCountRef.current) *
-                      ANIMATION_DELAYS.SMALL,
-                )
-              : undefined
-          }
-          style={styles.searchItem}
-        >
-          <Pressable
-            style={styles.imageContainer}
-            onPress={() => handleItemPress(item, index)}
-          >
-            {item.images && item.images.length > 0 ? (
-              <Image source={item.images[0]} style={styles.itemImage} />
-            ) : (
-              <View style={[styles.itemImage, styles.noProductImagePlaceholder]}>
-                <Text style={styles.noProductImageText}>Нет изображения</Text>
-              </View>
-            )}
-            <View style={styles.itemInfo}>
-              <Text style={styles.itemName} numberOfLines={1}>
-                {item.brand_name}
-              </Text>
-            </View>
-            <PriceTag price={item.price} />
-          </Pressable>
-        </Animated.View>
-      );
-    },
-    [handleItemPress],
+    ({ item, index }: { item: SearchItem; index: number }) => (
+      <SearchResultItem
+        item={item}
+        index={index}
+        initialResultsCount={initialResultsCountRef.current}
+        onPress={handleItemPress}
+        styles={styles}
+      />
+    ),
+    [handleItemPress, styles],
   );
 
   return (
@@ -1091,6 +1042,7 @@ const Search = ({ navigation }: SearchProps) => {
                     styles.filterButton,
                     isFilterSelected(filterType) && styles.filterButtonActive,
                   ]}
+                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                   onPress={() =>
                     handleFilterPress(filterType as keyof FilterOptions)
                   }
@@ -1209,16 +1161,31 @@ const Search = ({ navigation }: SearchProps) => {
               entering={FadeIn.duration(ANIMATION_DURATIONS.STANDARD)}
               style={styles.loadingContainer}
             >
-              <ActivityIndicator size="large" color={theme.primary} />
-              <Animated.Text
-                entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
-                  ANIMATION_DELAYS.SMALL,
-                )}
-                style={styles.loadingText}
-              >
-                загрузка...
-              </Animated.Text>
+              <SkeletonGrid count={6} />
             </Animated.View>
+          ) : searchError && filteredResults.length === 0 ? (
+            <ErrorBanner
+              message={searchError}
+              onRetry={() => {
+                setSearchError(null);
+                setIsLoadingResults(true);
+                const trimmed = searchQuery.trim();
+                fetchMoreSearchResults(
+                  trimmed.length >= MIN_SEARCH_LENGTH ? trimmed : "",
+                  selectedFilters,
+                  PAGE_SIZE,
+                  0,
+                ).then((results) => {
+                  setSearchResults(results);
+                  setIsLoadingResults(false);
+                  setSearchError(null);
+                }).catch((err) => {
+                  setIsLoadingResults(false);
+                  setSearchError(getErrorMessage(err));
+                });
+              }}
+              style={{ marginTop: 20 }}
+            />
           ) : showNoResults ? (
             <Animated.View
               entering={FadeIn.duration(ANIMATION_DURATIONS.STANDARD)}
@@ -1264,6 +1231,9 @@ const Search = ({ navigation }: SearchProps) => {
               numColumns={2}
               columnWrapperStyle={styles.columnWrapper}
               removeClippedSubviews={false} // Prevent items from being removed from view hierarchy
+              initialNumToRender={6}
+              maxToRenderPerBatch={4}
+              windowSize={5}
               maintainVisibleContentPosition={
                 filteredResults.length > 0
                   ? {
@@ -1509,7 +1479,6 @@ const createStyles = (theme: ThemeColors) => StyleSheet.create({
   itemImage: {
     width: "73%",
     height: "73%",
-    resizeMode: "contain",
   },
   noProductImagePlaceholder: {
     backgroundColor: theme.surface.button,
@@ -1538,24 +1507,6 @@ const createStyles = (theme: ThemeColors) => StyleSheet.create({
     color: theme.text.secondary,
     textAlign: "center",
     paddingHorizontal: 10,
-  },
-  priceContainer: {
-    // Position and dimensions are set dynamically in PriceTag component
-    // No absolute positioning - uses flexbox alignment and transforms
-    alignItems: "center",
-    justifyContent: "center",
-    borderRadius: 10,
-    shadowColor: theme.shadow.default,
-    shadowOffset: { width: 4, height: 0 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-  },
-  itemPrice: {
-    fontFamily: "REM",
-    fontSize: 14,
-    color: theme.text.secondary,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
   },
   emptyStateContainer: {
     flex: 1,
@@ -1608,9 +1559,7 @@ const createStyles = (theme: ThemeColors) => StyleSheet.create({
   },
   loadingContainer: {
     flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    padding: 40,
+    padding: 21,
   },
   loadingText: {
     fontFamily: "REM",

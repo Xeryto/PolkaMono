@@ -1,4 +1,4 @@
-import { ImageSourcePropType } from 'react-native';
+import { ImageSource } from 'expo-image';
 
 /** Size/stock for one color variant */
 export interface ProductVariant {
@@ -23,7 +23,7 @@ export interface CardItem {
   brand_name: string;
   price: number;
   /** Images for the currently selected color (derived from color_variants[selected_color_index]) */
-  images: ImageSourcePropType[];
+  images: ImageSource[];
   isLiked?: boolean;
   size?: string;
   quantity?: number;

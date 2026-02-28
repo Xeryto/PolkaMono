@@ -4,7 +4,6 @@ import {
   Text,
   StyleSheet,
   ScrollView,
-  Image,
   Pressable,
   Dimensions,
   Easing,
@@ -12,6 +11,7 @@ import {
   TouchableOpacity,
   Linking,
 } from "react-native";
+import { Image } from "expo-image";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 import Animated, {
@@ -39,6 +39,7 @@ import {
 } from "./lib/animations";
 import { useTheme } from "./lib/ThemeContext";
 import type { ThemeColors } from "./lib/theme";
+import { SkeletonCartList } from "./components/SkeletonCard";
 
 const { height, width } = Dimensions.get("window");
 
@@ -200,7 +201,11 @@ const CancelButton: React.FC<CancelButtonProps> = ({
 
   return (
     <RNAnimated.View style={[{ transform: [{ scale }] }, removeButtonStyle]}>
-      <Pressable onPressIn={handlePressIn} onPressOut={handlePressOut}>
+      <Pressable
+        onPressIn={handlePressIn}
+        onPressOut={handlePressOut}
+        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+      >
         <Cancel width={27} height={27} />
       </Pressable>
     </RNAnimated.View>
@@ -214,7 +219,7 @@ const CartItemImage = ({ item }: { item: CartItem }) => {
     height: 0,
   });
   const onImageLoad = (event: any) => {
-    const { width, height } = event.nativeEvent.source;
+    const { width, height } = event.source;
     setImageDimensions({ width, height });
   };
   const aspectRatio =
@@ -252,7 +257,7 @@ const CartItemImage = ({ item }: { item: CartItem }) => {
         <Image
           source={item.images[0]}
           style={[imageStyles.itemImage, { aspectRatio }]}
-          resizeMode="contain"
+          contentFit="contain"
           onLoad={onImageLoad}
         />
       ) : (
@@ -572,7 +577,9 @@ const Cart = ({ navigation }: CartProps) => {
           style={styles.gradientBackground}
         />
         <Animated.View style={styles.whiteBox}>
-          {isSubmitting && !showConfirmation ? (
+          {isLoading ? (
+            <SkeletonCartList />
+          ) : isSubmitting && !showConfirmation ? (
             <LoadingScreen />
           ) : showConfirmation ? (
             <ConfirmationScreen />
@@ -983,7 +990,7 @@ const createStyles = (theme: ThemeColors) => StyleSheet.create({
     alignItems: "center",
     width: "80%",
   },
-  shopButtonText: { color: "white", fontFamily: "IgraSans", fontSize: 18 },
+  shopButtonText: { color: theme.text.inverse, fontFamily: "IgraSans", fontSize: 18 },
   textContainer: {
     position: "absolute",
     bottom: 0,
@@ -1035,7 +1042,7 @@ const createStyles = (theme: ThemeColors) => StyleSheet.create({
     width: "80%",
   },
   confirmationButtonText: {
-    color: "white",
+    color: theme.text.inverse,
     fontFamily: "IgraSans",
     fontSize: 18,
   },

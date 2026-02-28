@@ -5,7 +5,6 @@ import {
   StyleSheet,
   FlatList,
   Pressable,
-  Image,
   Dimensions,
   useWindowDimensions,
   TextInput,
@@ -21,6 +20,7 @@ import {
   Alert,
   ActivityIndicator,
 } from "react-native";
+import { Image } from "expo-image";
 import Animated, {
   FadeIn,
   FadeInDown,
@@ -62,6 +62,8 @@ import { mapProductToCardItem } from "./lib/productMapper";
 import { useTheme } from "./lib/ThemeContext";
 import type { ThemeColors } from "./lib/theme";
 import { useStaleFocusEffect } from "./lib/useStaleFocusEffect";
+import PriceTag from "./components/PriceTag";
+import { SkeletonGrid } from "./components/SkeletonCard";
 
 // Define a simpler navigation type that our custom navigation can satisfy
 interface SimpleNavigation {
@@ -90,78 +92,6 @@ const { width, height } = Dimensions.get("window");
 const ANIMATION_CONFIG = {
   duration: 400,
   easing: Easing.bezier(0.25, 0.1, 0.25, 1),
-};
-
-// Price tag component with dynamic sizing using the article's approach
-const PriceTag = ({ price }: { price: number }) => {
-  const { theme } = useTheme();
-  const styles = useMemo(() => createStyles(theme), [theme]);
-
-  const [textWidth, setTextWidth] = useState(0);
-  const [textHeight, setTextHeight] = useState(0);
-  const [isMeasured, setIsMeasured] = useState(false);
-
-  const handleTextLayout = (event: any) => {
-    const { width, height } = event.nativeEvent.layout;
-    if (
-      width > 0 &&
-      height > 0 &&
-      (!isMeasured || width !== textWidth || height !== textHeight)
-    ) {
-      setTextWidth(width);
-      setTextHeight(height);
-      setIsMeasured(true);
-    }
-  };
-
-  const TEXT_LENGTH = isMeasured ? textWidth : 70;
-  const TEXT_HEIGHT = isMeasured ? textHeight : 22;
-  const OFFSET = isMeasured ? TEXT_LENGTH / 2 - TEXT_HEIGHT / 2 : 0;
-
-  const translateX = isMeasured ? TEXT_LENGTH * 0.3 : 200;
-  const translateY = isMeasured ? TEXT_HEIGHT * 2.35 : 0;
-
-  return (
-    <View
-      style={[
-        styles.productPriceContainer,
-        {
-          position: "absolute",
-          right: 0,
-          top: 0,
-          width: isMeasured ? TEXT_HEIGHT : 200,
-          height: isMeasured ? TEXT_LENGTH : 100,
-          transform: [{ translateX: translateX }, { translateY: translateY }],
-          overflow: "visible",
-        },
-      ]}
-    >
-      {!isMeasured && (
-        <Text onLayout={handleTextLayout} style={styles.productItemPrice}>
-          {`${price.toFixed(2)} ₽`}
-        </Text>
-      )}
-      {isMeasured && (
-        <Text
-          style={[
-            styles.productItemPrice,
-            {
-              width: TEXT_LENGTH,
-              height: TEXT_HEIGHT,
-              overflow: "visible",
-              transform: [
-                { rotate: "90deg" },
-                { translateX: -OFFSET },
-                { translateY: OFFSET },
-              ],
-            },
-          ]}
-        >
-          {`${price.toFixed(2)} ₽`}
-        </Text>
-      )}
-    </View>
-  );
 };
 
 // UserActionButton: renders the correct action button for a user status
@@ -920,7 +850,7 @@ const Favorites = ({ navigation }: FavoritesProps) => {
         }}
       >
         {item.images && item.images.length > 0 ? (
-          <Image source={item.images[0]} style={styles.productItemImage} />
+          <Image source={item.images[0]} style={styles.productItemImage} contentFit="contain" />
         ) : (
           <View
             style={[styles.productItemImage, styles.noProductImagePlaceholder]}
@@ -1041,7 +971,7 @@ const Favorites = ({ navigation }: FavoritesProps) => {
             }}
           >
             {item.images && item.images.length > 0 ? (
-              <Image source={item.images[0]} style={styles.itemImage} />
+              <Image source={item.images[0]} style={styles.itemImage} contentFit="contain" />
             ) : (
               <View
                 style={[styles.itemImage, styles.noProductImagePlaceholder]}
@@ -1293,6 +1223,7 @@ const Favorites = ({ navigation }: FavoritesProps) => {
             onRejectRequest={rejectFriendRequest}
             handleNavigate={handleNavigate}
             isLoadingFriends={isLoadingFriends}
+            isLoadingSaved={isLoadingSaved}
             isSmallScreen={isSmallScreen}
             screenHeight={screenHeight}
           />
@@ -1372,6 +1303,7 @@ interface MainContentProps {
     fromFavorites?: boolean,
   ) => void;
   isLoadingFriends: boolean;
+  isLoadingSaved: boolean;
   isSmallScreen?: boolean;
   screenHeight?: number;
 }
@@ -1427,6 +1359,7 @@ const MainContent = ({
   onRejectRequest,
   handleNavigate,
   isLoadingFriends,
+  isLoadingSaved,
   isSmallScreen = false,
   screenHeight,
 }: MainContentProps) => {
@@ -1465,10 +1398,8 @@ const MainContent = ({
           {activeView === "friends" && (
             <>
               {isLoadingFriends ? (
-                <View style={styles.mainEmptyStateContainer}>
-                  <Text style={styles.mainEmptyStateText}>
-                    загрузка друзей...
-                  </Text>
+                <View style={[styles.flatList, { flex: 1 }]}>
+                  <SkeletonGrid count={4} />
                 </View>
               ) : friendItems.length === 0 ? (
                 <View style={styles.mainEmptyStateContainer}>
@@ -1496,7 +1427,11 @@ const MainContent = ({
           )}
 
           {activeView === "saved" &&
-            (savedItems.length === 0 ? (
+            (isLoadingSaved ? (
+              <View style={[styles.flatList, { flex: 1 }]}>
+                <SkeletonGrid count={4} />
+              </View>
+            ) : savedItems.length === 0 ? (
               <View style={styles.mainEmptyStateContainer}>
                 <Text style={styles.mainEmptyStateText}>пока тут пусто</Text>
               </View>
@@ -1709,20 +1644,9 @@ const SearchContent = ({
               </Animated.View>
             )
           ) : isSearching ? (
-            <Animated.View
-              entering={FadeIn.duration(ANIMATION_DURATIONS.STANDARD)}
-              style={styles.loadingContainer}
-            >
-              <ActivityIndicator size="large" color={theme.primary} />
-              <Animated.Text
-                entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
-                  ANIMATION_DELAYS.SMALL,
-                )}
-                style={styles.loadingText}
-              >
-                поиск...
-              </Animated.Text>
-            </Animated.View>
+            <View style={[styles.flatList, { flex: 1 }]}>
+              <SkeletonGrid count={4} />
+            </View>
           ) : filteredFriends.length === 0 ? (
             <Animated.View
               entering={FadeIn.duration(ANIMATION_DURATIONS.STANDARD)}
@@ -2112,13 +2036,15 @@ const FriendProfileView = React.memo(
               ANIMATION_DELAYS.MEDIUM,
             )}
           >
-            {isRegenerating || isLoadingFriendRecs ? (
+            {isRegenerating ? (
               <View style={styles.loadingContainer}>
                 <Text style={styles.loadingText}>
-                  {isRegenerating
-                    ? "подбираем новые рекомендации..."
-                    : "загружаем рекомендации..."}
+                  подбираем новые рекомендации...
                 </Text>
+              </View>
+            ) : isLoadingFriendRecs ? (
+              <View style={[styles.recommendationsList, { flex: 1 }]}>
+                <SkeletonGrid count={4} />
               </View>
             ) : (
               <FlatList<RecommendedItem>
@@ -2380,10 +2306,8 @@ const createStyles = (theme: ThemeColors) => StyleSheet.create({
   itemImage: {
     width: "73%",
     height: "73%",
-    resizeMode: "contain",
   },
   userImage: {
-    resizeMode: "contain",
     height: "100%",
     width: "100%",
     borderRadius: width * 0.2,
@@ -2404,24 +2328,6 @@ const createStyles = (theme: ThemeColors) => StyleSheet.create({
     color: theme.text.secondary,
     textAlign: "center",
     bottom: -5,
-  },
-  priceContainer: {
-    position: "absolute",
-    right: -25,
-    top: (width * 0.88 - 45) / 4,
-    transform: [{ translateY: -20 }, { rotate: "90deg" }],
-    borderRadius: 10,
-    shadowColor: theme.shadow.default,
-    shadowOffset: { width: 4, height: 0 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-  },
-  itemPrice: {
-    fontFamily: "REM",
-    fontSize: 14,
-    color: theme.text.secondary,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
   },
   // Product item styles matching Search.tsx
   productItem: {
@@ -2445,7 +2351,6 @@ const createStyles = (theme: ThemeColors) => StyleSheet.create({
   productItemImage: {
     width: "73%",
     height: "73%",
-    resizeMode: "contain",
   },
   noProductImagePlaceholder: {
     backgroundColor: theme.surface.button,
@@ -2471,24 +2376,6 @@ const createStyles = (theme: ThemeColors) => StyleSheet.create({
     color: theme.text.secondary,
     textAlign: "center",
     paddingHorizontal: 10,
-  },
-  productPriceContainer: {
-    // Position and dimensions are set dynamically in PriceTag component
-    // No absolute positioning - uses flexbox alignment and transforms
-    alignItems: "center",
-    justifyContent: "center",
-    borderRadius: 10,
-    shadowColor: theme.shadow.default,
-    shadowOffset: { width: 4, height: 0 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-  },
-  productItemPrice: {
-    fontFamily: "REM",
-    fontSize: 14,
-    color: theme.text.secondary,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
   },
   favoritesSearchContainer: {
     position: "absolute",
@@ -2678,7 +2565,6 @@ const createStyles = (theme: ThemeColors) => StyleSheet.create({
   profileImage: {
     width: "75%",
     height: "75%",
-    resizeMode: "contain",
     borderRadius: width * 0.1125,
   },
   roundedBox: {
@@ -2877,7 +2763,7 @@ const createStyles = (theme: ThemeColors) => StyleSheet.create({
   removeFriendButtonText: {
     fontFamily: "IgraSans",
     fontSize: 15,
-    color: "white",
+    color: theme.text.inverse,
   },
   sectionTitle: {
     fontFamily: "IgraSans",

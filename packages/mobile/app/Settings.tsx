@@ -3674,7 +3674,7 @@ const createStyles = (theme: ThemeColors) => StyleSheet.create({
   deleteAccountButtonText: {
     fontFamily: "IgraSans",
     fontSize: 20,
-    color: '#FFFFFF',
+    color: theme.text.inverse,
   },
   deleteAccountScreenContainer: {
     width: "100%",
@@ -3739,7 +3739,7 @@ const createStyles = (theme: ThemeColors) => StyleSheet.create({
   deleteAccountYesButtonText: {
     fontFamily: "IgraSans",
     fontSize: 20,
-    color: '#FFFFFF',
+    color: theme.text.inverse,
   },
   deleteAccountNoButton: {
     flexDirection: "row",
