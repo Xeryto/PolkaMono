@@ -163,7 +163,7 @@ class OAuthAccount(Base):
     )
 
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
-    user_id = Column(String, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    user_id = Column(String, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
     provider = Column(String(50), nullable=False)  # google, facebook, github, apple
     provider_user_id = Column(String(255), nullable=False)
     access_token = Column(Text, nullable=True)
@@ -235,8 +235,8 @@ class UserBrand(Base):
     )
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    user_id = Column(String, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
-    brand_id = Column(String, ForeignKey("brands.id", ondelete="CASCADE"), nullable=False)
+    user_id = Column(String, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    brand_id = Column(String, ForeignKey("brands.id", ondelete="CASCADE"), nullable=False, index=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
     user = relationship("User", back_populates="favorite_brands")
@@ -251,8 +251,8 @@ class UserStyle(Base):
     )
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    user_id = Column(String, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
-    style_id = Column(String(50), ForeignKey("styles.id", ondelete="CASCADE"), nullable=False)
+    user_id = Column(String, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    style_id = Column(String(50), ForeignKey("styles.id", ondelete="CASCADE"), nullable=False, index=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
     user = relationship("User", back_populates="favorite_styles")
@@ -287,7 +287,7 @@ class Product(Base):
     sale_price = Column(Float, nullable=True)        # Reduced price (exact) or discount pct; None = no sale
     sale_type = Column(String(10), nullable=True)     # 'percent' or 'exact'; None when no active sale
     sizing_table_image = Column(String, nullable=True)  # S3 public URL of sizing table image
-    brand_id = Column(String, ForeignKey("brands.id", ondelete="RESTRICT"), nullable=False)
+    brand_id = Column(String, ForeignKey("brands.id", ondelete="RESTRICT"), nullable=False, index=True)
     category_id = Column(String(50), ForeignKey("categories.id", ondelete="RESTRICT"), nullable=False)
     purchase_count = Column(Integer, nullable=False, default=0)  # Denormalized for performance
     general_images = Column(ARRAY(String), nullable=True)  # Images shown for all color variants
@@ -315,7 +315,7 @@ class ProductColorVariant(Base):
     )
 
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
-    product_id = Column(String, ForeignKey("products.id", ondelete="CASCADE"), nullable=False)
+    product_id = Column(String, ForeignKey("products.id", ondelete="CASCADE"), nullable=False, index=True)
     color_name = Column(String(50), nullable=False)  # Canonical name (e.g. Black, Blue)
     color_hex = Column(String(50), nullable=False)    # Hex for UI (e.g. #000000)
     images = Column(ARRAY(String), nullable=True)    # Image URLs for this color
@@ -333,7 +333,7 @@ class ProductVariant(Base):
     __table_args__ = {"extend_existing": True}
 
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
-    product_color_variant_id = Column(String, ForeignKey("product_color_variants.id", ondelete="CASCADE"), nullable=False)
+    product_color_variant_id = Column(String, ForeignKey("product_color_variants.id", ondelete="CASCADE"), nullable=False, index=True)
     size = Column(String(10), nullable=False)
     stock_quantity = Column(Integer, nullable=False, default=0)
     created_at = Column(DateTime, default=datetime.utcnow)
@@ -355,10 +355,10 @@ class UserLikedProduct(Base):
     __tablename__ = "user_liked_products"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    user_id = Column(String, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
-    product_id = Column(String, ForeignKey("products.id", ondelete="CASCADE"), nullable=False)
+    user_id = Column(String, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    product_id = Column(String, ForeignKey("products.id", ondelete="CASCADE"), nullable=False, index=True)
     created_at = Column(DateTime, default=datetime.utcnow)
-    
+
     user = relationship("User", back_populates="liked_products")
     product = relationship("Product")
     
@@ -396,8 +396,8 @@ class FriendRequest(Base):
     )
 
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
-    sender_id = Column(String, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
-    recipient_id = Column(String, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    sender_id = Column(String, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    recipient_id = Column(String, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
     status = Column(SQLEnum(FriendRequestStatus), default=FriendRequestStatus.PENDING, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
@@ -430,7 +430,7 @@ class Checkout(Base):
     __tablename__ = "checkouts"
 
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
-    user_id = Column(String, ForeignKey("users.id", ondelete="RESTRICT"), nullable=False)
+    user_id = Column(String, ForeignKey("users.id", ondelete="RESTRICT"), nullable=False, index=True)
     total_amount = Column(Float, nullable=False)
     delivery_full_name = Column(String(255), nullable=True)
     delivery_email = Column(String(255), nullable=True)
@@ -498,10 +498,10 @@ class Order(Base):
     __tablename__ = "orders"
 
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
-    checkout_id = Column(String, ForeignKey("checkouts.id", ondelete="CASCADE"), nullable=True)  # Nullable for migration
-    brand_id = Column(String, ForeignKey("brands.id", ondelete="RESTRICT"), nullable=True)  # Nullable for migration
+    checkout_id = Column(String, ForeignKey("checkouts.id", ondelete="CASCADE"), nullable=True, index=True)
+    brand_id = Column(String, ForeignKey("brands.id", ondelete="RESTRICT"), nullable=True, index=True)
     order_number = Column(String, unique=True, nullable=False)
-    user_id = Column(String, ForeignKey("users.id", ondelete="RESTRICT"), nullable=True)  # Denorm for legacy/queries
+    user_id = Column(String, ForeignKey("users.id", ondelete="RESTRICT"), nullable=True, index=True)
     subtotal = Column(Float, nullable=True)  # Items only; nullable for migration
     shipping_cost = Column(Float, nullable=True)  # Per-brand delivery; nullable for migration
     total_amount = Column(Float, nullable=False)
@@ -534,8 +534,8 @@ class OrderItem(Base):
     __tablename__ = "order_items"
 
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
-    order_id = Column(String, ForeignKey("orders.id", ondelete="CASCADE"), nullable=False)
-    product_variant_id = Column(String, ForeignKey("product_variants.id", ondelete="RESTRICT"), nullable=False)
+    order_id = Column(String, ForeignKey("orders.id", ondelete="CASCADE"), nullable=False, index=True)
+    product_variant_id = Column(String, ForeignKey("product_variants.id", ondelete="RESTRICT"), nullable=False, index=True)
     quantity = Column(Integer, nullable=False, default=1)
     price = Column(Float, nullable=False)
     sku = Column(String(255), unique=True, nullable=True)

@@ -57,6 +57,7 @@ import {
 import AvatarEditScreen from "./screens/AvatarEditScreen";
 import { useTheme } from "./lib/ThemeContext";
 import type { ThemeColors } from "./lib/theme";
+import { useStaleFocusEffect } from "./lib/useStaleFocusEffect";
 
 const { width, height } = Dimensions.get("window");
 
@@ -709,13 +710,13 @@ const Settings = ({
     }
   };
 
-  // Load user profile on component mount
-  useEffect(() => {
+  // Refresh profile/stats when settings tab gains focus (if stale >30s)
+  useStaleFocusEffect(useCallback(() => {
     loadUserProfile();
     loadBrands();
     loadUserStats();
     loadSwipeCount();
-  }, []);
+  }, []), 30_000);
 
   const getBottomText = useCallback(() => {
     switch (activeSection) {

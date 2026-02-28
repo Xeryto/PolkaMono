@@ -35,6 +35,7 @@ import {
 import { mapProductToCardItem } from "./lib/productMapper";
 import { useTheme } from "./lib/ThemeContext";
 import type { ThemeColors } from "./lib/theme";
+import { useStaleFocusEffect } from "./lib/useStaleFocusEffect";
 
 // Create animated text component using proper method for this version
 const AnimatedText = Animated.createAnimatedComponent(Text);
@@ -282,29 +283,28 @@ const Search = ({ navigation }: SearchProps) => {
   // Track if we're currently loading more to prevent multiple simultaneous calls
   const isLoadingMoreRef = useRef<boolean>(false);
 
-  useEffect(() => {
-    const loadFilters = async () => {
-      setIsLoadingFilters(true);
-      try {
-        const [brands, styles, categories] = await Promise.all([
-          apiWrapper.getBrands("SearchPage"),
-          apiWrapper.getStyles("SearchPage"),
-          apiWrapper.getCategories("SearchPage"),
-        ]);
-        setFilterOptions({
-          brand: brands?.map((b: any) => b.name) || [],
-          style: styles?.map((s: any) => s.name) || [],
-          category: categories?.map((c: any) => c.id) || [], // API filters by category_id
-        });
-      } catch (error) {
-        console.error("Error loading filter options:", error);
-        setFilterOptions({ category: [], brand: [], style: [] });
-      } finally {
-        setIsLoadingFilters(false);
-      }
-    };
-    loadFilters();
+  const loadFilters = useCallback(async () => {
+    setIsLoadingFilters(true);
+    try {
+      const [brands, styles, categories] = await Promise.all([
+        apiWrapper.getBrands("SearchPage"),
+        apiWrapper.getStyles("SearchPage"),
+        apiWrapper.getCategories("SearchPage"),
+      ]);
+      setFilterOptions({
+        brand: brands?.map((b: any) => b.name) || [],
+        style: styles?.map((s: any) => s.name) || [],
+        category: categories?.map((c: any) => c.id) || [],
+      });
+    } catch (error) {
+      console.error("Error loading filter options:", error);
+      setFilterOptions({ category: [], brand: [], style: [] });
+    } finally {
+      setIsLoadingFilters(false);
+    }
   }, []);
+  // Load filters on mount + refresh when re-focused if stale >60s
+  useStaleFocusEffect(loadFilters, 60_000);
 
   // Helper function to load and map popular items - wrapped in useCallback to prevent recreation on every render
   const loadPopularItems = useCallback(async () => {

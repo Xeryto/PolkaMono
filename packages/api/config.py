@@ -148,4 +148,6 @@ settings = Settings()
 
 # Validate configuration on import
 if not Settings.validate_config():
-    print("WARNING: Configuration validation failed. Please check your environment variables.") 
+    if settings.ENVIRONMENT == "production":
+        raise RuntimeError("Configuration validation failed. Check .env")
+    print("WARNING: Configuration validation failed. Please check your environment variables.")

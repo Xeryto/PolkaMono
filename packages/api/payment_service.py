@@ -138,6 +138,7 @@ def create_payment(
     for item in items:
         variant = (
             db.query(ProductVariant)
+            .with_for_update()
             .filter(ProductVariant.id == item.product_variant_id)
             .first()
         )
@@ -268,6 +269,7 @@ def create_order_test(
     for item in items:
         variant = (
             db.query(ProductVariant)
+            .with_for_update()
             .filter(ProductVariant.id == item.product_variant_id)
             .first()
         )
@@ -412,12 +414,22 @@ def update_order_status(
     note: Optional[str] = None,
 ):
     print(f"Attempting to update order {order_id} to status {status.value}")
-    order = db.query(Order).filter(Order.id == order_id).first()
+    order = db.query(Order).with_for_update().filter(Order.id == order_id).first()
     if order:
         print(
             f"Found order {order_id}. Current status: {order.status.value}. New status: {status.value}"
         )
         old_status = order.status
+
+        # Batch-lock all variants for this order to prevent N+1 and race conditions
+        variant_ids = [item.product_variant_id for item in order.items]
+        variants = (
+            db.query(ProductVariant)
+            .with_for_update()
+            .filter(ProductVariant.id.in_(variant_ids))
+            .all()
+        ) if variant_ids else []
+        variant_map = {v.id: v for v in variants}
 
         # Update purchase_count when order status changes to/from PAID
         if old_status != status:
@@ -427,22 +439,15 @@ def update_order_status(
                     f"Incrementing purchase_count for products in paid order {order_id}"
                 )
                 for item in order.items:
-                    variant = (
-                        db.query(ProductVariant)
-                        .filter(ProductVariant.id == item.product_variant_id)
-                        .first()
-                    )
+                    variant = variant_map.get(item.product_variant_id)
                     if variant:
                         product = variant.product
                         if product:
-                            # Use getattr to handle missing quantity field gracefully (defaults to 1)
                             quantity = getattr(item, "quantity", 1)
                             product.purchase_count += quantity
                             print(
                                 f"Incremented purchase_count for product {product.id} by {quantity} (new count: {product.purchase_count})"
                             )
-                # Note: Popular items cache will refresh via TTL (5 minutes)
-                # Cache invalidation on purchase count change would require avoiding circular imports
 
             elif old_status == OrderStatus.PAID and status != OrderStatus.PAID:
                 # Order was PAID but is now being changed to non-PAID (canceled, etc.) - decrement purchase_count
@@ -450,23 +455,17 @@ def update_order_status(
                     f"Decrementing purchase_count for products in order {order_id} (was PAID, now {status.value})"
                 )
                 for item in order.items:
-                    variant = (
-                        db.query(ProductVariant)
-                        .filter(ProductVariant.id == item.product_variant_id)
-                        .first()
-                    )
+                    variant = variant_map.get(item.product_variant_id)
                     if variant:
                         product = variant.product
                         if product:
-                            # Use getattr to handle missing quantity field gracefully (defaults to 1)
                             quantity = getattr(item, "quantity", 1)
                             product.purchase_count = max(
                                 0, product.purchase_count - quantity
-                            )  # Don't go below 0
+                            )
                             print(
                                 f"Decremented purchase_count for product {product.id} by {quantity} (new count: {product.purchase_count})"
                             )
-                # Note: Popular items cache will refresh via TTL (5 minutes)
 
         # If order is being cancelled or returned, restore stock quantities
         if status in (
@@ -476,11 +475,7 @@ def update_order_status(
             action = "cancelled" if status == OrderStatus.CANCELED else "returned"
             print(f"Restoring stock for {action} order {order_id}")
             for item in order.items:
-                variant = (
-                    db.query(ProductVariant)
-                    .filter(ProductVariant.id == item.product_variant_id)
-                    .first()
-                )
+                variant = variant_map.get(item.product_variant_id)
                 if variant:
                     quantity = getattr(item, "quantity", 1)
                     variant.stock_quantity += quantity

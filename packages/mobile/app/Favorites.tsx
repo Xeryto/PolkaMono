@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, memo, useMemo } from "react";
+import React, { useState, useEffect, useRef, memo, useMemo, useCallback } from "react";
 import {
   View,
   Text,
@@ -61,6 +61,7 @@ import {
 import { mapProductToCardItem } from "./lib/productMapper";
 import { useTheme } from "./lib/ThemeContext";
 import type { ThemeColors } from "./lib/theme";
+import { useStaleFocusEffect } from "./lib/useStaleFocusEffect";
 
 // Define a simpler navigation type that our custom navigation can satisfy
 interface SimpleNavigation {
@@ -301,10 +302,8 @@ const Favorites = ({ navigation }: FavoritesProps) => {
     [key: string]: boolean;
   }>({});
 
-  // Load friends and requests on component mount
-  useEffect(() => {
-    loadFriendsData();
-  }, []);
+  // Refresh friends data when tab gains focus (if stale >30s)
+  useStaleFocusEffect(useCallback(() => { loadFriendsData(); }, []), 30_000);
 
   // Update loadFriendsData to remove session check
   const loadFriendsData = async () => {
@@ -371,32 +370,27 @@ const Favorites = ({ navigation }: FavoritesProps) => {
     }
   };
 
-  // Update loadSavedItems to remove session check
-  useEffect(() => {
-    const loadSavedItems = async () => {
-      setIsLoadingSaved(true);
-      try {
-        const favorites = await apiWrapper.getUserFavorites("FavoritesPage");
-        // Map API response to FavoriteItem[] - handle null values
-        // Use utility function to ensure consistent mapping with article_number preservation
-        setSavedItems(
-          (favorites || []).map(
-            (item: api.Product, i: number): CardItem =>
-              mapProductToCardItem(item, i),
-          ),
-        );
-      } catch (error: any) {
-        console.error("Error loading saved items:", error);
-        // Don't show alerts for authentication errors
-        if (error.status !== 401) {
-          setSavedItems([]);
-        }
-      } finally {
-        setIsLoadingSaved(false);
+  // Refresh saved items when tab gains focus (if stale >30s)
+  const loadSavedItems = useCallback(async () => {
+    setIsLoadingSaved(true);
+    try {
+      const favorites = await apiWrapper.getUserFavorites("FavoritesPage");
+      setSavedItems(
+        (favorites || []).map(
+          (item: api.Product, i: number): CardItem =>
+            mapProductToCardItem(item, i),
+        ),
+      );
+    } catch (error: any) {
+      console.error("Error loading saved items:", error);
+      if (error.status !== 401) {
+        setSavedItems([]);
       }
-    };
-    loadSavedItems();
-  }, []); // Remove sessionValid dependency
+    } finally {
+      setIsLoadingSaved(false);
+    }
+  }, []);
+  useStaleFocusEffect(loadSavedItems, 30_000);
 
   // Note: Friend recommendations are now loaded in FriendProfileView component
 

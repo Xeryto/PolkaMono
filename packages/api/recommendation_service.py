@@ -8,6 +8,7 @@ price similarity, size availability, popularity, and recency.
 import logging
 import math
 import random
+import threading
 import time
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
@@ -49,18 +50,21 @@ class UserRecoContext:
 
 # Module-level cache: user_id -> (timestamp, context)
 _user_ctx_cache: Dict[str, Tuple[float, UserRecoContext]] = {}
+_user_ctx_lock = threading.Lock()
 _USER_CTX_TTL = 5 * 60  # 5 minutes
 
 
 def _invalidate_user_ctx(user_id: str):
-    _user_ctx_cache.pop(user_id, None)
+    with _user_ctx_lock:
+        _user_ctx_cache.pop(user_id, None)
 
 
 def build_user_context(db: Session, user: User) -> UserRecoContext:
     now = time.time()
-    cached = _user_ctx_cache.get(user.id)
-    if cached and (now - cached[0]) < _USER_CTX_TTL:
-        return cached[1]
+    with _user_ctx_lock:
+        cached = _user_ctx_cache.get(user.id)
+        if cached and (now - cached[0]) < _USER_CTX_TTL:
+            return cached[1]
 
     style_ids = {us.style_id for us in user.favorite_styles}
     brand_ids = {ub.brand_id for ub in user.favorite_brands}
@@ -124,7 +128,8 @@ def build_user_context(db: Session, user: User) -> UserRecoContext:
         price_stddev=price_stddev,
         selected_size=selected_size,
     )
-    _user_ctx_cache[user.id] = (now, ctx)
+    with _user_ctx_lock:
+        _user_ctx_cache[user.id] = (now, ctx)
     return ctx
 
 

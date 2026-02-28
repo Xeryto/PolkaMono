@@ -54,49 +54,54 @@ export const clearCart = async (): Promise<void> => {
   }
 };
 
+// Event emitter for cart changes
+type CartChangeListener = () => void;
+const cartChangeListeners: CartChangeListener[] = [];
+
+export const addCartChangeListener = (listener: CartChangeListener): (() => void) => {
+  cartChangeListeners.push(listener);
+  return () => {
+    const idx = cartChangeListeners.indexOf(listener);
+    if (idx > -1) cartChangeListeners.splice(idx, 1);
+  };
+};
+
+const emitCartChange = () => {
+  for (const listener of cartChangeListeners) {
+    listener();
+  }
+};
+
 // Create a cart storage interface compatible with the global cartStorage
 export const createCartStorage = (initialItems: CartItem[] = []): CartStorage => {
   return {
     items: [...initialItems],
-    
-    // Add item to cart (always add as a new item)
+
     addItem(item: CartItem) {
-      // Generate a unique ID for the cart item
       const cartItem = {
         ...item,
         cartItemId: `${item.id}-${item.size}-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`
       };
-      
-      // Always add as a new item
       this.items.push(cartItem);
-      console.log('Cart - Added new item to cart:', cartItem);
-      
-      // Save to persistent storage whenever the cart changes
       saveCartItems(this.items);
+      emitCartChange();
     },
-    
-    // Remove specific item from cart by cartItemId
+
     removeItem(cartItemId: string) {
       this.items = this.items.filter(item => item.cartItemId !== cartItemId);
-      console.log('Cart - Removed item with cartItemId:', cartItemId);
-      
-      // Save to persistent storage whenever the cart changes
       saveCartItems(this.items);
+      emitCartChange();
     },
-    
-    // Update quantity of an item
+
     updateQuantity(cartItemId: string, change: number) {
       const itemIndex = this.items.findIndex(item => item.cartItemId === cartItemId);
       if (itemIndex >= 0) {
         this.items[itemIndex].quantity = Math.max(1, (this.items[itemIndex].quantity || 0) + change);
-        console.log('Cart - Updated quantity for item:', this.items[itemIndex]);
-        
-        // Save to persistent storage whenever the cart changes
         saveCartItems(this.items);
+        emitCartChange();
       }
     },
-    
-    // Get all items in cart
+
     getItems() {
       return this.items;
     }

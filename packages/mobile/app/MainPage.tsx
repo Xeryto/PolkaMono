@@ -2367,18 +2367,20 @@ const MainPage = ({ navigation, route }: MainPageProps) => {
     }
   }, [cards, currentCardIndex]);
 
-  // Add a safeguard effect to ensure currentCardIndex stays valid
+  // Auto-fetch more cards when running low, with concurrency guard
+  const isFetchingMore = useRef(false);
   useEffect(() => {
     let fetchTimer: NodeJS.Timeout;
 
     const cardsWithoutLoading = cards.filter((c) => c.id !== LOADING_CARD_ID);
-    if (cardsWithoutLoading.length < MIN_CARDS_THRESHOLD && !isRefreshing) {
+    if (cardsWithoutLoading.length < MIN_CARDS_THRESHOLD && !isRefreshing && !isFetchingMore.current) {
       fetchTimer = setTimeout(() => {
+        if (isFetchingMore.current) return;
+        isFetchingMore.current = true;
         fetchMoreCards(MIN_CARDS_THRESHOLD - cardsWithoutLoading.length + 1)
           .then((apiCards) => {
             if (apiCards.length > 0) {
               setCards((prevCards) => {
-                // Remove loading cards and add new ones
                 const filteredCards = prevCards.filter(
                   (c) => c.id !== LOADING_CARD_ID,
                 );
@@ -2399,7 +2401,8 @@ const MainPage = ({ navigation, route }: MainPageProps) => {
             console.error("Error fetching cards:", error);
             setIsAnimating(false);
             pan.setValue({ x: 0, y: 0 });
-          });
+          })
+          .finally(() => { isFetchingMore.current = false; });
       }, 300);
     }
 

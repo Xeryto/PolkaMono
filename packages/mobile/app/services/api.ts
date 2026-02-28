@@ -862,12 +862,105 @@ export const updateUserStyles = async (styleIds: string[]): Promise<any> => {
   return response;
 };
 
-// Data caching for brands and styles to prevent refetching
+// Data caching for brands, styles, and categories to prevent refetching
 let brandsCache: Brand[] | null = null;
 let stylesCache: Style[] | null = null;
+let categoriesCache: any[] | null = null;
 let brandsCacheTime: number = 0;
 let stylesCacheTime: number = 0;
-const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+let categoriesCacheTime: number = 0;
+const CACHE_DURATION = 30 * 60 * 1000; // 30 minutes in-memory
+const ASYNC_CACHE_DURATION = 24 * 60 * 60 * 1000; // 24h AsyncStorage
+
+// AsyncStorage keys for persistent cache
+const ASYNC_BRANDS_KEY = '@PolkaMobile:brandsCache';
+const ASYNC_STYLES_KEY = '@PolkaMobile:stylesCache';
+const ASYNC_CATEGORIES_KEY = '@PolkaMobile:categoriesCache';
+const ASYNC_POPULAR_KEY = '@PolkaMobile:popularItemsCache';
+
+// Persist to AsyncStorage in background (fire-and-forget)
+const persistToStorage = (key: string, data: any) => {
+  AsyncStorage.setItem(key, JSON.stringify({ data, time: Date.now() })).catch(() => {});
+};
+
+// Load from AsyncStorage (returns null if expired or missing)
+const loadFromStorage = async <T>(key: string, maxAge: number): Promise<{ data: T; time: number } | null> => {
+  try {
+    const raw = await AsyncStorage.getItem(key);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (Date.now() - parsed.time > maxAge) return null;
+    return parsed;
+  } catch {
+    return null;
+  }
+};
+
+// Simple LRU cache with TTL
+class LRUCache<T> {
+  private cache = new Map<string, { data: T; time: number }>();
+  constructor(private maxSize: number, private ttl: number) {}
+  get(key: string): T | null {
+    const entry = this.cache.get(key);
+    if (!entry) return null;
+    if (Date.now() - entry.time > this.ttl) {
+      this.cache.delete(key);
+      return null;
+    }
+    // Move to end (most recently used)
+    this.cache.delete(key);
+    this.cache.set(key, entry);
+    return entry.data;
+  }
+  set(key: string, data: T) {
+    this.cache.delete(key);
+    if (this.cache.size >= this.maxSize) {
+      const oldest = this.cache.keys().next().value;
+      if (oldest !== undefined) this.cache.delete(oldest);
+    }
+    this.cache.set(key, { data, time: Date.now() });
+  }
+  delete(key: string) { this.cache.delete(key); }
+  clear() { this.cache.clear(); }
+}
+
+// Product details: LRU cache (50 products, 10min TTL)
+const productDetailsCache = new LRUCache<Product>(50, 10 * 60 * 1000);
+export const clearProductDetailsCache = () => productDetailsCache.clear();
+
+// Favorites cache (60s TTL)
+let favoritesCache: Product[] | null = null;
+let favoritesCacheTime: number = 0;
+const FAVORITES_CACHE_DURATION = 60 * 1000;
+export const clearFavoritesCache = () => { favoritesCache = null; favoritesCacheTime = 0; };
+
+// Friends cache (2min TTL) — uses `any` since Friend/FriendRequest interfaces declared later
+let friendsCache: any[] | null = null;
+let friendsCacheTime: number = 0;
+let sentRequestsCache: any[] | null = null;
+let sentRequestsCacheTime: number = 0;
+let receivedRequestsCache: any[] | null = null;
+let receivedRequestsCacheTime: number = 0;
+const FRIENDS_CACHE_DURATION = 2 * 60 * 1000;
+export const clearFriendsCache = () => {
+  friendsCache = null; friendsCacheTime = 0;
+  sentRequestsCache = null; sentRequestsCacheTime = 0;
+  receivedRequestsCache = null; receivedRequestsCacheTime = 0;
+};
+
+// Friend recommendations cache (5min TTL, per friend)
+const friendRecommendationsCache = new LRUCache<Product[]>(20, 5 * 60 * 1000);
+export const clearFriendRecommendationsCache = () => friendRecommendationsCache.clear();
+
+// Search results cache (LRU, 5 min TTL)
+const searchResultsCache = new LRUCache<Product[]>(10, 5 * 60 * 1000);
+export const clearSearchResultsCache = () => searchResultsCache.clear();
+
+// User stats cache (5min TTL)
+let userStatsCache: any | null = null;
+let userStatsCacheTime: number = 0;
+const USER_STATS_CACHE_DURATION = 5 * 60 * 1000;
+export const clearUserStatsCache = () => { userStatsCache = null; userStatsCacheTime = 0; };
 
 // Request deduplication to prevent multiple identical requests
 const pendingRequests = new Map<string, Promise<any>>();
@@ -877,83 +970,86 @@ export const clearGlobalCaches = () => {
   console.log('Clearing global caches to prevent cross-user contamination');
   brandsCache = null;
   stylesCache = null;
+  categoriesCache = null;
   brandsCacheTime = 0;
   stylesCacheTime = 0;
-  clearPopularItemsCache(); // Clear popular items cache as well
-  // Clear pending requests to prevent stale data
+  categoriesCacheTime = 0;
+  clearPopularItemsCache();
+  clearProductDetailsCache();
+  clearFavoritesCache();
+  clearFriendsCache();
+  clearFriendRecommendationsCache();
+  clearSearchResultsCache();
+  clearUserStatsCache();
   pendingRequests.clear();
 };
 
-// NEW: Brand and Style API functions with caching and deduplication
+// Brand and Style API functions with caching, deduplication, and AsyncStorage persistence
 export const getBrands = async (): Promise<Brand[]> => {
   const now = Date.now();
-  
-  // Return cached data if it's still fresh
   if (brandsCache && (now - brandsCacheTime) < CACHE_DURATION) {
-    console.log('Returning cached brands data');
     return brandsCache;
   }
-  
-  // Check if there's already a pending request
+  // Try AsyncStorage before hitting API
+  if (!brandsCache) {
+    const stored = await loadFromStorage<Brand[]>(ASYNC_BRANDS_KEY, ASYNC_CACHE_DURATION);
+    if (stored) {
+      brandsCache = stored.data;
+      brandsCacheTime = stored.time;
+      if ((now - stored.time) < CACHE_DURATION) return brandsCache;
+      // Stale but usable — refresh in background
+    }
+  }
   const requestKey = 'getBrands';
   if (pendingRequests.has(requestKey)) {
-    console.log('Waiting for existing brands request');
     return pendingRequests.get(requestKey)!;
   }
-  
-  console.log('Fetching fresh brands data from API');
+  const staleData = brandsCache;
   const brandsPromise = apiRequest('/api/v1/brands', 'GET', undefined, false).then(brands => {
-    // Cache the result
     brandsCache = brands;
-    brandsCacheTime = now;
-    // Remove from pending requests
+    brandsCacheTime = Date.now();
+    persistToStorage(ASYNC_BRANDS_KEY, brands);
     pendingRequests.delete(requestKey);
     return brands;
   }).catch(error => {
-    // Remove from pending requests on error
     pendingRequests.delete(requestKey);
+    if (staleData) return staleData; // Return stale on network error
     throw error;
   });
-  
-  // Store the pending request
   pendingRequests.set(requestKey, brandsPromise);
-  
   return brandsPromise;
 };
 
 export const getStyles = async (): Promise<Style[]> => {
   const now = Date.now();
-  
-  // Return cached data if it's still fresh
   if (stylesCache && (now - stylesCacheTime) < CACHE_DURATION) {
-    console.log('Returning cached styles data');
     return stylesCache;
   }
-  
-  // Check if there's already a pending request
+  if (!stylesCache) {
+    const stored = await loadFromStorage<Style[]>(ASYNC_STYLES_KEY, ASYNC_CACHE_DURATION);
+    if (stored) {
+      stylesCache = stored.data;
+      stylesCacheTime = stored.time;
+      if ((now - stored.time) < CACHE_DURATION) return stylesCache;
+    }
+  }
   const requestKey = 'getStyles';
   if (pendingRequests.has(requestKey)) {
-    console.log('Waiting for existing styles request');
     return pendingRequests.get(requestKey)!;
   }
-  
-  console.log('Fetching fresh styles data from API');
+  const staleData = stylesCache;
   const stylesPromise = apiRequest('/api/v1/styles', 'GET', undefined, false).then(styles => {
-    // Cache the result
     stylesCache = styles;
-    stylesCacheTime = now;
-    // Remove from pending requests
+    stylesCacheTime = Date.now();
+    persistToStorage(ASYNC_STYLES_KEY, styles);
     pendingRequests.delete(requestKey);
     return styles;
   }).catch(error => {
-    // Remove from pending requests on error
     pendingRequests.delete(requestKey);
+    if (staleData) return staleData;
     throw error;
   });
-  
-  // Store the pending request
   pendingRequests.set(requestKey, stylesPromise);
-  
   return stylesPromise;
 };
 
@@ -961,8 +1057,10 @@ export const getStyles = async (): Promise<Style[]> => {
 export const clearDataCache = () => {
   brandsCache = null;
   stylesCache = null;
+  categoriesCache = null;
   brandsCacheTime = 0;
   stylesCacheTime = 0;
+  categoriesCacheTime = 0;
   pendingRequests.clear();
   console.log('Data cache and pending requests cleared');
 };
@@ -1006,37 +1104,58 @@ export interface FriendRequestResponse {
 
 // Friends API functions
 export const sendFriendRequest = async (recipientUsername: string): Promise<FriendRequestResponse> => {
-  console.log('Sending friend request to username:', recipientUsername);
-  const requestBody = {
+  clearFriendsCache();
+  return await apiRequest('/api/v1/friends/request', 'POST', {
     recipient_identifier: recipientUsername
-  };
-  console.log('Request body:', JSON.stringify(requestBody, null, 2));
-  
-  return await apiRequest('/api/v1/friends/request', 'POST', requestBody);
+  });
 };
 
 export const getSentFriendRequests = async (): Promise<FriendRequest[]> => {
-  return await apiRequest('/api/v1/friends/requests/sent', 'GET');
+  const now = Date.now();
+  if (sentRequestsCache && (now - sentRequestsCacheTime) < FRIENDS_CACHE_DURATION) {
+    return sentRequestsCache;
+  }
+  const result = await apiRequest('/api/v1/friends/requests/sent', 'GET');
+  sentRequestsCache = result;
+  sentRequestsCacheTime = Date.now();
+  return result;
 };
 
 export const getReceivedFriendRequests = async (): Promise<FriendRequest[]> => {
-  return await apiRequest('/api/v1/friends/requests/received', 'GET');
+  const now = Date.now();
+  if (receivedRequestsCache && (now - receivedRequestsCacheTime) < FRIENDS_CACHE_DURATION) {
+    return receivedRequestsCache;
+  }
+  const result = await apiRequest('/api/v1/friends/requests/received', 'GET');
+  receivedRequestsCache = result;
+  receivedRequestsCacheTime = Date.now();
+  return result;
 };
 
 export const acceptFriendRequest = async (requestId: string): Promise<FriendRequestResponse> => {
+  clearFriendsCache();
   return await apiRequest(`/api/v1/friends/requests/${requestId}/accept`, 'POST');
 };
 
 export const rejectFriendRequest = async (requestId: string): Promise<FriendRequestResponse> => {
+  clearFriendsCache();
   return await apiRequest(`/api/v1/friends/requests/${requestId}/reject`, 'POST');
 };
 
 export const cancelFriendRequest = async (requestId: string): Promise<FriendRequestResponse> => {
+  clearFriendsCache();
   return await apiRequest(`/api/v1/friends/requests/${requestId}/cancel`, 'DELETE');
 };
 
 export const getFriends = async (): Promise<Friend[]> => {
-  return await apiRequest('/api/v1/friends', 'GET');
+  const now = Date.now();
+  if (friendsCache && (now - friendsCacheTime) < FRIENDS_CACHE_DURATION) {
+    return friendsCache;
+  }
+  const result = await apiRequest('/api/v1/friends', 'GET');
+  friendsCache = result;
+  friendsCacheTime = Date.now();
+  return result;
 };
 
 export const searchUsers = async (query: string): Promise<SearchUser[]> => {
@@ -1061,6 +1180,7 @@ export const getUserPublicProfile = async (userId: string): Promise<PublicUserPr
 
 // Remove a friend
 export const removeFriend = async (friendId: string): Promise<FriendRequestResponse> => {
+  clearFriendsCache();
   return await apiRequest(`/api/v1/friends/${friendId}`, 'DELETE');
 };
 
@@ -1106,9 +1226,38 @@ export const simulateResetPassword = async (usernameOrEmail: string): Promise<bo
 
 
 
-// Get all categories
+// Get all categories (cached + AsyncStorage persisted)
 export const getCategories = async (): Promise<any[]> => {
-  return await apiRequest('/api/v1/categories', 'GET', undefined, false);
+  const now = Date.now();
+  if (categoriesCache && (now - categoriesCacheTime) < CACHE_DURATION) {
+    return categoriesCache;
+  }
+  if (!categoriesCache) {
+    const stored = await loadFromStorage<any[]>(ASYNC_CATEGORIES_KEY, ASYNC_CACHE_DURATION);
+    if (stored) {
+      categoriesCache = stored.data;
+      categoriesCacheTime = stored.time;
+      if ((now - stored.time) < CACHE_DURATION) return categoriesCache;
+    }
+  }
+  const requestKey = 'getCategories';
+  if (pendingRequests.has(requestKey)) {
+    return pendingRequests.get(requestKey)!;
+  }
+  const staleData = categoriesCache;
+  const categoriesPromise = apiRequest('/api/v1/categories', 'GET', undefined, false).then(categories => {
+    categoriesCache = categories;
+    categoriesCacheTime = Date.now();
+    persistToStorage(ASYNC_CATEGORIES_KEY, categories);
+    pendingRequests.delete(requestKey);
+    return categories;
+  }).catch(error => {
+    pendingRequests.delete(requestKey);
+    if (staleData) return staleData;
+    throw error;
+  });
+  pendingRequests.set(requestKey, categoriesPromise);
+  return categoriesPromise;
 };
 
 // Payment API functions
@@ -1171,14 +1320,36 @@ export const createOrderTest = async (
 
 // Order History
 
-// Get user's favorite products
-export const getUserFavorites = async (): Promise<Product[]> => {
-  return await apiRequest('/api/v1/user/favorites', 'GET');
+// Get user's favorite products (cached, 60s TTL)
+export const getUserFavorites = async (forceRefresh = false): Promise<Product[]> => {
+  const now = Date.now();
+  if (!forceRefresh && favoritesCache && (now - favoritesCacheTime) < FAVORITES_CACHE_DURATION) {
+    return favoritesCache;
+  }
+  const requestKey = 'getUserFavorites';
+  if (pendingRequests.has(requestKey)) {
+    return pendingRequests.get(requestKey)!;
+  }
+  const promise = apiRequest('/api/v1/user/favorites', 'GET').then(favorites => {
+    favoritesCache = favorites;
+    favoritesCacheTime = Date.now();
+    pendingRequests.delete(requestKey);
+    return favorites;
+  }).catch(error => {
+    pendingRequests.delete(requestKey);
+    throw error;
+  });
+  pendingRequests.set(requestKey, promise);
+  return promise;
 };
 
-// Get recommendations for a friend
+// Get recommendations for a friend (cached per friend, 5min TTL)
 export const getFriendRecommendations = async (friendId: string): Promise<Product[]> => {
-  return await apiRequest(`/api/v1/recommendations/for_friend/${friendId}`, 'GET');
+  const cached = friendRecommendationsCache.get(friendId);
+  if (cached) return cached;
+  const result = await apiRequest(`/api/v1/recommendations/for_friend/${friendId}`, 'GET');
+  friendRecommendationsCache.set(friendId, result);
+  return result;
 };
 
 // Get recommendations for the current user
@@ -1192,6 +1363,16 @@ export const getRecentSwipes = async (limit: number = 5): Promise<Product[]> => 
 };
 
 export const toggleFavorite = async (productId: string, action: 'like' | 'unlike'): Promise<{ message: string }> => {
+  // Optimistic cache update
+  if (favoritesCache) {
+    if (action === 'unlike') {
+      favoritesCache = favoritesCache.filter(p => String(p.id) !== String(productId));
+    }
+    // For 'like' we can't add to cache without full product data, so just invalidate
+    if (action === 'like') {
+      favoritesCacheTime = 0; // Force refresh on next access
+    }
+  }
   return await apiRequest('/api/v1/user/favorites/toggle', 'POST', {
     product_id: productId,
     action: action,
@@ -1320,7 +1501,11 @@ export const getOrderById = async (orderId: string): Promise<Order> => {
 };
 
 export const getProductDetails = async (productId: string): Promise<Product> => {
-  return await apiRequest(`/api/v1/products/${productId}`, 'GET');
+  const cached = productDetailsCache.get(productId);
+  if (cached) return cached;
+  const product = await apiRequest(`/api/v1/products/${productId}`, 'GET');
+  productDetailsCache.set(productId, product);
+  return product;
 };
 
 export const getProductSearchResults = async (params: {
@@ -1339,7 +1524,13 @@ export const getProductSearchResults = async (params: {
   if (params.limit) searchParams.append('limit', params.limit.toString());
   if (params.offset) searchParams.append('offset', params.offset.toString());
 
-  return await apiRequest(`/api/v1/products/search?${searchParams.toString()}`, 'GET');
+  const cacheKey = searchParams.toString();
+  const cached = searchResultsCache.get(cacheKey);
+  if (cached) return cached;
+
+  const result = await apiRequest(`/api/v1/products/search?${cacheKey}`, 'GET');
+  searchResultsCache.set(cacheKey, result);
+  return result;
 };
 
 // Popular items cache with TTL
@@ -1356,37 +1547,35 @@ export const clearPopularItemsCache = () => {
 
 export const getPopularItems = async (limit: number = 8): Promise<Product[]> => {
   const now = Date.now();
-  
-  // Return cached data if it's still fresh
   if (popularItemsCache && (now - popularItemsCacheTime) < POPULAR_ITEMS_CACHE_DURATION) {
-    console.log('Returning cached popular items');
     return popularItemsCache;
   }
-  
-  // Check if there's already a pending request
+  // Try AsyncStorage before API
+  if (!popularItemsCache) {
+    const stored = await loadFromStorage<Product[]>(ASYNC_POPULAR_KEY, ASYNC_CACHE_DURATION);
+    if (stored) {
+      popularItemsCache = stored.data;
+      popularItemsCacheTime = stored.time;
+      if ((now - stored.time) < POPULAR_ITEMS_CACHE_DURATION) return popularItemsCache;
+    }
+  }
   const requestKey = 'getPopularItems';
   if (pendingRequests.has(requestKey)) {
-    console.log('Waiting for existing popular items request');
     return pendingRequests.get(requestKey)!;
   }
-  
-  console.log('Fetching fresh popular items from API');
+  const staleData = popularItemsCache;
   const popularPromise = apiRequest(`/api/v1/products/popular?limit=${limit}`, 'GET', undefined, true).then(items => {
-    // Cache the result
     popularItemsCache = items;
-    popularItemsCacheTime = now;
-    // Remove from pending requests
+    popularItemsCacheTime = Date.now();
+    persistToStorage(ASYNC_POPULAR_KEY, items);
     pendingRequests.delete(requestKey);
     return items;
   }).catch(error => {
-    // Remove from pending requests on error
     pendingRequests.delete(requestKey);
+    if (staleData) return staleData;
     throw error;
   });
-  
-  // Store the pending request
   pendingRequests.set(requestKey, popularPromise);
-  
   return popularPromise;
 };
 
@@ -1399,7 +1588,14 @@ export interface UserStats {
 }
 
 export const getUserStats = async (): Promise<UserStats> => {
-  return await apiRequest('/api/v1/user/stats', 'GET');
+  const now = Date.now();
+  if (userStatsCache && (now - userStatsCacheTime) < USER_STATS_CACHE_DURATION) {
+    return userStatsCache;
+  }
+  const result = await apiRequest('/api/v1/user/stats', 'GET');
+  userStatsCache = result;
+  userStatsCacheTime = Date.now();
+  return result;
 };
 
 // Shopping Information

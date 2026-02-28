@@ -30,6 +30,7 @@ import {
   getBrands,
   sessionManager,
 } from "./services/api";
+import { addCartChangeListener } from "./cartStorage";
 import { CartItem, DeliveryInfo, Product } from "./types/product";
 import {
   ANIMATION_DURATIONS,
@@ -316,88 +317,48 @@ const Cart = ({ navigation }: CartProps) => {
     };
   }, []);
 
+  const buildCartItems = useRef((bMap: BrandMap) => {
+    if (!global.cartStorage) return;
+    const items = [...global.cartStorage.getItems()];
+    const rawItems = items.map((item: any) => ({
+      ...item,
+      id: item.id,
+      brand_id: item.brand_id,
+      price: item.price,
+      quantity: item.quantity ?? 1,
+      cartItemId:
+        item.cartItemId ||
+        `${item.id}-${item.size}-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
+    }));
+    const deliveries = computeDeliveryForItems(rawItems, bMap);
+    const itemsWithDelivery: CartItem[] = rawItems.map((item: any, idx: number) => ({
+      ...item,
+      images: item.images ?? [],
+      quantity: item.quantity ?? 1,
+      brand_return_policy: item.brand_return_policy ?? "",
+      description: item.description ?? "",
+      materials: item.materials ?? "",
+      color: item.color ?? "",
+      color_variants: item.color_variants ?? [],
+      selected_color_index: item.selected_color_index ?? 0,
+      delivery: deliveries[idx] ?? { cost: DEFAULT_SHIPPING_PRICE, estimatedTime: "1-3 дня" },
+    }));
+    setCartItems(itemsWithDelivery);
+    setIsLoading(false);
+  }).current;
+
+  // Keep ref in sync with latest brandsMap
+  const brandsMapRef = useRef(brandsMap);
+  useEffect(() => { brandsMapRef.current = brandsMap; }, [brandsMap]);
+
+  // Initial load + subscribe to cart changes via event emitter
   useEffect(() => {
-    const loadData = () => {
-      if (!global.cartStorage) {
-        setIsLoading(true);
-        return;
-      }
-      setIsLoading(true);
-      const items = [...global.cartStorage.getItems()];
-      const rawItems = items.map((item: any) => ({
-        ...item,
-        id: item.id,
-        brand_id: item.brand_id,
-        price: item.price,
-        quantity: item.quantity ?? 1,
-        cartItemId:
-          item.cartItemId ||
-          `${item.id}-${item.size}-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
-      }));
-      const deliveries = computeDeliveryForItems(rawItems, brandsMap);
-      const itemsWithDelivery: CartItem[] = rawItems.map((item: any, idx: number) => {
-        const newItem: CartItem = {
-          ...item,
-          id: item.id,
-          name: item.name,
-          price: item.price,
-          images: item.images ?? [],
-          size: item.size,
-          quantity: item.quantity ?? 1,
-          isLiked: item.isLiked,
-          cartItemId: item.cartItemId,
-          brand_name: item.brand_name,
-          brand_id: item.brand_id,
-          brand_return_policy: item.brand_return_policy ?? "",
-          description: item.description ?? "",
-          materials: item.materials ?? "",
-          color: item.color ?? "",
-          color_variants: item.color_variants ?? [],
-          selected_color_index: item.selected_color_index ?? 0,
-          variants: item.variants,
-          article_number: item.article_number,
-          product_variant_id: item.product_variant_id,
-          delivery: deliveries[idx] ?? { cost: DEFAULT_SHIPPING_PRICE, estimatedTime: "1-3 дня" },
-        };
-        return newItem;
-      });
-      setCartItems(itemsWithDelivery);
-      setIsLoading(false);
-    };
-    loadData();
-    const intervalId = setInterval(() => {
-      if (global.cartStorage) {
-        const items = [...global.cartStorage.getItems()];
-        setCartItems((prevItems) => {
-          const hasChanges =
-            items.length !== prevItems.length ||
-            items.some(
-              (newItem) =>
-                !prevItems.find(
-                  (item) =>
-                    item.cartItemId === newItem.cartItemId &&
-                    item.quantity === newItem.quantity,
-                ),
-            );
-          if (!hasChanges) return prevItems;
-          const rawItems = items.map((item: any) => ({
-            ...item,
-            id: item.id,
-            brand_id: item.brand_id,
-            price: item.price,
-            quantity: item.quantity ?? 1,
-            cartItemId: item.cartItemId,
-          }));
-          const deliveries = computeDeliveryForItems(rawItems, brandsMap);
-          return items.map((newItem: any, idx: number) => ({
-            ...newItem,
-            delivery: deliveries[idx] ?? { cost: DEFAULT_SHIPPING_PRICE, estimatedTime: "1-3 дня" },
-            product_variant_id: newItem.product_variant_id,
-          })) as CartItem[];
-        });
-      }
-    }, 1000);
-    return () => clearInterval(intervalId);
+    setIsLoading(true);
+    buildCartItems(brandsMap);
+    const unsubscribe = addCartChangeListener(() => {
+      buildCartItems(brandsMapRef.current);
+    });
+    return unsubscribe;
   }, [global.cartStorage, brandsMap]);
 
   // Listen for session events to clear cart when user logs out or session expires

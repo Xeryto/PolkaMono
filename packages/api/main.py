@@ -128,6 +128,15 @@ def determine_file_extension(content_type: str, filename: Optional[str] = None) 
     return CONTENT_TYPE_TO_EXTENSION.get(normalized_content_type, ".jpg")
 
 
+def _product_eager_options():
+    """Standard eager-load options for Product queries feeding product_to_schema()."""
+    return [
+        joinedload(Product.brand),
+        joinedload(Product.styles),
+        joinedload(Product.color_variants).joinedload(ProductColorVariant.variants),
+    ]
+
+
 def product_to_schema(product, is_liked=None):
     """Build schemas.Product from Product model with color_variants."""
     return schemas.Product(
@@ -2528,7 +2537,7 @@ async def get_brand_products(
     current_user: User = Depends(get_current_brand_user), db: Session = Depends(get_db)
 ):
     """Get all products for the authenticated brand user"""
-    products = db.query(Product).filter(Product.brand_id == current_user.id).all()
+    products = db.query(Product).options(*_product_eager_options()).filter(Product.brand_id == current_user.id).all()
     return [product_to_schema(p) for p in products]
 
 
@@ -2539,7 +2548,7 @@ async def get_brand_product_details(
     db: Session = Depends(get_db),
 ):
     """Get details of a specific product for the authenticated brand user"""
-    product = db.query(Product).filter(Product.id == product_id).first()
+    product = db.query(Product).options(*_product_eager_options()).filter(Product.id == product_id).first()
     if not product:
         raise HTTPException(
             status_code=404,
@@ -3166,6 +3175,7 @@ async def get_recent_swipes(
     products = (
         db.query(Product)
         .join(Brand)
+        .options(*_product_eager_options())
         .filter(
             Product.id.in_(product_ids),
             Brand.is_inactive == False,
@@ -3264,10 +3274,11 @@ async def get_popular_products(
     products = (
         db.query(Product)
         .join(Brand)
+        .options(*_product_eager_options())
         .filter(Brand.is_inactive == False)
         .order_by(
             Product.purchase_count.desc(),
-            Product.created_at.desc(),  # Secondary sort by creation date for consistency
+            Product.created_at.desc(),
         )
         .limit(limit)
         .all()
@@ -3300,7 +3311,7 @@ async def search_products(
     db: Session = Depends(get_db),
 ):
     """Search for products based on query and filters. Supports multiple values per filter (OR logic)."""
-    products_query = db.query(Product).join(Brand).filter(Brand.is_inactive == False)
+    products_query = db.query(Product).join(Brand).options(*_product_eager_options()).filter(Brand.is_inactive == False)
 
     # Apply search query
     if query:
@@ -3350,7 +3361,7 @@ async def get_product_details(
     db: Session = Depends(get_db),
 ):
     """Get details of a specific product for regular users"""
-    product = db.query(Product).filter(Product.id == product_id).first()
+    product = db.query(Product).options(*_product_eager_options()).filter(Product.id == product_id).first()
     if not product or product.brand.is_inactive:
         raise HTTPException(
             status_code=404,
@@ -4271,19 +4282,24 @@ def admin_order_lookup(
     db: Session = Depends(get_db),
 ):
     """Admin: look up any order by ID, returns full order info (all items + statuses)."""
-    from models import ProductVariant
-
-    order = db.query(Order).filter(Order.id == order_id).first()
+    order = (
+        db.query(Order)
+        .options(
+            joinedload(Order.brand),
+            joinedload(Order.items)
+            .joinedload(OrderItem.product_variant)
+            .joinedload(ProductVariant.color_variant)
+            .joinedload(ProductColorVariant.product),
+        )
+        .filter(Order.id == order_id)
+        .first()
+    )
     if not order:
         raise HTTPException(status_code=404, detail="Заказ не найден")
     brand_name = order.brand.name if order.brand else "—"
     items = []
     for item in order.items:
-        pv = (
-            db.query(ProductVariant)
-            .filter(ProductVariant.id == item.product_variant_id)
-            .first()
-        )
+        pv = item.product_variant
         product_name = (
             pv.color_variant.product.name
             if pv and pv.color_variant and pv.color_variant.product
@@ -4410,7 +4426,7 @@ def admin_record_withdrawal(
     db: Session = Depends(get_db),
 ):
     """Admin: record a brand withdrawal."""
-    brand = db.query(Brand).filter(Brand.id == body.brand_id).first()
+    brand = db.query(Brand).with_for_update().filter(Brand.id == body.brand_id).first()
     if not brand:
         raise HTTPException(status_code=404, detail="Бренд не найден")
     withdrawal = BrandWithdrawal(

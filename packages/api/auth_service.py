@@ -3,6 +3,7 @@ Authentication service for user operations and OAuth integration
 """
 from typing import Optional, Dict, Any
 from sqlalchemy.orm import Session
+from sqlalchemy import func as sa_func
 from models import User, OAuthAccount, UserProfile, Gender, AuthAccount
 from oauth_service import oauth_service
 from config import settings
@@ -318,7 +319,7 @@ class AuthService:
     @staticmethod
     def record_failed_login(db: Session, auth_account: AuthAccount) -> None:
         """Increment failed attempts; lock if threshold reached."""
-        auth_account.failed_login_attempts = (auth_account.failed_login_attempts or 0) + 1
+        auth_account.failed_login_attempts = sa_func.coalesce(AuthAccount.failed_login_attempts, 0) + 1
         if auth_account.failed_login_attempts >= settings.LOGIN_MAX_FAILED_ATTEMPTS:
             auth_account.login_locked_until = datetime.utcnow() + timedelta(minutes=settings.LOGIN_LOCKOUT_MINUTES)
         db.commit()
