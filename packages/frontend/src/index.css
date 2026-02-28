@@ -2,110 +2,109 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Ominous Dark Design System with Dark Brown Hints */
+/* Warm Luxury Design System — aligned with Polka mobile app */
 
 @layer base {
+  /* Light mode (landing/consumer-facing) */
   :root {
-    --background: 20 8% 8%;
-    --foreground: 20 20% 85%;
+    --background: 25 20% 93%;       /* #F2ECE7 warm cream */
+    --foreground: 0 0% 0%;          /* #000000 */
 
-    --card: 20 10% 10%;
-    --card-foreground: 20 15% 90%;
+    --card: 25 15% 91%;             /* #EDE7E2 */
+    --card-foreground: 0 0% 0%;
 
-    --popover: 20 12% 12%;
-    --popover-foreground: 20 15% 90%;
+    --popover: 25 15% 91%;
+    --popover-foreground: 0 0% 0%;
 
-    --primary: 25 35% 15%;
-    --primary-foreground: 20 20% 95%;
+    --primary: 20 40% 20%;          /* #4A3120 dark brown */
+    --primary-foreground: 25 20% 93%;
 
-    --secondary: 20 15% 18%;
-    --secondary-foreground: 20 15% 85%;
+    --secondary: 25 15% 87%;        /* #E0D6CC */
+    --secondary-foreground: 20 40% 20%;
 
-    --muted: 20 12% 50%;
-    --muted-foreground: 20 8% 60%;
+    --muted: 25 15% 87%;
+    --muted-foreground: 20 30% 35%;
 
-    --accent: 30 40% 18%;
-    --accent-foreground: 20 15% 90%;
+    --accent: 30 40% 85%;           /* #F3E6D6 elevated */
+    --accent-foreground: 20 40% 20%;
 
-    --destructive: 0 65% 45%;
-    --destructive-foreground: 20 15% 95%;
+    --destructive: 0 70% 42%;       /* #D32F2F */
+    --destructive-foreground: 0 0% 100%;
 
-    --border: 20 15% 20%;
-    --input: 20 15% 16%;
-    --ring: 25 35% 25%;
+    --border: 30 25% 75%;           /* subtle tan border */
+    --input: 25 15% 84%;            /* #E0D6CC */
+    --ring: 30 30% 64%;
 
-    --radius: 0.375rem;
+    --radius: 0.5rem;
 
-    /* Dark Brown Accents */
-    --brown-dark: 25 45% 12%;
-    --brown-medium: 30 40% 18%;
-    --brown-light: 35 35% 25%;
-    --card-custom: 15 25% 22%; /* #463223 converted to HSL */
-    
-    /* Ominous Gradients */
-    --gradient-ominous: linear-gradient(135deg, hsl(var(--background)), hsl(var(--brown-dark)));
-    --gradient-power: linear-gradient(180deg, hsl(var(--card)), hsl(var(--brown-medium)));
-    
-    /* Shadows */
-    --shadow-ominous: 0 10px 40px -15px hsl(0 0% 0% / 0.8);
-    --shadow-power: 0 0 30px hsl(var(--brown-light) / 0.3);
-    
-    /* Transitions */
-    --transition-ominous: all 0.4s cubic-bezier(0.2, 0, 0.2, 1);
+    /* Surface tokens */
+    --surface: 25 15% 91%;
+    --surface-elevated: 30 30% 91%;
 
-    --sidebar-background: 20 8% 8%;
+    /* Brand accents */
+    --brand: 30 30% 64%;            /* #CDA67A */
+    --brand-dark: 20 40% 20%;       /* #4A3120 */
+    --brand-muted: 20 30% 35%;      /* #6A462F */
 
-    --sidebar-foreground: 20 20% 85%;
-
-    --sidebar-primary: 240 5.9% 10%;
-
-    --sidebar-primary-foreground: 0 0% 98%;
-
-    --sidebar-accent: 240 4.8% 95.9%;
-
-    --sidebar-accent-foreground: 240 5.9% 10%;
-
-    --sidebar-border: 220 13% 91%;
-
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    /* Sidebar (dark, dashboard-context) */
+    --sidebar-background: 20 20% 10%;
+    --sidebar-foreground: 25 20% 93%;
+    --sidebar-primary: 30 30% 64%;
+    --sidebar-primary-foreground: 25 20% 93%;
+    --sidebar-accent: 20 15% 18%;
+    --sidebar-accent-foreground: 25 20% 93%;
+    --sidebar-border: 20 15% 20%;
+    --sidebar-ring: 30 30% 64%;
   }
 
+  /* Dark mode (dashboard/brand-facing) */
   .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
+    --background: 20 20% 10%;       /* #261E1A deep chocolate */
+    --foreground: 25 30% 94%;       /* #F5EDE4 warm off-white */
 
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
+    --card: 20 15% 17%;             /* #3D3028 */
+    --card-foreground: 25 30% 94%;
 
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
+    --popover: 20 15% 17%;
+    --popover-foreground: 25 30% 94%;
 
-    --primary: 210 40% 98%;
-    --primary-foreground: 222.2 47.4% 11.2%;
+    --primary: 30 30% 64%;          /* #CDA67A warm tan */
+    --primary-foreground: 20 20% 12%;  /* dark chocolate */
 
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
+    --secondary: 20 15% 22%;
+    --secondary-foreground: 25 30% 94%;
 
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
+    --muted: 20 13% 28%;
+    --muted-foreground: 30 25% 60%;
 
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
+    --accent: 20 13% 28%;           /* #52453C elevated */
+    --accent-foreground: 25 30% 94%;
 
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive: 0 70% 42%;
+    --destructive-foreground: 25 30% 94%;
 
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 212.7 26.8% 83.9%;
-    --sidebar-background: 222.2 84% 4.9%;
-    --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 224.3 76.3% 48%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 3.7% 15.9%;
-    --sidebar-accent-foreground: 240 4.8% 95.9%;
-    --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --border: 20 12% 25%;
+    --input: 20 15% 17%;
+    --ring: 30 30% 64%;
+
+    /* Surface tokens */
+    --surface: 20 15% 17%;
+    --surface-elevated: 20 13% 28%;
+
+    /* Brand accents */
+    --brand: 30 30% 64%;              /* #CDA67A warm tan */
+    --brand-dark: 25 40% 85%;         /* warm light cream */
+    --brand-muted: 30 30% 55%;
+
+    /* Sidebar */
+    --sidebar-background: 20 20% 8%;
+    --sidebar-foreground: 25 30% 94%;
+    --sidebar-primary: 30 30% 64%;
+    --sidebar-primary-foreground: 25 30% 94%;
+    --sidebar-accent: 20 15% 17%;
+    --sidebar-accent-foreground: 25 30% 94%;
+    --sidebar-border: 20 12% 20%;
+    --sidebar-ring: 30 30% 64%;
   }
 }
 
@@ -122,19 +121,18 @@
 @font-face {
   font-family: 'IgraSans';
   src: url('/fonts/IgraSans.otf') format('opentype');
+  font-display: swap;
 }
 
-@font-face {
-  font-family: 'REM';
-  src: url('/fonts/REM-Regular.ttf') format('truetype');
-}
+/* REM font — loaded via Google Fonts in index.html for multiple weights */
 
+/* Sidebar active/hover utilities */
 .sidebar-menu-button-hover {
-  background-color: hsl(var(--foreground) / 0.1); /* Light transparent */
-  color: hsl(var(--sidebar-foreground)); /* Light text */
+  background-color: hsl(var(--foreground) / 0.08);
+  color: hsl(var(--sidebar-foreground));
 }
 
 .sidebar-menu-button-active {
-  background-color: #6A462F; /* Dark brown */
-  color: #FAE9CF; /* Lightest color */
+  background-color: hsl(var(--brand));
+  color: hsl(var(--primary-foreground));
 }

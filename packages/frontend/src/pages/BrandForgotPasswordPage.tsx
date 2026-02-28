@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -14,6 +14,10 @@ import { useNavigate } from "react-router-dom";
 import * as api from "@/services/api";
 
 const BrandForgotPasswordPage = () => {
+  useEffect(() => {
+    document.documentElement.classList.add('dark');
+    return () => document.documentElement.classList.remove('dark');
+  }, []);
   const [email, setEmail] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
@@ -70,7 +74,7 @@ const BrandForgotPasswordPage = () => {
 
   if (isSuccess) {
     return (
-      <div className="min-h-screen bg-gradient-ominous flex items-center justify-center p-4">
+      <div className="min-h-screen bg-background flex items-center justify-center p-4">
         <div className="w-full max-w-md">
           <div className="text-center mb-6">
             <img
@@ -82,10 +86,10 @@ const BrandForgotPasswordPage = () => {
             <p className="text-muted-foreground">Сброс пароля бренда</p>
           </div>
 
-          <Card className="bg-card/90 backdrop-blur border-brown-light/30 shadow-ominous">
+          <Card className="bg-card/90 backdrop-blur border-border/30">
             <CardHeader className="text-center">
-              <div className="mx-auto w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mb-4">
-                <Mail className="h-6 w-6 text-green-600" />
+              <div className="mx-auto w-12 h-12 bg-green-900/20 rounded-full flex items-center justify-center mb-4">
+                <Mail className="h-6 w-6 text-green-400" />
               </div>
               <CardTitle>Код отправлен</CardTitle>
               <CardDescription>
@@ -95,7 +99,7 @@ const BrandForgotPasswordPage = () => {
             <CardContent className="space-y-4">
               <Button
                 onClick={handleContinueToReset}
-                variant="ominous"
+                variant="default"
                 size="lg"
                 className="w-full"
               >
@@ -120,7 +124,7 @@ const BrandForgotPasswordPage = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-ominous flex items-center justify-center p-4">
+    <div className="min-h-screen bg-background dark flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         <div className="text-center mb-6">
           <img
@@ -132,7 +136,7 @@ const BrandForgotPasswordPage = () => {
           <p className="text-muted-foreground">Сброс пароля бренда</p>
         </div>
 
-        <Card className="bg-card/90 backdrop-blur border-brown-light/30 shadow-ominous">
+        <Card className="bg-card/90 backdrop-blur border-border/30">
           <CardHeader>
             <CardTitle className="text-center">Забыли код доступа?</CardTitle>
             <CardDescription className="text-center">
@@ -148,13 +152,13 @@ const BrandForgotPasswordPage = () => {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
-                  className="bg-background/50 border-brown-light/30 focus:border-brown-light"
+                  className="bg-input border-border/50 focus:border-brand"
                 />
               </div>
 
               <Button
                 type="submit"
-                variant="ominous"
+                variant="default"
                 size="lg"
                 className="w-full"
                 disabled={isSubmitting || !email.trim()}

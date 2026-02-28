@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAdminAuth } from "@/context/AdminAuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -6,6 +6,11 @@ import { Label } from "@/components/ui/label";
 
 const AdminLogin = () => {
   const { login, loading } = useAdminAuth();
+
+  useEffect(() => {
+    document.documentElement.classList.add('dark');
+    return () => document.documentElement.classList.remove('dark');
+  }, []);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -21,8 +26,8 @@ const AdminLogin = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-ominous">
-      <div className="w-full max-w-sm bg-card-custom/40 rounded-xl border border-brown-light/20 p-8 space-y-6">
+    <div className="min-h-screen flex items-center justify-center bg-background">
+      <div className="w-full max-w-sm bg-card rounded-xl border border-border/30 p-8 space-y-6">
         <h1 className="text-2xl font-bold text-foreground text-center">Admin</h1>
 
         <form onSubmit={handleSubmit} className="space-y-4">

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { DashboardSidebar } from "@/components/DashboardSidebar";
 import { DashboardHeader } from "@/components/DashboardHeader";
@@ -14,6 +14,11 @@ type DashboardView = 'stats' | 'orders' | 'products' | 'add-item' | 'profile' | 
 const Dashboard = () => {
   const [currentView, setCurrentView] = useState<DashboardView>('stats');
   const [targetOrderId, setTargetOrderId] = useState<string | null>(null);
+
+  useEffect(() => {
+    document.documentElement.classList.add('dark');
+    return () => document.documentElement.classList.remove('dark');
+  }, []);
 
   const renderView = () => {
     switch (currentView) {
@@ -41,7 +46,7 @@ const Dashboard = () => {
 
   return (
     <SidebarProvider>
-            <div className="min-h-screen flex w-full bg-gradient-ominous">
+      <div className="min-h-screen flex w-full bg-background">
         <DashboardSidebar currentView={currentView} onViewChange={setCurrentView} />
 
         <div className="flex-1 flex flex-col">

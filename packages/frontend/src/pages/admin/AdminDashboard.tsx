@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAdminAuth } from "@/context/AdminAuthContext";
 import { AdminNotificationsView } from "./AdminNotificationsView";
 import { AdminOrdersView } from "./AdminOrdersView";
@@ -11,6 +11,11 @@ type AdminView = "notifications" | "orders" | "withdrawals";
 const AdminDashboard = () => {
   const { logout } = useAdminAuth();
   const [currentView, setCurrentView] = useState<AdminView>("notifications");
+
+  useEffect(() => {
+    document.documentElement.classList.add('dark');
+    return () => document.documentElement.classList.remove('dark');
+  }, []);
 
   const renderView = () => {
     switch (currentView) {
@@ -26,10 +31,10 @@ const AdminDashboard = () => {
   };
 
   return (
-    <div className="min-h-screen flex bg-gradient-ominous">
+    <div className="min-h-screen flex bg-background">
       {/* Sidebar */}
-      <aside className="w-56 bg-card-custom/40 border-r border-brown-light/20 flex flex-col">
-        <div className="p-4 border-b border-brown-light/20">
+      <aside className="w-56 bg-card border-r border-border/30 flex flex-col">
+        <div className="p-4 border-b border-border/30">
           <span className="text-sm font-semibold text-foreground">Admin Panel</span>
         </div>
 
@@ -69,7 +74,7 @@ const AdminDashboard = () => {
           </button>
         </nav>
 
-        <div className="p-3 border-t border-brown-light/20">
+        <div className="p-3 border-t border-border/30">
           <Button
             variant="ghost"
             size="sm"

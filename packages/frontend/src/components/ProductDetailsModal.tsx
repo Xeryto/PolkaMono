@@ -432,7 +432,7 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-4xl">
-        <Card className="bg-card-custom border-0 shadow-none">
+        <Card className="bg-card border-0 shadow-none">
           <CardHeader>
             <CardTitle>Редактировать товар</CardTitle>
             <CardDescription>
@@ -842,7 +842,7 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({
                 size="lg"
                 onClick={handleSave}
                 disabled={isLoading}
-                className="bg-button-custom hover:bg-button-custom/90 text-card-custom border-0"
+                className="bg-primary hover:bg-primary/90 text-primary-foreground border-0"
               >
                 {isLoading ? "Сохранение..." : "Сохранить изменения"}
               </Button>

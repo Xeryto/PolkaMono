@@ -14,6 +14,10 @@ import { useNavigate, useLocation } from "react-router-dom";
 import * as api from "@/services/api";
 
 const BrandResetPasswordPage = () => {
+  useEffect(() => {
+    document.documentElement.classList.add('dark');
+    return () => document.documentElement.classList.remove('dark');
+  }, []);
   const [code, setCode] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -124,7 +128,7 @@ const BrandResetPasswordPage = () => {
 
   if (isSuccess) {
     return (
-      <div className="min-h-screen bg-gradient-ominous flex items-center justify-center p-4">
+      <div className="min-h-screen bg-background flex items-center justify-center p-4">
         <div className="w-full max-w-md">
           <div className="text-center mb-6">
             <img
@@ -136,10 +140,10 @@ const BrandResetPasswordPage = () => {
             <p className="text-muted-foreground">Сброс пароля бренда</p>
           </div>
 
-          <Card className="bg-card/90 backdrop-blur border-brown-light/30 shadow-ominous">
+          <Card className="bg-card/90 backdrop-blur border-border/30">
             <CardHeader className="text-center">
-              <div className="mx-auto w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mb-4">
-                <Check className="h-6 w-6 text-green-600" />
+              <div className="mx-auto w-12 h-12 bg-green-900/20 rounded-full flex items-center justify-center mb-4">
+                <Check className="h-6 w-6 text-green-400" />
               </div>
               <CardTitle>Пароль успешно сброшен</CardTitle>
               <CardDescription>
@@ -150,7 +154,7 @@ const BrandResetPasswordPage = () => {
             <CardContent>
               <Button
                 onClick={handleBackToLogin}
-                variant="ominous"
+                variant="default"
                 size="lg"
                 className="w-full"
               >
@@ -165,7 +169,7 @@ const BrandResetPasswordPage = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-ominous flex items-center justify-center p-4">
+    <div className="min-h-screen bg-background flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         <div className="text-center mb-6">
           <img
@@ -177,7 +181,7 @@ const BrandResetPasswordPage = () => {
           <p className="text-muted-foreground">Сброс пароля бренда</p>
         </div>
 
-        <Card className="bg-card/90 backdrop-blur border-brown-light/30 shadow-ominous">
+        <Card className="bg-card/90 backdrop-blur border-border/30">
           <CardHeader>
             <CardTitle className="text-center">Введите новый пароль</CardTitle>
             <CardDescription className="text-center">
@@ -187,7 +191,7 @@ const BrandResetPasswordPage = () => {
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
               {errors.general && (
-                <div className="p-3 text-sm text-red-600 bg-red-50 border border-red-200 rounded-md">
+                <div className="p-3 text-sm text-red-400 bg-red-900/20 border border-red-500/30 rounded-md">
                   {errors.general}
                 </div>
               )}
@@ -198,12 +202,12 @@ const BrandResetPasswordPage = () => {
                   placeholder="Код подтверждения"
                   value={code}
                   onChange={(e) => setCode(e.target.value)}
-                  className={`bg-background/50 border-brown-light/30 focus:border-brown-light ${
+                  className={`bg-input border-border/50 focus:border-brand ${
                     errors.code ? "border-red-500" : ""
                   }`}
                 />
                 {errors.code && (
-                  <p className="mt-1 text-sm text-red-600">{errors.code}</p>
+                  <p className="mt-1 text-sm text-red-400">{errors.code}</p>
                 )}
               </div>
 
@@ -214,14 +218,14 @@ const BrandResetPasswordPage = () => {
                     placeholder="Новый пароль"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className={`bg-background/50 border-brown-light/30 focus:border-brown-light pr-10 ${
+                    className={`bg-input border-border/50 focus:border-brand pr-10 ${
                       errors.password ? "border-red-500" : ""
                     }`}
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground"
                   >
                     {showPassword ? (
                       <EyeOff className="h-4 w-4" />
@@ -231,7 +235,7 @@ const BrandResetPasswordPage = () => {
                   </button>
                 </div>
                 {errors.password && (
-                  <p className="mt-1 text-sm text-red-600">{errors.password}</p>
+                  <p className="mt-1 text-sm text-red-400">{errors.password}</p>
                 )}
               </div>
 
@@ -242,14 +246,14 @@ const BrandResetPasswordPage = () => {
                     placeholder="Подтвердите новый пароль"
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
-                    className={`bg-background/50 border-brown-light/30 focus:border-brown-light pr-10 ${
+                    className={`bg-input border-border/50 focus:border-brand pr-10 ${
                       errors.confirmPassword ? "border-red-500" : ""
                     }`}
                   />
                   <button
                     type="button"
                     onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground"
                   >
                     {showConfirmPassword ? (
                       <EyeOff className="h-4 w-4" />
@@ -259,7 +263,7 @@ const BrandResetPasswordPage = () => {
                   </button>
                 </div>
                 {errors.confirmPassword && (
-                  <p className="mt-1 text-sm text-red-600">
+                  <p className="mt-1 text-sm text-red-400">
                     {errors.confirmPassword}
                   </p>
                 )}
@@ -267,7 +271,7 @@ const BrandResetPasswordPage = () => {
 
               <Button
                 type="submit"
-                variant="ominous"
+                variant="default"
                 size="lg"
                 className="w-full"
                 disabled={

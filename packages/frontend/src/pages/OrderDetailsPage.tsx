@@ -132,29 +132,6 @@ export function OrderDetailsPage({ order, onBack, onOrderUpdated }: OrderDetails
     }
   };
 
-  const handleMarkReturned = async () => {
-    if (!token) return;
-    setIsSavingTracking(true);
-    try {
-      await api.markOrderReturned(order.id, token);
-      setOrderStatus(ORDER_STATUS.RETURNED);
-      onOrderUpdated?.();
-      toast({
-        title: "Success",
-        description: "Order marked as returned. Stock has been restored.",
-      });
-    } catch (error: unknown) {
-      const err = error as { message?: string };
-      toast({
-        title: "Error",
-        description: err.message || "Failed to mark order as returned.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsSavingTracking(false);
-    }
-  };
-
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-4">
@@ -277,24 +254,12 @@ export function OrderDetailsPage({ order, onBack, onOrderUpdated }: OrderDetails
             <div>
               <CardTitle>Заказ № {order.number}</CardTitle>
             </div>
-            <div className="flex items-center gap-2">
-              <Badge
-                className={getOrderStatusColor(orderStatus)}
-                variant="outline"
-              >
-                {getOrderStatusLabel(orderStatus)}
-              </Badge>
-              {orderStatus === ORDER_STATUS.SHIPPED && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleMarkReturned}
-                  disabled={isSavingTracking}
-                >
-                  {isSavingTracking ? "Saving..." : "Mark as returned"}
-                </Button>
-              )}
-            </div>
+            <Badge
+              className={getOrderStatusColor(orderStatus)}
+              variant="outline"
+            >
+              {getOrderStatusLabel(orderStatus)}
+            </Badge>
           </div>
         </CardHeader>
         <CardContent>

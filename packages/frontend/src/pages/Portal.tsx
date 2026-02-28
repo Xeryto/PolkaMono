@@ -7,16 +7,26 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import {
+  InputOTP,
+  InputOTPGroup,
+  InputOTPSlot,
+} from "@/components/ui/input-otp";
 import { useToast } from "@/hooks/use-toast";
-import { LogIn } from "lucide-react";
+import { LogIn, Eye, EyeOff } from "lucide-react";
 import * as api from "@/services/api";
 import { BrandLoginRequest } from "@/services/api";
 import { useAuth } from "@/context/AuthContext";
 import { useNavigate } from "react-router-dom";
 
 const Portal = () => {
+  useEffect(() => {
+    document.documentElement.classList.add('dark');
+    return () => document.documentElement.classList.remove('dark');
+  }, []);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // OTP challenge state
@@ -44,13 +54,9 @@ const Portal = () => {
   }, [resendCountdown]);
 
   const handleLoginSuccess = (token: string, user: api.UserProfileResponse) => {
-    // Store token + user in localStorage and AuthContext
     localStorage.setItem("authToken", token);
     localStorage.setItem("authUser", JSON.stringify(user));
-    // Trigger auth state update via a page-level reload into dashboard
     navigate("/dashboard");
-    // Force a full context refresh by dispatching a storage event isn't reliable;
-    // navigate will re-mount Dashboard which reads from localStorage via AuthContext
     window.location.href = "/dashboard";
   };
 
@@ -62,7 +68,7 @@ const Portal = () => {
       return;
     }
     if (!password.trim()) {
-      toast({ title: "Ошибка", description: "Пожалуйста, введите код доступа.", variant: "destructive" });
+      toast({ title: "Ошибка", description: "Пожалуйста, введите пароль.", variant: "destructive" });
       return;
     }
 
@@ -71,7 +77,6 @@ const Portal = () => {
       const credentials: BrandLoginRequest = { email: email.trim(), password };
       const response = await api.brandLogin(credentials);
 
-      // Check for 2FA challenge (otp_required in response)
       const resp = response as { otp_required?: boolean; session_token?: string };
       if (resp.otp_required) {
         setOtpSessionToken(resp.session_token ?? '');
@@ -81,7 +86,6 @@ const Portal = () => {
         return;
       }
 
-      // Normal login: delegate to AuthContext login
       await login(credentials);
       navigate("/dashboard");
     } catch (error: unknown) {
@@ -89,7 +93,7 @@ const Portal = () => {
       const err = error as { message?: string; status?: number };
       let errorMessage = "Произошла ошибка при входе в систему.";
       if (err.status === 401) {
-        errorMessage = "Неверные учетные данные. Проверьте правильность email и кода доступа.";
+        errorMessage = "Неверные учетные данные. Проверьте правильность email и пароля.";
       } else if (err.status === 0) {
         errorMessage = "Проблемы с подключением к интернету. Проверьте соединение и попробуйте снова.";
       } else if (err.message) {
@@ -132,7 +136,7 @@ const Portal = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-ominous flex items-center justify-center p-4">
+    <div className="min-h-screen bg-background flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         <div className="text-center mb-6">
           <img
@@ -141,13 +145,13 @@ const Portal = () => {
             className="mx-auto h-20 w-20 mb-4"
           />
           <h1 className="text-2xl font-bold text-foreground mb-2">Polka</h1>
-          <p className="text-muted-foreground">Зона ограниченного доступа</p>
+          <p className="text-muted-foreground">Портал для брендов</p>
         </div>
 
-        <Card className="bg-card/90 backdrop-blur border-brown-light/30 shadow-ominous">
+        <Card className="bg-card/90 backdrop-blur border-border/30">
           <CardHeader>
             <CardTitle className="text-center">
-              {showOtpStep ? "Введите код из письма" : "Безопасный доступ"}
+              {showOtpStep ? "Введите код из письма" : "Вход в аккаунт"}
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -157,23 +161,27 @@ const Portal = () => {
                   Мы отправили 6-значный код на{" "}
                   <span className="font-medium text-foreground">{email}</span>
                 </p>
-                <div>
-                  <Input
-                    type="text"
-                    inputMode="numeric"
+                <div className="flex justify-center">
+                  <InputOTP
                     maxLength={6}
-                    placeholder="123456"
                     value={otpCode}
-                    onChange={(e) => { setOtpCode(e.target.value); setOtpError(""); }}
-                    className="bg-background/50 border-brown-light/30 focus:border-brown-light text-center text-xl tracking-widest"
-                  />
-                  {otpError && (
-                    <p className="text-sm text-red-500 mt-1 text-center">{otpError}</p>
-                  )}
+                    onChange={(value) => { setOtpCode(value); setOtpError(""); }}
+                  >
+                    <InputOTPGroup>
+                      <InputOTPSlot index={0} />
+                      <InputOTPSlot index={1} />
+                      <InputOTPSlot index={2} />
+                      <InputOTPSlot index={3} />
+                      <InputOTPSlot index={4} />
+                      <InputOTPSlot index={5} />
+                    </InputOTPGroup>
+                  </InputOTP>
                 </div>
+                {otpError && (
+                  <p className="text-sm text-destructive text-center">{otpError}</p>
+                )}
                 <Button
                   type="submit"
-                  variant="ominous"
                   size="lg"
                   className="w-full"
                   disabled={isSubmitting || otpCode.length !== 6}
@@ -212,28 +220,34 @@ const Portal = () => {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     required
-                    className="bg-background/50 border-brown-light/30 focus:border-brown-light"
+                    className="bg-input border-border/50 focus:border-brand"
                   />
                 </div>
-                <div>
+                <div className="relative">
                   <Input
-                    type="password"
-                    placeholder="Код доступа"
+                    type={showPassword ? "text" : "password"}
+                    placeholder="Пароль"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     required
-                    className="bg-background/50 border-brown-light/30 focus:border-brown-light"
+                    className="bg-input border-border/50 focus:border-brand pr-10"
                   />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
                 </div>
                 <Button
                   type="submit"
-                  variant="ominous"
                   size="lg"
                   className="w-full"
                   disabled={isSubmitting || !email.trim() || !password.trim()}
                 >
                   <LogIn className="mr-2 h-4 w-4" />
-                  {isSubmitting ? "Проверка данных..." : "Доступ к порталу"}
+                  {isSubmitting ? "Вход..." : "Войти"}
                 </Button>
               </form>
             )}
@@ -245,7 +259,7 @@ const Portal = () => {
                   onClick={() => navigate("/portal/forgot-password")}
                   className="text-sm text-muted-foreground hover:text-foreground transition-colors underline"
                 >
-                  Забыли код доступа?
+                  Забыли пароль?
                 </button>
               </div>
             )}
