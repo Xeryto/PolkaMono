@@ -55,7 +55,10 @@ import { CardItem } from "./types/product";
 import { mapProductToCardItem } from "./lib/productMapper";
 import { useTheme } from "./lib/ThemeContext";
 import type { ThemeColors } from "./lib/theme";
-import { SkeletonOrderList, SkeletonOrderDetailList } from "./components/SkeletonCard";
+import {
+  SkeletonOrderList,
+  SkeletonOrderDetailList,
+} from "./components/SkeletonCard";
 
 const { width, height } = Dimensions.get("window");
 
@@ -637,9 +640,7 @@ const Wall = ({ navigation, onLogout, openOrderId }: WallProps) => {
         <RNAnimated.View
           style={[styles.sizeIndicator, { opacity: sizeIndicatorOpacity }]}
         >
-          {!hasSavedSize && (
-            <Text style={styles.sizeChooseText}>выбери</Text>
-          )}
+          {!hasSavedSize && <Text style={styles.sizeChooseText}>выбери</Text>}
           {hasSavedSize && (
             <Text style={styles.sizeIndicatorText}>{selectedSize}</Text>
           )}
@@ -745,7 +746,6 @@ const Wall = ({ navigation, onLogout, openOrderId }: WallProps) => {
     </View>
   );
 
-
   const handleItemPress = async (item: api.OrderItem) => {
     try {
       if (item.product_id) {
@@ -788,7 +788,10 @@ const Wall = ({ navigation, onLogout, openOrderId }: WallProps) => {
         navigation.navigate("Home", { addCardItem: cardItem });
       }
     } catch (error) {
-      console.log("Wall - Product details unavailable, using order item data:", (error as any)?.message);
+      console.log(
+        "Wall - Product details unavailable, using order item data:",
+        (error as any)?.message,
+      );
     }
   };
 
@@ -815,87 +818,120 @@ const Wall = ({ navigation, onLogout, openOrderId }: WallProps) => {
           <SkeletonOrderDetailList count={2} />
         ) : (
           <>
-        <ScrollView
-          style={styles.orderItemsList}
-          showsVerticalScrollIndicator={false}
-        >
-          {orderDetail.items.map((item, index) => (
-                  <Animated.View
-                    key={item.id}
-                    entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
-                      ANIMATION_DELAYS.STANDARD + index * ANIMATION_DELAYS.SMALL,
-                    )}
-                    style={styles.cartItem}
+            <ScrollView
+              style={styles.orderItemsList}
+              showsVerticalScrollIndicator={false}
+            >
+              {orderDetail.items.map((item, index) => (
+                <Animated.View
+                  key={item.id}
+                  entering={FadeInDown.duration(
+                    ANIMATION_DURATIONS.MEDIUM,
+                  ).delay(
+                    ANIMATION_DELAYS.STANDARD + index * ANIMATION_DELAYS.SMALL,
+                  )}
+                  style={styles.cartItem}
+                >
+                  <Pressable
+                    style={styles.itemPressable}
+                    onPress={() => handleItemPress(item)}
                   >
-                      <Pressable style={styles.itemPressable} onPress={() => handleItemPress(item)}>
-                        <View style={styles.itemContent}>
-                          <View style={styles.imageContainer}>
-                            <CartItemImage item={item} />
-                          </View>
-                          <View style={styles.itemDetails}>
-                            <Text style={styles.itemName} numberOfLines={1} ellipsizeMode="tail">
-                              {item.name}
-                            </Text>
-                            <Text style={styles.itemPrice}>{`${item.price.toFixed(2)} ₽`}</Text>
-                            <Text style={styles.itemSize}>{item.size}</Text>
-                          </View>
-                        </View>
-                        <View style={styles.rightContainer}>
-                          <View style={styles.circle}>
-                            <Canvas style={{ width: 41, height: 41, backgroundColor: "transparent" }}>
-                              <RoundedRect x={0} y={0} width={41} height={41} r={20.5} color={theme.background.primary}>
-                                <Shadow dx={0} dy={4} blur={4} color="rgba(0,0,0,0.5)" inner />
-                              </RoundedRect>
-                            </Canvas>
-                          </View>
-                        </View>
-                      </Pressable>
-                  </Animated.View>
-                ))}
-        </ScrollView>
+                    <View style={styles.itemContent}>
+                      <View style={styles.imageContainer}>
+                        <CartItemImage item={item} />
+                      </View>
+                      <View style={styles.itemDetails}>
+                        <Text
+                          style={styles.itemName}
+                          numberOfLines={1}
+                          ellipsizeMode="tail"
+                        >
+                          {item.name}
+                        </Text>
+                        <Text
+                          style={styles.itemPrice}
+                        >{`${item.price.toFixed(2)} ₽`}</Text>
+                        <Text style={styles.itemSize}>{item.size}</Text>
+                      </View>
+                    </View>
+                    <View style={styles.rightContainer}>
+                      <View style={styles.circle}>
+                        <Canvas
+                          style={{
+                            width: 41,
+                            height: 41,
+                            backgroundColor: "transparent",
+                          }}
+                        >
+                          <RoundedRect
+                            x={0}
+                            y={0}
+                            width={41}
+                            height={41}
+                            r={20.5}
+                            color={theme.background.primary}
+                          >
+                            <Shadow
+                              dx={0}
+                              dy={4}
+                              blur={4}
+                              color="rgba(0,0,0,0.5)"
+                              inner
+                            />
+                          </RoundedRect>
+                        </Canvas>
+                      </View>
+                    </View>
+                  </Pressable>
+                </Animated.View>
+              ))}
+            </ScrollView>
 
-        <Animated.View
-          entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
-            ANIMATION_DELAYS.VERY_LARGE + ANIMATION_DELAYS.SMALL,
-          )}
-          style={styles.orderTotalContainer}
-        >
-          <Text style={styles.orderTotalText}>
-            ИТОГО {orderDetail.total_amount.toFixed(2)} ₽
-          </Text>
-          {(orderDetail.shipping_cost ?? 0) > 0 && (
-            <Text style={styles.orderDeliveryText}>
-              ДОСТАВКА {orderDetail.shipping_cost!.toFixed(2)} ₽
-            </Text>
-          )}
-        </Animated.View>
-        <Animated.View
-          entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
-            ANIMATION_DELAYS.VERY_LARGE + ANIMATION_DELAYS.STANDARD,
-          )}
-          style={styles.orderStatusContainer}
-        >
-          <Text style={[styles.orderStatusText, { marginLeft: 20 }]}>
-            статус
-          </Text>
-          <TouchableOpacity
-            disabled={!orderDetail.tracking_link}
-            onPress={() => {
-              if (orderDetail.tracking_link) Linking.openURL(orderDetail.tracking_link);
-            }}
-          >
             <Animated.View
               entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
-                ANIMATION_DELAYS.VERY_LARGE + ANIMATION_DELAYS.EXTENDED,
+                ANIMATION_DELAYS.VERY_LARGE + ANIMATION_DELAYS.SMALL,
               )}
-              style={styles.orderStatus}
+              style={styles.orderTotalContainer}
             >
-              <Text style={styles.orderStatusText}>
-                {api.getOrderStatusLabel(orderDetail.status)}
+              <Text style={styles.orderTotalText}>
+                ИТОГО {orderDetail.total_amount.toFixed(2)} ₽
               </Text>
+              {(orderDetail.shipping_cost ?? 0) > 0 && (
+                <Text style={styles.orderDeliveryText}>
+                  ДОСТАВКА {orderDetail.shipping_cost!.toFixed(2)} ₽
+                </Text>
+              )}
             </Animated.View>
-          </TouchableOpacity>
-        </Animated.View>
+            <Animated.View
+              entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
+                ANIMATION_DELAYS.VERY_LARGE + ANIMATION_DELAYS.STANDARD,
+              )}
+              style={styles.orderStatusContainer}
+            >
+              <Text style={[styles.orderStatusText, { marginLeft: 20 }]}>
+                статус
+              </Text>
+              <TouchableOpacity
+                disabled={!orderDetail.tracking_link}
+                onPress={() => {
+                  if (orderDetail.tracking_link)
+                    Linking.openURL(orderDetail.tracking_link);
+                }}
+              >
+                <Animated.View
+                  entering={FadeInDown.duration(
+                    ANIMATION_DURATIONS.MEDIUM,
+                  ).delay(
+                    ANIMATION_DELAYS.VERY_LARGE + ANIMATION_DELAYS.EXTENDED,
+                  )}
+                  style={styles.orderStatus}
+                >
+                  <Text style={styles.orderStatusText}>
+                    {api.getOrderStatusLabel(orderDetail.status)}
+                  </Text>
+                </Animated.View>
+              </TouchableOpacity>
+            </Animated.View>
           </>
         )}
       </Animated.View>
@@ -977,7 +1013,9 @@ const Wall = ({ navigation, onLogout, openOrderId }: WallProps) => {
                       style={styles.returnButton}
                       onPress={() => {
                         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                        const orderDate = new Date(order.date).toLocaleDateString('ru-RU');
+                        const orderDate = new Date(
+                          order.date,
+                        ).toLocaleDateString("ru-RU");
                         const subject = encodeURIComponent(
                           `Return Request - Order #${order.number}`,
                         );
@@ -996,7 +1034,9 @@ const Wall = ({ navigation, onLogout, openOrderId }: WallProps) => {
                     итого: {order.total_amount.toFixed(2)} ₽
                   </Text>
                   {order.tracking_link && (
-                    <TouchableOpacity onPress={() => Linking.openURL(order.tracking_link!)}>
+                    <TouchableOpacity
+                      onPress={() => Linking.openURL(order.tracking_link!)}
+                    >
                       <Text style={styles.trackingLink}>отслеживание →</Text>
                     </TouchableOpacity>
                   )}
@@ -1143,7 +1183,7 @@ const Wall = ({ navigation, onLogout, openOrderId }: WallProps) => {
             cropUri: string,
             fullLocalUri?: string | null,
             avatarCrop?: string,
-            avatarTransform?: string
+            avatarTransform?: string,
           ) => {
             try {
               let contentType = "image/jpeg";
@@ -1164,11 +1204,12 @@ const Wall = ({ navigation, onLogout, openOrderId }: WallProps) => {
                   }
                 }
               }
-              const cropPresigned = await api.getAvatarPresignedUrl(contentType);
+              const cropPresigned =
+                await api.getAvatarPresignedUrl(contentType);
               await api.uploadToPresignedUrl(
                 cropUri,
                 cropPresigned.upload_url,
-                contentType
+                contentType,
               );
               let fullPublicUrl: string | undefined =
                 userProfile?.profile?.avatar_url_full;
@@ -1178,13 +1219,15 @@ const Wall = ({ navigation, onLogout, openOrderId }: WallProps) => {
                 await api.uploadToPresignedUrl(
                   fullLocalUri,
                   fullPresigned.upload_url,
-                  contentType
+                  contentType,
                 );
                 fullPublicUrl = fullPresigned.public_url;
               }
               await api.updateUserProfileData({
                 avatar_url: cropPresigned.public_url,
-                ...(fullPublicUrl != null && { avatar_url_full: fullPublicUrl }),
+                ...(fullPublicUrl != null && {
+                  avatar_url_full: fullPublicUrl,
+                }),
                 avatar_crop: avatarCrop ?? undefined,
                 avatar_transform: avatarTransform ?? undefined,
               });
@@ -1195,7 +1238,7 @@ const Wall = ({ navigation, onLogout, openOrderId }: WallProps) => {
               Alert.alert(
                 "Ошибка",
                 err?.message ||
-                  "Не удалось загрузить фото. Проверьте настройки сервера."
+                  "Не удалось загрузить фото. Проверьте настройки сервера.",
               );
               throw err;
             }
@@ -1344,7 +1387,9 @@ const Wall = ({ navigation, onLogout, openOrderId }: WallProps) => {
                 : currentView === "orders"
                   ? selectedOrderId
                     ? (() => {
-                        const o = orders.find((ord) => ord.id === selectedOrderId);
+                        const o = orders.find(
+                          (ord) => ord.id === selectedOrderId,
+                        );
                         return o ? `ЗАКАЗ №${o.number}` : "ЗАКАЗ";
                       })()
                     : "ЗАКАЗЫ"
@@ -1367,8 +1412,9 @@ const Wall = ({ navigation, onLogout, openOrderId }: WallProps) => {
   );
 };
 
-const createStyles = (theme: ThemeColors) => StyleSheet.create({
-  container: {
+const createStyles = (theme: ThemeColors) =>
+  StyleSheet.create({
+    container: {
       flex: 1,
       justifyContent: "center",
       alignItems: "center",
@@ -1410,660 +1456,660 @@ const createStyles = (theme: ThemeColors) => StyleSheet.create({
       elevation: 6,
       padding: height * 0.025,
       overflow: "hidden",
-  },
-  scrollHintContainer: {
-    position: "absolute",
-    bottom: -height * 0.025 - 14 + 5,
-    right: 0,
-    alignItems: "flex-end",
-    zIndex: 10,
-    paddingVertical: 8,
-    flexDirection: "row",
-  },
-  scrollHintText: {
-    fontFamily: "IgraSans",
-    fontSize: 14,
-    lineHeight: 26,
-    color: theme.text.primary,
-    flexDirection: "row",
-    alignItems: "center",
-    marginRight: 8,
-  },
-  scrollView: {
-    width: width * 0.88,
-    left: -height * 0.025,
-    paddingHorizontal: height * 0.025,
-    marginBottom: -height * 0.025,
-    borderRadius: 41,
-  },
-  textContainer: {
-    position: "absolute",
-    bottom: 0,
-    marginBottom: 12,
-    marginLeft: 22,
-  },
-  text: {
-    fontFamily: "Igra Sans",
-    fontSize: 34,
-    color: theme.text.inverse,
-    textAlign: "left",
-  },
-  contentContainer: {
-    width: "100%",
-    height: "100%",
-    flexDirection: "column",
-  },
-  scrollableContainer: {
-    flex: 1,
-    position: "relative",
-    marginTop: 15,
-  },
-  scrollableContent: {
-    width: "100%",
-    paddingBottom: 20,
-  },
-  profileSection: {
-    width: "100%",
-    justifyContent: "center",
-    alignItems: "center",
-    flexDirection: "column",
-    gap: 10,
-    marginTop: 5,
-    marginBottom: 15,
-  },
-  profileImageWrapper: {
-    alignItems: "center",
-    justifyContent: "center",
-    position: "relative",
-  },
-  profileImageContainer: {
-    width: width * 0.25,
-    height: width * 0.25,
-    borderRadius: width * 0.125,
-    overflow: "hidden",
-  },
-  profileImage: {
-    width: "100%",
-    height: "100%",
-  },
-  penIconButton: {
-    position: "absolute",
-    bottom: -20,
-    right: -15,
-    zIndex: 10,
-  },
-  penIconCircle: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: "transparent",
-    borderWidth: 2,
-    borderColor: theme.border.default,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  profileName: {
-    fontFamily: "IgraSans",
-    fontSize: 20,
-    color: theme.text.primary,
-  },
-  logoutButton: {
-    position: "absolute",
-    top: 0,
-    right: 0,
-    zIndex: 11,
-  },
-  favoriteBrandsSection: {
-    width: "98%",
-    alignSelf: "center",
-    height: height * 0.1,
-    borderRadius: 41,
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: theme.background.primary,
-    shadowColor: theme.shadow.default,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    marginBottom: 30,
-  },
-  favoriteBrandsButton: {
-    flexDirection: "row",
-    width: "100%",
-    backgroundColor: theme.background.secondary,
-    height: height * 0.1,
-    borderRadius: 41,
-    justifyContent: "flex-start",
-    alignItems: "center",
-    padding: 20,
-  },
-  favoriteBrandsText: {
-    fontFamily: "IgraSans",
-    fontSize: 20,
-    color: theme.text.primary,
-  },
-  statsContainer: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    height: 0.175 * height,
-    alignItems: "flex-end",
-    width: "98%",
-    alignSelf: "center",
-    backgroundColor: theme.background.secondary,
-    borderRadius: 41,
-    shadowColor: theme.shadow.default,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    marginBottom: 30,
-  },
-  statItem: {
-    alignItems: "center",
-  },
-  valueWrapperPressed: {
-    opacity: 0.7,
-  },
-  valueWrapper: {
-    width: "100%",
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: theme.surface.elevated,
-    height: height * 0.1,
-    borderRadius: 41,
-    shadowColor: theme.shadow.default,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-  },
-  statValue: {
-    fontFamily: "IgraSans",
-    fontSize: 20,
-    color: theme.text.primary,
-  },
-  statLabel: {
-    fontFamily: "IgraSans",
-    fontSize: 20,
-    color: theme.text.primary,
-    marginBottom: 5,
-    paddingHorizontal: 18,
-  },
-  sizeSection: {
-    width: "100%",
-    flexDirection: "row",
-    backgroundColor: theme.background.secondary,
-    height: height * 0.1,
-    borderRadius: 41,
-    justifyContent: "flex-start",
-    alignItems: "center",
-    shadowColor: theme.shadow.default,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    marginBottom: 30,
-    marginHorizontal: 2, // Small margin to prevent shadow clipping
-  },
-  sizeSectionTitle: {
-    fontFamily: "IgraSans",
-    fontSize: 20,
-    color: theme.text.primary,
-    marginLeft: 20,
-    textAlign: "left",
-  },
-  sizeSelectionWrapper: {
-    height: "100%",
-    position: "absolute",
-    right: 0,
-    justifyContent: "center",
-  },
-  sizeSelectionContainer: {
-    height: "100%",
-    minWidth: height * 0.1,
-    borderRadius: 41,
-    backgroundColor: theme.surface.elevated,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    paddingHorizontal: 15,
-    shadowColor: theme.shadow.default,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 5,
-    position: "absolute",
-    right: 0,
-  },
-  sizeTextContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    flex: 1,
-  },
-  sizeTextWrapper: {
-    paddingVertical: 5,
-    paddingHorizontal: 0,
-    flex: 1,
-    alignItems: "center",
-  },
-  sizeText: {
-    color: theme.text.primary,
-    fontFamily: "IgraSans",
-    fontSize: 20,
-    textAlign: "center",
-  },
-  selectedSizeText: {
-    textDecorationLine: "underline",
-    textDecorationColor: theme.text.primary,
-    textDecorationStyle: "solid",
-  },
-  sizeIndicator: {
-    height: height * 0.1,
-    borderRadius: 41,
-    justifyContent: "center",
-    alignItems: "center",
-    flexDirection: "row",
-    gap: 8,
-    position: "absolute",
-    right: 0,
-    left: 0,
-    paddingHorizontal: 20,
-  },
-  sizeChooseText: {
-    color: theme.text.tertiary,
-    fontFamily: "IgraSans",
-    fontSize: 18,
-  },
-  sizeIndicatorText: {
-    color: theme.text.primary,
-    fontFamily: "IgraSans",
-    fontSize: 20,
-    textAlign: "center",
-  },
-  settingsButtonContainer: {
-    width: "98%",
-    alignSelf: "center",
-  },
-  settingsButton: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    backgroundColor: theme.background.secondary,
-    borderRadius: 41,
-    padding: 20,
-    shadowColor: theme.shadow.default,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 6,
-    height: height * 0.1,
-  },
-  settingsButtonText: {
-    fontFamily: "IgraSans",
-    fontSize: 20,
-    color: theme.text.primary,
-  },
-  searchAndResultsContainer: {
-    width: "100%",
-    height: "100%",
-    alignItems: "center",
-    justifyContent: "space-between",
-    position: "relative",
-  },
-  selectedBubblesContainer: {
-    width: "100%",
-    height: height * 0.1,
-    backgroundColor: theme.background.secondary,
-    shadowColor: theme.shadow.default,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    borderRadius: 41,
-    position: "relative",
-    overflow: "hidden",
-    zIndex: 2,
-    marginTop: height * 0.05,
-    justifyContent: "center",
-  },
-  selectedBubblesContent: {
-    marginLeft: 20,
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  brandBubbleText: {
-    fontFamily: "IgraSans",
-    fontSize: 20,
-    color: theme.text.primary,
-  },
-  emptyBrandsText: {
-    fontFamily: "IgraSans",
-    fontSize: 18,
-    color: theme.text.tertiary,
-    fontStyle: "italic",
-    textAlign: "center",
-    alignItems: "center",
-    paddingHorizontal: 20,
-  },
-  searchResultsContainer: {
-    width: "100%",
-    height: height * 0.47,
-    backgroundColor: theme.background.secondary,
-    borderRadius: 41,
-    position: "relative",
-    zIndex: 1,
-    ...Platform.select({
-      ios: {
-        shadowColor: theme.shadow.default,
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.25,
-        shadowRadius: 4,
-      },
-      android: {
-        elevation: 4,
-      },
-    }),
-  },
-  searchContainer: {
-    width: "100%",
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: theme.surface.elevated,
-    borderRadius: 41,
-    paddingHorizontal: 20,
-    height: 0.1 * height,
-    zIndex: 2,
-    ...Platform.select({
-      ios: {
-        shadowColor: theme.shadow.default,
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.25,
-        shadowRadius: 4,
-      },
-      android: {
-        elevation: 6,
-      },
-    }),
-  },
-  searchInput: {
-    fontFamily: "IgraSans",
-    fontSize: 20,
-    color: theme.text.primary,
-  },
-  brandsList: {
-    marginTop: 5,
-  },
-  brandItem: {
-    padding: 20,
-  },
-  brandItemContent: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  brandText: {
-    fontFamily: "IgraSans",
-    fontSize: 20,
-    color: theme.text.primary,
-  },
-  tickContainer: {
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  pressedItem: {
-    opacity: 0.8,
-  },
-  // Orders styles
-  ordersContainer: {
-    alignItems: "center",
-    justifyContent: "center",
-    height: "100%",
-    width: "100%",
-  },
-  ordersList: {
-    marginTop: height * 0.05,
-    paddingHorizontal: 20,
-    borderRadius: 41,
-    width: 0.88 * width,
-    marginBottom: -20,
-  },
-  orderItem: {
-    marginBottom: 25,
-  },
-  orderBubble: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    backgroundColor: theme.background.secondary,
-    borderRadius: 41,
-    marginBottom: 20,
-    height: 0.1 * height,
-    shadowColor: theme.shadow.default,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-  },
-  orderBubbleTouchArea: {
-    flex: 1,
-    justifyContent: "center",
-    height: "100%",
-    minWidth: 0,
-    paddingLeft: 20,
-  },
-  returnButton: {
-    paddingHorizontal: Platform.OS === "ios" ? 20 : 24,
-    backgroundColor: theme.button.secondary,
-    borderRadius: 41,
-    alignSelf: "stretch",
-    justifyContent: "center",
-    alignItems: "center",
-    marginLeft: 10,
-    shadowColor: theme.shadow.default,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 6,
-  },
-  returnButtonText: {
-    fontFamily: "IgraSans",
-    fontSize: 18,
-    color: theme.button.primary,
-  },
-  orderNumber: {
-    fontFamily: "IgraSans",
-    fontSize: 20,
-    color: theme.text.primary,
-  },
-  orderStatusSubtext: {
-    fontFamily: "IgraSans",
-    fontSize: 14,
-    color: theme.text.tertiary,
-    marginTop: 2,
-  },
-  orderSummary: {
-    fontFamily: "IgraSans",
-    fontSize: 20,
-    color: theme.text.primary,
-    marginLeft: 20,
-  },
-  trackingLink: {
-    fontFamily: "IgraSans",
-    fontSize: 14,
-    color: theme.primary,
-    marginLeft: 20,
-    marginTop: 4,
-  },
-  orderDetailsContainer: {
-    width: "100%",
-    paddingTop: height * 0.05,
-    alignItems: "center",
-    height: "100%",
-    justifyContent: "space-between",
-  },
-  orderItemsList: {
-    width: width * 0.88,
-    paddingHorizontal: 20,
-    borderRadius: 41,
-    height: "60%",
-  },
-  cartItem: {
-    backgroundColor: theme.surface.cartItem,
-    borderRadius: 41,
-    marginBottom: 15,
-    shadowColor: theme.shadow.default,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 6,
-    flex: 1,
-  },
-  cartItemInactive: {
-    opacity: 0.45,
-  },
-  imageContainerInactive: {
-    opacity: 0.6,
-  },
-  itemTextInactive: {
-    color: theme.text.disabled,
-  },
-  inactiveBrandBanner: {
-    backgroundColor: theme.button.disabled,
-    borderRadius: 20,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    marginBottom: 10,
-  },
-  inactiveBrandBannerText: {
-    fontFamily: "IgraSans",
-    fontSize: 13,
-    color: theme.button.disabledText,
-    textAlign: "center",
-  },
-  itemPressable: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    justifyContent: "space-between",
-    paddingTop: 20,
-    paddingLeft: 25,
-    paddingRight: 20,
-    paddingBottom: 15,
-  },
-  itemContent: {
-    flexDirection: "row",
-    width: "80%",
-    alignItems: "flex-start",
-  },
-  imageContainer: {
-    width: "30%",
-    height: "100%",
-    alignSelf: "flex-start",
-    marginRight: 15,
-    justifyContent: "flex-start",
-  },
-  itemImage: {
-    width: "100%",
-    height: "100%",
-    justifyContent: "flex-start",
-    position: "absolute",
-    top: 0,
-    left: 0,
-  },
-  itemDetails: {
-    flex: 1,
-    justifyContent: "flex-start",
-  },
-  itemName: {
-    fontFamily: "IgraSans",
-    fontSize: 38,
-    color: theme.text.primary,
-    marginBottom: 0,
-  },
-  itemPrice: {
-    fontFamily: "REM",
-    fontSize: 16,
-    color: theme.text.primary,
-    marginBottom: 5,
-  },
-  itemSize: {
-    fontFamily: "IgraSans",
-    fontSize: 16,
-    color: theme.text.primary,
-    marginBottom: 20,
-  },
-  rightContainer: {
-    justifyContent: "center",
-    alignItems: "center",
-    height: "100%",
-    width: "20%",
-  },
-  circle: {
-    position: "absolute",
-    top: "30%",
-    bottom: "30%",
-    right: 0,
-  },
-  orderTotalContainer: {
-    justifyContent: "center",
-    alignItems: "center",
-    width: "100%",
-    flex: 1,
-  },
-  orderTotalText: {
-    fontFamily: "IgraSans",
-    fontSize: 34,
-    color: theme.text.primary,
-  },
-  orderDeliveryText: {
-    fontFamily: "IgraSans",
-    fontSize: 18,
-    color: theme.text.secondary,
-    marginTop: 4,
-  },
-  orderStatusContainer: {
-    height: height * 0.1,
-    width: "100%",
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    backgroundColor: theme.background.secondary,
-    shadowColor: theme.shadow.default,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    borderRadius: 41,
-  },
-  orderStatus: {
-    height: "100%",
-    paddingHorizontal: 25,
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: theme.surface.elevated,
-    shadowColor: theme.shadow.default,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    borderRadius: 41,
-  },
-  orderStatusText: {
-    fontFamily: "IgraSans",
-    fontSize: 20,
-    color: theme.text.primary,
-  },
-  emptyStateText: {
-    fontFamily: "IgraSans",
-    fontSize: 16,
-    color: theme.text.secondary,
-    marginBottom: 20,
-  },
-  startShoppingButton: {
-    backgroundColor: theme.primary,
-    borderRadius: 15,
-    padding: 15,
-    minWidth: 200,
-    alignItems: "center",
-  },
-  startShoppingText: {
-    fontFamily: "IgraSans",
-    fontSize: 16,
-    color: theme.text.inverse,
-  },
-});
+    },
+    scrollHintContainer: {
+      position: "absolute",
+      bottom: -height * 0.025 - 14 + 5,
+      right: 0,
+      alignItems: "flex-end",
+      zIndex: 10,
+      paddingVertical: 8,
+      flexDirection: "row",
+    },
+    scrollHintText: {
+      fontFamily: "IgraSans",
+      fontSize: 14,
+      lineHeight: 26,
+      color: theme.text.primary,
+      flexDirection: "row",
+      alignItems: "center",
+      marginRight: 8,
+    },
+    scrollView: {
+      width: width * 0.88,
+      left: -height * 0.025,
+      paddingHorizontal: height * 0.025,
+      marginBottom: -height * 0.025,
+      borderRadius: 41,
+    },
+    textContainer: {
+      position: "absolute",
+      bottom: 0,
+      marginBottom: 12,
+      marginLeft: 22,
+    },
+    text: {
+      fontFamily: "IgraSans",
+      fontSize: 34,
+      color: theme.text.inverse,
+      textAlign: "left",
+    },
+    contentContainer: {
+      width: "100%",
+      height: "100%",
+      flexDirection: "column",
+    },
+    scrollableContainer: {
+      flex: 1,
+      position: "relative",
+      marginTop: 15,
+    },
+    scrollableContent: {
+      width: "100%",
+      paddingBottom: 20,
+    },
+    profileSection: {
+      width: "100%",
+      justifyContent: "center",
+      alignItems: "center",
+      flexDirection: "column",
+      gap: 10,
+      marginTop: 5,
+      marginBottom: 15,
+    },
+    profileImageWrapper: {
+      alignItems: "center",
+      justifyContent: "center",
+      position: "relative",
+    },
+    profileImageContainer: {
+      width: width * 0.25,
+      height: width * 0.25,
+      borderRadius: width * 0.125,
+      overflow: "hidden",
+    },
+    profileImage: {
+      width: "100%",
+      height: "100%",
+    },
+    penIconButton: {
+      position: "absolute",
+      bottom: -20,
+      right: -15,
+      zIndex: 10,
+    },
+    penIconCircle: {
+      width: 32,
+      height: 32,
+      borderRadius: 16,
+      backgroundColor: "transparent",
+      borderWidth: 2,
+      borderColor: theme.border.default,
+      justifyContent: "center",
+      alignItems: "center",
+    },
+    profileName: {
+      fontFamily: "IgraSans",
+      fontSize: 20,
+      color: theme.text.primary,
+    },
+    logoutButton: {
+      position: "absolute",
+      top: 0,
+      right: 0,
+      zIndex: 11,
+    },
+    favoriteBrandsSection: {
+      width: "98%",
+      alignSelf: "center",
+      height: height * 0.1,
+      borderRadius: 41,
+      justifyContent: "center",
+      alignItems: "center",
+      backgroundColor: theme.background.primary,
+      shadowColor: theme.shadow.default,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.25,
+      shadowRadius: 4,
+      marginBottom: 30,
+    },
+    favoriteBrandsButton: {
+      flexDirection: "row",
+      width: "100%",
+      backgroundColor: theme.background.secondary,
+      height: height * 0.1,
+      borderRadius: 41,
+      justifyContent: "flex-start",
+      alignItems: "center",
+      padding: 20,
+    },
+    favoriteBrandsText: {
+      fontFamily: "IgraSans",
+      fontSize: 20,
+      color: theme.text.primary,
+    },
+    statsContainer: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      height: 0.175 * height,
+      alignItems: "flex-end",
+      width: "98%",
+      alignSelf: "center",
+      backgroundColor: theme.background.secondary,
+      borderRadius: 41,
+      shadowColor: theme.shadow.default,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.25,
+      shadowRadius: 4,
+      marginBottom: 30,
+    },
+    statItem: {
+      alignItems: "center",
+    },
+    valueWrapperPressed: {
+      opacity: 0.7,
+    },
+    valueWrapper: {
+      width: "100%",
+      justifyContent: "center",
+      alignItems: "center",
+      backgroundColor: theme.surface.elevated,
+      height: height * 0.1,
+      borderRadius: 41,
+      shadowColor: theme.shadow.default,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.25,
+      shadowRadius: 4,
+    },
+    statValue: {
+      fontFamily: "IgraSans",
+      fontSize: 20,
+      color: theme.text.primary,
+    },
+    statLabel: {
+      fontFamily: "IgraSans",
+      fontSize: 20,
+      color: theme.text.primary,
+      marginBottom: 5,
+      paddingHorizontal: 18,
+    },
+    sizeSection: {
+      width: "100%",
+      flexDirection: "row",
+      backgroundColor: theme.background.secondary,
+      height: height * 0.1,
+      borderRadius: 41,
+      justifyContent: "flex-start",
+      alignItems: "center",
+      shadowColor: theme.shadow.default,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.25,
+      shadowRadius: 4,
+      marginBottom: 30,
+      marginHorizontal: 2, // Small margin to prevent shadow clipping
+    },
+    sizeSectionTitle: {
+      fontFamily: "IgraSans",
+      fontSize: 20,
+      color: theme.text.primary,
+      marginLeft: 20,
+      textAlign: "left",
+    },
+    sizeSelectionWrapper: {
+      height: "100%",
+      position: "absolute",
+      right: 0,
+      justifyContent: "center",
+    },
+    sizeSelectionContainer: {
+      height: "100%",
+      minWidth: height * 0.1,
+      borderRadius: 41,
+      backgroundColor: theme.surface.elevated,
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      paddingHorizontal: 15,
+      shadowColor: theme.shadow.default,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.25,
+      shadowRadius: 4,
+      elevation: 5,
+      position: "absolute",
+      right: 0,
+    },
+    sizeTextContainer: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      flex: 1,
+    },
+    sizeTextWrapper: {
+      paddingVertical: 5,
+      paddingHorizontal: 0,
+      flex: 1,
+      alignItems: "center",
+    },
+    sizeText: {
+      color: theme.text.primary,
+      fontFamily: "IgraSans",
+      fontSize: 20,
+      textAlign: "center",
+    },
+    selectedSizeText: {
+      textDecorationLine: "underline",
+      textDecorationColor: theme.text.primary,
+      textDecorationStyle: "solid",
+    },
+    sizeIndicator: {
+      height: height * 0.1,
+      borderRadius: 41,
+      justifyContent: "center",
+      alignItems: "center",
+      flexDirection: "row",
+      gap: 8,
+      position: "absolute",
+      right: 0,
+      left: 0,
+      paddingHorizontal: 20,
+    },
+    sizeChooseText: {
+      color: theme.text.tertiary,
+      fontFamily: "IgraSans",
+      fontSize: 18,
+    },
+    sizeIndicatorText: {
+      color: theme.text.primary,
+      fontFamily: "IgraSans",
+      fontSize: 20,
+      textAlign: "center",
+    },
+    settingsButtonContainer: {
+      width: "98%",
+      alignSelf: "center",
+    },
+    settingsButton: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      backgroundColor: theme.background.secondary,
+      borderRadius: 41,
+      padding: 20,
+      shadowColor: theme.shadow.default,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.25,
+      shadowRadius: 4,
+      elevation: 6,
+      height: height * 0.1,
+    },
+    settingsButtonText: {
+      fontFamily: "IgraSans",
+      fontSize: 20,
+      color: theme.text.primary,
+    },
+    searchAndResultsContainer: {
+      width: "100%",
+      height: "100%",
+      alignItems: "center",
+      justifyContent: "space-between",
+      position: "relative",
+    },
+    selectedBubblesContainer: {
+      width: "100%",
+      height: height * 0.1,
+      backgroundColor: theme.background.secondary,
+      shadowColor: theme.shadow.default,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.25,
+      shadowRadius: 4,
+      borderRadius: 41,
+      position: "relative",
+      overflow: "hidden",
+      zIndex: 2,
+      marginTop: height * 0.05,
+      justifyContent: "center",
+    },
+    selectedBubblesContent: {
+      marginLeft: 20,
+      flexDirection: "row",
+      alignItems: "center",
+    },
+    brandBubbleText: {
+      fontFamily: "IgraSans",
+      fontSize: 20,
+      color: theme.text.primary,
+    },
+    emptyBrandsText: {
+      fontFamily: "IgraSans",
+      fontSize: 18,
+      color: theme.text.tertiary,
+      fontStyle: "italic",
+      textAlign: "center",
+      alignItems: "center",
+      paddingHorizontal: 20,
+    },
+    searchResultsContainer: {
+      width: "100%",
+      height: height * 0.47,
+      backgroundColor: theme.background.secondary,
+      borderRadius: 41,
+      position: "relative",
+      zIndex: 1,
+      ...Platform.select({
+        ios: {
+          shadowColor: theme.shadow.default,
+          shadowOffset: { width: 0, height: 4 },
+          shadowOpacity: 0.25,
+          shadowRadius: 4,
+        },
+        android: {
+          elevation: 4,
+        },
+      }),
+    },
+    searchContainer: {
+      width: "100%",
+      flexDirection: "row",
+      alignItems: "center",
+      backgroundColor: theme.surface.elevated,
+      borderRadius: 41,
+      paddingHorizontal: 20,
+      height: 0.1 * height,
+      zIndex: 2,
+      ...Platform.select({
+        ios: {
+          shadowColor: theme.shadow.default,
+          shadowOffset: { width: 0, height: 4 },
+          shadowOpacity: 0.25,
+          shadowRadius: 4,
+        },
+        android: {
+          elevation: 6,
+        },
+      }),
+    },
+    searchInput: {
+      fontFamily: "IgraSans",
+      fontSize: 20,
+      color: theme.text.primary,
+    },
+    brandsList: {
+      marginTop: 5,
+    },
+    brandItem: {
+      padding: 20,
+    },
+    brandItemContent: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+    },
+    brandText: {
+      fontFamily: "IgraSans",
+      fontSize: 20,
+      color: theme.text.primary,
+    },
+    tickContainer: {
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    pressedItem: {
+      opacity: 0.8,
+    },
+    // Orders styles
+    ordersContainer: {
+      alignItems: "center",
+      justifyContent: "center",
+      height: "100%",
+      width: "100%",
+    },
+    ordersList: {
+      marginTop: height * 0.05,
+      paddingHorizontal: 20,
+      borderRadius: 41,
+      width: 0.88 * width,
+      marginBottom: -20,
+    },
+    orderItem: {
+      marginBottom: 25,
+    },
+    orderBubble: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      backgroundColor: theme.background.secondary,
+      borderRadius: 41,
+      marginBottom: 20,
+      height: 0.1 * height,
+      shadowColor: theme.shadow.default,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.25,
+      shadowRadius: 4,
+    },
+    orderBubbleTouchArea: {
+      flex: 1,
+      justifyContent: "center",
+      height: "100%",
+      minWidth: 0,
+      paddingLeft: 20,
+    },
+    returnButton: {
+      paddingHorizontal: Platform.OS === "ios" ? 20 : 24,
+      backgroundColor: theme.button.secondary,
+      borderRadius: 41,
+      alignSelf: "stretch",
+      justifyContent: "center",
+      alignItems: "center",
+      marginLeft: 10,
+      shadowColor: theme.shadow.default,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.25,
+      shadowRadius: 4,
+      elevation: 6,
+    },
+    returnButtonText: {
+      fontFamily: "IgraSans",
+      fontSize: 18,
+      color: theme.button.primary,
+    },
+    orderNumber: {
+      fontFamily: "IgraSans",
+      fontSize: 20,
+      color: theme.text.primary,
+    },
+    orderStatusSubtext: {
+      fontFamily: "IgraSans",
+      fontSize: 14,
+      color: theme.text.tertiary,
+      marginTop: 2,
+    },
+    orderSummary: {
+      fontFamily: "IgraSans",
+      fontSize: 20,
+      color: theme.text.primary,
+      marginLeft: 20,
+    },
+    trackingLink: {
+      fontFamily: "IgraSans",
+      fontSize: 14,
+      color: theme.primary,
+      marginLeft: 20,
+      marginTop: 4,
+    },
+    orderDetailsContainer: {
+      width: "100%",
+      paddingTop: height * 0.05,
+      alignItems: "center",
+      height: "100%",
+      justifyContent: "space-between",
+    },
+    orderItemsList: {
+      width: width * 0.88,
+      paddingHorizontal: 20,
+      borderRadius: 41,
+      height: "60%",
+    },
+    cartItem: {
+      backgroundColor: theme.surface.cartItem,
+      borderRadius: 41,
+      marginBottom: 15,
+      shadowColor: theme.shadow.default,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.25,
+      shadowRadius: 4,
+      elevation: 6,
+      flex: 1,
+    },
+    cartItemInactive: {
+      opacity: 0.45,
+    },
+    imageContainerInactive: {
+      opacity: 0.6,
+    },
+    itemTextInactive: {
+      color: theme.text.disabled,
+    },
+    inactiveBrandBanner: {
+      backgroundColor: theme.button.disabled,
+      borderRadius: 20,
+      paddingHorizontal: 16,
+      paddingVertical: 10,
+      marginBottom: 10,
+    },
+    inactiveBrandBannerText: {
+      fontFamily: "IgraSans",
+      fontSize: 13,
+      color: theme.button.disabledText,
+      textAlign: "center",
+    },
+    itemPressable: {
+      flexDirection: "row",
+      alignItems: "flex-start",
+      justifyContent: "space-between",
+      paddingTop: 20,
+      paddingLeft: 25,
+      paddingRight: 20,
+      paddingBottom: 15,
+    },
+    itemContent: {
+      flexDirection: "row",
+      width: "80%",
+      alignItems: "flex-start",
+    },
+    imageContainer: {
+      width: "30%",
+      height: "100%",
+      alignSelf: "flex-start",
+      marginRight: 15,
+      justifyContent: "flex-start",
+    },
+    itemImage: {
+      width: "100%",
+      height: "100%",
+      justifyContent: "flex-start",
+      position: "absolute",
+      top: 0,
+      left: 0,
+    },
+    itemDetails: {
+      flex: 1,
+      justifyContent: "flex-start",
+    },
+    itemName: {
+      fontFamily: "IgraSans",
+      fontSize: 38,
+      color: theme.text.primary,
+      marginBottom: 0,
+    },
+    itemPrice: {
+      fontFamily: "REM",
+      fontSize: 16,
+      color: theme.text.primary,
+      marginBottom: 5,
+    },
+    itemSize: {
+      fontFamily: "IgraSans",
+      fontSize: 16,
+      color: theme.text.primary,
+      marginBottom: 20,
+    },
+    rightContainer: {
+      justifyContent: "center",
+      alignItems: "center",
+      height: "100%",
+      width: "20%",
+    },
+    circle: {
+      position: "absolute",
+      top: "30%",
+      bottom: "30%",
+      right: 0,
+    },
+    orderTotalContainer: {
+      justifyContent: "center",
+      alignItems: "center",
+      width: "100%",
+      flex: 1,
+    },
+    orderTotalText: {
+      fontFamily: "IgraSans",
+      fontSize: 34,
+      color: theme.text.primary,
+    },
+    orderDeliveryText: {
+      fontFamily: "IgraSans",
+      fontSize: 18,
+      color: theme.text.secondary,
+      marginTop: 4,
+    },
+    orderStatusContainer: {
+      height: height * 0.1,
+      width: "100%",
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      backgroundColor: theme.background.secondary,
+      shadowColor: theme.shadow.default,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.25,
+      shadowRadius: 4,
+      borderRadius: 41,
+    },
+    orderStatus: {
+      height: "100%",
+      paddingHorizontal: 25,
+      justifyContent: "center",
+      alignItems: "center",
+      backgroundColor: theme.surface.elevated,
+      shadowColor: theme.shadow.default,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.25,
+      shadowRadius: 4,
+      borderRadius: 41,
+    },
+    orderStatusText: {
+      fontFamily: "IgraSans",
+      fontSize: 20,
+      color: theme.text.primary,
+    },
+    emptyStateText: {
+      fontFamily: "IgraSans",
+      fontSize: 16,
+      color: theme.text.secondary,
+      marginBottom: 20,
+    },
+    startShoppingButton: {
+      backgroundColor: theme.primary,
+      borderRadius: 15,
+      padding: 15,
+      minWidth: 200,
+      alignItems: "center",
+    },
+    startShoppingText: {
+      fontFamily: "IgraSans",
+      fontSize: 16,
+      color: theme.text.inverse,
+    },
+  });
 
 export default Wall;

@@ -617,14 +617,12 @@ export function AddNewItemPage() {
                       </SelectTrigger>
                       <SelectContent>
                         {colors.map((c) => (
-                          <SelectItem key={c.name} value={c.name}>
+                          <SelectItem key={c.name} value={c.name} textValue={c.russian}>
                             <div className="flex items-center gap-2">
                               <div
                                 className="w-4 h-4 rounded-full border"
                                 style={{
-                                  background: c.hex.startsWith("#")
-                                    ? c.hex
-                                    : "#808080",
+                                  background: c.hex || "#808080",
                                 }}
                               />
                               {c.russian}

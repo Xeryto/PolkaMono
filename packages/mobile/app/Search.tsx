@@ -1,4 +1,11 @@
-import React, { useState, useEffect, useRef, useCallback, useMemo, memo } from "react";
+import React, {
+  useState,
+  useEffect,
+  useRef,
+  useCallback,
+  useMemo,
+  memo,
+} from "react";
 import {
   View,
   Text,
@@ -163,7 +170,13 @@ interface SearchResultItemProps {
 }
 
 const SearchResultItem = memo(
-  ({ item, index, initialResultsCount, onPress, styles }: SearchResultItemProps) => {
+  ({
+    item,
+    index,
+    initialResultsCount,
+    onPress,
+    styles,
+  }: SearchResultItemProps) => {
     const isNewItem = index >= initialResultsCount;
 
     return (
@@ -183,7 +196,11 @@ const SearchResultItem = memo(
           onPress={() => onPress(item, index)}
         >
           {item.images && item.images.length > 0 ? (
-            <Image source={item.images[0]} style={styles.itemImage} contentFit="contain" />
+            <Image
+              source={item.images[0]}
+              style={styles.itemImage}
+              contentFit="contain"
+            />
           ) : (
             <View style={[styles.itemImage, styles.noProductImagePlaceholder]}>
               <Text style={styles.noProductImageText}>Нет изображения</Text>
@@ -208,7 +225,7 @@ const Search = ({ navigation }: SearchProps) => {
   const [searchQuery, setSearchQuery] = useState("");
   const [isSearchActive, setIsSearchActive] = useState(false);
   const [activeFilter, setActiveFilter] = useState<keyof FilterOptions | null>(
-    null
+    null,
   );
   const [selectedFilters, setSelectedFilters] = useState<SelectedFilters>({
     category: [],
@@ -1137,7 +1154,11 @@ const Search = ({ navigation }: SearchProps) => {
                 )}
                 style={styles.emptyStateIcon}
               >
-                <AntDesign name="search" size={64} color={theme.text.disabled} />
+                <AntDesign
+                  name="search"
+                  size={64}
+                  color={theme.text.disabled}
+                />
               </Animated.View>
               <Animated.Text
                 entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
@@ -1175,14 +1196,16 @@ const Search = ({ navigation }: SearchProps) => {
                   selectedFilters,
                   PAGE_SIZE,
                   0,
-                ).then((results) => {
-                  setSearchResults(results);
-                  setIsLoadingResults(false);
-                  setSearchError(null);
-                }).catch((err) => {
-                  setIsLoadingResults(false);
-                  setSearchError(getErrorMessage(err));
-                });
+                )
+                  .then((results) => {
+                    setSearchResults(results);
+                    setIsLoadingResults(false);
+                    setSearchError(null);
+                  })
+                  .catch((err) => {
+                    setIsLoadingResults(false);
+                    setSearchError(getErrorMessage(err));
+                  });
               }}
               style={{ marginTop: 20 }}
             />
@@ -1287,342 +1310,343 @@ const Search = ({ navigation }: SearchProps) => {
   );
 };
 
-const createStyles = (theme: ThemeColors) => StyleSheet.create({
-  container: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  roundedBox: {
-    width: "88%",
-    height: "72%",
-    borderRadius: 41,
-    backgroundColor: theme.background.primary,
-    position: "relative",
-    //padding: 11,
-    shadowColor: theme.shadow.default,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 4,
-  },
-  searchContainer: {
-    width: "88%",
-    marginBottom: "3.6%",
-    height: "12%",
-    shadowColor: theme.shadow.default,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 4,
-    backgroundColor: theme.background.primary,
-    borderRadius: 41,
-    overflow: "hidden",
-  },
-  searchContainerActive: {
-    // When search is active, make search container slightly wider
-    width: "92%",
-    shadowOpacity: 0.35, // Make shadow more prominent when active
-  },
-  filtersContainer: {
-    marginBottom: "5%",
-    width: "88%",
-    zIndex: 998,
-    height: "5%",
-    borderRadius: 41,
-    // backgroundColor: theme.background.primary,
-    shadowColor: theme.shadow.default,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 10,
-  },
-  filterButtons: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    height: "100%",
-  },
-  filterButton: {
-    paddingHorizontal: 20,
-    borderRadius: 41,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: theme.background.primary,
-  },
-  filterButtonActive: {
-    backgroundColor: theme.surface.elevated,
-  },
-  filterButtonContent: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  filterButtonText: {
-    fontFamily: "Igra Sans",
-    fontSize: 14,
-    color: theme.button.primary,
-    marginRight: 5,
-    textAlignVertical: "center",
-  },
-  filterButtonTextActive: {
-    color: theme.text.inverse,
-  },
-  filterIcon: {
-    color: theme.button.primary,
-    marginTop: Platform.OS === "ios" ? -3 : 2,
-    alignSelf: "center",
-  },
-  filterIconActive: {
-    color: theme.text.inverse,
-  },
-  optionsContainer: {
-    position: "absolute",
-    top: 0,
-    right: 0,
-    backgroundColor: theme.background.primary,
-    borderRadius: 17,
-    shadowColor: theme.shadow.default,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 8,
-    elevation: 24,
-    zIndex: 999,
-    width: "100%",
-  },
-  scrollView: {
-    padding: 8,
-    borderRadius: 17,
-    width: "70%",
-  },
-  optionsHeader: {
-    position: "absolute",
-    top: 8,
-    right: 8,
-    zIndex: 1000,
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  okButton: {
-    backgroundColor: theme.primary,
-    paddingVertical: 20,
-    paddingHorizontal: 25,
-    borderRadius: 17 - 8, // filter box borderRadius (17) minus padding (4)
-  },
-  okButtonText: {
-    fontFamily: "Igra Sans",
-    fontSize: 20,
-    color: theme.text.primary,
-    fontWeight: "500",
-  },
-  optionButton: {
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    borderRadius: 17 - 8,
-    marginBottom: 5,
-  },
-  optionButtonActive: {
-    backgroundColor: theme.primary,
-  },
-  optionButtonContent: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-  optionButtonText: {
-    fontFamily: "Igra Sans",
-    fontSize: 20,
-    color: theme.text.primary,
-  },
-  optionButtonTextActive: {
-    color: theme.text.inverse,
-  },
-  optionCheckIcon: {
-    color: theme.text.primary,
-  },
-  resultsContainer: {
-    flex: 1,
-    padding: 21, // 1.5:1 ratio with inner spacing (14 * 1.5)
-    borderRadius: 41,
-  },
-  resultsContainerInitial: {
-    borderTopLeftRadius: 41,
-    borderTopRightRadius: 41,
-    borderBottomLeftRadius: 0,
-    borderBottomRightRadius: 0,
-  },
-  listContent: {
-    paddingBottom: 20,
-  },
-  columnWrapper: {
-    justifyContent: "space-between",
-    paddingHorizontal: 0, // Match recommendations: outer padding handles spacing
-  },
-  searchItem: {
-    width: (width * 0.88 - 42 - 14) / 2, // Container width (88%) - list padding (42 = 21*2) - gap (14, 1.5:1 ratio)
-    marginBottom: 14, // 1.5:1 ratio with outer padding
-    shadowColor: theme.shadow.default,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 4,
-    backgroundColor: theme.surface.item,
-    borderRadius: Math.round((0.25 * (width * 0.88 - 42 - 14)) / 2),
-  },
-  imageContainer: {
-    overflow: "hidden",
-    aspectRatio: 1,
-    position: "relative",
-    //padding: 10,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  itemImage: {
-    width: "73%",
-    height: "73%",
-  },
-  noProductImagePlaceholder: {
-    backgroundColor: theme.surface.button,
-    justifyContent: "center",
-    alignItems: "center",
-    width: "73%",
-    height: "73%",
-  },
-  noProductImageText: {
-    fontFamily: "IgraSans",
-    fontSize: 12,
-    color: theme.text.disabled,
-  },
-  itemInfo: {
-    // position: 'absolute',
-    bottom: -5,
-    // left: 10,
-    // right: 10,
-    alignItems: "center",
-    borderRadius: 20,
-    padding: 6,
-  },
-  itemName: {
-    fontFamily: "IgraSans",
-    fontSize: 13,
-    color: theme.text.secondary,
-    textAlign: "center",
-    paddingHorizontal: 10,
-  },
-  emptyStateContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    padding: 40,
-  },
-  emptyStateIcon: {
-    marginBottom: 24,
-    opacity: 0.4,
-  },
-  emptyStateTitle: {
-    fontFamily: "REM",
-    fontSize: 24,
-    fontWeight: "600",
-    color: theme.text.secondary,
-    textAlign: "center",
-    marginBottom: 12,
-  },
-  emptyStateDescription: {
-    fontFamily: "REM",
-    fontSize: 16,
-    color: theme.text.tertiary,
-    textAlign: "center",
-    lineHeight: 22,
-    paddingHorizontal: 20,
-  },
-  noResultsContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    padding: 40,
-  },
-  noResultsText: {
-    fontFamily: "REM",
-    fontSize: 24,
-    fontWeight: "600",
-    color: theme.text.secondary,
-    textAlign: "center",
-    marginTop: 24,
-    marginBottom: 12,
-  },
-  noResultsDescription: {
-    fontFamily: "REM",
-    fontSize: 16,
-    color: theme.text.tertiary,
-    textAlign: "center",
-    lineHeight: 22,
-    paddingHorizontal: 20,
-  },
-  loadingContainer: {
-    flex: 1,
-    padding: 21,
-  },
-  loadingText: {
-    fontFamily: "REM",
-    fontSize: 18,
-    color: theme.text.tertiary,
-    textAlign: "center",
-    marginTop: 20,
-  },
-  loadMoreContainer: {
-    paddingVertical: 20,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  searchContainerInitial: {
-    marginBottom: "5%",
-  },
-  roundedBoxInitial: {
-    height: "80%",
-  },
-  popularItemsText: {
-    fontFamily: "Igra Sans",
-    fontSize: 38,
-    color: theme.text.coldgrey,
-    textAlign: "left",
-    marginTop: 20,
-    marginBottom: 10,
-    marginLeft: 25,
-  },
-  searchInputContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    height: "100%",
-    paddingHorizontal: 15,
-  },
-  searchInput: {
-    fontSize: 30,
-    fontFamily: "Igra Sans",
-    flex: 1,
-    height: "100%",
-    paddingVertical: 10,
-    color: theme.text.primary,
-  },
-  searchInputActive: {
-    fontSize: 26,
-  },
-  cancelButtonContainer: {
-    marginRight: -15,
-  },
-  cancelButton: {
-    paddingHorizontal: Platform.OS === "ios" ? 45 : 50,
-    backgroundColor: theme.button.cancel,
-    borderRadius: 41,
-    // paddingVertical: Platform.OS === "ios" ? 34 : 27,
-    height: "100%",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  cancelButtonText: {
-    fontFamily: "Igra Sans",
-    fontSize: 18,
-    color: theme.button.primary,
-  },
-});
+const createStyles = (theme: ThemeColors) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      justifyContent: "center",
+      alignItems: "center",
+    },
+    roundedBox: {
+      width: "88%",
+      height: "72%",
+      borderRadius: 41,
+      backgroundColor: theme.background.primary,
+      position: "relative",
+      //padding: 11,
+      shadowColor: theme.shadow.default,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.25,
+      shadowRadius: 4,
+      elevation: 4,
+    },
+    searchContainer: {
+      width: "88%",
+      marginBottom: "3.6%",
+      height: "12%",
+      shadowColor: theme.shadow.default,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.25,
+      shadowRadius: 4,
+      elevation: 4,
+      backgroundColor: theme.background.primary,
+      borderRadius: 41,
+      overflow: "hidden",
+    },
+    searchContainerActive: {
+      // When search is active, make search container slightly wider
+      width: "92%",
+      shadowOpacity: 0.35, // Make shadow more prominent when active
+    },
+    filtersContainer: {
+      marginBottom: "5%",
+      width: "88%",
+      zIndex: 998,
+      height: "5%",
+      borderRadius: 41,
+      // backgroundColor: theme.background.primary,
+      shadowColor: theme.shadow.default,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.25,
+      shadowRadius: 4,
+      elevation: 10,
+    },
+    filterButtons: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      height: "100%",
+    },
+    filterButton: {
+      paddingHorizontal: 20,
+      borderRadius: 41,
+      alignItems: "center",
+      justifyContent: "center",
+      backgroundColor: theme.background.primary,
+    },
+    filterButtonActive: {
+      backgroundColor: theme.surface.elevated,
+    },
+    filterButtonContent: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    filterButtonText: {
+      fontFamily: "IgraSans",
+      fontSize: 14,
+      color: theme.button.primary,
+      marginRight: 5,
+      textAlignVertical: "center",
+    },
+    filterButtonTextActive: {
+      color: theme.text.inverse,
+    },
+    filterIcon: {
+      color: theme.button.primary,
+      marginTop: Platform.OS === "ios" ? -3 : 2,
+      alignSelf: "center",
+    },
+    filterIconActive: {
+      color: theme.text.inverse,
+    },
+    optionsContainer: {
+      position: "absolute",
+      top: 0,
+      right: 0,
+      backgroundColor: theme.background.primary,
+      borderRadius: 17,
+      shadowColor: theme.shadow.default,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.25,
+      shadowRadius: 8,
+      elevation: 24,
+      zIndex: 999,
+      width: "100%",
+    },
+    scrollView: {
+      padding: 8,
+      borderRadius: 17,
+      width: "70%",
+    },
+    optionsHeader: {
+      position: "absolute",
+      top: 8,
+      right: 8,
+      zIndex: 1000,
+      flexDirection: "row",
+      alignItems: "center",
+    },
+    okButton: {
+      backgroundColor: theme.primary,
+      paddingVertical: 20,
+      paddingHorizontal: 25,
+      borderRadius: 17 - 8, // filter box borderRadius (17) minus padding (4)
+    },
+    okButtonText: {
+      fontFamily: "IgraSans",
+      fontSize: 20,
+      color: theme.text.primary,
+      fontWeight: "500",
+    },
+    optionButton: {
+      paddingVertical: 6,
+      paddingHorizontal: 12,
+      borderRadius: 17 - 8,
+      marginBottom: 5,
+    },
+    optionButtonActive: {
+      backgroundColor: theme.primary,
+    },
+    optionButtonContent: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+    },
+    optionButtonText: {
+      fontFamily: "IgraSans",
+      fontSize: 20,
+      color: theme.text.primary,
+    },
+    optionButtonTextActive: {
+      color: theme.text.inverse,
+    },
+    optionCheckIcon: {
+      color: theme.text.primary,
+    },
+    resultsContainer: {
+      flex: 1,
+      padding: 21, // 1.5:1 ratio with inner spacing (14 * 1.5)
+      borderRadius: 41,
+    },
+    resultsContainerInitial: {
+      borderTopLeftRadius: 41,
+      borderTopRightRadius: 41,
+      borderBottomLeftRadius: 0,
+      borderBottomRightRadius: 0,
+    },
+    listContent: {
+      paddingBottom: 20,
+    },
+    columnWrapper: {
+      justifyContent: "space-between",
+      paddingHorizontal: 0, // Match recommendations: outer padding handles spacing
+    },
+    searchItem: {
+      width: (width * 0.88 - 42 - 14) / 2, // Container width (88%) - list padding (42 = 21*2) - gap (14, 1.5:1 ratio)
+      marginBottom: 14, // 1.5:1 ratio with outer padding
+      shadowColor: theme.shadow.default,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.25,
+      shadowRadius: 4,
+      elevation: 4,
+      backgroundColor: theme.surface.item,
+      borderRadius: Math.round((0.25 * (width * 0.88 - 42 - 14)) / 2),
+    },
+    imageContainer: {
+      overflow: "hidden",
+      aspectRatio: 1,
+      position: "relative",
+      //padding: 10,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    itemImage: {
+      width: "73%",
+      height: "73%",
+    },
+    noProductImagePlaceholder: {
+      backgroundColor: theme.surface.button,
+      justifyContent: "center",
+      alignItems: "center",
+      width: "73%",
+      height: "73%",
+    },
+    noProductImageText: {
+      fontFamily: "IgraSans",
+      fontSize: 12,
+      color: theme.text.disabled,
+    },
+    itemInfo: {
+      // position: 'absolute',
+      bottom: -5,
+      // left: 10,
+      // right: 10,
+      alignItems: "center",
+      borderRadius: 20,
+      padding: 6,
+    },
+    itemName: {
+      fontFamily: "IgraSans",
+      fontSize: 13,
+      color: theme.text.secondary,
+      textAlign: "center",
+      paddingHorizontal: 10,
+    },
+    emptyStateContainer: {
+      flex: 1,
+      justifyContent: "center",
+      alignItems: "center",
+      padding: 40,
+    },
+    emptyStateIcon: {
+      marginBottom: 24,
+      opacity: 0.4,
+    },
+    emptyStateTitle: {
+      fontFamily: "REM",
+      fontSize: 24,
+      fontWeight: "600",
+      color: theme.text.secondary,
+      textAlign: "center",
+      marginBottom: 12,
+    },
+    emptyStateDescription: {
+      fontFamily: "REM",
+      fontSize: 16,
+      color: theme.text.tertiary,
+      textAlign: "center",
+      lineHeight: 22,
+      paddingHorizontal: 20,
+    },
+    noResultsContainer: {
+      flex: 1,
+      justifyContent: "center",
+      alignItems: "center",
+      padding: 40,
+    },
+    noResultsText: {
+      fontFamily: "REM",
+      fontSize: 24,
+      fontWeight: "600",
+      color: theme.text.secondary,
+      textAlign: "center",
+      marginTop: 24,
+      marginBottom: 12,
+    },
+    noResultsDescription: {
+      fontFamily: "REM",
+      fontSize: 16,
+      color: theme.text.tertiary,
+      textAlign: "center",
+      lineHeight: 22,
+      paddingHorizontal: 20,
+    },
+    loadingContainer: {
+      flex: 1,
+      padding: 21,
+    },
+    loadingText: {
+      fontFamily: "REM",
+      fontSize: 18,
+      color: theme.text.tertiary,
+      textAlign: "center",
+      marginTop: 20,
+    },
+    loadMoreContainer: {
+      paddingVertical: 20,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    searchContainerInitial: {
+      marginBottom: "5%",
+    },
+    roundedBoxInitial: {
+      height: "80%",
+    },
+    popularItemsText: {
+      fontFamily: "IgraSans",
+      fontSize: 38,
+      color: theme.text.coldgrey,
+      textAlign: "left",
+      marginTop: 20,
+      marginBottom: 10,
+      marginLeft: 25,
+    },
+    searchInputContainer: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      height: "100%",
+      paddingHorizontal: 15,
+    },
+    searchInput: {
+      fontSize: 30,
+      fontFamily: "IgraSans",
+      flex: 1,
+      height: "100%",
+      paddingVertical: 10,
+      color: theme.text.primary,
+    },
+    searchInputActive: {
+      fontSize: 26,
+    },
+    cancelButtonContainer: {
+      marginRight: -15,
+    },
+    cancelButton: {
+      paddingHorizontal: Platform.OS === "ios" ? 45 : 50,
+      backgroundColor: theme.button.cancel,
+      borderRadius: 41,
+      // paddingVertical: Platform.OS === "ios" ? 34 : 27,
+      height: "100%",
+      justifyContent: "center",
+      alignItems: "center",
+    },
+    cancelButtonText: {
+      fontFamily: "IgraSans",
+      fontSize: 18,
+      color: theme.button.primary,
+    },
+  });
 
 export default Search;

@@ -1,4 +1,10 @@
-import React, { useState, useRef, useEffect, useCallback, useMemo } from "react";
+import React, {
+  useState,
+  useRef,
+  useEffect,
+  useCallback,
+  useMemo,
+} from "react";
 import { ActivityIndicator } from "react-native";
 import {
   View,
@@ -16,7 +22,6 @@ import {
   Platform,
   Linking,
   Alert,
-  Modal,
   NativeSyntheticEvent,
   NativeScrollEvent,
   Switch,
@@ -43,6 +48,7 @@ import PenIcon from "./components/svg/PenIcon";
 import Scroll from "./components/svg/Scroll";
 import * as Haptics from "expo-haptics";
 import Tick from "./assets/Tick";
+import TickBold from "./assets/TickBold";
 import { AnimatedCircularProgress } from "react-native-circular-progress";
 import * as api from "./services/api";
 import { apiWrapper } from "./services/apiWrapper";
@@ -295,7 +301,6 @@ const Settings = ({
   const { theme, themeMode, setThemeMode } = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
   const [selectedSize, setSelectedSize] = useState("M");
-  const [showThemePopup, setShowThemePopup] = useState(false);
   const [activeSection, setActiveSection] = useState<
     | "payment"
     | "support"
@@ -305,6 +310,7 @@ const Settings = ({
     | "privacy"
     | "documents"
     | "delete_account"
+    | "theme"
     | null
   >(initialSection || null);
 
@@ -711,12 +717,15 @@ const Settings = ({
   };
 
   // Refresh profile/stats when settings tab gains focus (if stale >30s)
-  useStaleFocusEffect(useCallback(() => {
-    loadUserProfile();
-    loadBrands();
-    loadUserStats();
-    loadSwipeCount();
-  }, []), 30_000);
+  useStaleFocusEffect(
+    useCallback(() => {
+      loadUserProfile();
+      loadBrands();
+      loadUserStats();
+      loadSwipeCount();
+    }, []),
+    30_000,
+  );
 
   const getBottomText = useCallback(() => {
     switch (activeSection) {
@@ -736,6 +745,8 @@ const Settings = ({
         return "ДОКУМЕНТЫ";
       case "delete_account":
         return "УДАЛЕНИЕ";
+      case "theme":
+        return "ТЕМА";
       default:
         return "НАСТРОЙКИ";
     }
@@ -1744,7 +1755,8 @@ const Settings = ({
       | "my_info"
       | "notifications"
       | "privacy"
-      | "documents",
+      | "documents"
+      | "theme",
     delay: number,
   ) => (
     <Animated.View
@@ -1776,6 +1788,7 @@ const Settings = ({
       { title: "уведомления", section: "notifications" as const, delay: 200 },
       { title: "приватность", section: "privacy" as const, delay: 250 },
       { title: "документы", section: "documents" as const, delay: 300 },
+      { title: "тема", section: "theme" as const, delay: 350 },
     ];
 
     return (
@@ -1865,28 +1878,10 @@ const Settings = ({
               </View>
             ))}
 
-            {/* Theme Popup Button */}
-            <Animated.View
-              entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
-                ANIMATION_DELAYS.MEDIUM + 275,
-              )}
-              style={styles.mainButtonContainer}
-            >
-              <Pressable
-                style={styles.mainButton}
-                onPress={async () => {
-                  await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                  setShowThemePopup(true);
-                }}
-              >
-                <Text style={styles.mainButtonText}>тема</Text>
-              </Pressable>
-            </Animated.View>
-
             {/* Delete Account Button */}
             <Animated.View
               entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
-                ANIMATION_DELAYS.MEDIUM + 325,
+                ANIMATION_DELAYS.MEDIUM + 400,
               )}
               style={styles.mainButtonContainer}
             >
@@ -2649,58 +2644,70 @@ const Settings = ({
     </View>
   );
 
-  const renderThemePopup = () => {
-    const themeOptions: Array<{ id: 'system' | 'light' | 'dark'; label: string }> = [
-      { id: 'system', label: 'системная' },
-      { id: 'light', label: 'светлая' },
-      { id: 'dark', label: 'темная' },
+  const renderThemeContent = () => {
+    const themeOptions: Array<{
+      id: "system" | "light" | "dark";
+      label: string;
+    }> = [
+      { id: "system", label: "системная" },
+      { id: "light", label: "светлая" },
+      { id: "dark", label: "темная" },
     ];
 
     return (
-      <Modal
-        visible={showThemePopup}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setShowThemePopup(false)}
-      >
-        <Pressable
-          style={styles.themePopupOverlay}
-          onPress={() => setShowThemePopup(false)}
+      <View style={styles.contentContainer}>
+        <Animated.View
+          style={styles.backButton}
+          entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
+            ANIMATION_DELAYS.LARGE,
+          )}
         >
-          <Pressable style={styles.themePopupContainer} onPress={(e) => e.stopPropagation()}>
-            <Text style={styles.themePopupTitle}>выбор темы</Text>
-            {themeOptions.map((option) => {
-              const isSelected = themeMode === option.id;
-              return (
+          <TouchableOpacity onPress={() => setActiveSection(null)}>
+            <BackIcon width={22} height={22} />
+          </TouchableOpacity>
+        </Animated.View>
+
+        <View style={styles.notificationsContainer}>
+          <Animated.View
+            entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
+              ANIMATION_DELAYS.STANDARD,
+            )}
+            style={styles.privacySectionTitle}
+          >
+            <Text style={styles.privacySectionTitleText}>выбор темы</Text>
+          </Animated.View>
+
+          {themeOptions.map((option, index) => {
+            const isSelected = themeMode === option.id;
+            return (
+              <Animated.View
+                key={option.id}
+                entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
+                  ANIMATION_DELAYS.STANDARD + (index + 1) * 50,
+                )}
+                style={styles.notificationItemContainer}
+              >
                 <Pressable
-                  key={option.id}
-                  style={[
-                    styles.themePopupOption,
-                    isSelected && styles.themePopupOptionSelected,
-                  ]}
+                  style={styles.notificationItem}
                   onPress={async () => {
-                    await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                    await Haptics.impactAsync(
+                      Haptics.ImpactFeedbackStyle.Light,
+                    );
                     await setThemeMode(option.id);
-                    setShowThemePopup(false);
                   }}
                 >
-                  <Text
-                    style={[
-                      styles.themePopupOptionText,
-                      isSelected && styles.themePopupOptionTextSelected,
-                    ]}
-                  >
+                  <Text style={styles.notificationItemText}>
                     {option.label}
                   </Text>
                   {isSelected && (
-                    <Tick width={20} height={20} color={theme.primary} />
+                    <TickBold width={28} height={28} color={theme.text.primary} />
                   )}
                 </Pressable>
-              );
-            })}
-          </Pressable>
-        </Pressable>
-      </Modal>
+              </Animated.View>
+            );
+          })}
+        </View>
+      </View>
     );
   };
 
@@ -3336,12 +3343,14 @@ const Settings = ({
                           const message =
                             err?.message ||
                             err?.detail ||
-                            (typeof err === "string" ? err : "не удалось удалить аккаунт.");
+                            (typeof err === "string"
+                              ? err
+                              : "не удалось удалить аккаунт.");
                           Alert.alert("ошибка", message);
                         }
                       },
                     },
-                  ]
+                  ],
                 );
               }}
             >
@@ -3395,6 +3404,8 @@ const Settings = ({
         return renderPrivacyContent();
       case "delete_account":
         return renderDeleteAccountContent();
+      case "theme":
+        return renderThemeContent();
       case "payment":
       case "documents":
         // TODO: Implement these sections
@@ -3429,7 +3440,6 @@ const Settings = ({
     return (
       <View style={styles.embeddedContainer}>
         {renderContent()}
-        {renderThemePopup()}
       </View>
     );
   }
@@ -3441,7 +3451,9 @@ const Settings = ({
         style={styles.roundedBox}
       >
         <LinearGradient
-          colors={[theme.border.default, theme.border.transparent] as [string, string]}
+          colors={
+            [theme.border.default, theme.border.transparent] as [string, string]
+          }
           start={{ x: 0, y: 1 }}
           end={{ x: 1, y: 0.3 }}
           style={styles.gradientBackground}
@@ -3457,1310 +3469,1268 @@ const Settings = ({
           </Text>
         </View>
       </Animated.View>
-      {renderThemePopup()}
     </View>
   );
 };
 
-const createStyles = (theme: ThemeColors) => StyleSheet.create({
-  container: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  embeddedContainer: {
-    width: "100%",
-    height: "100%",
-  },
-  roundedBox: {
-    width: "88%",
-    height: "95%",
-    borderRadius: 41,
-    backgroundColor: theme.border.transparent,
-    position: "relative",
-    borderWidth: 3,
-    borderColor: theme.border.default,
-  },
-  gradientBackground: {
-    borderRadius: 37,
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-  },
-  whiteBox: {
-    backgroundColor: theme.background.primary,
-    borderRadius: 41,
-    width: width * 0.88,
-    top: -3,
-    left: -3,
-    height: "90%",
-    shadowColor: theme.shadow.default,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 6,
-    padding: height * 0.025,
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  textContainer: {
-    position: "absolute",
-    bottom: 0,
-    marginBottom: 12,
-    marginLeft: 22,
-  },
-  text: {
-    fontFamily: "Igra Sans",
-    fontSize: 34,
-    color: theme.text.primary,
-    textAlign: "left",
-  },
-  profileSection: {
-    width: "100%",
-    justifyContent: "center",
-    alignItems: "center",
-    flexDirection: "column",
-    gap: 10,
-    marginTop: 5,
-  },
-  profileImageWrapper: {
-    alignItems: "center",
-    justifyContent: "center",
-    position: "relative",
-  },
-  profileImageContainer: {
-    width: width * 0.25,
-    height: width * 0.25,
-    borderRadius: width * 0.125,
-    overflow: "hidden",
-    //backgroundColor: '#F2ECE7',
-    //marginBottom: 15,
-  },
-  profileImage: {
-    width: "100%",
-    height: "100%",
-    resizeMode: "contain",
-  },
-  penIconButton: {
-    position: "absolute",
-    bottom: -20,
-    right: -15,
-    zIndex: 10,
-  },
-  penIconCircle: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: theme.border.transparent,
-    borderWidth: 2,
-    borderColor: theme.border.default,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  profileName: {
-    fontFamily: "IgraSans",
-    fontSize: 20,
-    color: theme.text.primary,
-  },
-  mainButtonsOverlay: {
-    width: "100%",
-    justifyContent: "center",
-    marginBottom: -15,
-    //paddingVertical: 20,
-  },
-  scrollableMenuContainer: {
-    flex: 1,
-    position: "relative",
-    width: "100%",
-    marginTop: 33 + 15,
-  },
-  scrollHintContainer: {
-    position: "absolute",
-    bottom: -height * 0.025 - 14 + 5,
-    right: 0,
-    alignItems: "flex-end",
-    zIndex: 10,
-    paddingVertical: 8,
-    flexDirection: "row",
-  },
-  scrollHintText: {
-    fontFamily: "IgraSans",
-    fontSize: 14,
-    lineHeight: 26,
-    color: theme.text.primary,
-    flexDirection: "row",
-    alignItems: "center",
-    marginRight: 8,
-  },
-  scrollableMenu: {
-    width: width * 0.88,
-    left: -height * 0.025,
-    paddingHorizontal: height * 0.025,
-    marginBottom: -height * 0.025,
-    borderRadius: 41,
-  },
-  mainButtonContainer: {
-    marginBottom: 15,
-  },
-  mainButton: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    backgroundColor: theme.surface.cartItem,
-    borderRadius: 41,
-    padding: 20,
-    shadowColor: theme.shadow.default,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 6,
-    height: height * 0.1,
-  },
-  notificationsContainer: {
-    width: "100%",
-    alignContent: "flex-start",
-    flex: 1,
-  },
-  notificationItemContainer: {
-    marginBottom: 15,
-  },
-  notificationItem: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    backgroundColor: theme.surface.cartItem,
-    borderRadius: 41,
-    padding: 20,
-    shadowColor: theme.shadow.default,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 6,
-    height: height * 0.1,
-  },
-  notificationItemText: {
-    fontFamily: "IgraSans",
-    fontSize: 20,
-    color: theme.text.primary,
-    flex: 1,
-    flexShrink: 1,
-    marginRight: 12,
-  },
-  switchContainer: {
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  mainButtonText: {
-    fontFamily: "IgraSans",
-    fontSize: 20,
-    color: theme.text.primary,
-  },
-  deleteAccountButton: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    backgroundColor: theme.button.delete,
-    borderRadius: 41,
-    padding: 20,
-    shadowColor: theme.shadow.default,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 6,
-    height: height * 0.1,
-  },
-  deleteAccountButtonText: {
-    fontFamily: "IgraSans",
-    fontSize: 20,
-    color: theme.text.inverse,
-  },
-  deleteAccountScreenContainer: {
-    width: "100%",
-    height: "100%",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  deleteAccountQuestionContainer: {
-    width: "100%",
-    marginBottom: 40,
-  },
-  deleteAccountQuestion: {
-    width: "100%",
-    backgroundColor: theme.surface.cartItem,
-    borderRadius: 41,
-    paddingHorizontal: 20,
-    shadowColor: theme.shadow.default,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 6,
-    minHeight: height * 0.1,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  deleteAccountQuestionText: {
-    textAlign: "center",
-    fontFamily: "IgraSans",
-    fontSize: 20,
-    color: theme.text.primary,
-    lineHeight: 39,
-  },
-  deleteAccountButtonsContainer: {
-    width: "100%",
-    flexDirection: "row",
-    justifyContent: "space-between",
-    gap: 15,
-    marginBottom: 40,
-  },
-  deleteAccountYesButtonContainer: {
-    flex: 1,
-    marginRight: 7.5,
-  },
-  deleteAccountNoButtonContainer: {
-    flex: 1,
-    marginLeft: 7.5,
-  },
-  deleteAccountYesButton: {
-    flexDirection: "row",
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: theme.button.delete,
-    borderRadius: 41,
-    padding: 20,
-    shadowColor: theme.shadow.default,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 6,
-    height: height * 0.1,
-  },
-  deleteAccountYesButtonText: {
-    fontFamily: "IgraSans",
-    fontSize: 20,
-    color: theme.text.inverse,
-  },
-  deleteAccountNoButton: {
-    flexDirection: "row",
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: theme.surface.cartItem,
-    borderRadius: 41,
-    padding: 20,
-    shadowColor: theme.shadow.default,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 6,
-    height: height * 0.1,
-  },
-  deleteAccountNoButtonText: {
-    fontFamily: "IgraSans",
-    fontSize: 20,
-    color: theme.text.primary,
-  },
-  deleteAccountWarningContainer: {
-    position: "absolute",
-    bottom: 0,
-    width: "75%",
-    alignItems: "center",
-  },
-  deleteAccountWarningText: {
-    fontFamily: "IgraSans",
-    fontSize: 10,
-    color: theme.text.primary,
-    textAlign: "center",
-    lineHeight: 17,
-  },
-  placeholderContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    paddingHorizontal: 20,
-  },
-  placeholderText: {
-    fontFamily: "IgraSans",
-    fontSize: 24,
-    color: theme.text.primary,
-    textAlign: "center",
-    marginBottom: 10,
-  },
-  placeholderSubtext: {
-    fontFamily: "IgraSans",
-    fontSize: 18,
-    color: theme.text.grey,
-    textAlign: "center",
-  },
-  contentContainer: {
-    width: "100%",
-    height: "100%",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingTop: 40,
-  },
-  backButton: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    zIndex: 11,
-  },
-  backButtonAlt: {
-    width: "100%",
-    height: height * 0.1,
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  sectionTitle: {
-    fontFamily: "IgraSans",
-    fontSize: 20,
-    color: theme.text.primary,
-    lineHeight: 39,
-  },
-  favoriteBrandsSection: {
-    width: "100%",
-    height: height * 0.1,
-    borderRadius: 41,
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: theme.background.primary,
-    shadowColor: theme.shadow.default,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-  },
-  favoriteBrandsButton: {
-    flexDirection: "row",
-    width: "100%",
-    backgroundColor: theme.surface.cartItem,
-    height: height * 0.1,
-    borderRadius: 41,
-    justifyContent: "flex-start",
-    alignItems: "center",
-    padding: 20,
-  },
-  favoriteBrandsText: {
-    fontFamily: "IgraSans",
-    fontSize: 20,
-    color: theme.text.primary,
-  },
-  statsContainer: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    height: 0.175 * height,
-    alignItems: "flex-end",
-    width: "100%",
-    backgroundColor: theme.surface.cartItem,
-    borderRadius: 41,
-    shadowColor: theme.shadow.default,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-  },
-  statItem: {
-    alignItems: "center",
-  },
-  valueWrapper: {
-    width: "100%",
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: theme.surface.elevated,
-    height: height * 0.1,
-    borderRadius: 41,
-    shadowColor: theme.shadow.default,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-  },
-  statValue: {
-    fontFamily: "IgraSans",
-    fontSize: 20,
-    color: theme.text.primary,
-  },
-  statLabel: {
-    fontFamily: "IgraSans",
-    fontSize: 20,
-    color: theme.text.primary,
-    marginBottom: 5,
-    paddingHorizontal: 18,
-  },
-  sizeSection: {
-    width: "100%",
-    flexDirection: "row",
-    backgroundColor: theme.surface.cartItem,
-    height: height * 0.1,
-    borderRadius: 41,
-    justifyContent: "flex-start",
-    alignItems: "center",
-    shadowColor: theme.shadow.default,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-  },
-  sizeSectionTitle: {
-    fontFamily: "IgraSans",
-    fontSize: 20,
-    color: theme.text.primary,
-    marginLeft: 20,
-    textAlign: "left",
-  },
-  sizeSelectionWrapper: {
-    height: "100%",
-    position: "absolute",
-    right: 0,
-    justifyContent: "center",
-  },
-  sizeSelectionContainer: {
-    height: "100%",
-    minWidth: height * 0.1,
-    borderRadius: 41,
-    backgroundColor: theme.surface.elevated,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    paddingHorizontal: 15,
-    shadowColor: theme.shadow.default,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 5,
-    position: "absolute",
-    right: 0,
-  },
-  sizeTextContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    flex: 1,
-  },
-  sizeTextWrapper: {
-    paddingVertical: 5,
-    paddingHorizontal: 0,
-    flex: 1,
-    alignItems: "center",
-  },
-  sizeText: {
-    color: theme.text.primary,
-    fontFamily: "IgraSans",
-    fontSize: 20,
-    textAlign: "center",
-  },
-  selectedSizeText: {
-    textDecorationLine: "underline",
-    textDecorationColor: theme.text.primary,
-    textDecorationStyle: "solid",
-  },
-  sizeIndicator: {
-    width: height * 0.1,
-    height: height * 0.1,
-    borderRadius: 41,
-    justifyContent: "center",
-    alignItems: "center",
-    position: "absolute",
-    right: 0,
-  },
-  sizeIndicatorText: {
-    color: theme.text.primary,
-    fontFamily: "IgraSans",
-    fontSize: 20,
-    textAlign: "center",
-  },
-  bottomText: {
-    fontFamily: "IgraSans",
-    fontSize: 38,
-    color: theme.text.inverse,
-    textAlign: "center",
-    marginTop: 20,
-  },
-  // Orders styles
-  ordersContainer: {
-    alignItems: "center",
-    justifyContent: "center",
-    height: "100%",
-    width: "100%",
-  },
-  ordersList: {
-    marginTop: height * 0.05,
-    paddingHorizontal: 20,
-    borderRadius: 41,
-    width: 0.88 * width,
-    marginBottom: -20,
-  },
-  orderItem: {
-    marginBottom: 25,
-  },
-  orderBubble: {
-    backgroundColor: theme.surface.cartItem,
-    borderRadius: 41,
-    padding: 20,
-    justifyContent: "center",
-    marginBottom: 20,
-    height: 0.1 * height,
-    shadowColor: theme.shadow.default,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-  },
-  orderNumber: {
-    fontFamily: "IgraSans",
-    fontSize: 20,
-    color: theme.text.primary,
-  },
-  orderSummary: {
-    fontFamily: "IgraSans",
-    fontSize: 20,
-    color: theme.text.primary,
-    marginLeft: 20,
-  },
-  // Payment styles
-  paymentContainer: {
-    padding: 20,
-  },
-  paymentMethodButton: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    backgroundColor: theme.text.inverse,
-    borderRadius: 12,
-    padding: 15,
-    marginBottom: 15,
-  },
-  paymentMethodText: {
-    fontFamily: "REM",
-    fontSize: 16,
-    color: theme.text.tertiary,
-  },
-  paymentInfoText: {
-    fontFamily: "REM",
-    fontSize: 14,
-    color: theme.primary,
-    textAlign: "center",
-  },
-  // Support styles
-  supportContainer: {
-    width: "100%",
-    height: height * 0.2,
-    justifyContent: "center",
-    padding: 10,
-    backgroundColor: theme.surface.cartItem,
-    shadowColor: theme.shadow.default,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    borderRadius: 41,
-  },
-  supportButton: {
-    backgroundColor: theme.text.inverse,
-    borderRadius: 12,
-    padding: 15,
-    marginBottom: 15,
-  },
-  supportButtonText: {
-    fontFamily: "REM",
-    fontSize: 16,
-    color: theme.text.tertiary,
-    textAlign: "center",
-  },
-  brandSearchContainer: {
-    width: "100%",
-    height: "100%",
-    justifyContent: "flex-start",
-    alignItems: "center",
-  },
-  selectedBubblesContainer: {
-    width: "100%",
-    height: height * 0.1,
-    backgroundColor: theme.surface.cartItem,
-    shadowColor: theme.shadow.default,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    borderRadius: 41,
-    position: "relative",
-    overflow: "hidden",
-    zIndex: 2,
-    marginTop: height * 0.05,
-    justifyContent: "center",
-  },
-  selectedBubblesContent: {
-    marginLeft: 20,
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  selectedBrandItem: {
-    backgroundColor: theme.surface.selection,
-    borderRadius: 41,
-    paddingHorizontal: 18,
-    paddingVertical: 12,
-    marginHorizontal: 4,
-    ...Platform.select({
-      ios: {
-        shadowColor: theme.shadow.default,
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.25,
-        shadowRadius: 4,
-      },
-      android: {
-        elevation: 6,
-      },
-    }),
-  },
-  selectedBrandText: {
-    fontFamily: "IgraSans",
-    fontSize: 22,
-    color: theme.text.primary,
-  },
-  searchAndResultsContainer: {
-    width: "100%",
-    height: "100%",
-    alignItems: "center",
-    justifyContent: "space-between",
-    position: "relative",
-  },
-  searchContainer: {
-    width: "100%",
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: theme.surface.elevated,
-    borderRadius: 41,
-    paddingHorizontal: 20,
-    height: 0.1 * height,
-    zIndex: 2,
-    ...Platform.select({
-      ios: {
-        shadowColor: theme.shadow.default,
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.25,
-        shadowRadius: 4,
-      },
-      android: {
-        elevation: 6,
-      },
-    }),
-  },
-  topContent: {
-    flex: 1,
-  },
-  searchContainerAlt: {
-    width: "100%",
-    flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: theme.surface.cartItem,
-    borderRadius: 41,
-    paddingHorizontal: 20,
-    height: 0.1 * height,
-    marginLeft: 20,
-    ...Platform.select({
-      ios: {
-        shadowColor: theme.shadow.default,
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.25,
-        shadowRadius: 4,
-      },
-      android: {
-        elevation: 6,
-      },
-    }),
-  },
-  searchInput: {
-    fontFamily: "IgraSans",
-    fontSize: 20,
-    color: theme.text.primary,
-  },
-  cancelButton: {
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 41,
-    backgroundColor: theme.primary,
-  },
-  cancelButtonText: {
-    fontFamily: "IgraSans",
-    fontSize: 20,
-    color: theme.text.primary,
-  },
-  searchResultsContainer: {
-    width: "100%",
-    height: height * 0.47,
-    backgroundColor: theme.surface.cartItem,
-    borderRadius: 41,
-    position: "relative",
-    zIndex: 1,
-    ...Platform.select({
-      ios: {
-        shadowColor: theme.shadow.default,
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.25,
-        shadowRadius: 4,
-      },
-      android: {
-        elevation: 4,
-      },
-    }),
-  },
-  brandsList: {
-    marginTop: 5,
-  },
-  brandItem: {
-    padding: 20,
-  },
-  brandItemContent: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  brandText: {
-    fontFamily: "IgraSans",
-    fontSize: 20,
-    color: theme.text.primary,
-  },
-  tickContainer: {
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  pressedItem: {
-    opacity: 0.8,
-  },
-  brandBubbleText: {
-    fontFamily: "IgraSans",
-    fontSize: 20,
-    color: theme.text.primary,
-  },
-  emptyBrandsText: {
-    fontFamily: "IgraSans",
-    fontSize: 18,
-    color: theme.text.disabled,
-    fontStyle: "italic",
-    textAlign: "center",
-    alignItems: "center",
-    paddingHorizontal: 20,
-  },
-  ratingContainer: {
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  ratingText: {
-    fontFamily: "IgraSans",
-    fontSize: 20,
-    color: theme.text.primary,
-  },
-  supportText: {
-    fontFamily: "IgraSans",
-    fontSize: 20,
-    color: theme.text.primary,
-    lineHeight: 39,
-  },
-  supportEmail: {
-    fontFamily: "IgraSans",
-    fontSize: 20,
-    color: theme.text.primary,
-    textDecorationLine: "underline",
-    lineHeight: 39,
-  },
-  thankYouContainer: {
-    width: "100%",
-    height: "100%",
-    justifyContent: "center",
-    alignItems: "flex-start",
-  },
-  thankYouText: {
-    fontFamily: "IgraSans",
-    fontSize: 20,
-    color: theme.text.primary,
-  },
-  logoutButton: {
-    position: "absolute",
-    top: 0,
-    right: 0,
-    zIndex: 11,
-  },
-  logoutButtonText: {
-    fontFamily: "IgraSans",
-    fontSize: 20,
-    color: theme.text.primary,
-  },
-  // Shopping information styles
-  shoppingTitleSection: {
-    width: "100%",
-    justifyContent: "center",
-    alignItems: "center",
-    marginBottom: 30,
-  },
-  shoppingTitle: {
-    fontFamily: "IgraSans",
-    fontSize: 24,
-    color: theme.text.primary,
-    textAlign: "center",
-  },
-  shoppingFormContainer: {
-    width: "100%",
-    paddingHorizontal: 20,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  shoppingForm: {
-    width: 0.88 * width,
-    paddingHorizontal: 20,
-    borderRadius: 41,
-    left: -height * 0.025,
-  },
-  inputContainer: {
-    marginBottom: 20,
-  },
-  inputLabel: {
-    fontFamily: "IgraSans",
-    fontSize: 18,
-    color: theme.text.primary,
-    marginBottom: 8,
-  },
-  textInput: {
-    backgroundColor: theme.surface.cartItem,
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    paddingRight: 40, // Make room for status indicator
-    fontFamily: "IgraSans",
-    fontSize: 16,
-    color: theme.text.primary,
-    borderWidth: 1,
-    borderColor: theme.border.transparent,
-    ...Platform.select({
-      ios: {
-        shadowColor: theme.shadow.default,
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 2,
-      },
-      android: {
-        elevation: 2,
-      },
-    }),
-  },
-  usernameInputWrapper: {
-    position: "relative",
-  },
-  inputError: {
-    borderWidth: 2,
-    borderColor: theme.border.error,
-  },
-  inputSuccess: {
-    borderWidth: 2,
-    borderColor: theme.border.success,
-  },
-  inputChecking: {
-    borderWidth: 2,
-    borderColor: theme.border.checking,
-  },
-  statusIndicator: {
-    position: "absolute",
-    right: 15,
-    top: "50%",
-    transform: [{ translateY: -10 }],
-  },
-  statusText: {
-    fontFamily: "IgraSans",
-    fontSize: 16,
-    position: "absolute",
-    right: 15,
-    top: "50%",
-    transform: [{ translateY: -8 }],
-  },
-  statusTextSuccess: {
-    color: theme.status.success,
-  },
-  statusTextError: {
-    color: theme.status.error,
-  },
-  usernameErrorText: {
-    fontFamily: "REM",
-    fontSize: 12,
-    color: theme.status.errorText,
-    marginTop: 4,
-    marginLeft: 4,
-  },
-  textArea: {
-    height: 80,
-    textAlignVertical: "top",
-  },
-  disabledInput: {
-    backgroundColor: theme.border.light,
-    opacity: 0.6,
-  },
-  saveButtonContainer: {
-    marginTop: 20,
-    marginBottom: 30,
-    alignItems: "flex-end",
-  },
-  confirmButton: {
-    backgroundColor: theme.background.input,
-    borderRadius: 41,
-    paddingVertical: 12.5,
-    paddingHorizontal: 25,
-    alignItems: "center",
-    ...Platform.select({
-      ios: {
-        shadowColor: theme.shadow.default,
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.25,
-        shadowRadius: 4,
-      },
-      android: {
-        elevation: 6,
-        overflow: "hidden",
-      },
-    }),
-  },
-  confirmButtonText: {
-    fontFamily: "IgraSans",
-    fontSize: 20,
-    color: theme.text.primary,
-  },
-  confirmButtonDisabled: {
-    opacity: 0.6,
-  },
-  confirmButtonDisabledText: {
-    opacity: 0.37,
-  },
-  saveButton: {
-    backgroundColor: theme.primary,
-    borderRadius: 12,
-    paddingVertical: 16,
-    paddingHorizontal: 32,
-    alignItems: "center",
-    ...Platform.select({
-      ios: {
-        shadowColor: theme.shadow.default,
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.25,
-        shadowRadius: 4,
-      },
-      android: {
-        elevation: 6,
-      },
-    }),
-  },
-  saveButtonDisabled: {
-    backgroundColor: theme.text.grey,
-    opacity: 0.6,
-  },
-  saveButtonText: {
-    fontFamily: "IgraSans",
-    fontSize: 18,
-    color: theme.text.inverse,
-    fontWeight: "bold",
-  },
-  loadingText: {
-    fontFamily: "IgraSans",
-    fontSize: 16,
-    color: theme.text.tertiary,
-    textAlign: "center",
-    marginTop: 20,
-  },
-  errorText: {
-    fontFamily: "IgraSans",
-    fontSize: 16,
-    color: theme.status.errorText,
-    textAlign: "center",
-    marginTop: 20,
-  },
-  // Shopping information display in orders
-  shoppingInfoDisplay: {
-    backgroundColor: theme.surface.cartItem,
-    borderRadius: 12,
-    padding: 16,
-    marginVertical: 10,
-    marginHorizontal: 20,
-    ...Platform.select({
-      ios: {
-        shadowColor: theme.shadow.default,
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 2,
-      },
-      android: {
-        elevation: 2,
-      },
-    }),
-  },
-  shoppingInfoTitle: {
-    fontFamily: "IgraSans",
-    fontSize: 18,
-    color: theme.text.primary,
-    marginBottom: 12,
-    fontWeight: "bold",
-  },
-  shoppingInfoContent: {
-    gap: 8,
-  },
-  shoppingInfoText: {
-    fontFamily: "IgraSans",
-    fontSize: 14,
-    color: theme.text.primary,
-    lineHeight: 20,
-  },
-  shoppingInfoLabel: {
-    fontWeight: "bold",
-  },
-  // My Info section styles with oval inputs
-  myInfoScrollContainer: {
-    flex: 1,
-    width: "100%",
-    position: "relative",
-    paddingBottom: 80, // Space for the confirmation button at the bottom
-  },
-  myInfoFlatList: {
-    width: width * 0.88,
-    left: -height * 0.025,
-    paddingHorizontal: height * 0.025,
-    marginBottom: -height * 0.025,
-    borderRadius: 41,
-  },
-  myInfoFlatListContent: {
-    paddingBottom: 20,
-  },
-  myInfoInputContainer: {
-    marginBottom: 20,
-  },
-  myInfoInputLabel: {
-    fontFamily: "IgraSans",
-    fontSize: 18,
-    color: theme.text.primary,
-    marginBottom: 8,
-    textAlign: "center",
-  },
-  addressSummaryText: {
-    fontFamily: "IgraSans",
-    fontSize: 14,
-    color: theme.text.disabled,
-    textAlign: "left",
-    paddingHorizontal: 20,
-    lineHeight: 20,
-  },
-  myInfoOvalInput: {
-    backgroundColor: theme.surface.cartItem,
-    borderRadius: 41,
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    minHeight: height * 0.1,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    shadowColor: theme.shadow.default,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 6,
-    position: "relative",
-  },
-  myInfoOvalInputGender: {
-    backgroundColor: theme.surface.cartItem,
-    borderRadius: 41,
-    paddingLeft: 20,
-    paddingRight: 0,
-    paddingVertical: 0,
-    height: height * 0.1,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    shadowColor: theme.shadow.default,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 6,
-  },
-  genderTextContainer: {
-    flex: 1,
-    flexDirection: "row",
-    justifyContent: "flex-start",
-    alignItems: "center",
-    gap: 8,
-  },
-  myInfoOvalInputText: {
-    fontFamily: "IgraSans",
-    fontSize: 16,
-    color: theme.text.primary,
-    flex: 1,
-  },
-  genderValueText: {
-    fontFamily: "IgraSans",
-    fontSize: 16,
-    color: theme.text.primary,
-  },
-  myInfoOvalTextInput: {
-    flex: 1,
-    fontFamily: "IgraSans",
-    fontSize: 16,
-    color: theme.text.primary,
-    padding: 0,
-    margin: 0,
-    zIndex: 1,
-    minWidth: 0,
-    textAlignVertical: "center",
-  },
-  myInfoOvalTextInputEmpty: {
-    color: "transparent",
-  },
-  myInfoOvalTextInputWithLabel: {
-    paddingRight: 100, // Space for label on the right
-    marginRight: 0,
-    textAlignVertical: "top",
-    maxHeight: height * 0.1 - 24, // Allow for two lines within the oval
-  },
-  floatingLabelContainer: {
-    position: "absolute",
-    left: 20,
-    top: 0,
-    bottom: 0,
-    justifyContent: "center",
-    zIndex: 0,
-    pointerEvents: "none",
-  },
-  floatingLabelContainerRight: {
-    left: "auto",
-    right: 20,
-  },
-  floatingLabel: {
-    fontFamily: "IgraSans",
-    fontSize: 16,
-    color: theme.text.disabled,
-  },
-  floatingLabelRight: {
-    color: theme.text.disabled,
-  },
-  disabledOvalInput: {
-    backgroundColor: theme.border.light,
-    opacity: 0.6,
-  },
-  genderCirclesContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    height: "100%",
-  },
-  genderCircle: {
-    width: height * 0.1, // Account for 2px border on each side
-    height: height * 0.1,
-    borderRadius: (height * 0.1) / 2,
-    backgroundColor: theme.gender.circle,
-    justifyContent: "center",
-    alignItems: "center",
-    opacity: 0.6,
-    shadowColor: theme.shadow.default,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 6,
-  },
-  genderCircleSelected: {
-    backgroundColor: theme.gender.circleSelected,
-  },
-  genderCircleText: {
-    fontFamily: "IgraSans",
-    fontSize: 17,
-    color: theme.text.primary,
-    fontWeight: "bold",
-  },
-  privacySectionTitle: {
-    marginBottom: 20,
-    textAlign: "left",
-    width: "100%",
-    paddingHorizontal: height * 0.025,
-  },
-  privacySectionTitleText: {
-    fontFamily: "IgraSans",
-    fontSize: 20,
-    color: theme.text.primary,
-  },
-  privacyOptionText: {
-    fontFamily: "IgraSans",
-    fontSize: 16,
-    color: theme.text.primary,
-  },
-  privacyRowContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    flex: 1,
-  },
-  privacyOptionOval: {
-    backgroundColor: theme.gender.circle,
-    borderRadius: 41,
-    paddingHorizontal: 20,
-    paddingVertical: 0,
-    height: height * 0.1,
-    width: width * 0.275,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    overflow: "hidden",
-    shadowColor: theme.shadow.default,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 6,
-  },
-  myInfoStatusIndicator: {
-    position: "absolute",
-    right: 20,
-    top: "50%",
-    transform: [{ translateY: -10 }],
-  },
-  myInfoStatusText: {
-    fontFamily: "IgraSans",
-    fontSize: 16,
-    position: "absolute",
-    right: 20,
-    top: "50%",
-    transform: [{ translateY: -8 }],
-  },
-  myInfoConfirmButtonContainer: {
-    position: "absolute",
-    bottom: 0,
-    right: 0,
-    zIndex: 10,
-  },
-  themePopupOverlay: {
-    flex: 1,
-    backgroundColor: "rgba(0,0,0,0.45)",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  themePopupContainer: {
-    width: "75%",
-    backgroundColor: theme.background.elevated,
-    borderRadius: 24,
-    paddingVertical: 24,
-    paddingHorizontal: 20,
-  },
-  themePopupTitle: {
-    fontFamily: "IgraSans",
-    fontSize: 20,
-    color: theme.text.primary,
-    textAlign: "center",
-    marginBottom: 20,
-  },
-  themePopupOption: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingVertical: 14,
-    paddingHorizontal: 16,
-    borderRadius: 16,
-    marginBottom: 8,
-    backgroundColor: theme.surface.cartItem,
-  },
-  themePopupOptionSelected: {
-    borderWidth: 1.5,
-    borderColor: theme.primary,
-  },
-  themePopupOptionText: {
-    fontFamily: "IgraSans",
-    fontSize: 18,
-    color: theme.text.primary,
-  },
-  themePopupOptionTextSelected: {
-    color: theme.primary,
-  },
-});
+const createStyles = (theme: ThemeColors) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      justifyContent: "center",
+      alignItems: "center",
+    },
+    embeddedContainer: {
+      width: "100%",
+      height: "100%",
+    },
+    roundedBox: {
+      width: "88%",
+      height: "95%",
+      borderRadius: 41,
+      backgroundColor: theme.border.transparent,
+      position: "relative",
+      borderWidth: 3,
+      borderColor: theme.border.default,
+    },
+    gradientBackground: {
+      borderRadius: 37,
+      position: "absolute",
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+    },
+    whiteBox: {
+      backgroundColor: theme.background.primary,
+      borderRadius: 41,
+      width: width * 0.88,
+      top: -3,
+      left: -3,
+      height: "90%",
+      shadowColor: theme.shadow.default,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.25,
+      shadowRadius: 4,
+      elevation: 6,
+      padding: height * 0.025,
+      justifyContent: "space-between",
+      alignItems: "center",
+    },
+    textContainer: {
+      position: "absolute",
+      bottom: 0,
+      marginBottom: 12,
+      marginLeft: 22,
+    },
+    text: {
+      fontFamily: "IgraSans",
+      fontSize: 34,
+      color: theme.text.primary,
+      textAlign: "left",
+    },
+    profileSection: {
+      width: "100%",
+      justifyContent: "center",
+      alignItems: "center",
+      flexDirection: "column",
+      gap: 10,
+      marginTop: 5,
+    },
+    profileImageWrapper: {
+      alignItems: "center",
+      justifyContent: "center",
+      position: "relative",
+    },
+    profileImageContainer: {
+      width: width * 0.25,
+      height: width * 0.25,
+      borderRadius: width * 0.125,
+      overflow: "hidden",
+      //backgroundColor: '#F2ECE7',
+      //marginBottom: 15,
+    },
+    profileImage: {
+      width: "100%",
+      height: "100%",
+      resizeMode: "contain",
+    },
+    penIconButton: {
+      position: "absolute",
+      bottom: -20,
+      right: -15,
+      zIndex: 10,
+    },
+    penIconCircle: {
+      width: 32,
+      height: 32,
+      borderRadius: 16,
+      backgroundColor: theme.border.transparent,
+      borderWidth: 2,
+      borderColor: theme.border.default,
+      justifyContent: "center",
+      alignItems: "center",
+    },
+    profileName: {
+      fontFamily: "IgraSans",
+      fontSize: 20,
+      color: theme.text.primary,
+    },
+    mainButtonsOverlay: {
+      width: "100%",
+      justifyContent: "center",
+      marginBottom: -15,
+      //paddingVertical: 20,
+    },
+    scrollableMenuContainer: {
+      flex: 1,
+      position: "relative",
+      width: "100%",
+      marginTop: 33 + 15,
+    },
+    scrollHintContainer: {
+      position: "absolute",
+      bottom: -height * 0.025 - 14 + 5,
+      right: 0,
+      alignItems: "flex-end",
+      zIndex: 10,
+      paddingVertical: 8,
+      flexDirection: "row",
+    },
+    scrollHintText: {
+      fontFamily: "IgraSans",
+      fontSize: 14,
+      lineHeight: 26,
+      color: theme.text.primary,
+      flexDirection: "row",
+      alignItems: "center",
+      marginRight: 8,
+    },
+    scrollableMenu: {
+      width: width * 0.88,
+      left: -height * 0.025,
+      paddingHorizontal: height * 0.025,
+      marginBottom: -height * 0.025,
+      borderRadius: 41,
+    },
+    mainButtonContainer: {
+      marginBottom: 15,
+    },
+    mainButton: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      backgroundColor: theme.surface.cartItem,
+      borderRadius: 41,
+      padding: 20,
+      shadowColor: theme.shadow.default,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.25,
+      shadowRadius: 4,
+      elevation: 6,
+      height: height * 0.1,
+    },
+    notificationsContainer: {
+      width: "100%",
+      alignContent: "flex-start",
+      flex: 1,
+    },
+    notificationItemContainer: {
+      marginBottom: 15,
+    },
+    notificationItem: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      backgroundColor: theme.surface.cartItem,
+      borderRadius: 41,
+      padding: 20,
+      shadowColor: theme.shadow.default,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.25,
+      shadowRadius: 4,
+      elevation: 6,
+      height: height * 0.1,
+    },
+    notificationItemText: {
+      fontFamily: "IgraSans",
+      fontSize: 20,
+      color: theme.text.primary,
+      flex: 1,
+      flexShrink: 1,
+      marginRight: 12,
+    },
+    switchContainer: {
+      justifyContent: "center",
+      alignItems: "center",
+    },
+    mainButtonText: {
+      fontFamily: "IgraSans",
+      fontSize: 20,
+      color: theme.text.primary,
+    },
+    deleteAccountButton: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      backgroundColor: theme.button.delete,
+      borderRadius: 41,
+      padding: 20,
+      shadowColor: theme.shadow.default,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.25,
+      shadowRadius: 4,
+      elevation: 6,
+      height: height * 0.1,
+    },
+    deleteAccountButtonText: {
+      fontFamily: "IgraSans",
+      fontSize: 20,
+      color: theme.text.inverse,
+    },
+    deleteAccountScreenContainer: {
+      width: "100%",
+      height: "100%",
+      justifyContent: "center",
+      alignItems: "center",
+    },
+    deleteAccountQuestionContainer: {
+      width: "100%",
+      marginBottom: 40,
+    },
+    deleteAccountQuestion: {
+      width: "100%",
+      backgroundColor: theme.surface.cartItem,
+      borderRadius: 41,
+      paddingHorizontal: 20,
+      shadowColor: theme.shadow.default,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.25,
+      shadowRadius: 4,
+      elevation: 6,
+      minHeight: height * 0.1,
+      justifyContent: "center",
+      alignItems: "center",
+    },
+    deleteAccountQuestionText: {
+      textAlign: "center",
+      fontFamily: "IgraSans",
+      fontSize: 20,
+      color: theme.text.primary,
+      lineHeight: 39,
+    },
+    deleteAccountButtonsContainer: {
+      width: "100%",
+      flexDirection: "row",
+      justifyContent: "space-between",
+      gap: 15,
+      marginBottom: 40,
+    },
+    deleteAccountYesButtonContainer: {
+      flex: 1,
+      marginRight: 7.5,
+    },
+    deleteAccountNoButtonContainer: {
+      flex: 1,
+      marginLeft: 7.5,
+    },
+    deleteAccountYesButton: {
+      flexDirection: "row",
+      justifyContent: "center",
+      alignItems: "center",
+      backgroundColor: theme.button.delete,
+      borderRadius: 41,
+      padding: 20,
+      shadowColor: theme.shadow.default,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.25,
+      shadowRadius: 4,
+      elevation: 6,
+      height: height * 0.1,
+    },
+    deleteAccountYesButtonText: {
+      fontFamily: "IgraSans",
+      fontSize: 20,
+      color: theme.text.inverse,
+    },
+    deleteAccountNoButton: {
+      flexDirection: "row",
+      justifyContent: "center",
+      alignItems: "center",
+      backgroundColor: theme.surface.cartItem,
+      borderRadius: 41,
+      padding: 20,
+      shadowColor: theme.shadow.default,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.25,
+      shadowRadius: 4,
+      elevation: 6,
+      height: height * 0.1,
+    },
+    deleteAccountNoButtonText: {
+      fontFamily: "IgraSans",
+      fontSize: 20,
+      color: theme.text.primary,
+    },
+    deleteAccountWarningContainer: {
+      position: "absolute",
+      bottom: 0,
+      width: "75%",
+      alignItems: "center",
+    },
+    deleteAccountWarningText: {
+      fontFamily: "IgraSans",
+      fontSize: 10,
+      color: theme.text.primary,
+      textAlign: "center",
+      lineHeight: 17,
+    },
+    placeholderContainer: {
+      flex: 1,
+      justifyContent: "center",
+      alignItems: "center",
+      paddingHorizontal: 20,
+    },
+    placeholderText: {
+      fontFamily: "IgraSans",
+      fontSize: 24,
+      color: theme.text.primary,
+      textAlign: "center",
+      marginBottom: 10,
+    },
+    placeholderSubtext: {
+      fontFamily: "IgraSans",
+      fontSize: 18,
+      color: theme.text.grey,
+      textAlign: "center",
+    },
+    contentContainer: {
+      width: "100%",
+      height: "100%",
+      justifyContent: "space-between",
+      alignItems: "center",
+      paddingTop: 40,
+    },
+    backButton: {
+      position: "absolute",
+      top: 0,
+      left: 0,
+      zIndex: 11,
+    },
+    backButtonAlt: {
+      width: "100%",
+      height: height * 0.1,
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+    },
+    sectionTitle: {
+      fontFamily: "IgraSans",
+      fontSize: 20,
+      color: theme.text.primary,
+      lineHeight: 39,
+    },
+    favoriteBrandsSection: {
+      width: "100%",
+      height: height * 0.1,
+      borderRadius: 41,
+      justifyContent: "center",
+      alignItems: "center",
+      backgroundColor: theme.background.primary,
+      shadowColor: theme.shadow.default,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.25,
+      shadowRadius: 4,
+    },
+    favoriteBrandsButton: {
+      flexDirection: "row",
+      width: "100%",
+      backgroundColor: theme.surface.cartItem,
+      height: height * 0.1,
+      borderRadius: 41,
+      justifyContent: "flex-start",
+      alignItems: "center",
+      padding: 20,
+    },
+    favoriteBrandsText: {
+      fontFamily: "IgraSans",
+      fontSize: 20,
+      color: theme.text.primary,
+    },
+    statsContainer: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      height: 0.175 * height,
+      alignItems: "flex-end",
+      width: "100%",
+      backgroundColor: theme.surface.cartItem,
+      borderRadius: 41,
+      shadowColor: theme.shadow.default,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.25,
+      shadowRadius: 4,
+    },
+    statItem: {
+      alignItems: "center",
+    },
+    valueWrapper: {
+      width: "100%",
+      justifyContent: "center",
+      alignItems: "center",
+      backgroundColor: theme.surface.elevated,
+      height: height * 0.1,
+      borderRadius: 41,
+      shadowColor: theme.shadow.default,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.25,
+      shadowRadius: 4,
+    },
+    statValue: {
+      fontFamily: "IgraSans",
+      fontSize: 20,
+      color: theme.text.primary,
+    },
+    statLabel: {
+      fontFamily: "IgraSans",
+      fontSize: 20,
+      color: theme.text.primary,
+      marginBottom: 5,
+      paddingHorizontal: 18,
+    },
+    sizeSection: {
+      width: "100%",
+      flexDirection: "row",
+      backgroundColor: theme.surface.cartItem,
+      height: height * 0.1,
+      borderRadius: 41,
+      justifyContent: "flex-start",
+      alignItems: "center",
+      shadowColor: theme.shadow.default,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.25,
+      shadowRadius: 4,
+    },
+    sizeSectionTitle: {
+      fontFamily: "IgraSans",
+      fontSize: 20,
+      color: theme.text.primary,
+      marginLeft: 20,
+      textAlign: "left",
+    },
+    sizeSelectionWrapper: {
+      height: "100%",
+      position: "absolute",
+      right: 0,
+      justifyContent: "center",
+    },
+    sizeSelectionContainer: {
+      height: "100%",
+      minWidth: height * 0.1,
+      borderRadius: 41,
+      backgroundColor: theme.surface.elevated,
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      paddingHorizontal: 15,
+      shadowColor: theme.shadow.default,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.25,
+      shadowRadius: 4,
+      elevation: 5,
+      position: "absolute",
+      right: 0,
+    },
+    sizeTextContainer: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      flex: 1,
+    },
+    sizeTextWrapper: {
+      paddingVertical: 5,
+      paddingHorizontal: 0,
+      flex: 1,
+      alignItems: "center",
+    },
+    sizeText: {
+      color: theme.text.primary,
+      fontFamily: "IgraSans",
+      fontSize: 20,
+      textAlign: "center",
+    },
+    selectedSizeText: {
+      textDecorationLine: "underline",
+      textDecorationColor: theme.text.primary,
+      textDecorationStyle: "solid",
+    },
+    sizeIndicator: {
+      width: height * 0.1,
+      height: height * 0.1,
+      borderRadius: 41,
+      justifyContent: "center",
+      alignItems: "center",
+      position: "absolute",
+      right: 0,
+    },
+    sizeIndicatorText: {
+      color: theme.text.primary,
+      fontFamily: "IgraSans",
+      fontSize: 20,
+      textAlign: "center",
+    },
+    bottomText: {
+      fontFamily: "IgraSans",
+      fontSize: 38,
+      color: theme.text.inverse,
+      textAlign: "center",
+      marginTop: 20,
+    },
+    // Orders styles
+    ordersContainer: {
+      alignItems: "center",
+      justifyContent: "center",
+      height: "100%",
+      width: "100%",
+    },
+    ordersList: {
+      marginTop: height * 0.05,
+      paddingHorizontal: 20,
+      borderRadius: 41,
+      width: 0.88 * width,
+      marginBottom: -20,
+    },
+    orderItem: {
+      marginBottom: 25,
+    },
+    orderBubble: {
+      backgroundColor: theme.surface.cartItem,
+      borderRadius: 41,
+      padding: 20,
+      justifyContent: "center",
+      marginBottom: 20,
+      height: 0.1 * height,
+      shadowColor: theme.shadow.default,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.25,
+      shadowRadius: 4,
+    },
+    orderNumber: {
+      fontFamily: "IgraSans",
+      fontSize: 20,
+      color: theme.text.primary,
+    },
+    orderSummary: {
+      fontFamily: "IgraSans",
+      fontSize: 20,
+      color: theme.text.primary,
+      marginLeft: 20,
+    },
+    // Payment styles
+    paymentContainer: {
+      padding: 20,
+    },
+    paymentMethodButton: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      backgroundColor: theme.text.inverse,
+      borderRadius: 12,
+      padding: 15,
+      marginBottom: 15,
+    },
+    paymentMethodText: {
+      fontFamily: "REM",
+      fontSize: 16,
+      color: theme.text.tertiary,
+    },
+    paymentInfoText: {
+      fontFamily: "REM",
+      fontSize: 14,
+      color: theme.primary,
+      textAlign: "center",
+    },
+    // Support styles
+    supportContainer: {
+      width: "100%",
+      height: height * 0.2,
+      justifyContent: "center",
+      padding: 10,
+      backgroundColor: theme.surface.cartItem,
+      shadowColor: theme.shadow.default,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.25,
+      shadowRadius: 4,
+      borderRadius: 41,
+    },
+    supportButton: {
+      backgroundColor: theme.text.inverse,
+      borderRadius: 12,
+      padding: 15,
+      marginBottom: 15,
+    },
+    supportButtonText: {
+      fontFamily: "REM",
+      fontSize: 16,
+      color: theme.text.tertiary,
+      textAlign: "center",
+    },
+    brandSearchContainer: {
+      width: "100%",
+      height: "100%",
+      justifyContent: "flex-start",
+      alignItems: "center",
+    },
+    selectedBubblesContainer: {
+      width: "100%",
+      height: height * 0.1,
+      backgroundColor: theme.surface.cartItem,
+      shadowColor: theme.shadow.default,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.25,
+      shadowRadius: 4,
+      borderRadius: 41,
+      position: "relative",
+      overflow: "hidden",
+      zIndex: 2,
+      marginTop: height * 0.05,
+      justifyContent: "center",
+    },
+    selectedBubblesContent: {
+      marginLeft: 20,
+      flexDirection: "row",
+      alignItems: "center",
+    },
+    selectedBrandItem: {
+      backgroundColor: theme.surface.selection,
+      borderRadius: 41,
+      paddingHorizontal: 18,
+      paddingVertical: 12,
+      marginHorizontal: 4,
+      ...Platform.select({
+        ios: {
+          shadowColor: theme.shadow.default,
+          shadowOffset: { width: 0, height: 4 },
+          shadowOpacity: 0.25,
+          shadowRadius: 4,
+        },
+        android: {
+          elevation: 6,
+        },
+      }),
+    },
+    selectedBrandText: {
+      fontFamily: "IgraSans",
+      fontSize: 22,
+      color: theme.text.primary,
+    },
+    searchAndResultsContainer: {
+      width: "100%",
+      height: "100%",
+      alignItems: "center",
+      justifyContent: "space-between",
+      position: "relative",
+    },
+    searchContainer: {
+      width: "100%",
+      flexDirection: "row",
+      alignItems: "center",
+      backgroundColor: theme.surface.elevated,
+      borderRadius: 41,
+      paddingHorizontal: 20,
+      height: 0.1 * height,
+      zIndex: 2,
+      ...Platform.select({
+        ios: {
+          shadowColor: theme.shadow.default,
+          shadowOffset: { width: 0, height: 4 },
+          shadowOpacity: 0.25,
+          shadowRadius: 4,
+        },
+        android: {
+          elevation: 6,
+        },
+      }),
+    },
+    topContent: {
+      flex: 1,
+    },
+    searchContainerAlt: {
+      width: "100%",
+      flex: 1,
+      flexDirection: "row",
+      alignItems: "center",
+      backgroundColor: theme.surface.cartItem,
+      borderRadius: 41,
+      paddingHorizontal: 20,
+      height: 0.1 * height,
+      marginLeft: 20,
+      ...Platform.select({
+        ios: {
+          shadowColor: theme.shadow.default,
+          shadowOffset: { width: 0, height: 4 },
+          shadowOpacity: 0.25,
+          shadowRadius: 4,
+        },
+        android: {
+          elevation: 6,
+        },
+      }),
+    },
+    searchInput: {
+      fontFamily: "IgraSans",
+      fontSize: 20,
+      color: theme.text.primary,
+    },
+    cancelButton: {
+      paddingHorizontal: 20,
+      paddingVertical: 10,
+      borderRadius: 41,
+      backgroundColor: theme.primary,
+    },
+    cancelButtonText: {
+      fontFamily: "IgraSans",
+      fontSize: 20,
+      color: theme.text.primary,
+    },
+    searchResultsContainer: {
+      width: "100%",
+      height: height * 0.47,
+      backgroundColor: theme.surface.cartItem,
+      borderRadius: 41,
+      position: "relative",
+      zIndex: 1,
+      ...Platform.select({
+        ios: {
+          shadowColor: theme.shadow.default,
+          shadowOffset: { width: 0, height: 4 },
+          shadowOpacity: 0.25,
+          shadowRadius: 4,
+        },
+        android: {
+          elevation: 4,
+        },
+      }),
+    },
+    brandsList: {
+      marginTop: 5,
+    },
+    brandItem: {
+      padding: 20,
+    },
+    brandItemContent: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+    },
+    brandText: {
+      fontFamily: "IgraSans",
+      fontSize: 20,
+      color: theme.text.primary,
+    },
+    tickContainer: {
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    pressedItem: {
+      opacity: 0.8,
+    },
+    brandBubbleText: {
+      fontFamily: "IgraSans",
+      fontSize: 20,
+      color: theme.text.primary,
+    },
+    emptyBrandsText: {
+      fontFamily: "IgraSans",
+      fontSize: 18,
+      color: theme.text.disabled,
+      fontStyle: "italic",
+      textAlign: "center",
+      alignItems: "center",
+      paddingHorizontal: 20,
+    },
+    ratingContainer: {
+      justifyContent: "center",
+      alignItems: "center",
+    },
+    ratingText: {
+      fontFamily: "IgraSans",
+      fontSize: 20,
+      color: theme.text.primary,
+    },
+    supportText: {
+      fontFamily: "IgraSans",
+      fontSize: 20,
+      color: theme.text.primary,
+      lineHeight: 39,
+    },
+    supportEmail: {
+      fontFamily: "IgraSans",
+      fontSize: 20,
+      color: theme.text.primary,
+      textDecorationLine: "underline",
+      lineHeight: 39,
+    },
+    thankYouContainer: {
+      width: "100%",
+      height: "100%",
+      justifyContent: "center",
+      alignItems: "flex-start",
+    },
+    thankYouText: {
+      fontFamily: "IgraSans",
+      fontSize: 20,
+      color: theme.text.primary,
+    },
+    logoutButton: {
+      position: "absolute",
+      top: 0,
+      right: 0,
+      zIndex: 11,
+    },
+    logoutButtonText: {
+      fontFamily: "IgraSans",
+      fontSize: 20,
+      color: theme.text.primary,
+    },
+    // Shopping information styles
+    shoppingTitleSection: {
+      width: "100%",
+      justifyContent: "center",
+      alignItems: "center",
+      marginBottom: 30,
+    },
+    shoppingTitle: {
+      fontFamily: "IgraSans",
+      fontSize: 24,
+      color: theme.text.primary,
+      textAlign: "center",
+    },
+    shoppingFormContainer: {
+      width: "100%",
+      paddingHorizontal: 20,
+      justifyContent: "center",
+      alignItems: "center",
+    },
+    shoppingForm: {
+      width: 0.88 * width,
+      paddingHorizontal: 20,
+      borderRadius: 41,
+      left: -height * 0.025,
+    },
+    inputContainer: {
+      marginBottom: 20,
+    },
+    inputLabel: {
+      fontFamily: "IgraSans",
+      fontSize: 18,
+      color: theme.text.primary,
+      marginBottom: 8,
+    },
+    textInput: {
+      backgroundColor: theme.surface.cartItem,
+      borderRadius: 12,
+      paddingHorizontal: 16,
+      paddingVertical: 12,
+      paddingRight: 40, // Make room for status indicator
+      fontFamily: "IgraSans",
+      fontSize: 16,
+      color: theme.text.primary,
+      borderWidth: 1,
+      borderColor: theme.border.transparent,
+      ...Platform.select({
+        ios: {
+          shadowColor: theme.shadow.default,
+          shadowOffset: { width: 0, height: 2 },
+          shadowOpacity: 0.1,
+          shadowRadius: 2,
+        },
+        android: {
+          elevation: 2,
+        },
+      }),
+    },
+    usernameInputWrapper: {
+      position: "relative",
+    },
+    inputError: {
+      borderWidth: 2,
+      borderColor: theme.border.error,
+    },
+    inputSuccess: {
+      borderWidth: 2,
+      borderColor: theme.border.success,
+    },
+    inputChecking: {
+      borderWidth: 2,
+      borderColor: theme.border.checking,
+    },
+    statusIndicator: {
+      position: "absolute",
+      right: 15,
+      top: "50%",
+      transform: [{ translateY: -10 }],
+    },
+    statusText: {
+      fontFamily: "IgraSans",
+      fontSize: 16,
+      position: "absolute",
+      right: 15,
+      top: "50%",
+      transform: [{ translateY: -8 }],
+    },
+    statusTextSuccess: {
+      color: theme.status.success,
+    },
+    statusTextError: {
+      color: theme.status.error,
+    },
+    usernameErrorText: {
+      fontFamily: "REM",
+      fontSize: 12,
+      color: theme.status.errorText,
+      marginTop: 4,
+      marginLeft: 4,
+    },
+    textArea: {
+      height: 80,
+      textAlignVertical: "top",
+    },
+    disabledInput: {
+      backgroundColor: theme.border.light,
+      opacity: 0.6,
+    },
+    saveButtonContainer: {
+      marginTop: 20,
+      marginBottom: 30,
+      alignItems: "flex-end",
+    },
+    confirmButton: {
+      backgroundColor: theme.background.input,
+      borderRadius: 41,
+      paddingVertical: 12.5,
+      paddingHorizontal: 25,
+      alignItems: "center",
+      ...Platform.select({
+        ios: {
+          shadowColor: theme.shadow.default,
+          shadowOffset: { width: 0, height: 4 },
+          shadowOpacity: 0.25,
+          shadowRadius: 4,
+        },
+        android: {
+          elevation: 6,
+          overflow: "hidden",
+        },
+      }),
+    },
+    confirmButtonText: {
+      fontFamily: "IgraSans",
+      fontSize: 20,
+      color: theme.text.primary,
+    },
+    confirmButtonDisabled: {
+      opacity: 0.6,
+    },
+    confirmButtonDisabledText: {
+      opacity: 0.37,
+    },
+    saveButton: {
+      backgroundColor: theme.primary,
+      borderRadius: 12,
+      paddingVertical: 16,
+      paddingHorizontal: 32,
+      alignItems: "center",
+      ...Platform.select({
+        ios: {
+          shadowColor: theme.shadow.default,
+          shadowOffset: { width: 0, height: 4 },
+          shadowOpacity: 0.25,
+          shadowRadius: 4,
+        },
+        android: {
+          elevation: 6,
+        },
+      }),
+    },
+    saveButtonDisabled: {
+      backgroundColor: theme.text.grey,
+      opacity: 0.6,
+    },
+    saveButtonText: {
+      fontFamily: "IgraSans",
+      fontSize: 18,
+      color: theme.text.inverse,
+      fontWeight: "bold",
+    },
+    loadingText: {
+      fontFamily: "IgraSans",
+      fontSize: 16,
+      color: theme.text.tertiary,
+      textAlign: "center",
+      marginTop: 20,
+    },
+    errorText: {
+      fontFamily: "IgraSans",
+      fontSize: 16,
+      color: theme.status.errorText,
+      textAlign: "center",
+      marginTop: 20,
+    },
+    // Shopping information display in orders
+    shoppingInfoDisplay: {
+      backgroundColor: theme.surface.cartItem,
+      borderRadius: 12,
+      padding: 16,
+      marginVertical: 10,
+      marginHorizontal: 20,
+      ...Platform.select({
+        ios: {
+          shadowColor: theme.shadow.default,
+          shadowOffset: { width: 0, height: 2 },
+          shadowOpacity: 0.1,
+          shadowRadius: 2,
+        },
+        android: {
+          elevation: 2,
+        },
+      }),
+    },
+    shoppingInfoTitle: {
+      fontFamily: "IgraSans",
+      fontSize: 18,
+      color: theme.text.primary,
+      marginBottom: 12,
+      fontWeight: "bold",
+    },
+    shoppingInfoContent: {
+      gap: 8,
+    },
+    shoppingInfoText: {
+      fontFamily: "IgraSans",
+      fontSize: 14,
+      color: theme.text.primary,
+      lineHeight: 20,
+    },
+    shoppingInfoLabel: {
+      fontWeight: "bold",
+    },
+    // My Info section styles with oval inputs
+    myInfoScrollContainer: {
+      flex: 1,
+      width: "100%",
+      position: "relative",
+      paddingBottom: 80, // Space for the confirmation button at the bottom
+    },
+    myInfoFlatList: {
+      width: width * 0.88,
+      left: -height * 0.025,
+      paddingHorizontal: height * 0.025,
+      marginBottom: -height * 0.025,
+      borderRadius: 41,
+    },
+    myInfoFlatListContent: {
+      paddingBottom: 20,
+    },
+    myInfoInputContainer: {
+      marginBottom: 20,
+    },
+    myInfoInputLabel: {
+      fontFamily: "IgraSans",
+      fontSize: 18,
+      color: theme.text.primary,
+      marginBottom: 8,
+      textAlign: "center",
+    },
+    addressSummaryText: {
+      fontFamily: "IgraSans",
+      fontSize: 14,
+      color: theme.text.disabled,
+      textAlign: "left",
+      paddingHorizontal: 20,
+      lineHeight: 20,
+    },
+    myInfoOvalInput: {
+      backgroundColor: theme.surface.cartItem,
+      borderRadius: 41,
+      paddingHorizontal: 20,
+      paddingVertical: 12,
+      minHeight: height * 0.1,
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      shadowColor: theme.shadow.default,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.25,
+      shadowRadius: 4,
+      elevation: 6,
+      position: "relative",
+    },
+    myInfoOvalInputGender: {
+      backgroundColor: theme.surface.cartItem,
+      borderRadius: 41,
+      paddingLeft: 20,
+      paddingRight: 0,
+      paddingVertical: 0,
+      height: height * 0.1,
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      shadowColor: theme.shadow.default,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.25,
+      shadowRadius: 4,
+      elevation: 6,
+    },
+    genderTextContainer: {
+      flex: 1,
+      flexDirection: "row",
+      justifyContent: "flex-start",
+      alignItems: "center",
+      gap: 8,
+    },
+    myInfoOvalInputText: {
+      fontFamily: "IgraSans",
+      fontSize: 16,
+      color: theme.text.primary,
+      flex: 1,
+    },
+    genderValueText: {
+      fontFamily: "IgraSans",
+      fontSize: 16,
+      color: theme.text.primary,
+    },
+    myInfoOvalTextInput: {
+      flex: 1,
+      fontFamily: "IgraSans",
+      fontSize: 16,
+      color: theme.text.primary,
+      padding: 0,
+      margin: 0,
+      zIndex: 1,
+      minWidth: 0,
+      textAlignVertical: "center",
+    },
+    myInfoOvalTextInputEmpty: {
+      color: "transparent",
+    },
+    myInfoOvalTextInputWithLabel: {
+      paddingRight: 100, // Space for label on the right
+      marginRight: 0,
+      textAlignVertical: "top",
+      maxHeight: height * 0.1 - 24, // Allow for two lines within the oval
+    },
+    floatingLabelContainer: {
+      position: "absolute",
+      left: 20,
+      top: 0,
+      bottom: 0,
+      justifyContent: "center",
+      zIndex: 0,
+      pointerEvents: "none",
+    },
+    floatingLabelContainerRight: {
+      left: "auto",
+      right: 20,
+    },
+    floatingLabel: {
+      fontFamily: "IgraSans",
+      fontSize: 16,
+      color: theme.text.disabled,
+    },
+    floatingLabelRight: {
+      color: theme.text.disabled,
+    },
+    disabledOvalInput: {
+      backgroundColor: theme.border.light,
+      opacity: 0.6,
+    },
+    genderCirclesContainer: {
+      flexDirection: "row",
+      alignItems: "center",
+      height: "100%",
+    },
+    genderCircle: {
+      width: height * 0.1, // Account for 2px border on each side
+      height: height * 0.1,
+      borderRadius: (height * 0.1) / 2,
+      backgroundColor: theme.gender.circle,
+      justifyContent: "center",
+      alignItems: "center",
+      opacity: 0.6,
+      shadowColor: theme.shadow.default,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.25,
+      shadowRadius: 4,
+      elevation: 6,
+    },
+    genderCircleSelected: {
+      backgroundColor: theme.gender.circleSelected,
+    },
+    genderCircleText: {
+      fontFamily: "IgraSans",
+      fontSize: 17,
+      color: theme.text.primary,
+      fontWeight: "bold",
+    },
+    privacySectionTitle: {
+      marginBottom: 20,
+      textAlign: "left",
+      width: "100%",
+      paddingHorizontal: height * 0.025,
+    },
+    privacySectionTitleText: {
+      fontFamily: "IgraSans",
+      fontSize: 20,
+      color: theme.text.primary,
+    },
+    privacyOptionText: {
+      fontFamily: "IgraSans",
+      fontSize: 16,
+      color: theme.text.primary,
+    },
+    privacyRowContainer: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      flex: 1,
+    },
+    privacyOptionOval: {
+      backgroundColor: theme.gender.circle,
+      borderRadius: 41,
+      paddingHorizontal: 20,
+      paddingVertical: 0,
+      height: height * 0.1,
+      width: width * 0.275,
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      overflow: "hidden",
+      shadowColor: theme.shadow.default,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.25,
+      shadowRadius: 4,
+      elevation: 6,
+    },
+    myInfoStatusIndicator: {
+      position: "absolute",
+      right: 20,
+      top: "50%",
+      transform: [{ translateY: -10 }],
+    },
+    myInfoStatusText: {
+      fontFamily: "IgraSans",
+      fontSize: 16,
+      position: "absolute",
+      right: 20,
+      top: "50%",
+      transform: [{ translateY: -8 }],
+    },
+    myInfoConfirmButtonContainer: {
+      position: "absolute",
+      bottom: 0,
+      right: 0,
+      zIndex: 10,
+    },
+  });
 
 export default Settings;

@@ -139,11 +139,6 @@ class SessionManager {
   // Get current session with automatic refresh
   async getValidSession(): Promise<{ token: string | null, isValid: boolean }> {
     try {
-      // If we know session is expired, don't even try
-      if (this.sessionState === SessionState.EXPIRED) {
-        return { token: null, isValid: false };
-      }
-
       const token = await SecureStore.getItemAsync('authToken');
       const expiryStr = await AsyncStorage.getItem('tokenExpiry');
 
@@ -449,12 +444,24 @@ const apiRequest = async (
 
     if (response.status === 401) {
       console.log('API Request: Received 401 status.');
-      // Only trigger logout once per request and only if auth was required
+      // Try refreshing token once before giving up
+      if (requireAuth && !requestOptions._isRetryAfterRefresh) {
+        try {
+          console.log('API Request: Attempting token refresh before logout.');
+          await sessionManager.refreshToken();
+          return apiRequest(endpoint, method, body, requireAuth, {
+            ...requestOptions,
+            _isRetryAfterRefresh: true,
+          });
+        } catch (refreshError) {
+          console.log('API Request: Token refresh failed, triggering handleLoginRequired.');
+          sessionManager.handleLoginRequired();
+          return await handleApiResponse(response);
+        }
+      }
       if (requireAuth) {
-        console.log('API Request: Authentication required, triggering handleLoginRequired.');
         sessionManager.handleLoginRequired();
       }
-      // Let the actual API error message come through instead of generic message
       return await handleApiResponse(response);
     }
 

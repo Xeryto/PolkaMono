@@ -317,7 +317,7 @@ class ProductColorVariant(Base):
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
     product_id = Column(String, ForeignKey("products.id", ondelete="CASCADE"), nullable=False, index=True)
     color_name = Column(String(50), nullable=False)  # Canonical name (e.g. Black, Blue)
-    color_hex = Column(String(50), nullable=False)    # Hex for UI (e.g. #000000)
+    color_hex = Column(String(200), nullable=False)    # Hex or CSS gradient
     images = Column(ARRAY(String), nullable=True)    # Image URLs for this color
     display_order = Column(Integer, nullable=False, default=0)
     created_at = Column(DateTime, default=datetime.utcnow)

@@ -1,4 +1,11 @@
-import React, { useState, useEffect, useRef, memo, useMemo, useCallback } from "react";
+import React, {
+  useState,
+  useEffect,
+  useRef,
+  memo,
+  useMemo,
+  useCallback,
+} from "react";
 import {
   View,
   Text,
@@ -233,7 +240,12 @@ const Favorites = ({ navigation }: FavoritesProps) => {
   }>({});
 
   // Refresh friends data when tab gains focus (if stale >30s)
-  useStaleFocusEffect(useCallback(() => { loadFriendsData(); }, []), 30_000);
+  useStaleFocusEffect(
+    useCallback(() => {
+      loadFriendsData();
+    }, []),
+    30_000,
+  );
 
   // Update loadFriendsData to remove session check
   const loadFriendsData = async () => {
@@ -771,7 +783,9 @@ const Favorites = ({ navigation }: FavoritesProps) => {
       );
       if (cancelledItem) {
         // Remove from main friends list (they're no longer relevant there)
-        setFriendItems((prev) => prev.filter((item) => item.id !== cancelledItem.id));
+        setFriendItems((prev) =>
+          prev.filter((item) => item.id !== cancelledItem.id),
+        );
         // Update search results to show "not_friend" so user can re-add if desired
         updateSearchItemStatus(cancelledItem.id, "not_friend");
       }
@@ -850,7 +864,11 @@ const Favorites = ({ navigation }: FavoritesProps) => {
         }}
       >
         {item.images && item.images.length > 0 ? (
-          <Image source={item.images[0]} style={styles.productItemImage} contentFit="contain" />
+          <Image
+            source={item.images[0]}
+            style={styles.productItemImage}
+            contentFit="contain"
+          />
         ) : (
           <View
             style={[styles.productItemImage, styles.noProductImagePlaceholder]}
@@ -971,7 +989,11 @@ const Favorites = ({ navigation }: FavoritesProps) => {
             }}
           >
             {item.images && item.images.length > 0 ? (
-              <Image source={item.images[0]} style={styles.itemImage} contentFit="contain" />
+              <Image
+                source={item.images[0]}
+                style={styles.itemImage}
+                contentFit="contain"
+              />
             ) : (
               <View
                 style={[styles.itemImage, styles.noProductImagePlaceholder]}
@@ -1607,7 +1629,11 @@ const SearchContent = ({
                   ).delay(ANIMATION_DELAYS.STANDARD)}
                   style={styles.emptyStateIcon}
                 >
-                  <AntDesign name="search" size={64} color={theme.text.disabled} />
+                  <AntDesign
+                    name="search"
+                    size={64}
+                    color={theme.text.disabled}
+                  />
                 </Animated.View>
                 <Animated.Text
                   entering={FadeInDown.duration(
@@ -1976,7 +2002,13 @@ const FriendProfileView = React.memo(
               }}
             >
               <LinearGradient
-                colors={theme.gradients.regenerateButtonBorder as [string, string, string]}
+                colors={
+                  theme.gradients.regenerateButtonBorder as [
+                    string,
+                    string,
+                    string,
+                  ]
+                }
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
                 style={styles.regenerateButtonBorder}
@@ -1998,7 +2030,9 @@ const FriendProfileView = React.memo(
                 style={styles.pressableContainer}
               >
                 <LinearGradient
-                  colors={theme.gradients.regenerateButton as [string, string, string]}
+                  colors={
+                    theme.gradients.regenerateButton as [string, string, string]
+                  }
                   locations={[0.15, 0.56, 1]}
                   start={{ x: 0.48, y: 1 }}
                   end={{ x: 0.52, y: 0 }}
@@ -2130,758 +2164,759 @@ const FriendRequestItemComponent: React.FC<FriendRequestItemProps> = ({
   );
 };
 
-const createStyles = (theme: ThemeColors) => StyleSheet.create({
-  container: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    position: "relative",
-    width: "100%",
-    height: "100%",
-    //backgroundColor: '#FFFFFF', // Add background color
-  },
-  absoluteFill: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    justifyContent: "flex-start",
-    alignItems: "center",
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    padding: 40,
-  },
-  loadingText: {
-    fontFamily: "REM",
-    fontSize: 18,
-    color: theme.text.tertiary,
-    textAlign: "center",
-    marginTop: 20,
-  },
-  topBox: {
-    position: "absolute",
-    zIndex: 5,
-    width: "88%",
-    height: Platform.OS === "ios" ? height * 0.67 : height * 0.66,
-    left: "6%",
-    top: Platform.OS === "ios" ? height * 0.035 : height * 0.052,
-    borderRadius: 41,
-    //padding: 15,
-    shadowColor: theme.shadow.default,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 6,
-  },
-  flatList: {
-    width: "100%",
-    height: "100%",
-    padding: 21, // 1.5:1 ratio with inner spacing (14 * 1.5)
-    borderRadius: 41,
-  },
-  searchModeTopBox: {
-    height: height * 0.65,
-    top: Platform.OS === "ios" ? height * 0.145 : height * 0.166,
-    //bottom: Platform.OS === 'ios' ? height*0.0 : '2%',
-    zIndex: 1, // Lower z-index to position behind search results
-    justifyContent: "flex-end",
-  },
-  bottomBox: {
-    position: "absolute",
-    width: "88%",
-    height: height * 0.75,
-    left: "6%",
-    top: Platform.OS === "ios" ? height * 0.035 : height * 0.052,
-    borderRadius: 41,
-    padding: 15,
-    shadowColor: theme.shadow.default,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 6,
-    zIndex: 2,
-    overflow: "hidden",
-  },
-  searchModeBottomBox: {
-    height: height * 0.65,
-    bottom: Platform.OS === "ios" ? height * 0.02 : height * 0.035,
-    zIndex: 1, // Lower z-index in search mode
-  },
-  bottomBoxContent: {
-    width: "100%",
-    height: "100%",
-    overflow: "hidden",
-  },
-  titleRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    padding: 15,
-  },
-  boxTitle: {
-    fontFamily: "IgraSans",
-    fontSize: 38,
-    color: theme.text.inverse,
-    marginTop: 5,
-    marginLeft: 10,
-    textAlign: "left",
-  },
-  plusIconContainer: {
-    padding: 5,
-    marginBottom: Platform.OS === "ios" ? 0 : -10,
-  },
-  listContent: {
-    paddingBottom: 20,
-  },
-  previewListContent: {
-    paddingBottom: 10,
-  },
-  columnWrapper: {
-    justifyContent: "space-between",
-    paddingHorizontal: 0, // Match recommendations: outer padding handles spacing
-    marginBottom: 14, // Vertical spacing to match horizontal spacing (14px gap)
-  },
-  itemContainer: {
-    height: (width * 0.88 - 45) / 2,
-    width: "100%", // Calculate width for two columns with spacing
-    marginBottom: 0, // Reduced to match horizontal spacing (handled by columnWrapper gap)
-    shadowColor: theme.shadow.default,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 6,
-    backgroundColor: theme.surface.item,
-    borderRadius: 30,
-    position: "relative", // For absolute positioned elements
-    justifyContent: "center", // Center vertically
-    alignItems: "center", // Center horizontally
-    flexDirection: "row",
-  },
-  searchItem: {
-    width: "100%",
-    marginBottom: 17,
-    shadowColor: theme.shadow.default,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 6,
-    backgroundColor: theme.surface.item,
-    borderRadius: 30,
-    position: "relative", // For absolute positioned elements
-    flexDirection: "row",
-    justifyContent: "center", // Center vertically
-    alignItems: "center", // Center horizontally
-  },
-  userImageContainer: {
-    alignItems: "center",
-    justifyContent: "center",
-    height: "100%",
-  },
-  itemImageContainer: {
-    overflow: "hidden",
-    aspectRatio: 1,
-    position: "relative",
-    alignItems: "center",
-    justifyContent: "center",
-    borderRadius: 30,
-    padding: 5,
-    height: "100%",
-    width: "100%",
-  },
-  imageContainer: {
-    overflow: "hidden",
-    aspectRatio: 1,
-    position: "relative",
-    alignItems: "center",
-    justifyContent: "center",
-    borderRadius: 30,
-    width: width * 0.2,
-    height: width * 0.2,
-    //backgroundColor: '#EDE7E2',
-  },
-  itemImage: {
-    width: "73%",
-    height: "73%",
-  },
-  userImage: {
-    height: "100%",
-    width: "100%",
-    borderRadius: width * 0.2,
-  },
-  userInfo: {
-    alignItems: "center",
-    padding: 6,
-    position: "absolute",
-    bottom: 10,
-  },
-  itemInfo: {
-    alignItems: "center",
-    padding: 6,
-  },
-  itemName: {
-    fontFamily: "IgraSans",
-    fontSize: 13,
-    color: theme.text.secondary,
-    textAlign: "center",
-    bottom: -5,
-  },
-  // Product item styles matching Search.tsx
-  productItem: {
-    width: (width * 0.88 - 42 - 14) / 2, // Container width - list padding (42 = 21*2) - gap (14, 1.5:1 ratio)
-    marginBottom: 0, // Vertical spacing handled by columnWrapper to match horizontal spacing
-    shadowColor: theme.shadow.default,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 4,
-    backgroundColor: theme.surface.item,
-    borderRadius: 30,
-  },
-  productImageContainer: {
-    overflow: "hidden",
-    aspectRatio: 1,
-    position: "relative",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  productItemImage: {
-    width: "73%",
-    height: "73%",
-  },
-  noProductImagePlaceholder: {
-    backgroundColor: theme.surface.button,
-    justifyContent: "center",
-    alignItems: "center",
-    width: "73%",
-    height: "73%",
-  },
-  noProductImageText: {
-    fontFamily: "IgraSans",
-    fontSize: 12,
-    color: theme.text.disabled,
-  },
-  productItemInfo: {
-    bottom: -5,
-    alignItems: "center",
-    borderRadius: 20,
-    padding: 6,
-  },
-  productItemName: {
-    fontFamily: "IgraSans",
-    fontSize: 13,
-    color: theme.text.secondary,
-    textAlign: "center",
-    paddingHorizontal: 10,
-  },
-  favoritesSearchContainer: {
-    position: "absolute",
-    width: "88%",
-    left: "6%",
-    height: height * 0.1,
-    zIndex: 10,
-    top: Platform.OS === "ios" ? height * 0.02 : height * 0.04,
-    shadowColor: theme.shadow.default,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 4,
-    backgroundColor: theme.background.primary,
-    borderRadius: 41,
-    overflow: "hidden",
-  },
-  favoritesSearchInputContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    height: "100%",
-    paddingHorizontal: 15,
-  },
-  favoritesSearchInput: {
-    fontSize: 30,
-    fontFamily: "Igra Sans",
-    flex: 1,
-    height: "100%",
-    paddingVertical: 10,
-    color: theme.text.primary,
-  },
-  favoritesCancelButtonContainer: {
-    marginRight: -16,
-  },
-  favoritesCancelButton: {
-    paddingHorizontal: Platform.OS === "ios" ? 45 : 50,
-    backgroundColor: theme.button.cancel,
-    borderRadius: 41,
-    height: "100%",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  favoritesCancelButtonText: {
-    fontFamily: "Igra Sans",
-    fontSize: 18,
-    color: theme.button.primary,
-  },
-  searchResultsBox: {
-    position: "absolute",
-    left: "6%",
-    top: Platform.OS === "ios" ? height * 0.145 : height * 0.166,
-    zIndex: 8,
-    width: "88%",
-    height: Platform.OS === "ios" ? height * 0.57 : height * 0.56,
-    borderRadius: 41,
-    //padding: 15,
-    backgroundColor: theme.background.primary,
-    shadowColor: theme.shadow.default,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 6,
-  },
-  emptyStateContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    padding: 40,
-  },
-  emptyStateIcon: {
-    marginBottom: 24,
-    opacity: 0.4,
-  },
-  emptyStateTitle: {
-    fontFamily: "REM",
-    fontSize: 24,
-    fontWeight: "600",
-    color: theme.text.secondary,
-    textAlign: "center",
-    marginBottom: 12,
-  },
-  emptyStateDescription: {
-    fontFamily: "REM",
-    fontSize: 16,
-    color: theme.text.tertiary,
-    textAlign: "center",
-    lineHeight: 22,
-    paddingHorizontal: 20,
-  },
-  noResultsContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    padding: 40,
-  },
-  noResultsText: {
-    fontFamily: "REM",
-    fontSize: 24,
-    fontWeight: "600",
-    color: theme.text.secondary,
-    textAlign: "center",
-    marginTop: 24,
-    marginBottom: 12,
-  },
-  noResultsDescription: {
-    fontFamily: "REM",
-    fontSize: 16,
-    color: theme.text.tertiary,
-    textAlign: "center",
-    lineHeight: 22,
-    paddingHorizontal: 20,
-  },
-  itemWrapper: {
-    width: (width * 0.88 - 42 - 14) / 2, // Container width - list padding (42 = 21*2) - gap (14, 1.5:1 ratio)
-    marginBottom: 0, // Vertical spacing matches horizontal spacing (handled by columnWrapper)
-  },
-  searchItemWrapper: {
-    width: "47%",
-    //marginBottom: 17,
-  },
-  usernameContainer: {
-    position: "absolute",
-    right: -25,
-    top: "50%",
-    transform: [{ translateY: -20 }, { rotate: "90deg" }],
-    borderRadius: 10,
-    shadowColor: theme.shadow.default,
-    shadowOffset: { width: 4, height: 0 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-  },
-  usernameText: {
-    fontFamily: "REM",
-    fontSize: 14,
-    color: theme.text.secondary,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-  },
-  toggleButton: {
-    position: "absolute",
-    top: Platform.OS === "ios" ? height * 0.02 : height * 0.04,
-    right: 10,
-    padding: 10,
-    backgroundColor: theme.button.secondary,
-    borderRadius: 41,
-  },
-  toggleButtonText: {
-    fontFamily: "Igra Sans",
-    fontSize: 18,
-    color: theme.text.inverse,
-  },
-  // Friend Profile styles
-  profileContainer: {
-    width: "88%",
-    height: "92%",
-    backgroundColor: "transparent",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  backButton: {
-    position: "absolute",
-    top: 0,
-    left: 10,
-    zIndex: 10,
-    width: 33,
-    height: 33,
-  },
-  profileInfo: {
-    alignItems: "center",
-    marginBottom: 25,
-    shadowColor: theme.shadow.default,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 6,
-  },
-  profileImageContainer: {
-    width: width * 0.3,
-    height: width * 0.3,
-    borderRadius: width * 0.15,
-    overflow: "hidden",
-    backgroundColor: theme.surface.item,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  profileImage: {
-    width: "75%",
-    height: "75%",
-    borderRadius: width * 0.1125,
-  },
-  roundedBox: {
-    width: "100%",
-    height: width * 1.06,
-    borderRadius: 41,
-    backgroundColor: theme.primary + "00",
-    position: "relative",
-    borderWidth: 3,
-    borderColor: theme.primary + "66",
-  },
-  gradientBackground: {
-    borderRadius: 37,
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-  },
-  recommendationsContainer: {
-    backgroundColor: theme.background.primary,
-    borderRadius: 41,
-    width: width * 0.88,
-    height: width * 0.88,
-    top: -3,
-    left: -3,
-    shadowColor: theme.shadow.default,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 6,
-  },
-  recommendationsList: {
-    flex: 1,
-    borderRadius: 41,
-    padding: 21, // 1.5:1 ratio with inner spacing (14 * 1.5)
-    //paddingTop: 17.5,
-  },
-  recommendationsColumnWrapper: {
-    justifyContent: "space-between",
-    paddingHorizontal: 0,
-    marginBottom: 14, // Vertical spacing to match horizontal spacing (14px gap)
-  },
-  recommendationItemWrapper: {
-    width: (width * 0.88 - 42 - 14) / 2, // Container width - list padding (42 = 21*2) - gap (14, 1.5:1 ratio)
-  },
-  regenerateButtonWrapper: {
-    shadowColor: theme.shadow.default,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 5,
-    marginBottom: 20,
-  },
-  regenerateButtonContainer: {
-    width: 280, // Fixed width to ensure consistent size
-    height: 65, // Fixed height for the button
-    borderRadius: 30,
-    overflow: "hidden",
-    ...Platform.select({
-      android: {
-        elevation: 8,
-      },
-    }),
-    position: "relative",
-  },
-  regenerateButtonBorder: {
-    flex: 1,
-    borderRadius: 30,
-    zIndex: 5,
-  },
-  pressableContainer: {
-    width: "100%",
-    height: "100%",
-    borderRadius: 27,
-    overflow: "hidden",
-  },
-  regenerateButtonGradient: {
-    flex: 1,
-    borderRadius: 27, // Slightly smaller to create border effect
-    alignItems: "center",
-    justifyContent: "center",
-    zIndex: 10,
-    overflow: "hidden",
-  },
-  regenerateButtonText: {
-    fontFamily: "IgraSans",
-    fontSize: 15,
-    color: theme.text.inverse,
-  },
-  regenerateButtonDisabled: {
-    backgroundColor: theme.surface.selection,
-    opacity: 0.8,
-  },
-  textContainer: {
-    position: "absolute",
-    bottom: 0,
-    marginBottom: 18,
-    marginLeft: 15,
-  },
-  text: {
-    fontFamily: "IgraSans",
-    fontSize: 38,
-    color: theme.text.inverse,
-  },
-  requestItemWrapper: {
-    width: "100%",
-    padding: 10,
-  },
-  requestItemContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  requestImageContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    overflow: "hidden",
-    marginRight: 10,
-  },
-  requestButtonsContainer: {
-    flexDirection: "row",
-  },
-  requestButton: {
-    padding: 10,
-    borderRadius: 20,
-    backgroundColor: theme.button.secondary,
-    marginHorizontal: 5,
-  },
-  acceptButton: {
-    backgroundColor: theme.interactive.accept,
-  },
-  rejectButton: {
-    backgroundColor: theme.interactive.reject,
-  },
-  requestButtonText: {
-    fontFamily: "IgraSans",
-    fontSize: 15,
-    color: theme.text.inverse,
-  },
-  confirmationContainer: {
-    height: "88%",
-    width: "88%",
-    justifyContent: "space-between",
-    alignItems: "center",
-    padding: 14,
-    backgroundColor: theme.status.error,
-    borderRadius: 30,
-  },
-  confirmationText: {
-    fontFamily: "IgraSans",
-    fontSize: 15,
-    color: theme.text.secondary,
-    lineHeight: 20,
-    opacity: 0.8,
-    textAlign: "center",
-  },
-  confirmationButtons: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    gap: 10,
-  },
-  confirmButton: {
-    padding: 10,
-    width: "50%",
-    justifyContent: "center",
-    alignItems: "center",
-    borderRadius: 20,
-    backgroundColor: theme.button.secondary,
-    shadowColor: theme.shadow.default,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 6,
-  },
-  confirmYesButton: {
-    backgroundColor: theme.status.error,
-  },
-  confirmNoButton: {
-    backgroundColor: theme.interactive.inactive,
-  },
-  confirmButtonText: {
-    fontFamily: "IgraSans",
-    fontSize: 15,
-    color: theme.text.secondary,
-    opacity: 0.8,
-  },
-  removeFriendButton: {
-    position: "absolute",
-    top: 10,
-    right: 10,
-    padding: 2.5,
-    backgroundColor: theme.interactive.remove,
-    borderRadius: 20,
-  },
-  removeFriendButtonText: {
-    fontFamily: "IgraSans",
-    fontSize: 15,
-    color: theme.text.inverse,
-  },
-  sectionTitle: {
-    fontFamily: "IgraSans",
-    fontSize: 24,
-    color: theme.text.secondary,
-    marginBottom: 10,
-  },
-  miniRequestButtons: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  miniRequestButton: {
-    padding: 5,
-    borderRadius: 20,
-    backgroundColor: theme.button.secondary,
-    marginHorizontal: 5,
-  },
-  miniAcceptButton: {
-    backgroundColor: theme.social.acceptLight,
-  },
-  miniRejectButton: {
-    backgroundColor: theme.social.rejectLight,
-  },
-  miniRequestButtonText: {
-    fontFamily: "IgraSans",
-    fontSize: 15,
-    color: theme.text.inverse,
-  },
-  pendingRequestBadge: {
-    padding: 5,
-    borderRadius: 20,
-    backgroundColor: theme.button.secondary,
-    marginLeft: 10,
-  },
-  pendingRequestText: {
-    fontFamily: "IgraSans",
-    fontSize: 15,
-    color: theme.text.inverse,
-  },
-  addFriendButton: {
-    padding: 5,
-    borderRadius: 20,
-    //marginLeft: 10,
-  },
-  addFriendButtonText: {
-    fontFamily: "IgraSans",
-    fontSize: 15,
-    color: theme.text.inverse,
-  },
-  cancelRequestButton: {
-    flexDirection: "row",
-    justifyContent: "center",
-    alignItems: "center",
-    paddingHorizontal: 3,
-    width: width * 0.15,
-    height: width * 0.15,
-  },
-  cancelRequestText: {
-    color: theme.text.secondary,
-    fontFamily: "IgraSans",
-    fontSize: 10,
-    textAlign: "center",
-  },
-  stackedButtonsContainer: {
-    position: "relative",
-    marginLeft: 5,
-    flexDirection: "column",
-    gap: 10,
-    //right: 15,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  stackedButton: {
-    width: width * 0.12,
-    height: width * 0.12,
-    borderRadius: 16,
-    justifyContent: "center",
-    alignItems: "center",
-    shadowColor: theme.shadow.default,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  stackedButtonText: {
-    fontFamily: "IgraSans",
-    fontSize: 18,
-    color: theme.text.inverse,
-  },
-  confirmationOverlay: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: theme.modal.backdrop,
-    justifyContent: "center",
-    alignItems: "center",
-    zIndex: 1000,
-  },
-  buttonContainerStyle: {
-    width: width * 0.15,
-    height: width * 0.15,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  mainEmptyStateContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  mainEmptyStateText: {
-    fontFamily: "IgraSans",
-    fontSize: 32,
-    color: theme.text.inverse,
-    textAlign: "center",
-  },
-});
+const createStyles = (theme: ThemeColors) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      justifyContent: "center",
+      alignItems: "center",
+      position: "relative",
+      width: "100%",
+      height: "100%",
+      //backgroundColor: '#FFFFFF', // Add background color
+    },
+    absoluteFill: {
+      position: "absolute",
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      justifyContent: "flex-start",
+      alignItems: "center",
+    },
+    loadingContainer: {
+      flex: 1,
+      justifyContent: "center",
+      alignItems: "center",
+      padding: 40,
+    },
+    loadingText: {
+      fontFamily: "REM",
+      fontSize: 18,
+      color: theme.text.tertiary,
+      textAlign: "center",
+      marginTop: 20,
+    },
+    topBox: {
+      position: "absolute",
+      zIndex: 5,
+      width: "88%",
+      height: Platform.OS === "ios" ? height * 0.67 : height * 0.66,
+      left: "6%",
+      top: Platform.OS === "ios" ? height * 0.035 : height * 0.052,
+      borderRadius: 41,
+      //padding: 15,
+      shadowColor: theme.shadow.default,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.25,
+      shadowRadius: 4,
+      elevation: 6,
+    },
+    flatList: {
+      width: "100%",
+      height: "100%",
+      padding: 21, // 1.5:1 ratio with inner spacing (14 * 1.5)
+      borderRadius: 41,
+    },
+    searchModeTopBox: {
+      height: height * 0.65,
+      top: Platform.OS === "ios" ? height * 0.145 : height * 0.166,
+      //bottom: Platform.OS === 'ios' ? height*0.0 : '2%',
+      zIndex: 1, // Lower z-index to position behind search results
+      justifyContent: "flex-end",
+    },
+    bottomBox: {
+      position: "absolute",
+      width: "88%",
+      height: height * 0.75,
+      left: "6%",
+      top: Platform.OS === "ios" ? height * 0.035 : height * 0.052,
+      borderRadius: 41,
+      padding: 15,
+      shadowColor: theme.shadow.default,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.25,
+      shadowRadius: 4,
+      elevation: 6,
+      zIndex: 2,
+      overflow: "hidden",
+    },
+    searchModeBottomBox: {
+      height: height * 0.65,
+      bottom: Platform.OS === "ios" ? height * 0.02 : height * 0.035,
+      zIndex: 1, // Lower z-index in search mode
+    },
+    bottomBoxContent: {
+      width: "100%",
+      height: "100%",
+      overflow: "hidden",
+    },
+    titleRow: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      padding: 15,
+    },
+    boxTitle: {
+      fontFamily: "IgraSans",
+      fontSize: 38,
+      color: theme.text.inverse,
+      marginTop: 5,
+      marginLeft: 10,
+      textAlign: "left",
+    },
+    plusIconContainer: {
+      padding: 5,
+      marginBottom: Platform.OS === "ios" ? 0 : -10,
+    },
+    listContent: {
+      paddingBottom: 20,
+    },
+    previewListContent: {
+      paddingBottom: 10,
+    },
+    columnWrapper: {
+      justifyContent: "space-between",
+      paddingHorizontal: 0, // Match recommendations: outer padding handles spacing
+      marginBottom: 14, // Vertical spacing to match horizontal spacing (14px gap)
+    },
+    itemContainer: {
+      height: (width * 0.88 - 45) / 2,
+      width: "100%", // Calculate width for two columns with spacing
+      marginBottom: 0, // Reduced to match horizontal spacing (handled by columnWrapper gap)
+      shadowColor: theme.shadow.default,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.25,
+      shadowRadius: 4,
+      elevation: 6,
+      backgroundColor: theme.surface.item,
+      borderRadius: 30,
+      position: "relative", // For absolute positioned elements
+      justifyContent: "center", // Center vertically
+      alignItems: "center", // Center horizontally
+      flexDirection: "row",
+    },
+    searchItem: {
+      width: "100%",
+      marginBottom: 17,
+      shadowColor: theme.shadow.default,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.25,
+      shadowRadius: 4,
+      elevation: 6,
+      backgroundColor: theme.surface.item,
+      borderRadius: 30,
+      position: "relative", // For absolute positioned elements
+      flexDirection: "row",
+      justifyContent: "center", // Center vertically
+      alignItems: "center", // Center horizontally
+    },
+    userImageContainer: {
+      alignItems: "center",
+      justifyContent: "center",
+      height: "100%",
+    },
+    itemImageContainer: {
+      overflow: "hidden",
+      aspectRatio: 1,
+      position: "relative",
+      alignItems: "center",
+      justifyContent: "center",
+      borderRadius: 30,
+      padding: 5,
+      height: "100%",
+      width: "100%",
+    },
+    imageContainer: {
+      overflow: "hidden",
+      aspectRatio: 1,
+      position: "relative",
+      alignItems: "center",
+      justifyContent: "center",
+      borderRadius: 30,
+      width: width * 0.2,
+      height: width * 0.2,
+      //backgroundColor: '#EDE7E2',
+    },
+    itemImage: {
+      width: "73%",
+      height: "73%",
+    },
+    userImage: {
+      height: "100%",
+      width: "100%",
+      borderRadius: width * 0.2,
+    },
+    userInfo: {
+      alignItems: "center",
+      padding: 6,
+      position: "absolute",
+      bottom: 10,
+    },
+    itemInfo: {
+      alignItems: "center",
+      padding: 6,
+    },
+    itemName: {
+      fontFamily: "IgraSans",
+      fontSize: 13,
+      color: theme.text.secondary,
+      textAlign: "center",
+      bottom: -5,
+    },
+    // Product item styles matching Search.tsx
+    productItem: {
+      width: (width * 0.88 - 42 - 14) / 2, // Container width - list padding (42 = 21*2) - gap (14, 1.5:1 ratio)
+      marginBottom: 0, // Vertical spacing handled by columnWrapper to match horizontal spacing
+      shadowColor: theme.shadow.default,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.25,
+      shadowRadius: 4,
+      elevation: 4,
+      backgroundColor: theme.surface.item,
+      borderRadius: 30,
+    },
+    productImageContainer: {
+      overflow: "hidden",
+      aspectRatio: 1,
+      position: "relative",
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    productItemImage: {
+      width: "73%",
+      height: "73%",
+    },
+    noProductImagePlaceholder: {
+      backgroundColor: theme.surface.button,
+      justifyContent: "center",
+      alignItems: "center",
+      width: "73%",
+      height: "73%",
+    },
+    noProductImageText: {
+      fontFamily: "IgraSans",
+      fontSize: 12,
+      color: theme.text.disabled,
+    },
+    productItemInfo: {
+      bottom: -5,
+      alignItems: "center",
+      borderRadius: 20,
+      padding: 6,
+    },
+    productItemName: {
+      fontFamily: "IgraSans",
+      fontSize: 13,
+      color: theme.text.secondary,
+      textAlign: "center",
+      paddingHorizontal: 10,
+    },
+    favoritesSearchContainer: {
+      position: "absolute",
+      width: "88%",
+      left: "6%",
+      height: height * 0.1,
+      zIndex: 10,
+      top: Platform.OS === "ios" ? height * 0.02 : height * 0.04,
+      shadowColor: theme.shadow.default,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.25,
+      shadowRadius: 4,
+      elevation: 4,
+      backgroundColor: theme.background.primary,
+      borderRadius: 41,
+      overflow: "hidden",
+    },
+    favoritesSearchInputContainer: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      height: "100%",
+      paddingHorizontal: 15,
+    },
+    favoritesSearchInput: {
+      fontSize: 30,
+      fontFamily: "IgraSans",
+      flex: 1,
+      height: "100%",
+      paddingVertical: 10,
+      color: theme.text.primary,
+    },
+    favoritesCancelButtonContainer: {
+      marginRight: -16,
+    },
+    favoritesCancelButton: {
+      paddingHorizontal: Platform.OS === "ios" ? 45 : 50,
+      backgroundColor: theme.button.cancel,
+      borderRadius: 41,
+      height: "100%",
+      justifyContent: "center",
+      alignItems: "center",
+    },
+    favoritesCancelButtonText: {
+      fontFamily: "IgraSans",
+      fontSize: 18,
+      color: theme.button.primary,
+    },
+    searchResultsBox: {
+      position: "absolute",
+      left: "6%",
+      top: Platform.OS === "ios" ? height * 0.145 : height * 0.166,
+      zIndex: 8,
+      width: "88%",
+      height: Platform.OS === "ios" ? height * 0.57 : height * 0.56,
+      borderRadius: 41,
+      //padding: 15,
+      backgroundColor: theme.background.primary,
+      shadowColor: theme.shadow.default,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.25,
+      shadowRadius: 4,
+      elevation: 6,
+    },
+    emptyStateContainer: {
+      flex: 1,
+      justifyContent: "center",
+      alignItems: "center",
+      padding: 40,
+    },
+    emptyStateIcon: {
+      marginBottom: 24,
+      opacity: 0.4,
+    },
+    emptyStateTitle: {
+      fontFamily: "REM",
+      fontSize: 24,
+      fontWeight: "600",
+      color: theme.text.secondary,
+      textAlign: "center",
+      marginBottom: 12,
+    },
+    emptyStateDescription: {
+      fontFamily: "REM",
+      fontSize: 16,
+      color: theme.text.tertiary,
+      textAlign: "center",
+      lineHeight: 22,
+      paddingHorizontal: 20,
+    },
+    noResultsContainer: {
+      flex: 1,
+      justifyContent: "center",
+      alignItems: "center",
+      padding: 40,
+    },
+    noResultsText: {
+      fontFamily: "REM",
+      fontSize: 24,
+      fontWeight: "600",
+      color: theme.text.secondary,
+      textAlign: "center",
+      marginTop: 24,
+      marginBottom: 12,
+    },
+    noResultsDescription: {
+      fontFamily: "REM",
+      fontSize: 16,
+      color: theme.text.tertiary,
+      textAlign: "center",
+      lineHeight: 22,
+      paddingHorizontal: 20,
+    },
+    itemWrapper: {
+      width: (width * 0.88 - 42 - 14) / 2, // Container width - list padding (42 = 21*2) - gap (14, 1.5:1 ratio)
+      marginBottom: 0, // Vertical spacing matches horizontal spacing (handled by columnWrapper)
+    },
+    searchItemWrapper: {
+      width: "47%",
+      //marginBottom: 17,
+    },
+    usernameContainer: {
+      position: "absolute",
+      right: -25,
+      top: "50%",
+      transform: [{ translateY: -20 }, { rotate: "90deg" }],
+      borderRadius: 10,
+      shadowColor: theme.shadow.default,
+      shadowOffset: { width: 4, height: 0 },
+      shadowOpacity: 0.25,
+      shadowRadius: 4,
+    },
+    usernameText: {
+      fontFamily: "REM",
+      fontSize: 14,
+      color: theme.text.secondary,
+      paddingHorizontal: 8,
+      paddingVertical: 4,
+    },
+    toggleButton: {
+      position: "absolute",
+      top: Platform.OS === "ios" ? height * 0.02 : height * 0.04,
+      right: 10,
+      padding: 10,
+      backgroundColor: theme.button.secondary,
+      borderRadius: 41,
+    },
+    toggleButtonText: {
+      fontFamily: "IgraSans",
+      fontSize: 18,
+      color: theme.text.inverse,
+    },
+    // Friend Profile styles
+    profileContainer: {
+      width: "88%",
+      height: "92%",
+      backgroundColor: "transparent",
+      justifyContent: "center",
+      alignItems: "center",
+    },
+    backButton: {
+      position: "absolute",
+      top: 0,
+      left: 10,
+      zIndex: 10,
+      width: 33,
+      height: 33,
+    },
+    profileInfo: {
+      alignItems: "center",
+      marginBottom: 25,
+      shadowColor: theme.shadow.default,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.25,
+      shadowRadius: 4,
+      elevation: 6,
+    },
+    profileImageContainer: {
+      width: width * 0.3,
+      height: width * 0.3,
+      borderRadius: width * 0.15,
+      overflow: "hidden",
+      backgroundColor: theme.surface.item,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    profileImage: {
+      width: "75%",
+      height: "75%",
+      borderRadius: width * 0.1125,
+    },
+    roundedBox: {
+      width: "100%",
+      height: width * 1.06,
+      borderRadius: 41,
+      backgroundColor: theme.primary + "00",
+      position: "relative",
+      borderWidth: 3,
+      borderColor: theme.primary + "66",
+    },
+    gradientBackground: {
+      borderRadius: 37,
+      position: "absolute",
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+    },
+    recommendationsContainer: {
+      backgroundColor: theme.background.primary,
+      borderRadius: 41,
+      width: width * 0.88,
+      height: width * 0.88,
+      top: -3,
+      left: -3,
+      shadowColor: theme.shadow.default,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.25,
+      shadowRadius: 4,
+      elevation: 6,
+    },
+    recommendationsList: {
+      flex: 1,
+      borderRadius: 41,
+      padding: 21, // 1.5:1 ratio with inner spacing (14 * 1.5)
+      //paddingTop: 17.5,
+    },
+    recommendationsColumnWrapper: {
+      justifyContent: "space-between",
+      paddingHorizontal: 0,
+      marginBottom: 14, // Vertical spacing to match horizontal spacing (14px gap)
+    },
+    recommendationItemWrapper: {
+      width: (width * 0.88 - 42 - 14) / 2, // Container width - list padding (42 = 21*2) - gap (14, 1.5:1 ratio)
+    },
+    regenerateButtonWrapper: {
+      shadowColor: theme.shadow.default,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.25,
+      shadowRadius: 4,
+      elevation: 5,
+      marginBottom: 20,
+    },
+    regenerateButtonContainer: {
+      width: 280, // Fixed width to ensure consistent size
+      height: 65, // Fixed height for the button
+      borderRadius: 30,
+      overflow: "hidden",
+      ...Platform.select({
+        android: {
+          elevation: 8,
+        },
+      }),
+      position: "relative",
+    },
+    regenerateButtonBorder: {
+      flex: 1,
+      borderRadius: 30,
+      zIndex: 5,
+    },
+    pressableContainer: {
+      width: "100%",
+      height: "100%",
+      borderRadius: 27,
+      overflow: "hidden",
+    },
+    regenerateButtonGradient: {
+      flex: 1,
+      borderRadius: 27, // Slightly smaller to create border effect
+      alignItems: "center",
+      justifyContent: "center",
+      zIndex: 10,
+      overflow: "hidden",
+    },
+    regenerateButtonText: {
+      fontFamily: "IgraSans",
+      fontSize: 15,
+      color: theme.text.inverse,
+    },
+    regenerateButtonDisabled: {
+      backgroundColor: theme.surface.selection,
+      opacity: 0.8,
+    },
+    textContainer: {
+      position: "absolute",
+      bottom: 0,
+      marginBottom: 18,
+      marginLeft: 15,
+    },
+    text: {
+      fontFamily: "IgraSans",
+      fontSize: 38,
+      color: theme.text.inverse,
+    },
+    requestItemWrapper: {
+      width: "100%",
+      padding: 10,
+    },
+    requestItemContainer: {
+      flexDirection: "row",
+      alignItems: "center",
+    },
+    requestImageContainer: {
+      width: 40,
+      height: 40,
+      borderRadius: 20,
+      overflow: "hidden",
+      marginRight: 10,
+    },
+    requestButtonsContainer: {
+      flexDirection: "row",
+    },
+    requestButton: {
+      padding: 10,
+      borderRadius: 20,
+      backgroundColor: theme.button.secondary,
+      marginHorizontal: 5,
+    },
+    acceptButton: {
+      backgroundColor: theme.interactive.accept,
+    },
+    rejectButton: {
+      backgroundColor: theme.interactive.reject,
+    },
+    requestButtonText: {
+      fontFamily: "IgraSans",
+      fontSize: 15,
+      color: theme.text.inverse,
+    },
+    confirmationContainer: {
+      height: "88%",
+      width: "88%",
+      justifyContent: "space-between",
+      alignItems: "center",
+      padding: 14,
+      backgroundColor: theme.status.error,
+      borderRadius: 30,
+    },
+    confirmationText: {
+      fontFamily: "IgraSans",
+      fontSize: 15,
+      color: theme.text.secondary,
+      lineHeight: 20,
+      opacity: 0.8,
+      textAlign: "center",
+    },
+    confirmationButtons: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      gap: 10,
+    },
+    confirmButton: {
+      padding: 10,
+      width: "50%",
+      justifyContent: "center",
+      alignItems: "center",
+      borderRadius: 20,
+      backgroundColor: theme.button.secondary,
+      shadowColor: theme.shadow.default,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.25,
+      shadowRadius: 4,
+      elevation: 6,
+    },
+    confirmYesButton: {
+      backgroundColor: theme.status.error,
+    },
+    confirmNoButton: {
+      backgroundColor: theme.interactive.inactive,
+    },
+    confirmButtonText: {
+      fontFamily: "IgraSans",
+      fontSize: 15,
+      color: theme.text.secondary,
+      opacity: 0.8,
+    },
+    removeFriendButton: {
+      position: "absolute",
+      top: 10,
+      right: 10,
+      padding: 2.5,
+      backgroundColor: theme.interactive.remove,
+      borderRadius: 20,
+    },
+    removeFriendButtonText: {
+      fontFamily: "IgraSans",
+      fontSize: 15,
+      color: theme.text.inverse,
+    },
+    sectionTitle: {
+      fontFamily: "IgraSans",
+      fontSize: 24,
+      color: theme.text.secondary,
+      marginBottom: 10,
+    },
+    miniRequestButtons: {
+      flexDirection: "row",
+      alignItems: "center",
+    },
+    miniRequestButton: {
+      padding: 5,
+      borderRadius: 20,
+      backgroundColor: theme.button.secondary,
+      marginHorizontal: 5,
+    },
+    miniAcceptButton: {
+      backgroundColor: theme.social.acceptLight,
+    },
+    miniRejectButton: {
+      backgroundColor: theme.social.rejectLight,
+    },
+    miniRequestButtonText: {
+      fontFamily: "IgraSans",
+      fontSize: 15,
+      color: theme.text.inverse,
+    },
+    pendingRequestBadge: {
+      padding: 5,
+      borderRadius: 20,
+      backgroundColor: theme.button.secondary,
+      marginLeft: 10,
+    },
+    pendingRequestText: {
+      fontFamily: "IgraSans",
+      fontSize: 15,
+      color: theme.text.inverse,
+    },
+    addFriendButton: {
+      padding: 5,
+      borderRadius: 20,
+      //marginLeft: 10,
+    },
+    addFriendButtonText: {
+      fontFamily: "IgraSans",
+      fontSize: 15,
+      color: theme.text.inverse,
+    },
+    cancelRequestButton: {
+      flexDirection: "row",
+      justifyContent: "center",
+      alignItems: "center",
+      paddingHorizontal: 3,
+      width: width * 0.15,
+      height: width * 0.15,
+    },
+    cancelRequestText: {
+      color: theme.text.secondary,
+      fontFamily: "IgraSans",
+      fontSize: 10,
+      textAlign: "center",
+    },
+    stackedButtonsContainer: {
+      position: "relative",
+      marginLeft: 5,
+      flexDirection: "column",
+      gap: 10,
+      //right: 15,
+      justifyContent: "center",
+      alignItems: "center",
+    },
+    stackedButton: {
+      width: width * 0.12,
+      height: width * 0.12,
+      borderRadius: 16,
+      justifyContent: "center",
+      alignItems: "center",
+      shadowColor: theme.shadow.default,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.25,
+      shadowRadius: 4,
+      elevation: 3,
+    },
+    stackedButtonText: {
+      fontFamily: "IgraSans",
+      fontSize: 18,
+      color: theme.text.inverse,
+    },
+    confirmationOverlay: {
+      position: "absolute",
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      backgroundColor: theme.modal.backdrop,
+      justifyContent: "center",
+      alignItems: "center",
+      zIndex: 1000,
+    },
+    buttonContainerStyle: {
+      width: width * 0.15,
+      height: width * 0.15,
+      justifyContent: "center",
+      alignItems: "center",
+    },
+    mainEmptyStateContainer: {
+      flex: 1,
+      justifyContent: "center",
+      alignItems: "center",
+    },
+    mainEmptyStateText: {
+      fontFamily: "IgraSans",
+      fontSize: 32,
+      color: theme.text.inverse,
+      textAlign: "center",
+    },
+  });
 
 // Add above Favorites component
 interface FriendListItemProps {

@@ -611,10 +611,6 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({
                     <Card key={colorIndex} className="p-3 border border-border/50">
                       <div className="flex items-center justify-between gap-2 mb-2">
                         <div className="flex items-center gap-2">
-                          <div
-                            className="w-5 h-5 rounded-full border"
-                            style={{ background: cv.color_hex?.startsWith("#") ? cv.color_hex : "#808080" }}
-                          />
                           <Select
                             value={cv.color_name || ""}
                             onValueChange={(v) => handleColorSelect(colorIndex, v)}
@@ -624,11 +620,11 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({
                             </SelectTrigger>
                             <SelectContent>
                               {colors.map((c) => (
-                                <SelectItem key={c.name} value={c.name}>
+                                <SelectItem key={c.name} value={c.name} textValue={c.russian}>
                                   <div className="flex items-center gap-2">
                                     <div
                                       className="w-4 h-4 rounded-full border"
-                                      style={{ background: c.hex?.startsWith("#") ? c.hex : "#808080" }}
+                                      style={{ background: c.hex || "#808080" }}
                                     />
                                     {c.russian}
                                   </div>

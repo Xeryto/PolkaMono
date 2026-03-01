@@ -11,7 +11,7 @@ import random
 import threading
 import time
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Dict, List, Optional, Set, Tuple
 
 logger = logging.getLogger(__name__)
@@ -158,12 +158,16 @@ def _fetch_candidates(
     user_size: Optional[str],
     pool_size: int = 200,
 ) -> List[CandidateRow]:
-    """Fetch candidate products, excluding swiped ones and inactive brands."""
+    """Fetch candidate products, excluding recently swiped ones and inactive brands."""
 
-    # Subquery: product IDs already swiped by user
+    # Subquery: product IDs swiped in the last 30 days (older swipes can resurface)
+    swipe_cutoff = datetime.now(timezone.utc) - timedelta(days=30)
     swiped_sub = (
         db.query(UserSwipe.product_id)
-        .filter(UserSwipe.user_id == exclude_user_id)
+        .filter(
+            UserSwipe.user_id == exclude_user_id,
+            UserSwipe.created_at >= swipe_cutoff,
+        )
         .subquery()
     )
 

@@ -14,6 +14,7 @@ export interface RequestOptions {
   retryDelay?: number;
   retryBackoff?: boolean;
   signal?: AbortSignal;
+  _isRetryAfterRefresh?: boolean;
 }
 
 export class NetworkTimeoutError extends Error {

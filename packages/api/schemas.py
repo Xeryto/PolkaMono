@@ -250,7 +250,7 @@ class ProductColorVariantSchema(BaseModel):
 
 class ProductColorVariantCreate(BaseModel):
     color_name: str = Field(..., max_length=50)
-    color_hex: str = Field(..., max_length=50)
+    color_hex: str = Field(..., max_length=200)
     images: List[str] = []
     variants: List[ProductVariantSchema]
 

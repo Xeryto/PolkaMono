@@ -142,11 +142,18 @@ const computeBrandShippingSummaries = (
   items: CartItem[],
   brandsMap: BrandMap,
 ): BrandShippingSummary[] => {
-  const grouped: Record<string, { brandName: string; subtotal: number; brandId: string }> = {};
+  const grouped: Record<
+    string,
+    { brandName: string; subtotal: number; brandId: string }
+  > = {};
   for (const item of items) {
     const bid = item.brand_id ?? "";
     if (!grouped[bid]) {
-      grouped[bid] = { brandName: item.brand_name ?? bid, subtotal: 0, brandId: bid };
+      grouped[bid] = {
+        brandName: item.brand_name ?? bid,
+        subtotal: 0,
+        brandId: bid,
+      };
     }
     grouped[bid].subtotal += item.price * (item.quantity ?? 1);
   }
@@ -155,7 +162,12 @@ const computeBrandShippingSummaries = (
     const originalCost = brand?.shipping_price ?? DEFAULT_SHIPPING_PRICE;
     const minFree = brand?.min_free_shipping;
     const isFree = minFree != null && subtotal >= minFree;
-    return { brandName, originalCost, actualCost: isFree ? 0 : originalCost, isFree };
+    return {
+      brandName,
+      originalCost,
+      actualCost: isFree ? 0 : originalCost,
+      isFree,
+    };
   });
 };
 
@@ -192,9 +204,9 @@ const CancelButton: React.FC<CancelButtonProps> = ({
     height: 25,
     borderRadius: 7,
     backgroundColor: theme.interactive.remove,
-    justifyContent: 'center' as const,
-    alignItems: 'center' as const,
-    position: 'absolute' as const,
+    justifyContent: "center" as const,
+    alignItems: "center" as const,
+    position: "absolute" as const,
     right: 8,
     top: 0,
   };
@@ -230,22 +242,22 @@ const CartItemImage = ({ item }: { item: CartItem }) => {
   const imageStyles = StyleSheet.create({
     container: {
       flex: 1,
-      justifyContent: 'center' as const,
-      alignItems: 'center' as const,
+      justifyContent: "center" as const,
+      alignItems: "center" as const,
     },
     itemImage: {
-      width: '100%',
-      height: '100%',
+      width: "100%",
+      height: "100%",
     },
     noProductImagePlaceholder: {
       backgroundColor: theme.surface.button,
-      justifyContent: 'center' as const,
-      alignItems: 'center' as const,
-      width: '73%',
-      height: '73%',
+      justifyContent: "center" as const,
+      alignItems: "center" as const,
+      width: "73%",
+      height: "73%",
     },
     noProductImageText: {
-      fontFamily: 'IgraSans',
+      fontFamily: "IgraSans",
       fontSize: 12,
       color: theme.text.disabled,
     },
@@ -261,7 +273,9 @@ const CartItemImage = ({ item }: { item: CartItem }) => {
           onLoad={onImageLoad}
         />
       ) : (
-        <View style={[imageStyles.itemImage, imageStyles.noProductImagePlaceholder]}>
+        <View
+          style={[imageStyles.itemImage, imageStyles.noProductImagePlaceholder]}
+        >
           <Text style={imageStyles.noProductImageText}>Нет изображения</Text>
         </View>
       )}
@@ -336,25 +350,32 @@ const Cart = ({ navigation }: CartProps) => {
         `${item.id}-${item.size}-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
     }));
     const deliveries = computeDeliveryForItems(rawItems, bMap);
-    const itemsWithDelivery: CartItem[] = rawItems.map((item: any, idx: number) => ({
-      ...item,
-      images: item.images ?? [],
-      quantity: item.quantity ?? 1,
-      brand_return_policy: item.brand_return_policy ?? "",
-      description: item.description ?? "",
-      materials: item.materials ?? "",
-      color: item.color ?? "",
-      color_variants: item.color_variants ?? [],
-      selected_color_index: item.selected_color_index ?? 0,
-      delivery: deliveries[idx] ?? { cost: DEFAULT_SHIPPING_PRICE, estimatedTime: "1-3 дня" },
-    }));
+    const itemsWithDelivery: CartItem[] = rawItems.map(
+      (item: any, idx: number) => ({
+        ...item,
+        images: item.images ?? [],
+        quantity: item.quantity ?? 1,
+        brand_return_policy: item.brand_return_policy ?? "",
+        description: item.description ?? "",
+        materials: item.materials ?? "",
+        color: item.color ?? "",
+        color_variants: item.color_variants ?? [],
+        selected_color_index: item.selected_color_index ?? 0,
+        delivery: deliveries[idx] ?? {
+          cost: DEFAULT_SHIPPING_PRICE,
+          estimatedTime: "1-3 дня",
+        },
+      }),
+    );
     setCartItems(itemsWithDelivery);
     setIsLoading(false);
   }).current;
 
   // Keep ref in sync with latest brandsMap
   const brandsMapRef = useRef(brandsMap);
-  useEffect(() => { brandsMapRef.current = brandsMap; }, [brandsMap]);
+  useEffect(() => {
+    brandsMapRef.current = brandsMap;
+  }, [brandsMap]);
 
   // Initial load + subscribe to cart changes via event emitter
   useEffect(() => {
@@ -711,14 +732,21 @@ const Cart = ({ navigation }: CartProps) => {
                   <View style={styles.deliverySummaryContainer}>
                     <Text style={styles.deliverySummaryLabel}>ДОСТАВКА</Text>
                     {brandSummaries.map((summary) => (
-                      <View key={summary.brandName} style={styles.deliverySummaryRow}>
-                        <Text style={styles.deliverySummaryBrand}>{summary.brandName}</Text>
+                      <View
+                        key={summary.brandName}
+                        style={styles.deliverySummaryRow}
+                      >
+                        <Text style={styles.deliverySummaryBrand}>
+                          {summary.brandName}
+                        </Text>
                         {summary.isFree ? (
                           <View style={{ flexDirection: "row", gap: 8 }}>
                             <Text style={styles.deliverySummaryOriginalPrice}>
                               {summary.originalCost.toFixed(2)} ₽
                             </Text>
-                            <Text style={styles.deliverySummaryPrice}>0.00 ₽</Text>
+                            <Text style={styles.deliverySummaryPrice}>
+                              0.00 ₽
+                            </Text>
                           </View>
                         ) : (
                           <Text style={styles.deliverySummaryPrice}>
@@ -780,295 +808,307 @@ const Cart = ({ navigation }: CartProps) => {
   );
 };
 
-const createStyles = (theme: ThemeColors) => StyleSheet.create({
-  container: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: "transparent",
-  },
-  roundedBox: {
-    width: "88%",
-    height: "95%",
-    borderRadius: 41,
-    backgroundColor: theme.primary + "00",
-    position: "relative",
-    borderWidth: 3,
-    borderColor: theme.primary + "66",
-  },
-  gradientBackground: {
-    borderRadius: 37,
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-  },
-  whiteBox: {
-    backgroundColor: theme.background.primary,
-    borderRadius: 41,
-    width: width * 0.88,
-    top: -3,
-    left: -3,
-    height: "90%",
-    shadowColor: theme.shadow.default,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 6,
-  },
-  itemsContainer: { height: "70%", borderRadius: 41, padding: height * 0.02 },
-  cartItem: {
-    backgroundColor: theme.surface.cartItem,
-    borderRadius: 41,
-    marginBottom: 15,
-    shadowColor: theme.shadow.default,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 6,
-    flex: 1,
-  },
-  itemPressable: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    justifyContent: "space-between",
-    paddingTop: 20,
-    paddingLeft: 25,
-    paddingRight: 20,
-    paddingBottom: 15,
-  },
-  itemContent: { flexDirection: "row", width: "80%", alignItems: "flex-start" },
-  itemImage: {
-    width: "100%",
-    height: undefined,
-    justifyContent: "flex-start",
-    position: "absolute",
-    top: 0,
-    left: 0,
-  },
-  noProductImagePlaceholder: {
-    backgroundColor: theme.surface.button,
-    justifyContent: "center",
-    alignItems: "center",
-    width: "73%",
-    height: "73%",
-  },
-  noProductImageText: {
-    fontFamily: "IgraSans",
-    fontSize: 12,
-    color: theme.text.disabled,
-  },
-  imageContainer: {
-    width: "30%",
-    height: "100%",
-    alignSelf: "flex-start",
-    marginRight: 15,
-    justifyContent: "flex-start",
-  },
-  itemDetails: { flex: 1, justifyContent: "flex-start" },
-  itemName: {
-    fontFamily: "IgraSans",
-    fontSize: 38,
-    color: theme.text.primary,
-    marginBottom: 0,
-  },
-  itemPrice: {
-    fontFamily: "REM",
-    fontSize: 16,
-    color: theme.text.primary,
-    marginBottom: 5,
-  },
-  itemSize: {
-    fontFamily: "IgraSans",
-    fontSize: 16,
-    color: theme.text.primary,
-    marginBottom: 20,
-  },
-  deliveryInfoChangeable: {
-    position: "absolute",
-    marginLeft: width * 0.22,
-    bottom: 0,
-    width: width * 0.5,
-  },
-  deliveryText: {
-    fontFamily: "IgraSans",
-    fontSize: 14,
-    color: theme.text.primary,
-    marginBottom: 5,
-    flexShrink: 1,
-  },
-  rightContainer: {
-    justifyContent: "center",
-    alignItems: "center",
-    height: "100%",
-    width: "20%",
-  },
-  circle: { position: "absolute", top: "30%", bottom: "30%", right: 0 },
-  checkoutContainer: { borderRadius: 41, padding: 20, alignItems: "center" },
-  summaryContainer: {
-    marginBottom: 10,
-    width: "87%",
-    alignSelf: "center",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  horizontalLine: {
-    width: "100%",
-    height: 3,
-    backgroundColor: theme.text.primary,
-  },
-  totalContainer: { width: "100%", alignItems: "flex-start", marginTop: 25 },
-  totalText: {
-    textAlign: "left",
-    fontFamily: "IgraSans",
-    fontSize: 30,
-    color: theme.text.primary,
-  },
-  deliverySummaryContainer: {
-    width: "100%",
-    alignItems: "flex-start",
-    marginTop: 10,
-  },
-  deliverySummaryLabel: {
-    fontFamily: "IgraSans",
-    fontSize: 20,
-    color: theme.text.primary,
-    marginBottom: 6,
-  },
-  deliverySummaryRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    width: "100%",
-    marginBottom: 4,
-  },
-  deliverySummaryBrand: {
-    fontFamily: "IgraSans",
-    fontSize: 16,
-    color: theme.text.primary,
-  },
-  deliverySummaryPrice: {
-    fontFamily: "REM",
-    fontSize: 16,
-    color: theme.text.primary,
-  },
-  deliverySummaryOriginalPrice: {
-    fontFamily: "REM",
-    fontSize: 16,
-    color: theme.text.secondary,
-    textDecorationLine: "line-through" as const,
-  },
-  checkoutButton: {
-    width: "100%",
-    backgroundColor: theme.button.checkout,
-    borderRadius: 41,
-    padding: 25,
-    alignItems: "center",
-  },
-  checkoutButtonText: {
-    color: theme.button.checkoutText,
-    fontFamily: "IgraSans",
-    fontSize: 20,
-  },
-  disabledButton: { backgroundColor: theme.interactive.inactive },
-  emptyCartContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  emptyCartText: {
-    fontFamily: "REM",
-    fontSize: 18,
-    color: theme.text.secondary,
-    marginBottom: 20,
-  },
-  shopButton: {
-    backgroundColor: theme.primary,
-    borderRadius: 25,
-    padding: 15,
-    alignItems: "center",
-    width: "80%",
-  },
-  shopButtonText: { color: theme.text.inverse, fontFamily: "IgraSans", fontSize: 18 },
-  textContainer: {
-    position: "absolute",
-    bottom: 0,
-    marginBottom: 12,
-    marginLeft: 22,
-  },
-  text: {
-    fontFamily: "Igra Sans",
-    fontSize: 38,
-    color: theme.text.inverse,
-    textAlign: "left",
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: theme.background.primary,
-    borderRadius: 41,
-    padding: 20,
-  },
-  loadingText: { fontFamily: "IgraSans", fontSize: 24, color: theme.text.secondary },
-  confirmationContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: theme.background.primary,
-    borderRadius: 41,
-    padding: 20,
-  },
-  confirmationTitle: {
-    fontFamily: "IgraSans",
-    fontSize: 38,
-    color: theme.text.secondary,
-    marginBottom: 20,
-    textAlign: "center",
-  },
-  confirmationText: {
-    fontFamily: "REM",
-    fontSize: 18,
-    color: theme.text.secondary,
-    marginBottom: 40,
-    textAlign: "center",
-  },
-  confirmationButton: {
-    backgroundColor: theme.primary,
-    borderRadius: 25,
-    padding: 15,
-    alignItems: "center",
-    width: "80%",
-  },
-  confirmationButtonText: {
-    color: theme.text.inverse,
-    fontFamily: "IgraSans",
-    fontSize: 18,
-  },
-  errorContainer: { marginBottom: 15, alignItems: "center" },
-  errorText: {
-    color: theme.status.error,
-    fontFamily: "REM",
-    fontSize: 16,
-    textAlign: "center",
-    marginBottom: 10,
-  },
-  settingsButton: {
-    backgroundColor: theme.primary,
-    borderRadius: 20,
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    marginTop: 5,
-  },
-  settingsButtonText: {
-    color: theme.button.primaryText,
-    fontFamily: "IgraSans",
-    fontSize: 14,
-    textAlign: "center",
-  },
-});
-
-
+const createStyles = (theme: ThemeColors) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      justifyContent: "center",
+      alignItems: "center",
+      backgroundColor: "transparent",
+    },
+    roundedBox: {
+      width: "88%",
+      height: "95%",
+      borderRadius: 41,
+      backgroundColor: theme.primary + "00",
+      position: "relative",
+      borderWidth: 3,
+      borderColor: theme.primary + "66",
+    },
+    gradientBackground: {
+      borderRadius: 37,
+      position: "absolute",
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+    },
+    whiteBox: {
+      backgroundColor: theme.background.primary,
+      borderRadius: 41,
+      width: width * 0.88,
+      top: -3,
+      left: -3,
+      height: "90%",
+      shadowColor: theme.shadow.default,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.25,
+      shadowRadius: 4,
+      elevation: 6,
+    },
+    itemsContainer: { height: "70%", borderRadius: 41, padding: height * 0.02 },
+    cartItem: {
+      backgroundColor: theme.surface.cartItem,
+      borderRadius: 41,
+      marginBottom: 15,
+      shadowColor: theme.shadow.default,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.25,
+      shadowRadius: 4,
+      elevation: 6,
+      flex: 1,
+    },
+    itemPressable: {
+      flexDirection: "row",
+      alignItems: "flex-start",
+      justifyContent: "space-between",
+      paddingTop: 20,
+      paddingLeft: 25,
+      paddingRight: 20,
+      paddingBottom: 15,
+    },
+    itemContent: {
+      flexDirection: "row",
+      width: "80%",
+      alignItems: "flex-start",
+    },
+    itemImage: {
+      width: "100%",
+      height: undefined,
+      justifyContent: "flex-start",
+      position: "absolute",
+      top: 0,
+      left: 0,
+    },
+    noProductImagePlaceholder: {
+      backgroundColor: theme.surface.button,
+      justifyContent: "center",
+      alignItems: "center",
+      width: "73%",
+      height: "73%",
+    },
+    noProductImageText: {
+      fontFamily: "IgraSans",
+      fontSize: 12,
+      color: theme.text.disabled,
+    },
+    imageContainer: {
+      width: "30%",
+      height: "100%",
+      alignSelf: "flex-start",
+      marginRight: 15,
+      justifyContent: "flex-start",
+    },
+    itemDetails: { flex: 1, justifyContent: "flex-start" },
+    itemName: {
+      fontFamily: "IgraSans",
+      fontSize: 38,
+      color: theme.text.primary,
+      marginBottom: 0,
+    },
+    itemPrice: {
+      fontFamily: "REM",
+      fontSize: 16,
+      color: theme.text.primary,
+      marginBottom: 5,
+    },
+    itemSize: {
+      fontFamily: "IgraSans",
+      fontSize: 16,
+      color: theme.text.primary,
+      marginBottom: 20,
+    },
+    deliveryInfoChangeable: {
+      position: "absolute",
+      marginLeft: width * 0.22,
+      bottom: 0,
+      width: width * 0.5,
+    },
+    deliveryText: {
+      fontFamily: "IgraSans",
+      fontSize: 14,
+      color: theme.text.primary,
+      marginBottom: 5,
+      flexShrink: 1,
+    },
+    rightContainer: {
+      justifyContent: "center",
+      alignItems: "center",
+      height: "100%",
+      width: "20%",
+    },
+    circle: { position: "absolute", top: "30%", bottom: "30%", right: 0 },
+    checkoutContainer: { borderRadius: 41, padding: 20, alignItems: "center" },
+    summaryContainer: {
+      marginBottom: 10,
+      width: "87%",
+      alignSelf: "center",
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    horizontalLine: {
+      width: "100%",
+      height: 3,
+      backgroundColor: theme.text.primary,
+    },
+    totalContainer: { width: "100%", alignItems: "flex-start", marginTop: 25 },
+    totalText: {
+      textAlign: "left",
+      fontFamily: "IgraSans",
+      fontSize: 30,
+      color: theme.text.primary,
+    },
+    deliverySummaryContainer: {
+      width: "100%",
+      alignItems: "flex-start",
+      marginTop: 10,
+    },
+    deliverySummaryLabel: {
+      fontFamily: "IgraSans",
+      fontSize: 20,
+      color: theme.text.primary,
+      marginBottom: 6,
+    },
+    deliverySummaryRow: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      width: "100%",
+      marginBottom: 4,
+    },
+    deliverySummaryBrand: {
+      fontFamily: "IgraSans",
+      fontSize: 16,
+      color: theme.text.primary,
+    },
+    deliverySummaryPrice: {
+      fontFamily: "REM",
+      fontSize: 16,
+      color: theme.text.primary,
+    },
+    deliverySummaryOriginalPrice: {
+      fontFamily: "REM",
+      fontSize: 16,
+      color: theme.text.secondary,
+      textDecorationLine: "line-through" as const,
+    },
+    checkoutButton: {
+      width: "100%",
+      backgroundColor: theme.button.checkout,
+      borderRadius: 41,
+      padding: 25,
+      alignItems: "center",
+    },
+    checkoutButtonText: {
+      color: theme.button.checkoutText,
+      fontFamily: "IgraSans",
+      fontSize: 20,
+    },
+    disabledButton: { backgroundColor: theme.interactive.inactive },
+    emptyCartContainer: {
+      flex: 1,
+      justifyContent: "center",
+      alignItems: "center",
+    },
+    emptyCartText: {
+      fontFamily: "REM",
+      fontSize: 18,
+      color: theme.text.secondary,
+      marginBottom: 20,
+    },
+    shopButton: {
+      backgroundColor: theme.primary,
+      borderRadius: 25,
+      padding: 15,
+      alignItems: "center",
+      width: "80%",
+    },
+    shopButtonText: {
+      color: theme.text.inverse,
+      fontFamily: "IgraSans",
+      fontSize: 18,
+    },
+    textContainer: {
+      position: "absolute",
+      bottom: 0,
+      marginBottom: 12,
+      marginLeft: 22,
+      fontFamily: "IgraSans",
+    },
+    text: {
+      fontFamily: "IgraSans",
+      fontSize: 38,
+      color: theme.text.inverse,
+      textAlign: "left",
+    },
+    loadingContainer: {
+      flex: 1,
+      justifyContent: "center",
+      alignItems: "center",
+      backgroundColor: theme.background.primary,
+      borderRadius: 41,
+      padding: 20,
+    },
+    loadingText: {
+      fontFamily: "IgraSans",
+      fontSize: 24,
+      color: theme.text.secondary,
+    },
+    confirmationContainer: {
+      flex: 1,
+      justifyContent: "center",
+      alignItems: "center",
+      backgroundColor: theme.background.primary,
+      borderRadius: 41,
+      padding: 20,
+    },
+    confirmationTitle: {
+      fontFamily: "IgraSans",
+      fontSize: 38,
+      color: theme.text.secondary,
+      marginBottom: 20,
+      textAlign: "center",
+    },
+    confirmationText: {
+      fontFamily: "REM",
+      fontSize: 18,
+      color: theme.text.secondary,
+      marginBottom: 40,
+      textAlign: "center",
+    },
+    confirmationButton: {
+      backgroundColor: theme.primary,
+      borderRadius: 25,
+      padding: 15,
+      alignItems: "center",
+      width: "80%",
+    },
+    confirmationButtonText: {
+      color: theme.text.inverse,
+      fontFamily: "IgraSans",
+      fontSize: 18,
+    },
+    errorContainer: { marginBottom: 15, alignItems: "center" },
+    errorText: {
+      color: theme.status.error,
+      fontFamily: "REM",
+      fontSize: 16,
+      textAlign: "center",
+      marginBottom: 10,
+    },
+    settingsButton: {
+      backgroundColor: theme.primary,
+      borderRadius: 20,
+      paddingVertical: 8,
+      paddingHorizontal: 16,
+      marginTop: 5,
+    },
+    settingsButtonText: {
+      color: theme.button.primaryText,
+      fontFamily: "IgraSans",
+      fontSize: 14,
+      textAlign: "center",
+    },
+  });
 
 export default Cart;
