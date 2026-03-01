@@ -26,6 +26,7 @@ import Heart2 from "../components/svg/Heart2";
 import HeartFilled from "../components/svg/HeartFilled";
 import * as api from "../services/api";
 import { mapProductToCardItem } from "../lib/productMapper";
+import { getEffectivePrice, formatPrice } from "../lib/swipeCardUtils";
 import { CardItem } from "../types/product";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Haptics from "expo-haptics";
@@ -185,7 +186,15 @@ const RecentPiecesScreen: React.FC<RecentPiecesScreenProps> = ({
   const fetchRecentPieces = async (isBackground: boolean) => {
     try {
       const products = await api.getRecentSwipes(5);
-      const cardItems = products.map((product, index) =>
+      // Deduplicate by product ID (user may swipe same piece multiple times)
+      const seen = new Set<string>();
+      const uniqueProducts = products.filter((p) => {
+        const id = String(p.id);
+        if (seen.has(id)) return false;
+        seen.add(id);
+        return true;
+      });
+      const cardItems = uniqueProducts.map((product, index) =>
         mapProductToCardItem(product, index),
       );
 
@@ -347,11 +356,11 @@ const RecentPiecesScreen: React.FC<RecentPiecesScreenProps> = ({
 
           {/* Text section below - brand name and price */}
           <View style={styles.textSection}>
-            <Text style={styles.brandName} numberOfLines={1}>
+            <Text style={styles.brandName} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.5}>
               {item.brand_name || "бренд не указан"}
             </Text>
             <Text style={styles.price}>
-              {`${item.price.toFixed(2) || "0.00"} ₽`}
+              {`${formatPrice(getEffectivePrice(item))} ₽`}
             </Text>
           </View>
         </View>

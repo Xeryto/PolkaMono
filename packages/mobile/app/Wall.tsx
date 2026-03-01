@@ -53,6 +53,7 @@ import SettingsPage from "./Settings";
 import { Canvas, RoundedRect, Shadow } from "@shopify/react-native-skia";
 import { CardItem } from "./types/product";
 import { mapProductToCardItem } from "./lib/productMapper";
+import { formatPrice } from "./lib/swipeCardUtils";
 import { useTheme } from "./lib/ThemeContext";
 import type { ThemeColors } from "./lib/theme";
 import {
@@ -345,6 +346,9 @@ const Wall = ({ navigation, onLogout, openOrderId }: WallProps) => {
       const stats = await apiWrapper.getUserStats("WallPage");
       if (stats) {
         setUserStats(stats);
+        // Correct local swipe count from API truth
+        setSwipeCount(stats.items_swiped);
+        api.syncSwipeCountFromApi(stats.items_swiped);
       }
       setStatsLastLoaded(now);
       console.log("User stats loaded successfully");
@@ -822,69 +826,102 @@ const Wall = ({ navigation, onLogout, openOrderId }: WallProps) => {
               style={styles.orderItemsList}
               showsVerticalScrollIndicator={false}
             >
-              {orderDetail.items.map((item, index) => (
-                <Animated.View
-                  key={item.id}
-                  entering={FadeInDown.duration(
-                    ANIMATION_DURATIONS.MEDIUM,
-                  ).delay(
-                    ANIMATION_DELAYS.STANDARD + index * ANIMATION_DELAYS.SMALL,
-                  )}
-                  style={styles.cartItem}
-                >
-                  <Pressable
-                    style={styles.itemPressable}
-                    onPress={() => handleItemPress(item)}
+              {orderDetail.items.map((item, index) => {
+                const isReturned = item.status === "returned";
+                return (
+                  <Animated.View
+                    key={item.id}
+                    entering={FadeInDown.duration(
+                      ANIMATION_DURATIONS.MEDIUM,
+                    ).delay(
+                      ANIMATION_DELAYS.STANDARD +
+                        index * ANIMATION_DELAYS.SMALL,
+                    )}
+                    style={styles.cartItem}
                   >
-                    <View style={styles.itemContent}>
-                      <View style={styles.imageContainer}>
-                        <CartItemImage item={item} />
-                      </View>
-                      <View style={styles.itemDetails}>
-                        <Text
-                          style={styles.itemName}
-                          numberOfLines={1}
-                          ellipsizeMode="tail"
+                    <Pressable
+                      style={styles.itemPressable}
+                      onPress={() => handleItemPress(item)}
+                    >
+                      <View style={styles.itemContent}>
+                        <View
+                          style={[
+                            styles.imageContainer,
+                            isReturned && styles.imageContainerInactive,
+                          ]}
                         >
-                          {item.name}
-                        </Text>
-                        <Text
-                          style={styles.itemPrice}
-                        >{`${item.price.toFixed(2)} ₽`}</Text>
-                        <Text style={styles.itemSize}>{item.size}</Text>
-                      </View>
-                    </View>
-                    <View style={styles.rightContainer}>
-                      <View style={styles.circle}>
-                        <Canvas
-                          style={{
-                            width: 41,
-                            height: 41,
-                            backgroundColor: "transparent",
-                          }}
-                        >
-                          <RoundedRect
-                            x={0}
-                            y={0}
-                            width={41}
-                            height={41}
-                            r={20.5}
-                            color={theme.background.primary}
+                          <CartItemImage item={item} />
+                        </View>
+                        <View style={styles.itemDetails}>
+                          <Text
+                            style={[
+                              styles.itemName,
+                              isReturned && styles.itemTextInactive,
+                            ]}
+                            numberOfLines={1}
+                            adjustsFontSizeToFit
+                            minimumFontScale={0.5}
                           >
-                            <Shadow
-                              dx={0}
-                              dy={4}
-                              blur={4}
-                              color="rgba(0,0,0,0.5)"
-                              inner
-                            />
-                          </RoundedRect>
-                        </Canvas>
+                            {item.name}
+                          </Text>
+                          <Text
+                            style={[
+                              styles.itemPrice,
+                              isReturned && styles.itemTextInactive,
+                            ]}
+                          >{`${formatPrice(item.price)} ₽`}</Text>
+                          <Text
+                            style={[
+                              styles.itemSize,
+                              isReturned && styles.itemTextInactive,
+                            ]}
+                          >
+                            {item.size}
+                          </Text>
+                          {isReturned && (
+                            <Text
+                              style={[
+                                styles.itemSize,
+                                { color: theme.text.disabled },
+                              ]}
+                            >
+                              возвращён
+                            </Text>
+                          )}
+                        </View>
                       </View>
-                    </View>
-                  </Pressable>
-                </Animated.View>
-              ))}
+                      <View style={styles.rightContainer}>
+                        <View style={styles.circle}>
+                          <Canvas
+                            style={{
+                              width: 41,
+                              height: 41,
+                              backgroundColor: "transparent",
+                            }}
+                          >
+                            <RoundedRect
+                              x={0}
+                              y={0}
+                              width={41}
+                              height={41}
+                              r={20.5}
+                              color={theme.background.primary}
+                            >
+                              <Shadow
+                                dx={0}
+                                dy={4}
+                                blur={4}
+                                color="rgba(0,0,0,0.5)"
+                                inner
+                              />
+                            </RoundedRect>
+                          </Canvas>
+                        </View>
+                      </View>
+                    </Pressable>
+                  </Animated.View>
+                );
+              })}
             </ScrollView>
 
             <Animated.View
@@ -894,13 +931,14 @@ const Wall = ({ navigation, onLogout, openOrderId }: WallProps) => {
               style={styles.orderTotalContainer}
             >
               <Text style={styles.orderTotalText}>
-                ИТОГО {orderDetail.total_amount.toFixed(2)} ₽
+                ИТОГО {formatPrice(orderDetail.total_amount)} ₽
               </Text>
-              {(orderDetail.shipping_cost ?? 0) > 0 && (
-                <Text style={styles.orderDeliveryText}>
-                  ДОСТАВКА {orderDetail.shipping_cost!.toFixed(2)} ₽
-                </Text>
-              )}
+              <Text style={styles.orderDeliveryText}>
+                ДОСТАВКА{" "}
+                {(orderDetail.shipping_cost ?? 0) > 0
+                  ? `${formatPrice(orderDetail.shipping_cost!)} ₽`
+                  : "БЕСПЛАТНО"}
+              </Text>
             </Animated.View>
             <Animated.View
               entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
@@ -1010,7 +1048,11 @@ const Wall = ({ navigation, onLogout, openOrderId }: WallProps) => {
                       </Text>
                     </TouchableOpacity>
                     <TouchableOpacity
-                      style={styles.returnButton}
+                      disabled={order.status !== "shipped"}
+                      style={[
+                        styles.returnButton,
+                        order.status !== "shipped" && { opacity: 0.35 },
+                      ]}
                       onPress={() => {
                         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                         const orderDate = new Date(
@@ -1020,7 +1062,7 @@ const Wall = ({ navigation, onLogout, openOrderId }: WallProps) => {
                           `Return Request - Order #${order.number}`,
                         );
                         const body = encodeURIComponent(
-                          `Здравствуйте,\n\nХочу инициировать возврат по заказу №${order.number}.\n\nID заказа: ${order.id}\nДата: ${orderDate}\nСумма: ${order.total_amount.toFixed(2)} ₽\n\nС уважением`,
+                          `Здравствуйте,\n\nХочу инициировать возврат по заказу №${order.number}.\n\nID заказа: ${order.id}\nДата: ${orderDate}\nСумма: ${formatPrice(order.total_amount)} ₽\n\nС уважением`,
                         );
                         Linking.openURL(
                           `mailto:support@polkamarket.ru?subject=${subject}&body=${body}`,
@@ -1030,9 +1072,6 @@ const Wall = ({ navigation, onLogout, openOrderId }: WallProps) => {
                       <Text style={styles.returnButtonText}>возврат</Text>
                     </TouchableOpacity>
                   </View>
-                  <Text style={styles.orderSummary}>
-                    итого: {order.total_amount.toFixed(2)} ₽
-                  </Text>
                   {order.tracking_link && (
                     <TouchableOpacity
                       onPress={() => Linking.openURL(order.tracking_link!)}
@@ -1040,6 +1079,9 @@ const Wall = ({ navigation, onLogout, openOrderId }: WallProps) => {
                       <Text style={styles.trackingLink}>отслеживание →</Text>
                     </TouchableOpacity>
                   )}
+                  <Text style={styles.orderSummary}>
+                    итого: {formatPrice(order.total_amount)} ₽
+                  </Text>
                 </Animated.View>
               ))}
             </ScrollView>
@@ -1400,7 +1442,8 @@ const Wall = ({ navigation, onLogout, openOrderId }: WallProps) => {
               <Text
                 style={[styles.text, { fontSize }]}
                 numberOfLines={1}
-                ellipsizeMode="tail"
+                adjustsFontSizeToFit
+                minimumFontScale={0.5}
               >
                 {text}
               </Text>
@@ -1879,7 +1922,7 @@ const createStyles = (theme: ThemeColors) =>
       justifyContent: "space-between",
       backgroundColor: theme.background.secondary,
       borderRadius: 41,
-      marginBottom: 20,
+      marginBottom: 10,
       height: 0.1 * height,
       shadowColor: theme.shadow.default,
       shadowOffset: { width: 0, height: 4 },
@@ -1928,13 +1971,15 @@ const createStyles = (theme: ThemeColors) =>
       fontSize: 20,
       color: theme.text.primary,
       marginLeft: 20,
+      marginTop: 0,
     },
     trackingLink: {
       fontFamily: "IgraSans",
       fontSize: 14,
       color: theme.primary,
       marginLeft: 20,
-      marginTop: 4,
+      marginBottom: 2,
+      marginTop: -5,
     },
     orderDetailsContainer: {
       width: "100%",

@@ -2,14 +2,19 @@ import React, { useState, useMemo } from "react";
 import { View, Text, StyleSheet } from "react-native";
 import { useTheme } from "../lib/ThemeContext";
 import type { ThemeColors } from "../lib/theme";
+import { getEffectivePrice, formatPrice } from "../lib/swipeCardUtils";
 
 interface PriceTagProps {
   price: number;
+  sale_price?: number | null;
+  sale_type?: "percent" | "exact" | null;
 }
 
-const PriceTag = ({ price }: PriceTagProps) => {
+const PriceTag = ({ price, sale_price, sale_type }: PriceTagProps) => {
   const { theme } = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
+
+  const displayPrice = getEffectivePrice({ price, sale_price, sale_type });
 
   const [textWidth, setTextWidth] = useState(0);
   const [textHeight, setTextHeight] = useState(0);
@@ -52,7 +57,7 @@ const PriceTag = ({ price }: PriceTagProps) => {
     >
       {!isMeasured && (
         <Text onLayout={handleTextLayout} style={styles.priceText}>
-          {`${price.toFixed(2)} \u20BD`}
+          {`${formatPrice(displayPrice)} \u20BD`}
         </Text>
       )}
       {isMeasured && (
@@ -71,7 +76,7 @@ const PriceTag = ({ price }: PriceTagProps) => {
             },
           ]}
         >
-          {`${price.toFixed(2)} \u20BD`}
+          {`${formatPrice(displayPrice)} \u20BD`}
         </Text>
       )}
     </View>

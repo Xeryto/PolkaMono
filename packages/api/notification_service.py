@@ -1,6 +1,6 @@
 """Notification creation and delivery service."""
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 import httpx
@@ -28,7 +28,7 @@ def create_notification(
         message=message,
         order_id=str(order_id) if order_id else None,
         is_read=False,
-        expires_at=datetime.utcnow() + timedelta(days=NOTIFICATION_TTL_DAYS),
+        expires_at=datetime.now(timezone.utc) + timedelta(days=NOTIFICATION_TTL_DAYS),
     )
     db.add(notif)
     db.commit()

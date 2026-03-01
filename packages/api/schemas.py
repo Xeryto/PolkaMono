@@ -7,6 +7,30 @@ from models import Gender  # Import enums
 from pydantic import BaseModel, EmailStr, Field, field_validator, model_validator, validator
 
 
+COMMON_PASSWORDS = frozenset({
+    "password", "12345678", "123456789", "1234567890", "qwerty12",
+    "iloveyou", "princess", "sunshine", "football", "charlie",
+    "abc12345", "password1", "qwerty123", "letmein12", "welcome1",
+    "monkey12", "dragon12", "master12", "trustno1", "baseball1",
+    "shadow12", "michael1", "jennifer", "abcdefgh", "starwars1",
+    "whatever", "computer", "superman", "asdfghjk", "passw0rd",
+})
+
+
+def _validate_password(v: str) -> str:
+    if len(v) < settings.MIN_PASSWORD_LENGTH:
+        raise ValueError(
+            f"Password must be at least {settings.MIN_PASSWORD_LENGTH} characters"
+        )
+    if " " in v:
+        raise ValueError("Password cannot contain spaces")
+    if not any(c.isalpha() for c in v) or not any(c.isdigit() for c in v):
+        raise ValueError("Password must contain both letters and numbers")
+    if v.lower() in COMMON_PASSWORDS:
+        raise ValueError("This password is too common, please choose a stronger one")
+    return v
+
+
 class Amount(BaseModel):
     value: float
     currency: str
@@ -77,6 +101,7 @@ class OrderItemResponse(BaseModel):
     images: Optional[List[str]] = None
     return_policy: Optional[str] = None  # Brand's return policy
     product_id: Optional[str] = None  # Original product ID for swipe tracking
+    status: str = "shipped"  # shipped | returned
 
     class Config:
         from_attributes = True
@@ -107,6 +132,10 @@ class OrderSummaryResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class AdminOrderSummaryResponse(OrderSummaryResponse):
+    brand_name: str
 
 
 class OrderResponse(BaseModel):
@@ -179,15 +208,7 @@ class ResetPasswordRequest(BaseModel):
 
     @validator("new_password")
     def validate_new_password(cls, v):
-        if len(v) < settings.MIN_PASSWORD_LENGTH:
-            raise ValueError(
-                f"Password must be at least {settings.MIN_PASSWORD_LENGTH} characters"
-            )
-        if " " in v:
-            raise ValueError("Password cannot contain spaces")
-        if not any(c.isalpha() for c in v) or not any(c.isdigit() for c in v):
-            raise ValueError("Password must contain both letters and numbers")
-        return v
+        return _validate_password(v)
 
 
 class ResetPasswordWithCodeRequest(BaseModel):
@@ -197,15 +218,7 @@ class ResetPasswordWithCodeRequest(BaseModel):
 
     @validator("new_password")
     def validate_new_password(cls, v):
-        if len(v) < settings.MIN_PASSWORD_LENGTH:
-            raise ValueError(
-                f"Password must be at least {settings.MIN_PASSWORD_LENGTH} characters"
-            )
-        if " " in v:
-            raise ValueError("Password cannot contain spaces")
-        if not any(c.isalpha() for c in v) or not any(c.isdigit() for c in v):
-            raise ValueError("Password must contain both letters and numbers")
-        return v
+        return _validate_password(v)
 
 
 class ValidatePasswordResetCodeRequest(BaseModel):
@@ -658,15 +671,7 @@ class UserCreate(BaseModel):
 
     @validator("password")
     def validate_password(cls, v):
-        if len(v) < settings.MIN_PASSWORD_LENGTH:
-            raise ValueError(
-                f"Password must be at least {settings.MIN_PASSWORD_LENGTH} characters"
-            )
-        if " " in v:
-            raise ValueError("Password cannot contain spaces")
-        if not any(c.isalpha() for c in v) or not any(c.isdigit() for c in v):
-            raise ValueError("Password must contain both letters and numbers")
-        return v
+        return _validate_password(v)
 
 
 class PresignedUploadRequest(BaseModel):
@@ -692,15 +697,7 @@ class BrandChangePassword(BaseModel):
 
     @validator("new_password")
     def validate_new_password(cls, v):
-        if len(v) < settings.MIN_PASSWORD_LENGTH:
-            raise ValueError(
-                f"Password must be at least {settings.MIN_PASSWORD_LENGTH} characters"
-            )
-        if " " in v:
-            raise ValueError("Password cannot contain spaces")
-        if not any(c.isalpha() for c in v) or not any(c.isdigit() for c in v):
-            raise ValueError("Password must contain both letters and numbers")
-        return v
+        return _validate_password(v)
 
 
 class Brand2FAConfirm(BaseModel):

@@ -211,7 +211,7 @@ const SearchResultItem = memo(
               {item.brand_name}
             </Text>
           </View>
-          <PriceTag price={item.price} />
+          <PriceTag price={item.price} sale_price={item.sale_price} sale_type={item.sale_type} />
         </Pressable>
       </Animated.View>
     );

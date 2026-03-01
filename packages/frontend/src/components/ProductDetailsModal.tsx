@@ -31,14 +31,16 @@ import { useAuth } from "@/context/AuthContext"; // Import useAuth
 import { formatCurrency } from "@/lib/currency";
 
 const DELIVERY_TIME_OPTIONS = [
-  { label: '1 день', value: 1 },
-  { label: '2 дня', value: 2 },
-  { label: '3 дня', value: 3 },
-  { label: '5 дней', value: 5 },
-  { label: '1 неделя', value: 7 },
-  { label: '2 недели', value: 14 },
-  { label: '3 недели', value: 21 },
-  { label: '1 месяц', value: 30 },
+  { label: "1 день", value: 1 },
+  { label: "2 дня", value: 2 },
+  { label: "3 дня", value: 3 },
+  { label: "5 дней", value: 5 },
+  { label: "1 неделя", value: 7 },
+  { label: "2 недели", value: 14 },
+  { label: "3 недели", value: 21 },
+  { label: "1 месяц", value: 30 },
+  { label: "2 месяца", value: 60 },
+  { label: "3 месяца", value: 90 },
 ];
 
 interface ProductDetailsModalProps {
@@ -58,47 +60,62 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({
 
   const [name, setName] = useState(product.name);
   const [description, setDescription] = useState(product.description || "");
-  const [price, setPrice] = useState(product.price || 0);
-  const [selectedMaterials, setSelectedMaterials] = useState<string[]>(
-    product.material ? product.material.split(", ").filter((m) => m) : []
+  const [priceText, setPriceText] = useState(
+    product.price ? String(product.price).replace(".", ",") : "",
   );
-  const [colorVariations, setColorVariations] = useState<api.ProductColorVariantSchema[]>(
-    product.color_variants?.length ? product.color_variants : [{ color_name: "", color_hex: "#808080", images: [], variants: [] }]
+  const price = parseFloat(priceText.replace(",", ".")) || 0;
+  const [selectedMaterials, setSelectedMaterials] = useState<string[]>(
+    product.material ? product.material.split(", ").filter((m) => m) : [],
+  );
+  const [colorVariations, setColorVariations] = useState<
+    api.ProductColorVariantSchema[]
+  >(
+    product.color_variants?.length
+      ? product.color_variants
+      : [{ color_name: "", color_hex: "#808080", images: [], variants: [] }],
   );
   const [colorVariationFiles, setColorVariationFiles] = useState<File[][]>(
-    product.color_variants?.map(() => []) || [[]]
+    product.color_variants?.map(() => []) || [[]],
   );
-  const [generalImages, setGeneralImages] = useState<string[]>(product.general_images || []);
+  const [generalImages, setGeneralImages] = useState<string[]>(
+    product.general_images || [],
+  );
   const [generalImageFiles, setGeneralImageFiles] = useState<File[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
-  const [selectedStyles, setSelectedStyles] = useState<string[]>(product.styles || []);
+  const [selectedStyles, setSelectedStyles] = useState<string[]>(
+    product.styles || [],
+  );
   const [styles, setStyles] = useState<api.StyleResponse[]>([]);
   const [categories, setCategories] = useState<api.CategoryResponse[]>([]);
-  const [selectedCategory, setSelectedCategory] = useState(product.category_id || "");
-  const [saleType, setSaleType] = useState<'percent' | 'exact' | 'none'>(
-    (product.sale_type as 'percent' | 'exact') || 'none'
+  const [selectedCategory, setSelectedCategory] = useState(
+    product.category_id || "",
+  );
+  const [saleType, setSaleType] = useState<"percent" | "exact" | "none">(
+    (product.sale_type as "percent" | "exact") || "none",
   );
   const [salePrice, setSalePrice] = useState<string>(
-    product.sale_price != null ? String(product.sale_price) : ''
+    product.sale_price != null ? String(product.sale_price) : "",
   );
   const [sizingTableImage, setSizingTableImage] = useState<string | null>(
-    product.sizing_table_image ?? null
+    product.sizing_table_image ?? null,
   );
   const [sizingTableFile, setSizingTableFile] = useState<File | null>(null);
-  const [deliveryOverride, setDeliveryOverride] = useState(
-    product.delivery_time_min != null || product.delivery_time_max != null
-  );
+  const [deliveryOverride, setDeliveryOverride] = useState(false);
   const [deliveryTimeMin, setDeliveryTimeMin] = useState<string>(
-    product.delivery_time_min != null ? String(product.delivery_time_min) : ''
+    product.delivery_time_min != null ? String(product.delivery_time_min) : "",
   );
   const [deliveryTimeMax, setDeliveryTimeMax] = useState<string>(
-    product.delivery_time_max != null ? String(product.delivery_time_max) : ''
+    product.delivery_time_max != null ? String(product.delivery_time_max) : "",
   );
-  const [countryOfManufacture, setCountryOfManufacture] = useState(product.country_of_manufacture || "");
-  const [activeTab, setActiveTab] = useState<string>('info');
+  const [countryOfManufacture, setCountryOfManufacture] = useState(
+    product.country_of_manufacture || "",
+  );
+  const [activeTab, setActiveTab] = useState<string>("info");
 
-  const hasDuplicateSizes = (variants: { size: string; stock_quantity: number }[]) => {
+  const hasDuplicateSizes = (
+    variants: { size: string; stock_quantity: number }[],
+  ) => {
     const seen = new Set<string>();
     for (const v of variants) {
       if (!v.size.trim()) continue;
@@ -111,25 +128,37 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({
   useEffect(() => {
     setName(product.name);
     setDescription(product.description || "");
-    setPrice(product.price || 0);
-    setSelectedMaterials(product.material ? product.material.split(", ").filter((m) => m) : []);
+    setPriceText(product.price ? String(product.price).replace(".", ",") : "");
+    setSelectedMaterials(
+      product.material ? product.material.split(", ").filter((m) => m) : [],
+    );
     setSelectedStyles(product.styles || []);
     setSelectedCategory(product.category_id || "");
     setColorVariations(
-      product.color_variants?.length ? product.color_variants : [{ color_name: "", color_hex: "#808080", images: [], variants: [] }]
+      product.color_variants?.length
+        ? product.color_variants
+        : [{ color_name: "", color_hex: "#808080", images: [], variants: [] }],
     );
     setColorVariationFiles(product.color_variants?.map(() => []) || [[]]);
     setGeneralImages(product.general_images || []);
     setGeneralImageFiles([]);
-    setSaleType((product.sale_type as 'percent' | 'exact') || 'none');
-    setSalePrice(product.sale_price != null ? String(product.sale_price) : '');
+    setSaleType((product.sale_type as "percent" | "exact") || "none");
+    setSalePrice(product.sale_price != null ? String(product.sale_price) : "");
     setSizingTableImage(product.sizing_table_image ?? null);
     setSizingTableFile(null);
-    setDeliveryOverride(product.delivery_time_min != null || product.delivery_time_max != null);
-    setDeliveryTimeMin(product.delivery_time_min != null ? String(product.delivery_time_min) : '');
-    setDeliveryTimeMax(product.delivery_time_max != null ? String(product.delivery_time_max) : '');
+    setDeliveryOverride(false);
+    setDeliveryTimeMin(
+      product.delivery_time_min != null
+        ? String(product.delivery_time_min)
+        : "",
+    );
+    setDeliveryTimeMax(
+      product.delivery_time_max != null
+        ? String(product.delivery_time_max)
+        : "",
+    );
     setCountryOfManufacture(product.country_of_manufacture || "");
-    setActiveTab('info');
+    setActiveTab("info");
   }, [product]);
 
   useEffect(() => {
@@ -162,19 +191,35 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({
       return;
     }
     if (!name.trim()) {
-      toast({ title: "Ошибка", description: "Заполните название товара.", variant: "destructive" });
+      toast({
+        title: "Ошибка",
+        description: "Заполните название товара.",
+        variant: "destructive",
+      });
       return;
     }
-    if (typeof price !== "number" || price < 0) {
-      toast({ title: "Ошибка", description: "Цена не может быть отрицательной.", variant: "destructive" });
+    if (!isFinite(price) || price <= 0) {
+      toast({
+        title: "Ошибка",
+        description: "Цена должна быть больше нуля.",
+        variant: "destructive",
+      });
       return;
     }
     if (!description.trim()) {
-      toast({ title: "Ошибка", description: "Заполните описание.", variant: "destructive" });
+      toast({
+        title: "Ошибка",
+        description: "Заполните описание.",
+        variant: "destructive",
+      });
       return;
     }
     if (!selectedCategory) {
-      toast({ title: "Ошибка", description: "Выберите категорию.", variant: "destructive" });
+      toast({
+        title: "Ошибка",
+        description: "Выберите категорию.",
+        variant: "destructive",
+      });
       return;
     }
     for (const cv of colorVariations) {
@@ -194,9 +239,21 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({
         });
         return;
       }
+      const filledSizes = (cv.variants || []).filter((v) => v.size.trim());
+      if (filledSizes.length === 0) {
+        toast({
+          title: "Ошибка",
+          description: `Добавьте хотя бы один размер для цвета "${cv.color_name}".`,
+          variant: "destructive",
+        });
+        return;
+      }
       for (const v of cv.variants || []) {
         const q = v.stock_quantity;
-        if (v.size?.trim() && (typeof q !== "number" || q < 0 || !Number.isInteger(q))) {
+        if (
+          v.size?.trim() &&
+          (typeof q !== "number" || q < 0 || !Number.isInteger(q))
+        ) {
           toast({
             title: "Ошибка",
             description: `Количество не может быть отрицательным (цвет "${cv.color_name}").`,
@@ -207,18 +264,88 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({
       }
     }
 
-    const existingGeneralUrls = (generalImages || []).filter((u) => u.startsWith("http"));
+    if (selectedMaterials.length === 0) {
+      toast({
+        title: "Ошибка",
+        description: "Выберите хотя бы один материал.",
+        variant: "destructive",
+      });
+      return;
+    }
+    if (!countryOfManufacture.trim()) {
+      toast({
+        title: "Ошибка",
+        description: "Укажите страну производства.",
+        variant: "destructive",
+      });
+      return;
+    }
+    if (!sizingTableImage && !sizingTableFile) {
+      toast({
+        title: "Ошибка",
+        description: "Загрузите таблицу размеров.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (saleType !== "none" && salePrice !== "") {
+      const salePriceNum = parseFloat(salePrice.replace(",", "."));
+      if (!isFinite(salePriceNum)) {
+        toast({
+          title: "Ошибка",
+          description: "Введите корректное значение скидки.",
+          variant: "destructive",
+        });
+        return;
+      }
+      if (saleType === "percent") {
+        if (salePriceNum < 1 || salePriceNum > 99) {
+          toast({
+            title: "Ошибка",
+            description: "Процент скидки должен быть от 1 до 99.",
+            variant: "destructive",
+          });
+          return;
+        }
+      } else if (saleType === "exact") {
+        if (salePriceNum < 0) {
+          toast({
+            title: "Ошибка",
+            description: "Цена со скидкой не может быть отрицательной.",
+            variant: "destructive",
+          });
+          return;
+        }
+        if (salePriceNum >= price) {
+          toast({
+            title: "Ошибка",
+            description: "Цена со скидкой должна быть меньше обычной цены.",
+            variant: "destructive",
+          });
+          return;
+        }
+      }
+    }
+
+    const existingGeneralUrls = (generalImages || []).filter((u) =>
+      u.startsWith("http"),
+    );
     const newGeneralCount = generalImageFiles?.length ?? 0;
     const totalGeneral = existingGeneralUrls.length + newGeneralCount;
     const totalPerColor = colorVariations.map(
-      (cv, i) => (cv.images || []).filter((u: string) => u.startsWith("http")).length + (colorVariationFiles?.[i]?.length ?? 0)
+      (cv, i) =>
+        (cv.images || []).filter((u: string) => u.startsWith("http")).length +
+        (colorVariationFiles?.[i]?.length ?? 0),
     );
     const hasGeneral = totalGeneral > 0;
-    const hasAtLeastOnePerColor = totalPerColor.length > 0 && totalPerColor.every((n) => n > 0);
+    const hasAtLeastOnePerColor =
+      totalPerColor.length > 0 && totalPerColor.every((n) => n > 0);
     if (!hasGeneral && !hasAtLeastOnePerColor) {
       toast({
         title: "Ошибка",
-        description: "Нужно хотя бы одно общее изображение или хотя бы одно изображение в каждом цвете.",
+        description:
+          "Нужно хотя бы одно общее изображение или хотя бы одно изображение в каждом цвете.",
         variant: "destructive",
       });
       return;
@@ -228,17 +355,14 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({
     try {
       const uploadOne = async (file: File): Promise<string> => {
         const contentType = file.type || "image/jpeg";
-        const { upload_url, public_url } = await api.getProductImagePresignedUrl(
-          contentType,
-          token!,
-          file.name
-        );
+        const { upload_url, public_url } =
+          await api.getProductImagePresignedUrl(contentType, token!, file.name);
         await api.uploadFileToPresignedUrl(file, upload_url, contentType);
         return public_url;
       };
 
       const existingGeneralUrls = (generalImages || []).filter((u) =>
-        u.startsWith("http")
+        u.startsWith("http"),
       );
       const newGeneralUrls =
         generalImageFiles.length > 0
@@ -252,7 +376,7 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({
       const colorVariantsWithUrls = await Promise.all(
         colorVariations.map(async (cv, i) => {
           const existingUrls = (cv.images || []).filter((u) =>
-            u.startsWith("http")
+            u.startsWith("http"),
           );
           const newFiles = colorVariationFiles[i] || [];
           const newUrls =
@@ -264,13 +388,13 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({
             color_hex: cv.color_hex,
             images: [...existingUrls, ...newUrls],
             variants: (cv.variants || []).filter(
-              (v) => v.size.trim() && v.stock_quantity >= 0
+              (v) => v.size.trim() && v.stock_quantity >= 0,
             ),
           };
-        })
+        }),
       );
 
-      let finalSizingTableImage = sizingTableImage?.startsWith('http')
+      let finalSizingTableImage = sizingTableImage?.startsWith("http")
         ? sizingTableImage
         : null;
       if (sizingTableFile) {
@@ -288,14 +412,23 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({
           category_id: selectedCategory,
           color_variants: colorVariantsWithUrls,
           general_images: finalGeneralImages,
-          sale_price: saleType !== 'none' && salePrice !== '' ? parseFloat(salePrice) : null,
-          sale_type: saleType !== 'none' ? saleType : null,
+          sale_price:
+            saleType !== "none" && salePrice !== ""
+              ? parseFloat(salePrice.replace(",", "."))
+              : null,
+          sale_type: saleType !== "none" ? saleType : null,
           sizing_table_image: finalSizingTableImage,
-          delivery_time_min: deliveryOverride && deliveryTimeMin !== '' ? parseInt(deliveryTimeMin) : null,
-          delivery_time_max: deliveryOverride && deliveryTimeMax !== '' ? parseInt(deliveryTimeMax) : null,
+          delivery_time_min:
+            deliveryOverride && deliveryTimeMin !== ""
+              ? parseInt(deliveryTimeMin)
+              : null,
+          delivery_time_max:
+            deliveryOverride && deliveryTimeMax !== ""
+              ? parseInt(deliveryTimeMax)
+              : null,
           country_of_manufacture: countryOfManufacture || null,
         },
-        token!
+        token!,
       );
       toast({
         title: "Успех",
@@ -314,7 +447,10 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({
     }
   };
 
-  const updateColorVariation = (colorIndex: number, upd: Partial<api.ProductColorVariantSchema>) => {
+  const updateColorVariation = (
+    colorIndex: number,
+    upd: Partial<api.ProductColorVariantSchema>,
+  ) => {
     setColorVariations((prev) => {
       const next = [...prev];
       next[colorIndex] = { ...next[colorIndex], ...upd };
@@ -322,20 +458,45 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({
     });
   };
 
-  const handleVariantChange = (colorIndex: number, variantIndex: number, field: string, value: string | number) => {
+  const handleVariantChange = (
+    colorIndex: number,
+    variantIndex: number,
+    field: string,
+    value: string | number,
+  ) => {
     setColorVariations((prev) => {
       const next = [...prev];
       const vars = [...(next[colorIndex].variants || [])];
-      (vars[variantIndex] as unknown as Record<string, string | number>)[field] = value;
+      (vars[variantIndex] as unknown as Record<string, string | number>)[
+        field
+      ] = value;
       next[colorIndex] = { ...next[colorIndex], variants: vars };
       return next;
     });
   };
 
+  const getAvailableSizes = (variants: { size: string; stock_quantity: number }[]) => {
+    const selected = variants.map((v) => v.size.trim()).filter(Boolean);
+    const hasOneSize = selected.includes("One Size");
+    const hasOther = selected.some((s) => s !== "One Size");
+    return sizes.filter((s) => {
+      if (hasOneSize && s.name !== "One Size") return false;
+      if (hasOther && s.name === "One Size") return false;
+      return true;
+    });
+  };
+
+  const canAddVariant = (variants: { size: string; stock_quantity: number }[]) => {
+    return !variants.some((v) => v.size === "One Size");
+  };
+
   const handleAddVariant = (colorIndex: number) => {
     setColorVariations((prev) => {
       const next = [...prev];
-      const vars = [...(next[colorIndex].variants || []), { size: "", stock_quantity: 0 }];
+      const vars = [
+        ...(next[colorIndex].variants || []),
+        { size: "", stock_quantity: 0 },
+      ];
       next[colorIndex] = { ...next[colorIndex], variants: vars };
       return next;
     });
@@ -346,7 +507,9 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({
       const next = [...prev];
       next[colorIndex] = {
         ...next[colorIndex],
-        variants: (next[colorIndex].variants || []).filter((_, i) => i !== variantIndex),
+        variants: (next[colorIndex].variants || []).filter(
+          (_, i) => i !== variantIndex,
+        ),
       };
       return next;
     });
@@ -354,7 +517,11 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({
 
   const handleColorSelect = (colorIndex: number, colorName: string) => {
     const c = colors.find((x) => x.name === colorName);
-    if (c) updateColorVariation(colorIndex, { color_name: c.name, color_hex: c.hex });
+    if (c)
+      updateColorVariation(colorIndex, {
+        color_name: c.name,
+        color_hex: c.hex,
+      });
   };
 
   const handleAddColorVariation = () => {
@@ -399,13 +566,18 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({
     });
   };
 
-  const removeColorVariationImage = (colorIndex: number, imageIndex: number) => {
+  const removeColorVariationImage = (
+    colorIndex: number,
+    imageIndex: number,
+  ) => {
     const prev = colorVariations[colorIndex];
     const newImages = (prev.images || []).filter((_, i) => i !== imageIndex);
     updateColorVariation(colorIndex, { images: newImages });
     setColorVariationFiles((prev) => {
       const next = [...prev];
-      next[colorIndex] = (next[colorIndex] || []).filter((_, i) => i !== imageIndex);
+      next[colorIndex] = (next[colorIndex] || []).filter(
+        (_, i) => i !== imageIndex,
+      );
       return next;
     });
   };
@@ -447,341 +619,437 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({
               </TabsList>
 
               <TabsContent value="info" className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              <div className="space-y-4">
-                <div>
-                  <Label htmlFor="article_number">Артикул</Label>
-                  <Input
-                    id="article_number"
-                    placeholder="Автоматически присвоен при создании"
-                    className="mt-1 bg-muted cursor-not-allowed"
-                    value={product.article_number || "Не присвоен"}
-                    disabled
-                    readOnly
-                  />
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Артикул автоматически генерируется системой и не может быть изменен
-                  </p>
-                </div>
-                <div>
-                  <Label htmlFor="name">Название товара</Label>
-                  <Input
-                    id="name"
-                    placeholder="напр., Элитное худи"
-                    className="mt-1"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="price">Цена</Label>
-                  <Input
-                    id="price"
-                    type="number"
-                    placeholder="напр., 150.00"
-                    className="mt-1"
-                    value={price}
-                    onChange={(e) => setPrice(parseFloat(e.target.value))}
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="description">Описание</Label>
-                  <Textarea
-                    id="description"
-                    placeholder="Краткое описание товара"
-                    className="mt-1"
-                    value={description}
-                    onChange={(e) => setDescription(e.target.value)}
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="materials">Материал</Label>
-                  <MultiSelect
-                    options={materials.map((materialOption) => ({
-                      label: materialOption.russian,
-                      value: materialOption.name,
-                    }))}
-                    value={selectedMaterials}
-                    onValueChange={setSelectedMaterials}
-                    placeholder="Выберите материалы"
-                    className="mt-1"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="country_of_manufacture">Страна производства</Label>
-                  <Input
-                    id="country_of_manufacture"
-                    placeholder="напр., Италия"
-                    className="mt-1"
-                    value={countryOfManufacture}
-                    onChange={(e) => setCountryOfManufacture(e.target.value)}
-                  />
-                </div>
-              </div>
-              <div className="space-y-4">
-                <div>
-                  <Label htmlFor="category">Категория *</Label>
-                  <Select
-                    onValueChange={setSelectedCategory}
-                    value={selectedCategory}
-                  >
-                    <SelectTrigger className="w-full mt-1 h-10 rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50">
-                      <SelectValue
-                        placeholder="Выберите категорию"
-                        className="text-muted-foreground"
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                  <div className="space-y-4">
+                    <div>
+                      <Label htmlFor="article_number">Артикул</Label>
+                      <Input
+                        id="article_number"
+                        placeholder="Автоматически присвоен при создании"
+                        className="mt-1 bg-muted cursor-not-allowed"
+                        value={product.article_number || "Не присвоен"}
+                        disabled
+                        readOnly
                       />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {categories.map((category) => (
-                        <SelectItem key={category.id} value={category.id}>
-                          {category.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label>Общие изображения (до 5)</Label>
-                  <p className="text-xs text-muted-foreground">Для всех цветов</p>
-                  <FileInput
-                    multiple
-                    accept="image/*"
-                    onFilesChange={(files) => handleGeneralImages(files)}
-                    selectedFileNames={generalImageFiles.map((f) => f.name)}
-                    className="mt-1"
-                  />
-                  <div className="mt-2 flex flex-wrap gap-2">
-                    {generalImages.map((url, i) => (
-                      <div key={i} className="relative">
-                        <img src={url} alt="" className="w-20 h-20 object-cover rounded-md" />
-                        <button
-                          type="button"
-                          className="absolute -top-2 -right-2 h-4 w-4 text-red-500"
-                          onClick={() => removeGeneralImage(i)}
-                        >
-                          <XCircle className="h-4 w-4" />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-                {/* Sizing table image */}
-                <div className="space-y-2">
-                  <Label>Таблица размеров</Label>
-                  <p className="text-xs text-muted-foreground">Изображение с таблицей размеров для покупателей</p>
-                  <FileInput
-                    accept="image/*"
-                    onFilesChange={(files) => {
-                      if (files[0]) {
-                        setSizingTableFile(files[0]);
-                        setSizingTableImage(URL.createObjectURL(files[0]));
-                      }
-                    }}
-                    selectedFileNames={sizingTableFile ? [sizingTableFile.name] : []}
-                    className="mt-1"
-                  />
-                  {sizingTableImage && (
-                    <div className="relative mt-2 inline-block">
-                      <img
-                        src={sizingTableImage}
-                        alt="Таблица размеров"
-                        className="h-24 object-contain rounded-md border border-border/30"
-                      />
-                      <button
-                        type="button"
-                        className="absolute -top-2 -right-2 h-4 w-4 text-red-500"
-                        onClick={() => {
-                          setSizingTableImage(null);
-                          setSizingTableFile(null);
-                        }}
-                      >
-                        <XCircle className="h-4 w-4" />
-                      </button>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Артикул автоматически генерируется системой и не может
+                        быть изменен
+                      </p>
                     </div>
-                  )}
-                </div>
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <Label>Варианты по цветам</Label>
-                    <Button type="button" variant="outline" size="sm" onClick={handleAddColorVariation}>
-                      <PlusCircle className="h-4 w-4 mr-1" /> Добавить цвет
-                    </Button>
+                    <div>
+                      <Label htmlFor="name">Название товара</Label>
+                      <Input
+                        id="name"
+                        placeholder="напр., Элитное худи"
+                        className="mt-1"
+                        value={name}
+                        onChange={(e) => setName(e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="price">Цена</Label>
+                      <Input
+                        id="price"
+                        inputMode="decimal"
+                        placeholder="напр., 150,00"
+                        className="mt-1"
+                        value={priceText}
+                        onChange={(e) => setPriceText(e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="description">Описание</Label>
+                      <Textarea
+                        id="description"
+                        placeholder="Краткое описание товара"
+                        className="mt-1"
+                        value={description}
+                        onChange={(e) => setDescription(e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="materials">Материал</Label>
+                      <MultiSelect
+                        options={materials.map((materialOption) => ({
+                          label: materialOption.russian,
+                          value: materialOption.name,
+                        }))}
+                        value={selectedMaterials}
+                        onValueChange={setSelectedMaterials}
+                        placeholder="Выберите материалы"
+                        className="mt-1"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="country_of_manufacture">
+                        Страна производства
+                      </Label>
+                      <Input
+                        id="country_of_manufacture"
+                        placeholder="напр., Италия"
+                        className="mt-1"
+                        value={countryOfManufacture}
+                        onChange={(e) =>
+                          setCountryOfManufacture(e.target.value)
+                        }
+                      />
+                    </div>
                   </div>
-                  {colorVariations.map((cv, colorIndex) => (
-                    <Card key={colorIndex} className="p-3 border border-border/50">
-                      <div className="flex items-center justify-between gap-2 mb-2">
-                        <div className="flex items-center gap-2">
-                          <Select
-                            value={cv.color_name || ""}
-                            onValueChange={(v) => handleColorSelect(colorIndex, v)}
-                          >
-                            <SelectTrigger className="w-[140px] h-8">
-                              <SelectValue placeholder="Цвет" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {colors.map((c) => (
-                                <SelectItem key={c.name} value={c.name} textValue={c.russian}>
-                                  <div className="flex items-center gap-2">
-                                    <div
-                                      className="w-4 h-4 rounded-full border"
-                                      style={{ background: c.hex || "#808080" }}
-                                    />
-                                    {c.russian}
-                                  </div>
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8"
-                          onClick={() => handleRemoveColorVariation(colorIndex)}
-                          disabled={colorVariations.length <= 1}
-                        >
-                          <XCircle className="h-4 w-4 text-muted-foreground" />
-                        </Button>
-                      </div>
-                      <div className="space-y-2">
-                        <Label className="text-xs">Изображения (до 5)</Label>
-                        <FileInput
-                          multiple
-                          accept="image/*"
-                          onFilesChange={(files) => handleColorVariationImages(colorIndex, files)}
-                          selectedFileNames={(colorVariationFiles[colorIndex] || []).map((f) => f.name)}
-                          className="mt-1"
-                        />
-                        <div className="mt-2 flex flex-wrap gap-2">
-                          {(cv.images || []).map((url, imgIdx) => (
-                            <div key={imgIdx} className="relative">
-                              <img src={url} alt="" className="w-20 h-20 object-cover rounded-md" />
-                              <button
-                                type="button"
-                                className="absolute -top-2 -right-2 h-4 w-4 text-red-500"
-                                onClick={() => removeColorVariationImage(colorIndex, imgIdx)}
-                              >
-                                <XCircle className="h-4 w-4" />
-                              </button>
-                            </div>
+                  <div className="space-y-4">
+                    <div>
+                      <Label htmlFor="category">Категория</Label>
+                      <Select
+                        onValueChange={setSelectedCategory}
+                        value={selectedCategory}
+                      >
+                        <SelectTrigger className="w-full mt-1 h-10 rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50">
+                          <SelectValue
+                            placeholder="Выберите категорию"
+                            className="text-muted-foreground"
+                          />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {categories.map((category) => (
+                            <SelectItem key={category.id} value={category.id}>
+                              {category.name}
+                            </SelectItem>
                           ))}
-                        </div>
-                      </div>
-                      <div>
-                        <Label className="text-xs">Размеры</Label>
-                        {(cv.variants || []).map((v, vIdx) => (
-                          <div key={vIdx} className="flex gap-2 mt-1 items-center">
-                            <Select
-                              value={v.size}
-                              onValueChange={(val) => handleVariantChange(colorIndex, vIdx, "size", val)}
-                            >
-                              <SelectTrigger className="flex-1 h-9">
-                                <SelectValue placeholder="Размер" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {sizes.map((s) => (
-                                  <SelectItem key={s.name} value={s.name}>{s.russian}</SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                            <Input
-                              type="number"
-                              min={0}
-                              value={v.stock_quantity}
-                              className="w-20"
-                              onChange={(e) =>
-                                handleVariantChange(colorIndex, vIdx, "stock_quantity", parseInt(e.target.value) || 0)
-                              }
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Общие изображения (до 5)</Label>
+                      <p className="text-xs text-muted-foreground">
+                        Для всех цветов
+                      </p>
+                      <FileInput
+                        multiple
+                        accept="image/*"
+                        onFilesChange={(files) => handleGeneralImages(files)}
+                        selectedFileNames={generalImageFiles.map((f) => f.name)}
+                        className="mt-1"
+                      />
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        {generalImages.map((url, i) => (
+                          <div key={i} className="relative">
+                            <img
+                              src={url}
+                              alt=""
+                              className="w-20 h-20 object-cover rounded-md"
                             />
-                            <Button
+                            <button
                               type="button"
-                              variant="ghost"
-                              size="icon"
-                              className="h-9 w-9"
-                              onClick={() => handleRemoveVariant(colorIndex, vIdx)}
+                              className="absolute -top-2 -right-2 h-4 w-4 text-red-500"
+                              onClick={() => removeGeneralImage(i)}
                             >
                               <XCircle className="h-4 w-4" />
-                            </Button>
+                            </button>
                           </div>
                         ))}
+                      </div>
+                    </div>
+                    {/* Sizing table image */}
+                    <div className="space-y-2">
+                      <Label>Таблица размеров</Label>
+                      <p className="text-xs text-muted-foreground">
+                        Изображение с таблицей размеров для покупателей
+                      </p>
+                      <FileInput
+                        accept="image/*"
+                        onFilesChange={(files) => {
+                          if (files[0]) {
+                            setSizingTableFile(files[0]);
+                            setSizingTableImage(URL.createObjectURL(files[0]));
+                          }
+                        }}
+                        selectedFileNames={
+                          sizingTableFile ? [sizingTableFile.name] : []
+                        }
+                        className="mt-1"
+                      />
+                      {sizingTableImage && (
+                        <div className="relative mt-2 inline-block">
+                          <img
+                            src={sizingTableImage}
+                            alt="Таблица размеров"
+                            className="h-24 object-contain rounded-md border border-border/30"
+                          />
+                          <button
+                            type="button"
+                            className="absolute -top-2 -right-2 h-4 w-4 text-red-500"
+                            onClick={() => {
+                              setSizingTableImage(null);
+                              setSizingTableFile(null);
+                            }}
+                          >
+                            <XCircle className="h-4 w-4" />
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <Label>Варианты по цветам</Label>
                         <Button
                           type="button"
                           variant="outline"
                           size="sm"
-                          className="mt-2"
-                          onClick={() => handleAddVariant(colorIndex)}
+                          onClick={handleAddColorVariation}
                         >
-                          <PlusCircle className="h-4 w-4 mr-1" /> Размер
+                          <PlusCircle className="h-4 w-4 mr-1" /> Добавить цвет
                         </Button>
                       </div>
-                    </Card>
-                  ))}
+                      {colorVariations.map((cv, colorIndex) => (
+                        <Card
+                          key={colorIndex}
+                          className="p-3 border border-border/50"
+                        >
+                          <div className="flex items-center justify-between gap-2 mb-2">
+                            <div className="flex items-center gap-2">
+                              <Select
+                                value={cv.color_name || ""}
+                                onValueChange={(v) =>
+                                  handleColorSelect(colorIndex, v)
+                                }
+                              >
+                                <SelectTrigger className="w-[140px] h-8">
+                                  <SelectValue placeholder="Цвет" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {colors.map((c) => (
+                                    <SelectItem
+                                      key={c.name}
+                                      value={c.name}
+                                      textValue={c.russian}
+                                    >
+                                      <div className="flex items-center gap-2">
+                                        <div
+                                          className="w-4 h-4 min-w-4 min-h-4 shrink-0 rounded-full border"
+                                          style={{
+                                            background: c.hex || "#808080",
+                                          }}
+                                        />
+                                        {c.russian}
+                                      </div>
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8"
+                              onClick={() =>
+                                handleRemoveColorVariation(colorIndex)
+                              }
+                              disabled={colorVariations.length <= 1}
+                            >
+                              <XCircle className="h-4 w-4 text-muted-foreground" />
+                            </Button>
+                          </div>
+                          <div className="space-y-2">
+                            <Label className="text-xs">
+                              Изображения (до 5)
+                            </Label>
+                            <FileInput
+                              multiple
+                              accept="image/*"
+                              onFilesChange={(files) =>
+                                handleColorVariationImages(colorIndex, files)
+                              }
+                              selectedFileNames={(
+                                colorVariationFiles[colorIndex] || []
+                              ).map((f) => f.name)}
+                              className="mt-1"
+                            />
+                            <div className="mt-2 flex flex-wrap gap-2">
+                              {(cv.images || []).map((url, imgIdx) => (
+                                <div key={imgIdx} className="relative">
+                                  <img
+                                    src={url}
+                                    alt=""
+                                    className="w-20 h-20 object-cover rounded-md"
+                                  />
+                                  <button
+                                    type="button"
+                                    className="absolute -top-2 -right-2 h-4 w-4 text-red-500"
+                                    onClick={() =>
+                                      removeColorVariationImage(
+                                        colorIndex,
+                                        imgIdx,
+                                      )
+                                    }
+                                  >
+                                    <XCircle className="h-4 w-4" />
+                                  </button>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                          <div>
+                            <Label className="text-xs">
+                              Размеры и инвентарь
+                            </Label>
+                            {(cv.variants || []).map((v, vIdx) => (
+                              <div
+                                key={vIdx}
+                                className="flex gap-2 mt-1 items-center"
+                              >
+                                <Select
+                                  value={v.size}
+                                  onValueChange={(val) =>
+                                    handleVariantChange(
+                                      colorIndex,
+                                      vIdx,
+                                      "size",
+                                      val,
+                                    )
+                                  }
+                                >
+                                  <SelectTrigger className="flex-1 h-9">
+                                    <SelectValue placeholder="Размер" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {getAvailableSizes(cv.variants || []).map((s) => (
+                                      <SelectItem key={s.name} value={s.name}>
+                                        {s.russian}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                                <Input
+                                  type="number"
+                                  min={0}
+                                  value={v.stock_quantity}
+                                  className="w-20"
+                                  onChange={(e) =>
+                                    handleVariantChange(
+                                      colorIndex,
+                                      vIdx,
+                                      "stock_quantity",
+                                      parseInt(e.target.value) || 0,
+                                    )
+                                  }
+                                />
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-9 w-9"
+                                  onClick={() =>
+                                    handleRemoveVariant(colorIndex, vIdx)
+                                  }
+                                >
+                                  <XCircle className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            ))}
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              className="mt-2"
+                              onClick={() => handleAddVariant(colorIndex)}
+                              disabled={!canAddVariant(cv.variants || [])}
+                            >
+                              <PlusCircle className="h-4 w-4 mr-1" /> Размер
+                            </Button>
+                          </div>
+                        </Card>
+                      ))}
+                    </div>
+                  </div>
                 </div>
-              </div>
-            </div>
-            {/* Delivery time override */}
-            <div className="border border-border/30 rounded-lg p-4 space-y-3">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="font-medium text-sm">Срок доставки для этого товара</h3>
-                  <p className="text-xs text-muted-foreground">Переопределяет настройки бренда</p>
-                </div>
-                <Select
-                  value={deliveryOverride ? "custom" : "default"}
-                  onValueChange={(v) => {
-                    const on = v === "custom";
-                    setDeliveryOverride(on);
-                    if (!on) { setDeliveryTimeMin(''); setDeliveryTimeMax(''); }
-                  }}
-                >
-                  <SelectTrigger className="w-44">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="default">По умолчанию бренда</SelectItem>
-                    <SelectItem value="custom">Указать для товара</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              {deliveryOverride && (
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label>Минимальный срок</Label>
-                    <Select value={deliveryTimeMin || "none"} onValueChange={(v) => setDeliveryTimeMin(v === "none" ? "" : v)}>
-                      <SelectTrigger className="mt-1">
-                        <SelectValue placeholder="Выберите" />
+                {/* Delivery time override */}
+                <div className="border border-border/30 rounded-lg p-4 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="font-medium text-sm">
+                        Срок доставки для этого товара
+                      </h3>
+                      <p className="text-xs text-muted-foreground">
+                        Переопределяет настройки бренда
+                      </p>
+                    </div>
+                    <Select
+                      value={deliveryOverride ? "custom" : "default"}
+                      onValueChange={(v) => {
+                        const on = v === "custom";
+                        setDeliveryOverride(on);
+                        if (!on) {
+                          setDeliveryTimeMin("");
+                          setDeliveryTimeMax("");
+                        }
+                      }}
+                    >
+                      <SelectTrigger className="w-44">
+                        <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="none">—</SelectItem>
-                        {DELIVERY_TIME_OPTIONS.map((opt) => (
-                          <SelectItem key={opt.value} value={String(opt.value)}>
-                            {opt.label}
-                          </SelectItem>
-                        ))}
+                        <SelectItem value="default">
+                          По умолчанию бренда
+                        </SelectItem>
+                        <SelectItem value="custom">
+                          Указать для товара
+                        </SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
-                  <div>
-                    <Label>Максимальный срок</Label>
-                    <Select value={deliveryTimeMax || "none"} onValueChange={(v) => setDeliveryTimeMax(v === "none" ? "" : v)}>
-                      <SelectTrigger className="mt-1">
-                        <SelectValue placeholder="Выберите" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="none">—</SelectItem>
-                        {DELIVERY_TIME_OPTIONS.map((opt) => (
-                          <SelectItem key={opt.value} value={String(opt.value)}>
-                            {opt.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
+                  {deliveryOverride && (
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label>Минимальный срок</Label>
+                        <Select
+                          value={deliveryTimeMin || "none"}
+                          onValueChange={(v) =>
+                            setDeliveryTimeMin(v === "none" ? "" : v)
+                          }
+                        >
+                          <SelectTrigger className="mt-1">
+                            <SelectValue placeholder="Выберите" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="none">—</SelectItem>
+                            {DELIVERY_TIME_OPTIONS.map((opt) => (
+                              <SelectItem
+                                key={opt.value}
+                                value={String(opt.value)}
+                              >
+                                {opt.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div>
+                        <Label>Максимальный срок</Label>
+                        <Select
+                          value={deliveryTimeMax || "none"}
+                          onValueChange={(v) =>
+                            setDeliveryTimeMax(v === "none" ? "" : v)
+                          }
+                        >
+                          <SelectTrigger className="mt-1">
+                            <SelectValue placeholder="Выберите" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="none">—</SelectItem>
+                            {DELIVERY_TIME_OPTIONS.map((opt) => (
+                              <SelectItem
+                                key={opt.value}
+                                value={String(opt.value)}
+                              >
+                                {opt.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
-
               </TabsContent>
 
               <TabsContent value="sale" className="space-y-4">
@@ -792,7 +1060,9 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({
                       <Label>Тип скидки</Label>
                       <Select
                         value={saleType}
-                        onValueChange={(v) => setSaleType(v as 'percent' | 'exact' | 'none')}
+                        onValueChange={(v) =>
+                          setSaleType(v as "percent" | "exact" | "none")
+                        }
                       >
                         <SelectTrigger className="mt-1">
                           <SelectValue placeholder="Без скидки" />
@@ -800,27 +1070,44 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({
                         <SelectContent>
                           <SelectItem value="none">Без скидки</SelectItem>
                           <SelectItem value="percent">Процент (%)</SelectItem>
-                          <SelectItem value="exact">Фиксированная цена (₽)</SelectItem>
+                          <SelectItem value="exact">
+                            Фиксированная цена (₽)
+                          </SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
-                    {saleType !== 'none' && (
+                    {saleType !== "none" && (
                       <div>
                         <Label>
-                          {saleType === 'percent' ? 'Скидка (%)' : 'Цена со скидкой (₽)'}
+                          {saleType === "percent"
+                            ? "Скидка (%)"
+                            : "Цена со скидкой (₽)"}
                         </Label>
                         <Input
-                          type="number"
-                          min={saleType === 'percent' ? 1 : 0}
-                          max={saleType === 'percent' ? 99 : undefined}
-                          placeholder={saleType === 'percent' ? 'напр., 20' : 'напр., 1990'}
+                          inputMode="decimal"
+                          placeholder={
+                            saleType === "percent" ? "напр., 20" : "напр., 1990"
+                          }
                           className="mt-1"
                           value={salePrice}
                           onChange={(e) => setSalePrice(e.target.value)}
                         />
-                        {saleType === 'percent' && (
+                        {saleType === "percent" && (
                           <p className="text-xs text-muted-foreground mt-1">
-                            Покупатели увидят цену {salePrice ? Math.round(product.price * (1 - parseFloat(salePrice) / 100)) : '—'} ₽
+                            Покупатели увидят цену{" "}
+                            {salePrice && price > 0
+                              ? formatCurrency(Math.round(
+                                  price *
+                                    (1 - parseFloat(salePrice.replace(",", ".")) / 100),
+                                ))
+                              : "—"}
+                          </p>
+                        )}
+                        {saleType === "exact" && salePrice !== "" && (
+                          <p className="text-xs text-muted-foreground mt-1">
+                            {parseFloat(salePrice.replace(",", ".")) >= price
+                              ? "Цена со скидкой должна быть меньше обычной"
+                              : `Покупатели увидят цену ${formatCurrency(parseFloat(salePrice.replace(",", ".")))}`}
                           </p>
                         )}
                       </div>

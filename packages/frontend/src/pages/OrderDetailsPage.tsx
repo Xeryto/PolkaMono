@@ -264,16 +264,16 @@ export function OrderDetailsPage({ order, onBack, onOrderUpdated }: OrderDetails
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            {(order.items ?? []).map((item, index) => (
+            {(order.items ?? []).map((item, index) => {
+              const isReturned = item.status === "returned";
+              return (
               <div
                 key={index}
-                className="flex justify-between items-center cursor-pointer hover:bg-muted/50 p-2 rounded-lg"
+                className={`flex justify-between items-center cursor-pointer hover:bg-muted/50 p-2 rounded-lg${isReturned ? " opacity-45" : ""}`}
                 onClick={() => handleItemClick(item)}
               >
-                {" "}
-                {/* NEW Clickable */}
                 <div>
-                  <p className="font-medium text-foreground">{item.name}</p>
+                  <p className={`font-medium ${isReturned ? "text-muted-foreground" : "text-foreground"}`}>{item.name}</p>
                   <p className="text-sm text-muted-foreground">
                     Size: {item.size}
                   </p>
@@ -282,17 +282,30 @@ export function OrderDetailsPage({ order, onBack, onOrderUpdated }: OrderDetails
                       SKU: {item.sku}
                     </p>
                   )}
+                  {isReturned && (
+                    <span className="inline-block mt-1 text-xs px-2 py-0.5 rounded-full bg-destructive/15 text-destructive font-medium">возвращён</span>
+                  )}
                 </div>
-                <p className="font-bold text-foreground">
+                <p className={`font-bold ${isReturned ? "text-muted-foreground" : "text-foreground"}`}>
                   {formatCurrency(item.price)}
                 </p>
               </div>
-            ))}
+              );
+            })}
           </div>
-          <div className="mt-6 pt-4 border-t border-border/30 flex justify-end">
-            <p className="text-xl font-bold text-foreground">
-              Total: {formatCurrency(order.total_amount)}
-            </p>
+          <div className="mt-6 pt-4 border-t border-border/30 space-y-2">
+            <div className="flex justify-between text-sm text-muted-foreground">
+              <span>Товары</span>
+              <span>{formatCurrency(order.total_amount - (order.shipping_cost ?? 0))}</span>
+            </div>
+            <div className="flex justify-between text-sm text-muted-foreground">
+              <span>Доставка</span>
+              <span>{order.shipping_cost ? formatCurrency(order.shipping_cost) : "Бесплатно"}</span>
+            </div>
+            <div className="flex justify-between pt-2 border-t border-border/30">
+              <span className="text-xl font-bold text-foreground">Итого</span>
+              <span className="text-xl font-bold text-foreground">{formatCurrency(order.total_amount)}</span>
+            </div>
           </div>
         </CardContent>
       </Card>

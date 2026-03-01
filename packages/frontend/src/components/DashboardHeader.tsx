@@ -31,7 +31,10 @@ function notifIcon(type: string) {
 }
 
 function formatRelativeTime(isoString: string): string {
-  const diff = Date.now() - new Date(isoString).getTime();
+  // Ensure UTC interpretation — append Z if no timezone offset present
+  let iso = isoString;
+  if (!/([Zz]|[+-]\d{2}:\d{2})$/.test(iso)) iso += "Z";
+  const diff = Date.now() - new Date(iso).getTime();
   const minutes = Math.floor(diff / 60_000);
   if (minutes < 1) return "только что";
   if (minutes < 60) return `${minutes} мин назад`;
@@ -44,7 +47,14 @@ export function DashboardHeader({ onViewChange, onTargetOrder }: DashboardHeader
   const { logout, token } = useAuth();
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [bellOpen, setBellOpen] = useState(false);
+  const [, tick] = useState(0);
   const unreadCount = notifications.filter(n => !n.is_read).length;
+
+  // Re-render every 60s so relative timestamps stay fresh
+  useEffect(() => {
+    const id = setInterval(() => tick(n => n + 1), 60_000);
+    return () => clearInterval(id);
+  }, []);
 
   const loadNotifications = useCallback(async () => {
     if (!token) return;
@@ -76,7 +86,7 @@ export function DashboardHeader({ onViewChange, onTargetOrder }: DashboardHeader
   }, [unreadCount, token]);
 
   return (
-    <header className="h-16 bg-card/50 border-b border-border/30 flex items-center justify-between px-4 sm:px-6 gap-2">
+    <header className="relative h-16 bg-card/50 border-b border-border/30 flex items-center justify-between px-4 sm:px-6 gap-2 before:absolute before:inset-y-0 before:right-full before:w-[--sidebar-width] before:bg-card/50 before:border-b before:border-border/30">
       <div className="flex items-center gap-2 min-w-0">
         <SidebarTrigger
           className="shrink-0 md:hidden"

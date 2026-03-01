@@ -3464,7 +3464,7 @@ const Settings = ({
 
         {/* Bottom Text */}
         <View style={styles.textContainer}>
-          <Text style={styles.text} numberOfLines={1} ellipsizeMode="tail">
+          <Text style={styles.text} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.5}>
             {getBottomText()}
           </Text>
         </View>

@@ -2,11 +2,12 @@ import { useState, useEffect } from "react";
 import { useAdminAuth } from "@/context/AdminAuthContext";
 import { AdminNotificationsView } from "./AdminNotificationsView";
 import { AdminOrdersView } from "./AdminOrdersView";
+import { AdminInflowView } from "./AdminInflowView";
 import { AdminWithdrawalsView } from "./AdminWithdrawalsView";
 import { Button } from "@/components/ui/button";
-import { Bell, LogOut, RotateCcw, Wallet } from "lucide-react";
+import { Bell, LogOut, RotateCcw, Wallet, FileSpreadsheet } from "lucide-react";
 
-type AdminView = "notifications" | "orders" | "withdrawals";
+type AdminView = "notifications" | "orders" | "inflow" | "withdrawals";
 
 const AdminDashboard = () => {
   const { logout } = useAdminAuth();
@@ -23,6 +24,8 @@ const AdminDashboard = () => {
         return <AdminNotificationsView />;
       case "orders":
         return <AdminOrdersView />;
+      case "inflow":
+        return <AdminInflowView />;
       case "withdrawals":
         return <AdminWithdrawalsView />;
       default:
@@ -35,7 +38,7 @@ const AdminDashboard = () => {
       {/* Sidebar */}
       <aside className="w-56 bg-card border-r border-border/30 flex flex-col">
         <div className="p-4 border-b border-border/30">
-          <span className="text-sm font-semibold text-foreground">Admin Panel</span>
+          <span className="text-sm font-semibold text-foreground">Панель админа</span>
         </div>
 
         <nav className="flex-1 p-3 space-y-1">
@@ -48,7 +51,7 @@ const AdminDashboard = () => {
             }`}
           >
             <Bell className="h-4 w-4" />
-            Notifications
+            Уведомления
           </button>
           <button
             onClick={() => setCurrentView("orders")}
@@ -60,6 +63,17 @@ const AdminDashboard = () => {
           >
             <RotateCcw className="h-4 w-4" />
             Возвраты
+          </button>
+          <button
+            onClick={() => setCurrentView("inflow")}
+            className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors ${
+              currentView === "inflow"
+                ? "bg-foreground/10 text-foreground"
+                : "text-muted-foreground hover:text-foreground hover:bg-foreground/5"
+            }`}
+          >
+            <FileSpreadsheet className="h-4 w-4" />
+            Приход
           </button>
           <button
             onClick={() => setCurrentView("withdrawals")}
@@ -82,7 +96,7 @@ const AdminDashboard = () => {
             className="w-full justify-start gap-2 text-muted-foreground hover:text-foreground"
           >
             <LogOut className="h-4 w-4" />
-            Log out
+            Выйти
           </Button>
         </div>
       </aside>

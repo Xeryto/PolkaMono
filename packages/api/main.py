@@ -4,7 +4,7 @@ import random
 import re
 import time
 import uuid
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import List, Literal, Optional
 
 import notification_service
@@ -246,7 +246,7 @@ def _purge_deleted_brands_job():
     """Background job: anonymize brands past their scheduled_deletion_at."""
     db = next(get_db())
     try:
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         brands = (
             db.query(Brand)
             .filter(
@@ -510,6 +510,11 @@ def get_current_user(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Пользователь не найден. Проверьте правильность учетных данных.",
             )
+        if not entity.is_active:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Аккаунт деактивирован.",
+            )
 
     return entity
 
@@ -757,7 +762,7 @@ async def get_user_stats(
         )
 
     # Calculate account age in days
-    account_age_days = (datetime.utcnow() - current_user.created_at).days
+    account_age_days = (datetime.now(timezone.utc) - current_user.created_at).days
 
     return UserStatsResponse(
         items_purchased=items_purchased,
@@ -866,7 +871,7 @@ async def update_brand_profile(
     elif brand_data.payout_account_locked is not None:
         brand.payout_account_locked = 1 if brand_data.payout_account_locked else 0
 
-    brand.updated_at = datetime.utcnow()  # type: ignore
+    brand.updated_at = datetime.now(timezone.utc)  # type: ignore
     db.commit()
     db.refresh(brand)
 
@@ -968,7 +973,7 @@ async def register(request: Request, user_data: UserCreate, db: Session = Depend
     refresh_token = auth_service.create_refresh_token(db, user.auth_account)
     return AuthResponse(
         token=access_token,
-        expires_at=datetime.utcnow() + access_token_expires,
+        expires_at=datetime.now(timezone.utc) + access_token_expires,
         refresh_token=refresh_token,
         user=schemas.UserProfileResponse(
             id=user.id,
@@ -1031,7 +1036,7 @@ async def login(request: Request, user_data: UserLogin, db: Session = Depends(ge
     refresh_token = auth_service.create_refresh_token(db, user.auth_account)
     return AuthResponse(
         token=access_token,
-        expires_at=datetime.utcnow() + access_token_expires,
+        expires_at=datetime.now(timezone.utc) + access_token_expires,
         refresh_token=refresh_token,
         user=schemas.UserProfileResponse(
             id=user.id,
@@ -1117,8 +1122,9 @@ async def refresh_token(request: Request, body: RefreshTokenRequest, db: Session
     else:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="No linked account")
 
-    # Issue new access token
-    access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+    # Issue new access token (brands get longer sessions)
+    expire_minutes = settings.BRAND_TOKEN_EXPIRE_MINUTES if acc.brand else settings.ACCESS_TOKEN_EXPIRE_MINUTES
+    access_token_expires = timedelta(minutes=expire_minutes)
     access_token = auth_service.create_access_token(data=token_data, expires_delta=access_token_expires)
 
     # Rotate refresh token
@@ -1126,7 +1132,7 @@ async def refresh_token(request: Request, body: RefreshTokenRequest, db: Session
 
     return AuthResponse(
         token=access_token,
-        expires_at=datetime.utcnow() + access_token_expires,
+        expires_at=datetime.now(timezone.utc) + access_token_expires,
         refresh_token=new_refresh_token,
         user=profile,
     )
@@ -1134,7 +1140,7 @@ async def refresh_token(request: Request, body: RefreshTokenRequest, db: Session
 
 def _issue_brand_jwt(brand: Brand, db: Session = None) -> AuthResponse:
     """Issue JWT for a successfully authenticated brand."""
-    access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+    access_token_expires = timedelta(minutes=settings.BRAND_TOKEN_EXPIRE_MINUTES)
     access_token = auth_service.create_access_token(
         data={"sub": str(brand.id), "is_brand": True},
         expires_delta=access_token_expires,
@@ -1142,7 +1148,7 @@ def _issue_brand_jwt(brand: Brand, db: Session = None) -> AuthResponse:
     refresh_token = auth_service.create_refresh_token(db, brand.auth_account) if db else None
     return AuthResponse(
         token=access_token,
-        expires_at=datetime.utcnow() + access_token_expires,
+        expires_at=datetime.now(timezone.utc) + access_token_expires,
         refresh_token=refresh_token,
         user=schemas.UserProfileResponse(
             id=str(brand.id),
@@ -1157,14 +1163,16 @@ def _issue_brand_jwt(brand: Brand, db: Session = None) -> AuthResponse:
     )
 
 
-@app.post("/api/v1/admin/auth/login", response_model=schemas.AdminLoginResponse)
+@app.post("/api/v1/admin/auth/login")
 @limiter.limit("10/minute")
 async def admin_login(
     request: Request,
     body: schemas.AdminLoginRequest,
     db: Session = Depends(get_db),
 ):
-    """Authenticate admin account. Returns JWT with is_admin=True in payload."""
+    """Authenticate admin account. Always requires 2FA — returns 202 with session_token."""
+    import secrets as _secrets
+
     acc = auth_service.get_admin_by_email(db, body.email)
     if not acc or not auth_service.verify_password(
         body.password, acc.password_hash or ""
@@ -1172,14 +1180,154 @@ async def admin_login(
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials"
         )
+
+    # Lockout check
+    if acc.otp_locked_until and acc.otp_locked_until > datetime.now(timezone.utc):
+        raise HTTPException(
+            status_code=423,
+            detail="Аккаунт временно заблокирован. Попробуйте через 15 минут.",
+        )
+
+    # Always generate OTP for admin login
+    otp = "".join([str(_secrets.randbelow(10)) for _ in range(6)])
+    session_token = _secrets.token_hex(32)
+    acc.otp_code = otp
+    acc.otp_code_expires_at = datetime.now(timezone.utc) + timedelta(
+        minutes=settings.OTP_EXPIRE_MINUTES
+    )
+    acc.otp_session_token = session_token
+    acc.failed_otp_attempts = 0
+    acc.otp_resend_count = 0
+    acc.otp_resend_window_start = datetime.now(timezone.utc)
+    db.commit()
+    mail_service.send_email(
+        to_email=acc.email,
+        subject="Код подтверждения входа (Админ)",
+        html_content=f"Ваш код для входа в админ-панель: <b>{otp}</b>. Он действителен {settings.OTP_EXPIRE_MINUTES} минут.",
+    )
+    return JSONResponse(
+        status_code=202,
+        content={"otp_required": True, "session_token": session_token},
+    )
+
+
+@app.post("/api/v1/admin/auth/2fa/verify", response_model=schemas.AdminLoginResponse)
+@limiter.limit("10/minute")
+async def admin_verify_2fa(
+    request: Request,
+    payload: schemas.BrandVerifyOTP,
+    db: Session = Depends(get_db),
+):
+    """Verify admin 2FA OTP. Returns JWT on success."""
+    acc = (
+        db.query(AuthAccount)
+        .filter(
+            AuthAccount.otp_session_token == payload.session_token,
+            AuthAccount.is_admin == True,
+        )
+        .first()
+    )
+    if not acc:
+        raise HTTPException(
+            status_code=400, detail="Неверный или истёкший session_token"
+        )
+
+    if acc.otp_locked_until and acc.otp_locked_until > datetime.now(timezone.utc):
+        raise HTTPException(
+            status_code=423,
+            detail="Аккаунт временно заблокирован. Попробуйте через 15 минут.",
+        )
+
+    if (
+        not acc.otp_code
+        or not acc.otp_code_expires_at
+        or acc.otp_code_expires_at < datetime.now(timezone.utc)    ):
+        raise HTTPException(status_code=400, detail="Код истёк. Войдите снова.")
+
+    if acc.otp_code != payload.code:
+        acc.failed_otp_attempts = (acc.failed_otp_attempts or 0) + 1
+        if acc.failed_otp_attempts >= settings.OTP_MAX_FAILED_ATTEMPTS:
+            acc.otp_locked_until = datetime.now(timezone.utc) + timedelta(
+                minutes=settings.OTP_LOCKOUT_MINUTES
+            )
+        db.commit()
+        raise HTTPException(status_code=400, detail="Неверный код")
+
+    # Success — clear OTP state, issue JWT
+    acc.otp_code = None
+    acc.otp_code_expires_at = None
+    acc.otp_session_token = None
+    acc.failed_otp_attempts = 0
+    acc.otp_locked_until = None
+    acc.otp_resend_count = 0
+    acc.otp_resend_window_start = None
+    db.commit()
+
     expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     token = auth_service.create_access_token(
         data={"sub": str(acc.id), "is_admin": True},
         expires_delta=expires,
     )
     return schemas.AdminLoginResponse(
-        token=token, expires_at=datetime.utcnow() + expires
+        token=token, expires_at=datetime.now(timezone.utc) + expires
     )
+
+
+@app.post("/api/v1/admin/auth/2fa/resend")
+@limiter.limit("5/minute")
+async def admin_resend_2fa(
+    request: Request,
+    payload: schemas.BrandResendOTP,
+    db: Session = Depends(get_db),
+):
+    """Resend admin 2FA OTP."""
+    import secrets as _secrets
+
+    acc = (
+        db.query(AuthAccount)
+        .filter(
+            AuthAccount.otp_session_token == payload.session_token,
+            AuthAccount.is_admin == True,
+        )
+        .first()
+    )
+    if not acc:
+        raise HTTPException(
+            status_code=400, detail="Неверный или истёкший session_token"
+        )
+
+    resend_count = acc.otp_resend_count or 0
+    if resend_count >= settings.OTP_MAX_RESENDS:
+        raise HTTPException(
+            status_code=429,
+            detail=f"Превышен лимит отправок кода ({settings.OTP_MAX_RESENDS}). Войдите снова.",
+        )
+
+    if acc.otp_resend_window_start:
+        elapsed = (datetime.now(timezone.utc) - acc.otp_resend_window_start).total_seconds()
+        if elapsed < settings.OTP_RESEND_COOLDOWN_SECONDS:
+            wait = int(settings.OTP_RESEND_COOLDOWN_SECONDS - elapsed)
+            raise HTTPException(
+                status_code=429,
+                detail=f"Подождите {wait} секунд перед повторной отправкой.",
+            )
+
+    otp = "".join([str(_secrets.randbelow(10)) for _ in range(6)])
+    acc.otp_code = otp
+    acc.otp_code_expires_at = datetime.now(timezone.utc) + timedelta(
+        minutes=settings.OTP_EXPIRE_MINUTES
+    )
+    acc.otp_resend_count = resend_count + 1
+    acc.otp_resend_window_start = datetime.now(timezone.utc)
+    db.commit()
+
+    mail_service.send_email(
+        to_email=acc.email,
+        subject="Новый код подтверждения входа (Админ)",
+        html_content=f"Ваш новый код для входа в админ-панель: <b>{otp}</b>. Он действителен {settings.OTP_EXPIRE_MINUTES} минут.",
+    )
+    resends_left = settings.OTP_MAX_RESENDS - acc.otp_resend_count
+    return {"message": "Код отправлен повторно", "resends_remaining": resends_left}
 
 
 @app.post("/api/v1/brands/auth/login")
@@ -1212,7 +1360,7 @@ async def brand_login(
 
     # Grace period / deletion handling
     if brand.scheduled_deletion_at is not None:
-        if brand.scheduled_deletion_at > datetime.utcnow():
+        if brand.scheduled_deletion_at > datetime.now(timezone.utc):
             # Within grace period — reactivate
             brand.scheduled_deletion_at = None
             brand.is_inactive = False
@@ -1227,7 +1375,7 @@ async def brand_login(
     # 2FA check
     if acc.two_factor_enabled:
         # Check lockout
-        if acc.otp_locked_until and acc.otp_locked_until > datetime.utcnow():
+        if acc.otp_locked_until and acc.otp_locked_until > datetime.now(timezone.utc):
             raise HTTPException(
                 status_code=423,
                 detail="Аккаунт временно заблокирован из-за множества неверных попыток. Попробуйте позже.",
@@ -1238,13 +1386,13 @@ async def brand_login(
             32
         )  # 64 hex chars — stored in DB, not derivable from email
         acc.otp_code = otp
-        acc.otp_code_expires_at = datetime.utcnow() + timedelta(
+        acc.otp_code_expires_at = datetime.now(timezone.utc) + timedelta(
             minutes=settings.OTP_EXPIRE_MINUTES
         )
         acc.otp_session_token = session_token
         acc.failed_otp_attempts = 0
         acc.otp_resend_count = 0
-        acc.otp_resend_window_start = datetime.utcnow()
+        acc.otp_resend_window_start = datetime.now(timezone.utc)
         db.commit()
         mail_service.send_email(
             to_email=acc.email,
@@ -1284,7 +1432,7 @@ async def brand_verify_2fa(
         raise HTTPException(status_code=400, detail="Неверный session_token")
 
     # Lockout check
-    if acc.otp_locked_until and acc.otp_locked_until > datetime.utcnow():
+    if acc.otp_locked_until and acc.otp_locked_until > datetime.now(timezone.utc):
         raise HTTPException(
             status_code=423,
             detail="Аккаунт временно заблокирован. Попробуйте через 15 минут.",
@@ -1294,15 +1442,14 @@ async def brand_verify_2fa(
     if (
         not acc.otp_code
         or not acc.otp_code_expires_at
-        or acc.otp_code_expires_at < datetime.utcnow()
-    ):
+        or acc.otp_code_expires_at < datetime.now(timezone.utc)    ):
         raise HTTPException(status_code=400, detail="Код истёк. Войдите снова.")
 
     # Code check
     if acc.otp_code != payload.code:
         acc.failed_otp_attempts = (acc.failed_otp_attempts or 0) + 1
         if acc.failed_otp_attempts >= settings.OTP_MAX_FAILED_ATTEMPTS:
-            acc.otp_locked_until = datetime.utcnow() + timedelta(
+            acc.otp_locked_until = datetime.now(timezone.utc) + timedelta(
                 minutes=settings.OTP_LOCKOUT_MINUTES
             )
         db.commit()
@@ -1351,7 +1498,7 @@ async def brand_resend_2fa(
 
     # Check cooldown (60s between resends)
     if acc.otp_resend_window_start:
-        elapsed = (datetime.utcnow() - acc.otp_resend_window_start).total_seconds()
+        elapsed = (datetime.now(timezone.utc) - acc.otp_resend_window_start).total_seconds()
         if elapsed < settings.OTP_RESEND_COOLDOWN_SECONDS:
             wait = int(settings.OTP_RESEND_COOLDOWN_SECONDS - elapsed)
             raise HTTPException(
@@ -1362,11 +1509,11 @@ async def brand_resend_2fa(
     # Send new OTP
     otp = "".join([str(_secrets.randbelow(10)) for _ in range(6)])
     acc.otp_code = otp
-    acc.otp_code_expires_at = datetime.utcnow() + timedelta(
+    acc.otp_code_expires_at = datetime.now(timezone.utc) + timedelta(
         minutes=settings.OTP_EXPIRE_MINUTES
     )
     acc.otp_resend_count = resend_count + 1
-    acc.otp_resend_window_start = datetime.utcnow()
+    acc.otp_resend_window_start = datetime.now(timezone.utc)
     db.commit()
 
     mail_service.send_email(
@@ -1446,7 +1593,7 @@ async def brand_validate_password_reset_code(
     acc = brand.auth_account
     if acc.email_verification_code != validation_request.code:
         raise HTTPException(status_code=400, detail="Invalid brand email/name or code")
-    if acc.email_verification_code_expires_at < datetime.utcnow():
+    if acc.email_verification_code_expires_at < datetime.now(timezone.utc):
         raise HTTPException(status_code=400, detail="Verification code has expired")
     return {"message": "Code is valid"}
 
@@ -1477,7 +1624,7 @@ async def brand_reset_password_with_code(
     acc = brand.auth_account
     if acc.email_verification_code != reset_password_request.code:
         raise HTTPException(status_code=400, detail="Invalid brand email/name or code")
-    if acc.email_verification_code_expires_at < datetime.utcnow():
+    if acc.email_verification_code_expires_at < datetime.now(timezone.utc):
         raise HTTPException(status_code=400, detail="Verification code has expired")
     new_password_hash = auth_service.hash_password(reset_password_request.new_password)
     if acc.password_hash and auth_service.verify_password(
@@ -1506,6 +1653,8 @@ async def brand_reset_password_with_code(
     acc.password_hash = new_password_hash
     acc.email_verification_code = None
     acc.email_verification_code_expires_at = None
+    acc.refresh_token_hash = None
+    acc.refresh_token_expires_at = None
     db.commit()
 
     return {"message": "Brand password has been reset successfully."}
@@ -1542,7 +1691,7 @@ async def request_brand_deletion(
         raise HTTPException(
             status_code=400, detail="Account deletion already scheduled"
         )
-    grace_end = datetime.utcnow() + timedelta(days=settings.BRAND_DELETION_GRACE_DAYS)
+    grace_end = datetime.now(timezone.utc) + timedelta(days=settings.BRAND_DELETION_GRACE_DAYS)
     current_user.is_inactive = True
     current_user.scheduled_deletion_at = grace_end
     db.commit()
@@ -1584,6 +1733,8 @@ async def brand_change_password(
 
     flag_modified(acc, "password_history")
     acc.password_hash = auth_service.hash_password(payload.new_password)
+    acc.refresh_token_hash = None
+    acc.refresh_token_expires_at = None
     db.commit()
     return {"message": "Пароль успешно изменён"}
 
@@ -1603,7 +1754,7 @@ async def brand_enable_2fa(
         raise HTTPException(status_code=400, detail="2FA уже включена")
     code = "".join([str(_secrets.randbelow(10)) for _ in range(6)])
     acc.otp_code = code
-    acc.otp_code_expires_at = datetime.utcnow() + timedelta(
+    acc.otp_code_expires_at = datetime.now(timezone.utc) + timedelta(
         minutes=settings.OTP_EXPIRE_MINUTES
     )
     db.commit()
@@ -1627,7 +1778,7 @@ async def brand_confirm_2fa(
         raise HTTPException(status_code=400, detail="2FA уже включена")
     if not acc.otp_code or acc.otp_code != payload.code:
         raise HTTPException(status_code=400, detail="Неверный код")
-    if not acc.otp_code_expires_at or acc.otp_code_expires_at < datetime.utcnow():
+    if not acc.otp_code_expires_at or acc.otp_code_expires_at < datetime.now(timezone.utc):
         raise HTTPException(status_code=400, detail="Код истёк")
     acc.two_factor_enabled = True
     acc.otp_code = None
@@ -1805,7 +1956,7 @@ async def verify_email(
     acc = user.auth_account
     if acc.email_verification_code != verification_data.code:
         raise HTTPException(status_code=400, detail="Invalid email or code")
-    if acc.email_verification_code_expires_at < datetime.utcnow():
+    if acc.email_verification_code_expires_at < datetime.now(timezone.utc):
         raise HTTPException(status_code=400, detail="Verification code has expired")
     acc.is_email_verified = True
     acc.email_verification_code = None
@@ -1868,7 +2019,7 @@ async def reset_password(
     if not user:
         raise HTTPException(status_code=400, detail="Invalid token")
     acc = user.auth_account
-    if acc.password_reset_expires < datetime.utcnow():
+    if acc.password_reset_expires < datetime.now(timezone.utc):
         raise HTTPException(status_code=400, detail="Token has expired")
     new_password_hash = auth_service.hash_password(reset_password_request.new_password)
     if acc.password_hash and auth_service.verify_password(
@@ -1897,6 +2048,8 @@ async def reset_password(
     acc.password_hash = new_password_hash
     acc.password_reset_token = None
     acc.password_reset_expires = None
+    acc.refresh_token_hash = None
+    acc.refresh_token_expires_at = None
     db.commit()
     return {"message": "Password has been reset successfully."}
 
@@ -1927,7 +2080,7 @@ async def validate_password_reset_code(
     acc = user.auth_account
     if acc.email_verification_code != validation_request.code:
         raise HTTPException(status_code=400, detail="Invalid username/email or code")
-    if acc.email_verification_code_expires_at < datetime.utcnow():
+    if acc.email_verification_code_expires_at < datetime.now(timezone.utc):
         raise HTTPException(status_code=400, detail="Verification code has expired")
     return {"message": "Code is valid"}
 
@@ -1958,7 +2111,7 @@ async def reset_password_with_code(
     acc = user.auth_account
     if acc.email_verification_code != reset_password_request.code:
         raise HTTPException(status_code=400, detail="Invalid username/email or code")
-    if acc.email_verification_code_expires_at < datetime.utcnow():
+    if acc.email_verification_code_expires_at < datetime.now(timezone.utc):
         raise HTTPException(status_code=400, detail="Verification code has expired")
     new_password_hash = auth_service.hash_password(reset_password_request.new_password)
     if acc.password_hash and auth_service.verify_password(
@@ -1987,13 +2140,21 @@ async def reset_password_with_code(
     acc.password_hash = new_password_hash
     acc.email_verification_code = None
     acc.email_verification_code_expires_at = None
+    acc.refresh_token_hash = None
+    acc.refresh_token_expires_at = None
     db.commit()
     return {"message": "Password has been reset successfully."}
 
 
 @app.post("/api/v1/auth/logout")
-async def logout():
-    """Logout user (JWT tokens are stateless)"""
+@limiter.limit("10/minute")
+async def logout(
+    request: Request,
+    current_user=Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    acc = current_user.auth_account
+    auth_service.revoke_refresh_token(db, acc)
     return {"message": "Successfully logged out"}
 
 
@@ -2141,8 +2302,7 @@ async def delete_my_account(
         )
     user = current_user
     user_id = str(user.id)
-    now = datetime.utcnow()
-
+    now = datetime.now(timezone.utc)
     # Remove related data (so no PII remains in join tables)
     db.query(OAuthAccount).filter(OAuthAccount.user_id == user_id).delete()
     db.query(UserBrand).filter(UserBrand.user_id == user_id).delete()
@@ -2796,7 +2956,7 @@ async def update_user_profile(
             )
         current_user.auth_account.email = profile_data.email
 
-    current_user.updated_at = datetime.utcnow()  # type: ignore
+    current_user.updated_at = datetime.now(timezone.utc)  # type: ignore
     db.commit()
     db.refresh(current_user)
 
@@ -2835,7 +2995,7 @@ async def update_user_profile_data(
     if profile_data.avatar_transform is not None:
         profile.avatar_transform = profile_data.avatar_transform
 
-    profile.updated_at = datetime.utcnow()  # type: ignore
+    profile.updated_at = datetime.now(timezone.utc)  # type: ignore
     db.commit()
     db.refresh(profile)
 
@@ -2917,7 +3077,7 @@ async def update_user_shipping_info(
     if shipping_data.postal_code is not None:
         shipping_info.postal_code = shipping_data.postal_code
 
-    shipping_info.updated_at = datetime.utcnow()  # type: ignore
+    shipping_info.updated_at = datetime.now(timezone.utc)  # type: ignore
     db.commit()
     db.refresh(shipping_info)
 
@@ -2971,7 +3131,7 @@ async def update_user_preferences(
     if preferences_data.marketing_notifications is not None:
         preferences.marketing_notifications = preferences_data.marketing_notifications
 
-    preferences.updated_at = datetime.utcnow()  # type: ignore
+    preferences.updated_at = datetime.now(timezone.utc)  # type: ignore
     db.commit()
     db.refresh(preferences)
 
@@ -3547,7 +3707,7 @@ async def accept_friend_request(
 
     # Update request status
     friend_request.status = FriendRequestStatus.ACCEPTED  # type: ignore
-    friend_request.updated_at = datetime.utcnow()  # type: ignore
+    friend_request.updated_at = datetime.now(timezone.utc)  # type: ignore
 
     # Create friendship
     friendship = Friendship(
@@ -3587,7 +3747,7 @@ async def reject_friend_request(
         )
 
     friend_request.status = FriendRequestStatus.REJECTED  # type: ignore
-    friend_request.updated_at = datetime.utcnow()  # type: ignore
+    friend_request.updated_at = datetime.now(timezone.utc)  # type: ignore
     db.delete(friend_request)  # Delete the friend request after rejection
     db.commit()
 
@@ -3620,7 +3780,7 @@ async def cancel_friend_request(
         )
 
     friend_request.status = FriendRequestStatus.CANCELLED  # type: ignore
-    friend_request.updated_at = datetime.utcnow()  # type: ignore
+    friend_request.updated_at = datetime.now(timezone.utc)  # type: ignore
     db.delete(friend_request)  # Delete the friend request after cancellation
     db.commit()
 
@@ -3814,7 +3974,7 @@ async def health_check():
     """Health check endpoint"""
     return {
         "status": "healthy",
-        "timestamp": datetime.utcnow(),
+        "timestamp": datetime.now(timezone.utc),
         "version": "1.0.0",
         "database": "postgresql",
         "oauth_providers": [
@@ -3944,6 +4104,7 @@ def _build_order_item_response(
         images=imgs,
         return_policy=product.brand.return_policy if product.brand else None,
         product_id=product.id,
+        status=item.status,
     )
 
 
@@ -4183,7 +4344,7 @@ async def buyer_cancel_order(
             status_code=400,
             detail=f"Только неоплаченные заказы можно отменить. Статус заказа: {order.status.value}",
         )
-    if order.expires_at and order.expires_at < datetime.utcnow():
+    if order.expires_at and order.expires_at < datetime.now(timezone.utc):
         raise HTTPException(status_code=400, detail="Срок оплаты заказа истёк")
     payment_service.update_order_status(
         db,
@@ -4238,20 +4399,32 @@ def admin_send_notification(
 
 @app.get("/api/v1/admin/returns", response_model=List[schemas.AdminReturnItem])
 def admin_get_returns(
+    date_from: Optional[str] = Query(None),
+    date_to: Optional[str] = Query(None),
     admin: AuthAccount = Depends(get_current_admin),
     db: Session = Depends(get_db),
 ):
     """Admin: list all returned order items across all brands."""
     from models import Brand, Order, OrderItem, OrderStatusEvent, ProductVariant
 
-    rows = (
+    q = (
         db.query(OrderItem, Order, Brand, ProductVariant)
         .join(Order, OrderItem.order_id == Order.id)
         .join(Brand, Order.brand_id == Brand.id)
         .join(ProductVariant, OrderItem.product_variant_id == ProductVariant.id)
         .filter(OrderItem.status == "returned")
-        .all()
     )
+    if date_from:
+        try:
+            q = q.filter(Order.created_at >= datetime.fromisoformat(date_from))
+        except ValueError:
+            pass
+    if date_to:
+        try:
+            q = q.filter(Order.created_at < datetime.fromisoformat(date_to) + timedelta(days=1))
+        except ValueError:
+            pass
+    rows = q.all()
     result = []
     for item, order, brand, pv in rows:
         # Try to find most recent RETURNED status event for this order as returned_at
@@ -4453,6 +4626,8 @@ def admin_record_withdrawal(
 @app.get("/api/v1/admin/withdrawals", response_model=schemas.BrandWithdrawalListResponse)
 def admin_list_withdrawals(
     brand_id: Optional[str] = Query(None),
+    date_from: Optional[str] = Query(None),
+    date_to: Optional[str] = Query(None),
     admin: AuthAccount = Depends(get_current_admin),
     db: Session = Depends(get_db),
 ):
@@ -4462,6 +4637,16 @@ def admin_list_withdrawals(
     )
     if brand_id:
         q = q.filter(BrandWithdrawal.brand_id == brand_id)
+    if date_from:
+        try:
+            q = q.filter(BrandWithdrawal.created_at >= datetime.fromisoformat(date_from))
+        except ValueError:
+            pass
+    if date_to:
+        try:
+            q = q.filter(BrandWithdrawal.created_at < datetime.fromisoformat(date_to) + timedelta(days=1))
+        except ValueError:
+            pass
     rows = q.order_by(BrandWithdrawal.created_at.desc()).limit(200).all()
     return schemas.BrandWithdrawalListResponse(
         withdrawals=[
@@ -4495,6 +4680,43 @@ def admin_search_brands(
     return [
         {"id": b.id, "name": b.name, "amount_withdrawn": float(b.amount_withdrawn or 0)}
         for b in brands
+    ]
+
+
+@app.get("/api/v1/admin/orders", response_model=List[schemas.AdminOrderSummaryResponse])
+def admin_list_orders(
+    date_from: Optional[str] = Query(None),
+    date_to: Optional[str] = Query(None),
+    admin: AuthAccount = Depends(get_current_admin),
+    db: Session = Depends(get_db),
+):
+    """Admin: list all orders with brand name."""
+    q = db.query(Order).options(joinedload(Order.brand))
+    if date_from:
+        try:
+            q = q.filter(Order.created_at >= datetime.fromisoformat(date_from))
+        except ValueError:
+            pass
+    if date_to:
+        try:
+            q = q.filter(Order.created_at < datetime.fromisoformat(date_to) + timedelta(days=1))
+        except ValueError:
+            pass
+    orders = q.order_by(Order.created_at.desc()).all()
+    return [
+        schemas.AdminOrderSummaryResponse(
+            id=str(o.id),
+            number=str(o.order_number),
+            total_amount=float(o.total_amount),
+            currency="RUB",
+            date=o.created_at,
+            status=o.status.value,
+            tracking_number=str(o.tracking_number) if o.tracking_number else None,
+            tracking_link=str(o.tracking_link) if o.tracking_link else None,
+            shipping_cost=float(o.shipping_cost or 0.0),
+            brand_name=o.brand.name if o.brand else "—",
+        )
+        for o in orders
     ]
 
 
@@ -4585,7 +4807,7 @@ def get_brand_notifications(
     db: Session = Depends(get_db),
 ):
     """Return up to 20 non-expired notifications for the authenticated brand."""
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     notifs = (
         db.query(Notification)
         .filter(
@@ -4610,7 +4832,7 @@ def mark_all_notifications_read(
     db: Session = Depends(get_db),
 ):
     """Mark all unread notifications for the brand as read (called when bell dropdown opens)."""
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     db.query(Notification).filter(
         Notification.recipient_type == "brand",
         Notification.recipient_id == str(current_user.id),

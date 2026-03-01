@@ -7,7 +7,12 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
 import uuid
 from enum import Enum
-from datetime import datetime
+from datetime import datetime, timezone
+
+
+def _utcnow():
+    return datetime.now(timezone.utc)
+
 
 Base = declarative_base()
 
@@ -36,25 +41,25 @@ class AuthAccount(Base):
     password_hash = Column(String(255), nullable=True)  # Nullable for OAuth-only users
     is_email_verified = Column(Boolean, default=False)
     email_verification_code = Column(String(6), nullable=True)
-    email_verification_code_expires_at = Column(DateTime, nullable=True)
+    email_verification_code_expires_at = Column(DateTime(timezone=True), nullable=True)
     password_reset_token = Column(String, nullable=True)
-    password_reset_expires = Column(DateTime, nullable=True)
+    password_reset_expires = Column(DateTime(timezone=True), nullable=True)
     password_history = Column(ARRAY(String), default=list)
     is_admin = Column(Boolean, default=False, nullable=False)
     two_factor_enabled = Column(Boolean, default=False, nullable=False)
     otp_code = Column(String(6), nullable=True)               # Current pending 2FA OTP (6-digit code)
-    otp_code_expires_at = Column(DateTime, nullable=True)     # Expires 5 min from send
+    otp_code_expires_at = Column(DateTime(timezone=True), nullable=True)     # Expires 5 min from send
     otp_session_token = Column(String(64), nullable=True)     # secrets.token_hex(32) — ties OTP to login session; cleared after verify
     failed_otp_attempts = Column(Integer, default=0, nullable=False)  # Resets on success
-    otp_locked_until = Column(DateTime, nullable=True)        # 15-min lockout after too many fails
+    otp_locked_until = Column(DateTime(timezone=True), nullable=True)        # 15-min lockout after too many fails
     otp_resend_count = Column(Integer, default=0, nullable=False)     # Resets each login attempt
-    otp_resend_window_start = Column(DateTime, nullable=True) # When current resend window started
+    otp_resend_window_start = Column(DateTime(timezone=True), nullable=True) # When current resend window started
     failed_login_attempts = Column(Integer, default=0, nullable=False)
-    login_locked_until = Column(DateTime, nullable=True)
+    login_locked_until = Column(DateTime(timezone=True), nullable=True)
     refresh_token_hash = Column(String(255), nullable=True)
-    refresh_token_expires_at = Column(DateTime, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    refresh_token_expires_at = Column(DateTime(timezone=True), nullable=True)
+    created_at = Column(DateTime(timezone=True), default=_utcnow)
+    updated_at = Column(DateTime(timezone=True), default=_utcnow, onupdate=_utcnow)
 
     # Relationships (one account per user or per brand)
     user = relationship("User", back_populates="auth_account", uselist=False, cascade="all, delete-orphan")
@@ -70,9 +75,9 @@ class User(Base):
     username = Column(String(50), unique=True, nullable=False, index=True)
     auth_account_id = Column(String, ForeignKey("auth_accounts.id", ondelete="CASCADE"), nullable=False, unique=True, index=True)
     is_active = Column(Boolean, default=True)
-    deleted_at = Column(DateTime, nullable=True)  # Soft delete; when set, user is anonymized and access revoked
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    deleted_at = Column(DateTime(timezone=True), nullable=True)  # Soft delete; when set, user is anonymized and access revoked
+    created_at = Column(DateTime(timezone=True), default=_utcnow)
+    updated_at = Column(DateTime(timezone=True), default=_utcnow, onupdate=_utcnow)
     items_swiped = Column(Integer, default=0, nullable=False)  # Denormalized counter for stats (Option 2)
     expo_push_token = Column(String(200), nullable=True)  # Expo push notification token
 
@@ -107,8 +112,8 @@ class UserProfile(Base):
     avatar_url_full = Column(String(500), nullable=True)  # Full-size source for re-editing
     avatar_crop = Column(String(1000), nullable=True)  # JSON: normalized crop in full image (legacy)
     avatar_transform = Column(String(500), nullable=True)  # JSON: { scale, translateXPercent, translateYPercent } device-independent
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime(timezone=True), default=_utcnow)
+    updated_at = Column(DateTime(timezone=True), default=_utcnow, onupdate=_utcnow)
     
     # Relationships
     user = relationship("User", back_populates="profile")
@@ -127,8 +132,8 @@ class UserShippingInfo(Base):
     apartment_number = Column(String(50), nullable=True)
     city = Column(String(100), nullable=True)
     postal_code = Column(String(20), nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime(timezone=True), default=_utcnow)
+    updated_at = Column(DateTime(timezone=True), default=_utcnow, onupdate=_utcnow)
     
     # Relationships
     user = relationship("User", back_populates="shipping_info")
@@ -147,8 +152,8 @@ class UserPreferences(Base):
     # Notification settings
     order_notifications = Column(Boolean, default=True, nullable=False)
     marketing_notifications = Column(Boolean, default=True, nullable=False)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime(timezone=True), default=_utcnow)
+    updated_at = Column(DateTime(timezone=True), default=_utcnow, onupdate=_utcnow)
     
     # Relationships
     user = relationship("User", back_populates="preferences")
@@ -168,9 +173,9 @@ class OAuthAccount(Base):
     provider_user_id = Column(String(255), nullable=False)
     access_token = Column(Text, nullable=True)
     refresh_token = Column(Text, nullable=True)
-    expires_at = Column(DateTime, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    expires_at = Column(DateTime(timezone=True), nullable=True)
+    created_at = Column(DateTime(timezone=True), default=_utcnow)
+    updated_at = Column(DateTime(timezone=True), default=_utcnow, onupdate=_utcnow)
 
     # Relationships
     user = relationship("User", back_populates="oauth_accounts")
@@ -198,9 +203,9 @@ class Brand(Base):
     payout_account = Column(String(100), nullable=True)
     payout_account_locked = Column(Integer, nullable=False, default=0)
     is_inactive = Column(Boolean, default=False, nullable=False)
-    scheduled_deletion_at = Column(DateTime, nullable=True)  # Set when brand requests deletion; null means active
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    scheduled_deletion_at = Column(DateTime(timezone=True), nullable=True)  # Set when brand requests deletion; null means active
+    created_at = Column(DateTime(timezone=True), default=_utcnow)
+    updated_at = Column(DateTime(timezone=True), default=_utcnow, onupdate=_utcnow)
 
     # Relationships
     auth_account = relationship("AuthAccount", back_populates="brand", uselist=False, lazy="joined")
@@ -212,8 +217,8 @@ class Style(Base):
     id = Column(String(50), primary_key=True)
     name = Column(String(100), nullable=False)
     description = Column(String(500), nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime(timezone=True), default=_utcnow)
+    updated_at = Column(DateTime(timezone=True), default=_utcnow, onupdate=_utcnow)
 
 class Category(Base):
     """Category model for products"""
@@ -222,8 +227,8 @@ class Category(Base):
     id = Column(String(50), primary_key=True) # e.g., "dresses", "shirts"
     name = Column(String(100), unique=True, nullable=False)
     description = Column(String(500), nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime(timezone=True), default=_utcnow)
+    updated_at = Column(DateTime(timezone=True), default=_utcnow, onupdate=_utcnow)
 
 
 class UserBrand(Base):
@@ -237,7 +242,7 @@ class UserBrand(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     user_id = Column(String, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
     brand_id = Column(String, ForeignKey("brands.id", ondelete="CASCADE"), nullable=False, index=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime(timezone=True), default=_utcnow)
 
     user = relationship("User", back_populates="favorite_brands")
     brand = relationship("Brand")
@@ -253,7 +258,7 @@ class UserStyle(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     user_id = Column(String, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
     style_id = Column(String(50), ForeignKey("styles.id", ondelete="CASCADE"), nullable=False, index=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime(timezone=True), default=_utcnow)
 
     user = relationship("User", back_populates="favorite_styles")
     style = relationship("Style")
@@ -265,7 +270,7 @@ class ProductStyle(Base):
 
     product_id = Column(String, ForeignKey("products.id", ondelete="CASCADE"), primary_key=True)
     style_id = Column(String(50), ForeignKey("styles.id", ondelete="CASCADE"), primary_key=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime(timezone=True), default=_utcnow)
 
     product = relationship("Product", back_populates="styles")
     style = relationship("Style", back_populates="products")
@@ -291,8 +296,8 @@ class Product(Base):
     category_id = Column(String(50), ForeignKey("categories.id", ondelete="RESTRICT"), nullable=False)
     purchase_count = Column(Integer, nullable=False, default=0)  # Denormalized for performance
     general_images = Column(ARRAY(String), nullable=True)  # Images shown for all color variants
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime(timezone=True), default=_utcnow)
+    updated_at = Column(DateTime(timezone=True), default=_utcnow, onupdate=_utcnow)
 
     brand = relationship("Brand")
     category = relationship("Category")
@@ -320,8 +325,8 @@ class ProductColorVariant(Base):
     color_hex = Column(String(200), nullable=False)    # Hex or CSS gradient
     images = Column(ARRAY(String), nullable=True)    # Image URLs for this color
     display_order = Column(Integer, nullable=False, default=0)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime(timezone=True), default=_utcnow)
+    updated_at = Column(DateTime(timezone=True), default=_utcnow, onupdate=_utcnow)
 
     product = relationship("Product", back_populates="color_variants")
     variants = relationship("ProductVariant", back_populates="color_variant", cascade="all, delete-orphan")
@@ -336,8 +341,8 @@ class ProductVariant(Base):
     product_color_variant_id = Column(String, ForeignKey("product_color_variants.id", ondelete="CASCADE"), nullable=False, index=True)
     size = Column(String(10), nullable=False)
     stock_quantity = Column(Integer, nullable=False, default=0)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime(timezone=True), default=_utcnow)
+    updated_at = Column(DateTime(timezone=True), default=_utcnow, onupdate=_utcnow)
 
     color_variant = relationship("ProductColorVariant", back_populates="variants")
 
@@ -357,7 +362,7 @@ class UserLikedProduct(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     user_id = Column(String, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
     product_id = Column(String, ForeignKey("products.id", ondelete="CASCADE"), nullable=False, index=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime(timezone=True), default=_utcnow)
 
     user = relationship("User", back_populates="liked_products")
     product = relationship("Product")
@@ -382,7 +387,7 @@ class UserSwipe(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     user_id = Column(String, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     product_id = Column(String, ForeignKey("products.id", ondelete="CASCADE"), nullable=False)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime(timezone=True), default=_utcnow)
     
     user = relationship("User")
     product = relationship("Product")
@@ -399,8 +404,8 @@ class FriendRequest(Base):
     sender_id = Column(String, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
     recipient_id = Column(String, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
     status = Column(SQLEnum(FriendRequestStatus), default=FriendRequestStatus.PENDING, nullable=False)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime(timezone=True), default=_utcnow)
+    updated_at = Column(DateTime(timezone=True), default=_utcnow, onupdate=_utcnow)
 
     sender = relationship("User", foreign_keys=[sender_id], back_populates="sent_friend_requests")
     recipient = relationship("User", foreign_keys=[recipient_id], back_populates="received_friend_requests")
@@ -416,7 +421,7 @@ class Friendship(Base):
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
     user_id = Column(String, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     friend_id = Column(String, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime(timezone=True), default=_utcnow)
 
     user = relationship("User", foreign_keys=[user_id], back_populates="friendships")
     friend = relationship("User", foreign_keys=[friend_id], back_populates="friends")
@@ -438,8 +443,8 @@ class Checkout(Base):
     delivery_address = Column(Text, nullable=True)
     delivery_city = Column(String(100), nullable=True)
     delivery_postal_code = Column(String(20), nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime(timezone=True), default=_utcnow)
+    updated_at = Column(DateTime(timezone=True), default=_utcnow, onupdate=_utcnow)
 
     user = relationship("User")
     orders = relationship("Order", back_populates="checkout", cascade="all, delete-orphan")
@@ -515,9 +520,9 @@ class Order(Base):
     delivery_address = Column(Text, nullable=True)
     delivery_city = Column(String(100), nullable=True)
     delivery_postal_code = Column(String(20), nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-    expires_at = Column(DateTime, nullable=True)  # Cutoff for unpaid CREATED/PENDING orders
+    created_at = Column(DateTime(timezone=True), default=_utcnow)
+    updated_at = Column(DateTime(timezone=True), default=_utcnow, onupdate=_utcnow)
+    expires_at = Column(DateTime(timezone=True), nullable=True)  # Cutoff for unpaid CREATED/PENDING orders
 
     checkout = relationship("Checkout", back_populates="orders")
     brand = relationship("Brand")
@@ -526,7 +531,7 @@ class Order(Base):
     status_events = relationship("OrderStatusEvent", back_populates="order", cascade="all, delete-orphan", order_by="OrderStatusEvent.created_at")
 
 class OrderItemStatus(str, Enum):
-    FULFILLED = "fulfilled"
+    SHIPPED = "shipped"
     RETURNED = "returned"
 
 
@@ -539,7 +544,7 @@ class OrderItem(Base):
     quantity = Column(Integer, nullable=False, default=1)
     price = Column(Float, nullable=False)
     sku = Column(String(255), unique=True, nullable=True)
-    status = Column(String(20), default="fulfilled", nullable=False)  # fulfilled | returned
+    status = Column(String(20), default="shipped", nullable=False)  # shipped | returned
 
     order = relationship("Order", back_populates="items")
     product_variant = relationship("ProductVariant")
@@ -553,8 +558,8 @@ class Payment(Base):
     amount = Column(Float, nullable=False)
     currency = Column(String(10), nullable=False)
     status = Column(String(50), nullable=False)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime(timezone=True), default=_utcnow)
+    updated_at = Column(DateTime(timezone=True), default=_utcnow, onupdate=_utcnow)
 
     order = relationship("Order", foreign_keys=[order_id])
     checkout = relationship("Checkout", back_populates="payment") 
@@ -564,7 +569,7 @@ class ExclusiveAccessEmail(Base):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     email = Column(String(255), unique=True, nullable=False, index=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime(timezone=True), default=_utcnow)
 
 
 class OrderStatusEvent(Base):
@@ -578,7 +583,7 @@ class OrderStatusEvent(Base):
     actor_type = Column(String(20), nullable=False)   # "system" | "user" | "brand" | "admin"
     actor_id = Column(String, nullable=True)          # UUID/int of the actor; null for "system"
     note = Column(String(500), nullable=True)         # Optional human-readable reason
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    created_at = Column(DateTime(timezone=True), default=_utcnow, nullable=False)
 
     order = relationship("Order", back_populates="status_events")
 
@@ -593,7 +598,7 @@ class BrandWithdrawal(Base):
     amount = Column(Float, nullable=False)
     note = Column(String(500), nullable=True)
     admin_id = Column(String, ForeignKey("auth_accounts.id", ondelete="RESTRICT"), nullable=False)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime(timezone=True), default=_utcnow)
 
     brand = relationship("Brand")
     admin = relationship("AuthAccount")
@@ -611,5 +616,5 @@ class Notification(Base):
     message = Column(String(500), nullable=False)
     order_id = Column(String, nullable=True)  # FK-like reference (not a real FK; order IDs are strings)
     is_read = Column(Boolean, default=False, nullable=False)
-    expires_at = Column(DateTime, nullable=False)  # now + 7 days at creation
-    created_at = Column(DateTime, default=datetime.utcnow)
+    expires_at = Column(DateTime(timezone=True), nullable=False)  # now + 7 days at creation
+    created_at = Column(DateTime(timezone=True), default=_utcnow)

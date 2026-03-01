@@ -3,7 +3,6 @@ import { Wallet } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useAdminAuth } from "@/context/AdminAuthContext";
 import {
   searchBrands,
   recordWithdrawal,
@@ -12,6 +11,7 @@ import {
   WithdrawalRecord,
 } from "@/services/adminApi";
 import { formatCurrency } from "@/lib/currency";
+import { DateRangePicker } from "@/components/admin/DateRangePicker";
 
 function formatDate(dateStr: string): string {
   const d = new Date(dateStr);
@@ -23,8 +23,6 @@ function formatDate(dateStr: string): string {
 }
 
 export function AdminWithdrawalsView() {
-  const { token } = useAdminAuth();
-
   // Brand search
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<BrandSearchResult[]>([]);
@@ -43,22 +41,25 @@ export function AdminWithdrawalsView() {
   const [history, setHistory] = useState<WithdrawalRecord[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
 
+  // Date filter
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
+
   const fetchHistory = useCallback(async (brandId?: string) => {
-    if (!token) return;
     setLoadingHistory(true);
     try {
-      const data = await getWithdrawals(token, brandId);
+      const data = await getWithdrawals(brandId, dateFrom || undefined, dateTo || undefined);
       setHistory(data);
     } catch {
       /* ignore */
     } finally {
       setLoadingHistory(false);
     }
-  }, [token]);
+  }, [dateFrom, dateTo]);
 
-  // Debounced brand search
+  // Debounced brand search — skip when a brand is already selected
   useEffect(() => {
-    if (!token || searchQuery.length < 1) {
+    if (selectedBrand || searchQuery.length < 1) {
       setSearchResults([]);
       setShowDropdown(false);
       return;
@@ -66,7 +67,7 @@ export function AdminWithdrawalsView() {
     clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(async () => {
       try {
-        const results = await searchBrands(token, searchQuery);
+        const results = await searchBrands(searchQuery);
         setSearchResults(results);
         setShowDropdown(results.length > 0);
       } catch {
@@ -74,14 +75,14 @@ export function AdminWithdrawalsView() {
       }
     }, 300);
     return () => clearTimeout(debounceRef.current);
-  }, [searchQuery, token]);
+  }, [searchQuery, selectedBrand]);
 
-  // Load history when brand selected
+  // Load history when brand selected or dates change
   useEffect(() => {
     if (selectedBrand) {
       fetchHistory(selectedBrand.id);
     }
-  }, [selectedBrand, fetchHistory]);
+  }, [selectedBrand, fetchHistory, dateFrom, dateTo]);
 
   const handleSelectBrand = (brand: BrandSearchResult) => {
     setSelectedBrand(brand);
@@ -92,7 +93,7 @@ export function AdminWithdrawalsView() {
   };
 
   const handleSubmit = async () => {
-    if (!token || !selectedBrand || !amount) return;
+    if (!selectedBrand || !amount) return;
     const numAmount = parseFloat(amount);
     if (isNaN(numAmount) || numAmount <= 0) {
       setSubmitError("Введите корректную сумму");
@@ -102,7 +103,7 @@ export function AdminWithdrawalsView() {
     setSubmitError(null);
     setSubmitSuccess(false);
     try {
-      await recordWithdrawal(token, selectedBrand.id, numAmount, note || undefined);
+      await recordWithdrawal(selectedBrand.id, numAmount, note || undefined);
       setSubmitSuccess(true);
       setAmount("");
       setNote("");
@@ -218,8 +219,15 @@ export function AdminWithdrawalsView() {
       {/* Withdrawal history */}
       {selectedBrand && (
         <div className="bg-card rounded-xl border border-border/30 overflow-hidden">
-          <div className="px-4 py-3 border-b border-border/30">
+          <div className="px-4 py-3 border-b border-border/30 flex items-center justify-between gap-4">
             <span className="text-sm font-semibold text-foreground">История выводов</span>
+            <DateRangePicker
+              dateFrom={dateFrom}
+              dateTo={dateTo}
+              onDateFromChange={setDateFrom}
+              onDateToChange={setDateTo}
+              onClear={() => { setDateFrom(""); setDateTo(""); }}
+            />
           </div>
           {loadingHistory ? (
             <div className="p-4 text-sm text-muted-foreground">Загрузка...</div>

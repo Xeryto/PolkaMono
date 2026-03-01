@@ -3,13 +3,11 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { sendAdminNotification, sendAdminBuyerPush } from "@/services/adminApi";
-import { useAdminAuth } from "@/context/AdminAuthContext";
 import { Bell } from "lucide-react";
 
 type Tab = "brands" | "buyers";
 
 export function AdminNotificationsView() {
-  const { token } = useAdminAuth();
   const [activeTab, setActiveTab] = useState<Tab>("brands");
 
   // Brands tab state
@@ -25,28 +23,28 @@ export function AdminNotificationsView() {
   const [buyerError, setBuyerError] = useState<string | null>(null);
 
   const handleSendBrands = async () => {
-    if (!brandMessage.trim() || !token) return;
+    if (!brandMessage.trim()) return;
     setBrandSending(true);
     setBrandError(null);
     setBrandSent(false);
     try {
-      await sendAdminNotification(token, brandMessage.trim());
+      await sendAdminNotification(brandMessage.trim());
       setBrandSent(true);
       setBrandMessage("");
     } catch {
-      setBrandError("Failed to send notification.");
+      setBrandError("Не удалось отправить уведомление.");
     } finally {
       setBrandSending(false);
     }
   };
 
   const handleSendBuyers = async () => {
-    if (!buyerMessage.trim() || !token) return;
+    if (!buyerMessage.trim()) return;
     setBuyerSending(true);
     setBuyerError(null);
     setBuyerSent(false);
     try {
-      await sendAdminBuyerPush(token, buyerMessage.trim());
+      await sendAdminBuyerPush(buyerMessage.trim());
       setBuyerSent(true);
       setBuyerMessage("");
     } catch {
@@ -60,7 +58,7 @@ export function AdminNotificationsView() {
     <div className="p-4 sm:p-6 max-w-xl">
       <div className="flex items-center gap-2 mb-6">
         <Bell className="h-5 w-5 text-foreground" />
-        <h2 className="text-2xl font-bold text-foreground">Broadcast Notification</h2>
+        <h2 className="text-2xl font-bold text-foreground">Рассылка уведомлений</h2>
       </div>
 
       {/* Tab bar */}
@@ -92,11 +90,11 @@ export function AdminNotificationsView() {
         <div className="bg-card rounded-xl border border-border/30 p-5 space-y-4">
           <div className="space-y-2">
             <Label htmlFor="brand-notif-message" className="text-sm font-medium text-foreground">
-              Message to all brands
+              Сообщение всем брендам
             </Label>
             <Textarea
               id="brand-notif-message"
-              placeholder="Enter notification text..."
+              placeholder="Текст уведомления..."
               value={brandMessage}
               onChange={(e) => setBrandMessage(e.target.value)}
               maxLength={500}
@@ -107,14 +105,14 @@ export function AdminNotificationsView() {
           </div>
 
           {brandError && <p className="text-sm text-red-500">{brandError}</p>}
-          {brandSent && <p className="text-sm text-green-500">Notification sent to all brands.</p>}
+          {brandSent && <p className="text-sm text-green-500">Уведомление отправлено всем брендам.</p>}
 
           <Button
             onClick={handleSendBrands}
             disabled={brandSending || !brandMessage.trim()}
             className="w-full bg-foreground text-background hover:bg-foreground/90"
           >
-            {brandSending ? "Sending..." : "Send to all brands"}
+            {brandSending ? "Отправка..." : "Отправить всем брендам"}
           </Button>
         </div>
       )}
@@ -146,7 +144,7 @@ export function AdminNotificationsView() {
             disabled={buyerSending || !buyerMessage.trim()}
             className="w-full bg-foreground text-background hover:bg-foreground/90"
           >
-            {buyerSending ? "Sending..." : "Отправить покупателям"}
+            {buyerSending ? "Отправка..." : "Отправить покупателям"}
           </Button>
         </div>
       )}

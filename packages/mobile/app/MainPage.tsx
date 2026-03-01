@@ -58,6 +58,7 @@ import {
   SIZE_PANEL_CLOSED_WIDTH,
   CARD_BACK_BOTTOM_INSET,
 } from "./lib/swipeCardConstants";
+import { getEffectivePrice, formatPrice } from "./lib/swipeCardUtils";
 
 interface SimpleNavigation {
   navigate: (screen: string) => void;
@@ -276,11 +277,7 @@ const MainPage = ({ navigation, route }: MainPageProps) => {
 
   const currentCard = deck.cards[deck.currentCardIndex];
   const hasSale = currentCard?.sale_price != null && currentCard.sale_price > 0;
-  const displaySalePrice = hasSale
-    ? currentCard!.sale_type === "percent"
-      ? currentCard!.price * (1 - currentCard!.sale_price! / 100)
-      : currentCard!.sale_price!
-    : null;
+  const displaySalePrice = hasSale ? getEffectivePrice(currentCard!) : null;
 
   const renderBackBottomStrip = (card: CardItem, index: number) => {
     const isLiked = card.isLiked === true;
@@ -461,21 +458,21 @@ const MainPage = ({ navigation, route }: MainPageProps) => {
           <RNAnimated.View style={[cardStyles.text, { opacity: deck.fadeAnim }]}>
             {deck.cards.length > 0 ? (
               <>
-                <Text style={cardStyles.brandName} numberOfLines={1}>
+                <Text style={cardStyles.brandName} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.5}>
                   {currentCard?.brand_name || "бренд не указан"}
                 </Text>
                 {hasSale ? (
                   <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
                     <Text style={[cardStyles.price, cardStyles.priceStrikethrough]}>
-                      {`${currentCard!.price.toFixed(0)} ₽`}
+                      {`${formatPrice(currentCard!.price)} ₽`}
                     </Text>
                     <Text style={[cardStyles.price, cardStyles.priceSale]}>
-                      {`${displaySalePrice!.toFixed(0)} ₽`}
+                      {`${formatPrice(displaySalePrice!)} ₽`}
                     </Text>
                   </View>
                 ) : (
                   <Text style={cardStyles.price}>
-                    {`${currentCard?.price.toFixed(2) || "0.00"} ₽`}
+                    {`${currentCard ? formatPrice(currentCard.price) : "0,00"} ₽`}
                   </Text>
                 )}
               </>

@@ -37,6 +37,7 @@ import {
   ANIMATION_DELAYS,
   ANIMATION_EASING,
 } from "./lib/animations";
+import { getEffectivePrice, formatPrice } from "./lib/swipeCardUtils";
 import { useTheme } from "./lib/ThemeContext";
 import type { ThemeColors } from "./lib/theme";
 import { SkeletonCartList } from "./components/SkeletonCard";
@@ -100,7 +101,7 @@ const computeDeliveryForItems = (
 
   for (const item of items) {
     const bid = item.brand_id ?? "";
-    const subtotal = item.price * (item.quantity ?? 1);
+    const subtotal = getEffectivePrice(item) * (item.quantity ?? 1);
     brandSubtotals[bid] = (brandSubtotals[bid] ?? 0) + subtotal;
   }
 
@@ -119,7 +120,7 @@ const computeDeliveryForItems = (
   // Allocate brand shipping to items proportionally, return in same order
   return items.map((item) => {
     const bid = item.brand_id ?? "";
-    const subtotal = item.price * (item.quantity ?? 1);
+    const subtotal = getEffectivePrice(item) * (item.quantity ?? 1);
     const brandSubtotal = brandSubtotals[bid] ?? subtotal;
     const brandShipping = brandShippingCosts[bid] ?? DEFAULT_SHIPPING_PRICE;
     const allocatedCost =
@@ -136,6 +137,7 @@ interface BrandShippingSummary {
   originalCost: number;
   actualCost: number;
   isFree: boolean;
+  remainingForFree: number | null;
 }
 
 const computeBrandShippingSummaries = (
@@ -155,18 +157,21 @@ const computeBrandShippingSummaries = (
         brandId: bid,
       };
     }
-    grouped[bid].subtotal += item.price * (item.quantity ?? 1);
+    grouped[bid].subtotal += getEffectivePrice(item) * (item.quantity ?? 1);
   }
   return Object.values(grouped).map(({ brandName, subtotal, brandId }) => {
     const brand = brandsMap[brandId];
     const originalCost = brand?.shipping_price ?? DEFAULT_SHIPPING_PRICE;
     const minFree = brand?.min_free_shipping;
     const isFree = minFree != null && subtotal >= minFree;
+    const remainingForFree =
+      minFree != null ? Math.max(0, minFree - subtotal) : null;
     return {
       brandName,
       originalCost,
       actualCost: isFree ? 0 : originalCost,
       isFree,
+      remainingForFree,
     };
   });
 };
@@ -292,6 +297,15 @@ const Cart = ({ navigation }: CartProps) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showConfirmation, setShowConfirmation] = useState(false);
   const [paymentError, setPaymentError] = useState<string | null>(null);
+  const [isScrollable, setIsScrollable] = useState(false);
+  const scrollContainerH = useRef(0);
+  const scrollContentH = useRef(0);
+  const SCROLL_SAFETY = 20;
+  const checkScrollable = () => {
+    setIsScrollable(
+      scrollContentH.current > scrollContainerH.current + SCROLL_SAFETY,
+    );
+  };
   const { width } = Dimensions.get("window");
 
   // Load brands for shipping_price and min_free_shipping
@@ -431,10 +445,12 @@ const Cart = ({ navigation }: CartProps) => {
   const calculateRawTotal = () =>
     cartItems.reduce(
       (total, item) =>
-        total + item.price * (item.quantity ?? 1) + item.delivery.cost,
+        total +
+        getEffectivePrice(item) * (item.quantity ?? 1) +
+        item.delivery.cost,
       0,
     );
-  const calculateTotal = () => `${calculateRawTotal().toFixed(2)} ₽`;
+  const calculateTotal = () => `${formatPrice(calculateRawTotal())} ₽`;
 
   const validateAddressInformation = async (): Promise<{
     isValid: boolean;
@@ -623,7 +639,17 @@ const Cart = ({ navigation }: CartProps) => {
             <>
               <ScrollView
                 style={styles.itemsContainer}
+                contentContainerStyle={[styles.scrollContent, isScrollable && { paddingBottom: 20 }]}
                 showsVerticalScrollIndicator={false}
+                scrollEnabled={isScrollable}
+                onLayout={(e) => {
+                  scrollContainerH.current = e.nativeEvent.layout.height;
+                  checkScrollable();
+                }}
+                onContentSizeChange={(_w, h) => {
+                  scrollContentH.current = h;
+                  checkScrollable();
+                }}
               >
                 {cartItems.map((item, index) => (
                   <Animated.View
@@ -648,13 +674,14 @@ const Cart = ({ navigation }: CartProps) => {
                           <Text
                             style={styles.itemName}
                             numberOfLines={1}
-                            ellipsizeMode="tail"
+                            adjustsFontSizeToFit
+                            minimumFontScale={0.5}
                           >
                             {item.brand_name}
                           </Text>
-                          <Text style={styles.itemPrice}>{`${item.price.toFixed(
-                            2,
-                          )} ₽`}</Text>
+                          <Text
+                            style={styles.itemPrice}
+                          >{`${formatPrice(getEffectivePrice(item))} ₽`}</Text>
                           <Text style={styles.itemSize}>{item.size}</Text>
                           <View>
                             <Text style={styles.deliveryText}>ожидание</Text>
@@ -673,7 +700,7 @@ const Cart = ({ navigation }: CartProps) => {
                               numberOfLines={1}
                               adjustsFontSizeToFit
                             >
-                              {`${item.delivery.cost.toFixed(2)} ₽`}
+                              {`${formatPrice(item.delivery.cost)} ₽`}
                             </Text>
                           </View>
                         </View>
@@ -742,61 +769,76 @@ const Cart = ({ navigation }: CartProps) => {
                         {summary.isFree ? (
                           <View style={{ flexDirection: "row", gap: 8 }}>
                             <Text style={styles.deliverySummaryOriginalPrice}>
-                              {summary.originalCost.toFixed(2)} ₽
+                              {formatPrice(summary.originalCost)} ₽
                             </Text>
                             <Text style={styles.deliverySummaryPrice}>
-                              0.00 ₽
+                              0,00 ₽
                             </Text>
                           </View>
                         ) : (
                           <Text style={styles.deliverySummaryPrice}>
-                            {summary.actualCost.toFixed(2)} ₽
+                            {formatPrice(summary.actualCost)} ₽
                           </Text>
                         )}
                       </View>
                     ))}
+                    {brandSummaries
+                      .filter(
+                        (s) =>
+                          s.remainingForFree != null && s.remainingForFree > 0,
+                      )
+                      .map((s) => (
+                        <Text
+                          key={`free-${s.brandName}`}
+                          style={styles.freeDeliveryHintText}
+                        >
+                          ещё {formatPrice(s.remainingForFree!)} ₽ до бесплатной
+                          доставки от {s.brandName}
+                        </Text>
+                      ))}
                   </View>
                 </Animated.View>
-              </ScrollView>
-              <Animated.View style={styles.checkoutContainer}>
-                {paymentError && (
+
+                <Animated.View style={styles.checkoutContainer}>
+                  {paymentError && (
+                    <Animated.View
+                      entering={FadeIn.duration(ANIMATION_DURATIONS.STANDARD)}
+                      style={styles.errorContainer}
+                    >
+                      <Text style={styles.errorText}>{paymentError}</Text>
+                      {paymentError.includes("информацию о доставке") && (
+                        <TouchableOpacity
+                          style={styles.settingsButton}
+                          onPress={() => navigation.navigate("Settings")}
+                        >
+                          <Text style={styles.settingsButtonText}>
+                            Перейти в настройки
+                          </Text>
+                        </TouchableOpacity>
+                      )}
+                    </Animated.View>
+                  )}
                   <Animated.View
-                    entering={FadeIn.duration(ANIMATION_DURATIONS.STANDARD)}
-                    style={styles.errorContainer}
+                    entering={FadeInDown.duration(
+                      ANIMATION_DURATIONS.MEDIUM,
+                    ).delay(ANIMATION_DELAYS.EXTENDED)}
+                    style={{ width: "100%" }}
                   >
-                    <Text style={styles.errorText}>{paymentError}</Text>
-                    {paymentError.includes("информацию о доставке") && (
-                      <TouchableOpacity
-                        style={styles.settingsButton}
-                        onPress={() => navigation.navigate("Settings")}
-                      >
-                        <Text style={styles.settingsButtonText}>
-                          Перейти в настройки
-                        </Text>
-                      </TouchableOpacity>
-                    )}
+                    <TouchableOpacity
+                      style={[
+                        styles.checkoutButton,
+                        isSubmitting && styles.disabledButton,
+                      ]}
+                      onPress={handleCheckout}
+                      disabled={isSubmitting}
+                    >
+                      <Text style={styles.checkoutButtonText}>
+                        {isSubmitting ? "ОБРАБОТКА..." : "ОФОРМИТЬ ЗАКАЗ"}
+                      </Text>
+                    </TouchableOpacity>
                   </Animated.View>
-                )}
-                <Animated.View
-                  entering={FadeInDown.duration(
-                    ANIMATION_DURATIONS.MEDIUM,
-                  ).delay(ANIMATION_DELAYS.EXTENDED)}
-                  style={{ width: "100%" }}
-                >
-                  <TouchableOpacity
-                    style={[
-                      styles.checkoutButton,
-                      isSubmitting && styles.disabledButton,
-                    ]}
-                    onPress={handleCheckout}
-                    disabled={isSubmitting}
-                  >
-                    <Text style={styles.checkoutButtonText}>
-                      {isSubmitting ? "ОБРАБОТКА..." : "ОФОРМИТЬ ЗАКАЗ"}
-                    </Text>
-                  </TouchableOpacity>
                 </Animated.View>
-              </Animated.View>
+              </ScrollView>
             </>
           )}
         </Animated.View>
@@ -846,17 +888,18 @@ const createStyles = (theme: ThemeColors) =>
       shadowRadius: 4,
       elevation: 6,
     },
-    itemsContainer: { height: "70%", borderRadius: 41, padding: height * 0.02 },
+    itemsContainer: { flex: 1, borderRadius: 41, padding: height * 0.02 },
+    scrollContent: { flexGrow: 1 },
     cartItem: {
       backgroundColor: theme.surface.cartItem,
       borderRadius: 41,
+      height: height * 0.2,
       marginBottom: 15,
       shadowColor: theme.shadow.default,
       shadowOffset: { width: 0, height: 4 },
       shadowOpacity: 0.25,
       shadowRadius: 4,
       elevation: 6,
-      flex: 1,
     },
     itemPressable: {
       flexDirection: "row",
@@ -938,7 +981,16 @@ const createStyles = (theme: ThemeColors) =>
       width: "20%",
     },
     circle: { position: "absolute", top: "30%", bottom: "30%", right: 0 },
-    checkoutContainer: { borderRadius: 41, padding: 20, alignItems: "center" },
+    freeDeliveryHintText: {
+      fontFamily: "REM",
+      fontSize: 12,
+      color: theme.text.secondary,
+    },
+    checkoutContainer: {
+      borderRadius: 41,
+      alignItems: "center",
+      marginTop: "auto",
+    },
     summaryContainer: {
       marginBottom: 10,
       width: "87%",

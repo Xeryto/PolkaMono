@@ -28,6 +28,7 @@ import { apiWrapper } from "../services/apiWrapper";
 import AvatarImage from "../components/AvatarImage";
 import { CardItem, CartItem } from "../types/product";
 import { mapProductToCardItem } from "../lib/productMapper";
+import { getEffectivePrice, formatPrice } from "../lib/swipeCardUtils";
 import {
   SwipeCard,
   CardFront,
@@ -118,6 +119,8 @@ const FriendRecommendationsScreen = ({
   );
 
   const currentCard = deck.cards[deck.currentCardIndex];
+  const hasSale = currentCard?.sale_price != null && currentCard.sale_price > 0;
+  const displaySalePrice = hasSale ? getEffectivePrice(currentCard!) : null;
 
   return (
     <Animated.View
@@ -231,12 +234,23 @@ const FriendRecommendationsScreen = ({
           <RNAnimated.View style={[cardStyles.text, { opacity: deck.fadeAnim }]}>
             {deck.cards.length > 0 ? (
               <>
-                <Text style={cardStyles.brandName} numberOfLines={1}>
+                <Text style={cardStyles.brandName} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.5}>
                   {currentCard?.brand_name || "бренд не указан"}
                 </Text>
-                <Text style={cardStyles.price}>
-                  {`${currentCard?.price.toFixed(2) || "0.00"} ₽`}
-                </Text>
+                {hasSale ? (
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                    <Text style={[cardStyles.price, cardStyles.priceStrikethrough]}>
+                      {`${formatPrice(currentCard!.price)} ₽`}
+                    </Text>
+                    <Text style={[cardStyles.price, cardStyles.priceSale]}>
+                      {`${formatPrice(displaySalePrice!)} ₽`}
+                    </Text>
+                  </View>
+                ) : (
+                  <Text style={cardStyles.price}>
+                    {`${currentCard ? formatPrice(currentCard.price) : "0,00"} ₽`}
+                  </Text>
+                )}
               </>
             ) : (
               <>

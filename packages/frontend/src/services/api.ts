@@ -176,6 +176,7 @@ export interface OrderItemResponse {
   size: string;
   image?: string;
   sku?: string;  // Stock Keeping Unit - renamed from honest_sign
+  status?: string;  // shipped | returned
   delivery: {
     cost: number;
     estimatedTime: string;
@@ -371,6 +372,7 @@ export const createProduct = async (productData: {
   article_number?: string;
   general_images?: string[];
   country_of_manufacture?: string;
+  sizing_table_image?: string | null;
 }, token: string, requestOptions?: RequestOptions): Promise<ProductResponse> => {
   return await apiRequest('/api/v1/brands/products', 'POST', productData, true, token, requestOptions);
 };

@@ -3,7 +3,6 @@ import { RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useAdminAuth } from "@/context/AdminAuthContext";
 import {
   getAdminReturns,
   lookupAdminOrder,
@@ -11,6 +10,7 @@ import {
   AdminReturnItem,
   AdminOrderLookup,
 } from "@/services/adminApi";
+import { DateRangePicker } from "@/components/admin/DateRangePicker";
 
 function formatDate(dateStr: string | null): string {
   if (!dateStr) return "—";
@@ -23,7 +23,9 @@ function formatDate(dateStr: string | null): string {
 }
 
 export function AdminOrdersView() {
-  const { token } = useAdminAuth();
+  // Date filter
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
 
   // Returns log state
   const [returns, setReturns] = useState<AdminReturnItem[]>([]);
@@ -41,11 +43,10 @@ export function AdminOrdersView() {
   const [submitSuccess, setSubmitSuccess] = useState(false);
 
   const fetchReturns = async () => {
-    if (!token) return;
     setLoadingReturns(true);
     setReturnsError(null);
     try {
-      const data = await getAdminReturns(token);
+      const data = await getAdminReturns(dateFrom || undefined, dateTo || undefined);
       setReturns(data);
     } catch {
       setReturnsError("Не удалось загрузить возвраты");
@@ -57,10 +58,10 @@ export function AdminOrdersView() {
   useEffect(() => {
     fetchReturns();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [token]);
+  }, [dateFrom, dateTo]);
 
   const handleSearch = async () => {
-    if (!token || !orderIdInput.trim()) return;
+    if (!orderIdInput.trim()) return;
     setLookupLoading(true);
     setLookupError(null);
     setLookupResult(null);
@@ -68,7 +69,7 @@ export function AdminOrdersView() {
     setSubmitSuccess(false);
     setSubmitError(null);
     try {
-      const data = await lookupAdminOrder(token, orderIdInput.trim());
+      const data = await lookupAdminOrder(orderIdInput.trim());
       setLookupResult(data);
     } catch (e: unknown) {
       setLookupError(e instanceof Error ? e.message : "Ошибка поиска");
@@ -90,12 +91,12 @@ export function AdminOrdersView() {
   };
 
   const handleSubmit = async () => {
-    if (!token || !lookupResult || selectedItemIds.size === 0) return;
+    if (!lookupResult || selectedItemIds.size === 0) return;
     setSubmitting(true);
     setSubmitError(null);
     setSubmitSuccess(false);
     try {
-      await logAdminReturn(token, lookupResult.order_id, Array.from(selectedItemIds));
+      await logAdminReturn(lookupResult.order_id, Array.from(selectedItemIds));
       setSubmitSuccess(true);
       setOrderIdInput("");
       setLookupResult(null);
@@ -115,6 +116,14 @@ export function AdminOrdersView() {
         <h2 className="text-2xl font-bold text-foreground">Возвраты</h2>
       </div>
 
+      <DateRangePicker
+        dateFrom={dateFrom}
+        dateTo={dateTo}
+        onDateFromChange={setDateFrom}
+        onDateToChange={setDateTo}
+        onClear={() => { setDateFrom(""); setDateTo(""); }}
+      />
+
       {/* Returns log table */}
       <div className="bg-card rounded-xl border border-border/30 overflow-hidden">
         <div className="px-4 py-3 border-b border-border/30">
@@ -130,7 +139,7 @@ export function AdminOrdersView() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-border/30 text-muted-foreground text-xs uppercase">
-                <th className="px-4 py-2 text-left font-medium">Order #</th>
+                <th className="px-4 py-2 text-left font-medium">Заказ №</th>
                 <th className="px-4 py-2 text-left font-medium">Товар</th>
                 <th className="px-4 py-2 text-left font-medium">Бренд</th>
                 <th className="px-4 py-2 text-left font-medium">Дата</th>
@@ -185,7 +194,7 @@ export function AdminOrdersView() {
           <div className="space-y-3">
             <p className="text-xs text-muted-foreground">
               Бренд: <span className="text-foreground font-medium">{lookupResult.brand_name}</span>
-              {" · "}Order #{lookupResult.order_id.slice(0, 8)}
+              {" · "}Заказ №{lookupResult.order_id.slice(0, 8)}
             </p>
             <div className="space-y-2">
               {lookupResult.items.map((item) => {
@@ -218,7 +227,7 @@ export function AdminOrdersView() {
                           : "bg-green-900/20 text-green-300"
                       }`}
                     >
-                      {alreadyReturned ? "возвращён" : item.current_status}
+                      {alreadyReturned ? "возвращён" : "отправлен"}
                     </span>
                   </label>
                 );

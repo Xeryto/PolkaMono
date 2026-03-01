@@ -38,27 +38,24 @@ const DELIVERY_TIME_OPTIONS = [
   { value: 14, label: "2 недели" },
   { value: 21, label: "3 недели" },
   { value: 30, label: "1 месяц" },
+  { value: 60, label: "2 месяца" },
+  { value: 90, label: "3 месяца" },
 ];
 
 const profileSchema = z.object({
   name: z.string().min(1, "Обязательное поле").max(100),
-  description: z.string().max(1000).optional(),
-  return_policy: z.string().optional(),
+  email: z.string().min(1, "Обязательное поле").email("Неверный формат email"),
+  description: z.string().min(1, "Обязательное поле").max(1000),
+  return_policy: z.string().min(1, "Обязательное поле"),
   shipping_price: z
-    .number({ invalid_type_error: "Введите число" })
-    .min(0, "Не может быть отрицательной")
-    .optional(),
+    .number({ required_error: "Обязательное поле", invalid_type_error: "Введите число" })
+    .min(0, "Не может быть отрицательной"),
   min_free_shipping: z.number({ invalid_type_error: "Введите число" }).min(0).optional(),
-  shipping_provider: z.string().max(100).optional(),
-  delivery_time_min: z.number().int().min(1).optional(),
-  delivery_time_max: z.number().int().min(1).optional(),
+  shipping_provider: z.string().min(1, "Обязательное поле").max(100),
+  delivery_time_min: z.number({ required_error: "Обязательное поле" }).int().min(1, "Обязательное поле"),
+  delivery_time_max: z.number({ required_error: "Обязательное поле" }).int().min(1, "Обязательное поле"),
 }).refine(
-  (d) => {
-    if (d.delivery_time_min != null && d.delivery_time_max != null) {
-      return d.delivery_time_max >= d.delivery_time_min;
-    }
-    return true;
-  },
+  (d) => d.delivery_time_max >= d.delivery_time_min,
   { message: "Максимальный срок должен быть не меньше минимального", path: ["delivery_time_max"] }
 );
 
@@ -136,6 +133,7 @@ export function ProfileSettingsPage() {
     // Zod validation
     const parseResult = profileSchema.safeParse({
       name: profile.name,
+      email: profile.email,
       description: profile.description,
       return_policy: profile.return_policy,
       shipping_price: profile.shipping_price,
@@ -246,6 +244,26 @@ export function ProfileSettingsPage() {
                     onChange={handleInputChange}
                     className="mt-1"
                   />
+                  {fieldErrors.email && (
+                    <p className="text-xs text-destructive mt-1">{fieldErrors.email}</p>
+                  )}
+                </div>
+                <div>
+                  <label
+                    htmlFor="description"
+                    className="text-sm font-medium text-muted-foreground"
+                  >
+                    Описание
+                  </label>
+                  <Textarea
+                    id="description"
+                    value={profile.description ?? ""}
+                    onChange={handleInputChange}
+                    className="mt-1"
+                  />
+                  {fieldErrors.description && (
+                    <p className="text-xs text-destructive mt-1">{fieldErrors.description}</p>
+                  )}
                 </div>
 
                 {/* Legal info — view-only modal trigger */}
@@ -311,6 +329,9 @@ export function ProfileSettingsPage() {
                           ))}
                         </SelectContent>
                       </Select>
+                      {fieldErrors.delivery_time_min && (
+                        <p className="text-xs text-destructive mt-1">{fieldErrors.delivery_time_min}</p>
+                      )}
                     </div>
                     <div className="flex-1">
                       <Label>до</Label>
@@ -333,6 +354,9 @@ export function ProfileSettingsPage() {
                           ))}
                         </SelectContent>
                       </Select>
+                      {fieldErrors.delivery_time_max && (
+                        <p className="text-xs text-destructive mt-1">{fieldErrors.delivery_time_max}</p>
+                      )}
                     </div>
                   </div>
                   <div>

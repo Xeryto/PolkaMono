@@ -3,7 +3,7 @@ import os
 import random
 import string
 import uuid
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import List, Optional
 
 import models
@@ -121,8 +121,7 @@ def create_payment(
         total_amount=str(amount),
         currency=currency,
         status=OrderStatus.CREATED,
-        expires_at=datetime.utcnow()
-        + timedelta(hours=settings.ORDER_PENDING_EXPIRY_HOURS),
+        expires_at=datetime.now(timezone.utc)        + timedelta(hours=settings.ORDER_PENDING_EXPIRY_HOURS),
         # Store delivery information at order creation time
         delivery_full_name=user.full_name,
         delivery_email=user.delivery_email,
@@ -351,8 +350,7 @@ def create_order_test(
             shipping_cost=shipping_cost,
             total_amount=order_total,
             status=OrderStatus.CREATED,
-            expires_at=datetime.utcnow()
-            + timedelta(hours=settings.ORDER_PENDING_EXPIRY_HOURS),
+            expires_at=datetime.now(timezone.utc)            + timedelta(hours=settings.ORDER_PENDING_EXPIRY_HOURS),
             delivery_full_name=delivery_full_name,
             delivery_email=delivery_email,
             delivery_phone=delivery_phone,
@@ -491,7 +489,7 @@ def update_order_status(
 
 def expire_pending_orders(db: Session) -> int:
     """Cancel CREATED orders whose expires_at has passed. Returns count of orders expired."""
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     expired = (
         db.query(Order)
         .filter(

@@ -10,7 +10,7 @@ from config import settings
 import bcrypt
 import hashlib
 import jwt
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import uuid
 import secrets
 
@@ -32,9 +32,9 @@ class AuthService:
         """Create JWT access token"""
         to_encode = data.copy()
         if expires_delta:
-            expire = datetime.utcnow() + expires_delta
+            expire = datetime.now(timezone.utc) + expires_delta
         else:
-            expire = datetime.utcnow() + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+            expire = datetime.now(timezone.utc) + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
         to_encode.update({"exp": expire})
         encoded_jwt = jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
         return encoded_jwt
@@ -160,7 +160,7 @@ class AuthService:
         if expires_at:
             oauth_account.expires_at = expires_at
         
-        oauth_account.updated_at = datetime.utcnow()
+        oauth_account.updated_at = datetime.now(timezone.utc)
         db.commit()
         db.refresh(oauth_account)
         return oauth_account
@@ -226,7 +226,7 @@ class AuthService:
         avatar_url = user.profile.avatar_url if user.profile else None
         return {
             "token": access_token,
-            "expires_at": datetime.utcnow() + access_token_expires,
+            "expires_at": datetime.now(timezone.utc) + access_token_expires,
             "user": {
                 "id": user.id,
                 "username": user.username,
@@ -266,7 +266,7 @@ class AuthService:
         code = ''.join(secrets.choice('0123456789') for _ in range(6))
         acc = principal.auth_account
         acc.email_verification_code = code
-        acc.email_verification_code_expires_at = datetime.utcnow() + timedelta(minutes=settings.EMAIL_VERIFICATION_CODE_EXPIRE_MINUTES)
+        acc.email_verification_code_expires_at = datetime.now(timezone.utc) + timedelta(minutes=settings.EMAIL_VERIFICATION_CODE_EXPIRE_MINUTES)
         db.commit()
         return code
 
@@ -275,7 +275,7 @@ class AuthService:
         token = self._generate_secure_token()
         acc = principal.auth_account
         acc.password_reset_token = token
-        acc.password_reset_expires = datetime.utcnow() + timedelta(minutes=15)
+        acc.password_reset_expires = datetime.now(timezone.utc) + timedelta(minutes=15)
         db.commit()
         return token
 
@@ -304,8 +304,8 @@ class AuthService:
     def check_login_lockout(db: Session, auth_account: AuthAccount) -> None:
         """Raise 423 if account is currently locked out. Reset counter if lockout expired."""
         if auth_account.login_locked_until:
-            if auth_account.login_locked_until > datetime.utcnow():
-                remaining = int((auth_account.login_locked_until - datetime.utcnow()).total_seconds() // 60) + 1
+            if auth_account.login_locked_until > datetime.now(timezone.utc):
+                remaining = int((auth_account.login_locked_until - datetime.now(timezone.utc)).total_seconds() // 60) + 1
                 from fastapi import HTTPException, status
                 raise HTTPException(
                     status_code=status.HTTP_423_LOCKED,
@@ -321,7 +321,7 @@ class AuthService:
         """Increment failed attempts; lock if threshold reached."""
         auth_account.failed_login_attempts = sa_func.coalesce(AuthAccount.failed_login_attempts, 0) + 1
         if auth_account.failed_login_attempts >= settings.LOGIN_MAX_FAILED_ATTEMPTS:
-            auth_account.login_locked_until = datetime.utcnow() + timedelta(minutes=settings.LOGIN_LOCKOUT_MINUTES)
+            auth_account.login_locked_until = datetime.now(timezone.utc) + timedelta(minutes=settings.LOGIN_LOCKOUT_MINUTES)
         db.commit()
 
     @staticmethod
@@ -336,7 +336,7 @@ class AuthService:
         """Generate rotating refresh token, store hashed, return raw."""
         raw = secrets.token_urlsafe(64)
         auth_account.refresh_token_hash = hashlib.sha256(raw.encode()).hexdigest()
-        auth_account.refresh_token_expires_at = datetime.utcnow() + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
+        auth_account.refresh_token_expires_at = datetime.now(timezone.utc) + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
         db.commit()
         return raw
 
@@ -345,7 +345,7 @@ class AuthService:
         """Verify refresh token; return AuthAccount or None."""
         token_hash = hashlib.sha256(raw_token.encode()).hexdigest()
         acc = db.query(AuthAccount).filter(AuthAccount.refresh_token_hash == token_hash).first()
-        if not acc or not acc.refresh_token_expires_at or acc.refresh_token_expires_at < datetime.utcnow():
+        if not acc or not acc.refresh_token_expires_at or acc.refresh_token_expires_at < datetime.now(timezone.utc):
             return None
         return acc
 

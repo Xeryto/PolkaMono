@@ -400,6 +400,19 @@ export function SecuritySettingsPage() {
             <div className="space-y-4">
               <p className="text-sm text-muted-foreground">
                 Введите 6-значный код из письма для подтверждения.
+                {profile?.email && (
+                  <>
+                    {" "}Код отправлен на{" "}
+                    <span className="font-medium text-foreground">
+                      {(() => {
+                        const [local, domain] = profile.email.split("@");
+                        const visible = local.slice(0, 3);
+                        const masked = "*".repeat(Math.max(local.length - 3, 1));
+                        return `${visible}${masked}@${domain}`;
+                      })()}
+                    </span>
+                  </>
+                )}
               </p>
               <div>
                 <Label htmlFor="otp_code">Код подтверждения</Label>

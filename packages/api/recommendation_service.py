@@ -411,7 +411,7 @@ def get_recommendations_for_user(
     if not candidates:
         return []
 
-    now = datetime.now(timezone.utc).replace(tzinfo=None)
+    now = datetime.now(timezone.utc)
     max_pc = max(c.purchase_count for c in candidates)
 
     scored = sorted(
@@ -471,7 +471,7 @@ def get_recommendations_for_friend(
         )
     )
 
-    now = datetime.now(timezone.utc).replace(tzinfo=None)
+    now = datetime.now(timezone.utc)
     max_pc = max(c.purchase_count for c in candidates)
 
     scored = []

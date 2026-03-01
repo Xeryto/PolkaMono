@@ -1403,6 +1403,7 @@ export interface OrderItem {
   color?: string;
   materials?: string;
   sku?: string;
+  status?: string;  // shipped | returned
   images?: string[];
   return_policy?: string;
   product_id?: string; // Original product ID for swipe tracking
@@ -1491,6 +1492,8 @@ export function getOrderStatusLabel(status: string | undefined): string {
       return "отправлен";
     case "returned":
       return "возвращён";
+    case "partially_returned":
+      return "частично\nвозвращён";
     case "canceled":
       return "отменён";
     default:
@@ -1729,6 +1732,15 @@ export const decrementSwipeCount = async (): Promise<number> => {
   } catch (error) {
     console.error('Error decrementing swipe count:', error);
     return 0;
+  }
+};
+
+// Sync local swipe count with API truth
+export const syncSwipeCountFromApi = async (apiCount: number): Promise<void> => {
+  try {
+    await AsyncStorage.setItem(SWIPE_COUNT_KEY, apiCount.toString());
+  } catch (error) {
+    console.error('Error syncing swipe count:', error);
   }
 };
 

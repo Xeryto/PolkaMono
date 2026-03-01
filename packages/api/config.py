@@ -25,6 +25,7 @@ class Settings:
     SECRET_KEY: str = os.getenv("SECRET_KEY")
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "30"))
+    BRAND_TOKEN_EXPIRE_MINUTES: int = int(os.getenv("BRAND_TOKEN_EXPIRE_MINUTES", "1440"))
     EMAIL_VERIFICATION_CODE_EXPIRE_MINUTES: int = int(os.getenv("EMAIL_VERIFICATION_CODE_EXPIRE_MINUTES", "10"))
     ORDER_PENDING_EXPIRY_HOURS: int = int(os.getenv("ORDER_PENDING_EXPIRY_HOURS", "24"))
     OTP_EXPIRE_MINUTES: int = int(os.getenv("OTP_EXPIRE_MINUTES", "5"))
@@ -89,7 +90,7 @@ class Settings:
     
     # Validation Rules
     MIN_USERNAME_LENGTH: int = 3
-    MIN_PASSWORD_LENGTH: int = 6
+    MIN_PASSWORD_LENGTH: int = 8
     MAX_USERNAME_LENGTH: int = 50
     MAX_EMAIL_LENGTH: int = 255
     

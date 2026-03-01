@@ -3,6 +3,20 @@ import * as api from "../services/api";
 import fallbackImage from "../assets/Vision.png";
 import { LOADING_CARD_ID } from "./swipeCardConstants";
 
+/** Returns the effective (sale-adjusted) price for display. */
+export const getEffectivePrice = (item: {
+  price: number;
+  sale_price?: number | null;
+  sale_type?: "percent" | "exact" | null;
+}): number => {
+  if (item.sale_price != null && item.sale_price > 0) {
+    return item.sale_type === "percent"
+      ? item.price * (1 - item.sale_price / 100)
+      : item.sale_price;
+  }
+  return item.price;
+};
+
 export const formatDeliveryTime = (
   min?: number | null,
   max?: number | null,
@@ -28,6 +42,9 @@ export const createLoadingCard = (): CardItem => ({
   brand_return_policy: "",
   available_sizes: [],
 });
+
+/** Format a number as a Russian-locale price string (comma decimal separator). */
+export const formatPrice = (n: number): string => n.toFixed(2).replace(".", ",");
 
 export const toggleLikeApi = async (
   productId: string,

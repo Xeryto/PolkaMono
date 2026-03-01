@@ -37,16 +37,27 @@ const DELIVERY_TIME_OPTIONS = [
   { value: 14, label: "2 недели" },
   { value: 21, label: "3 недели" },
   { value: 30, label: "1 месяц" },
+  { value: 60, label: "2 месяца" },
+  { value: 90, label: "3 месяца" },
 ];
 
 const productSchema = z.object({
-  name: z.string().min(1, "Название обязательно").max(255, "Не более 255 символов"),
-  price: z.string().min(1, "Цена обязательна").refine(
-    (v) => !isNaN(Number(v)) && Number(v) > 0,
-    "Цена должна быть больше нуля"
-  ),
+  name: z
+    .string()
+    .min(1, "Название обязательно")
+    .max(255, "Не более 255 символов"),
+  price: z
+    .string()
+    .min(1, "Цена обязательна")
+    .refine(
+      (v) => !isNaN(Number(v.replace(",", "."))) && Number(v.replace(",", ".")) > 0,
+      "Цена должна быть больше нуля",
+    ),
   description: z.string().max(1000, "Не более 1000 символов").optional(),
   selectedCategory: z.string().min(1, "Выберите категорию"),
+  selectedMaterials: z.array(z.string()).min(1, "Выберите хотя бы один материал"),
+  countryOfManufacture: z.string().min(1, "Укажите страну производства"),
+  selectedStyle: z.string().min(1, "Выберите стиль"),
 });
 
 export interface ColorVariationForm {
@@ -92,9 +103,15 @@ export function AddNewItemPage() {
   ]);
   const [generalImages, setGeneralImages] = useState<string[]>([]);
   const [generalImageFiles, setGeneralImageFiles] = useState<File[]>([]);
-  const [deliveryTimeMin, setDeliveryTimeMin] = useState<number | undefined>(undefined);
-  const [deliveryTimeMax, setDeliveryTimeMax] = useState<number | undefined>(undefined);
+  const [deliveryTimeMin, setDeliveryTimeMin] = useState<number | undefined>(
+    undefined,
+  );
+  const [deliveryTimeMax, setDeliveryTimeMax] = useState<number | undefined>(
+    undefined,
+  );
   const [countryOfManufacture, setCountryOfManufacture] = useState("");
+  const [sizingTableImage, setSizingTableImage] = useState<string | null>(null);
+  const [sizingTableFile, setSizingTableFile] = useState<File | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
@@ -118,7 +135,7 @@ export function AddNewItemPage() {
       }
     };
     fetchData();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const updateColorVariation = (
@@ -190,10 +207,27 @@ export function AddNewItemPage() {
     setColorVariations((prev) => {
       const next = [...prev];
       const vars = [...next[colorIndex].variants];
-      (vars[variantIndex] as unknown as Record<string, string | number>)[field] = value;
+      (vars[variantIndex] as unknown as Record<string, string | number>)[
+        field
+      ] = value;
       next[colorIndex] = { ...next[colorIndex], variants: vars };
       return next;
     });
+  };
+
+  const getAvailableSizes = (variants: { size: string; stock_quantity: number }[]) => {
+    const selected = variants.map((v) => v.size.trim()).filter(Boolean);
+    const hasOneSize = selected.includes("One Size");
+    const hasOther = selected.some((s) => s !== "One Size");
+    return sizes.filter((s) => {
+      if (hasOneSize && s.name !== "One Size") return false;
+      if (hasOther && s.name === "One Size") return false;
+      return true;
+    });
+  };
+
+  const canAddVariant = (variants: { size: string; stock_quantity: number }[]) => {
+    return !variants.some((v) => v.size === "One Size");
   };
 
   const addVariant = (colorIndex: number) => {
@@ -245,7 +279,15 @@ export function AddNewItemPage() {
   };
 
   const handleSubmit = async () => {
-    const parsed = productSchema.safeParse({ name, price, description, selectedCategory });
+    const parsed = productSchema.safeParse({
+      name,
+      price,
+      description,
+      selectedCategory,
+      selectedMaterials,
+      countryOfManufacture,
+      selectedStyle,
+    });
     if (!parsed.success) {
       const flat = parsed.error.flatten().fieldErrors;
       setFieldErrors({
@@ -253,11 +295,14 @@ export function AddNewItemPage() {
         price: flat.price?.[0] ?? "",
         description: flat.description?.[0] ?? "",
         selectedCategory: flat.selectedCategory?.[0] ?? "",
+        selectedMaterials: flat.selectedMaterials?.[0] ?? "",
+        countryOfManufacture: flat.countryOfManufacture?.[0] ?? "",
+        selectedStyle: flat.selectedStyle?.[0] ?? "",
       });
       return;
     }
     setFieldErrors({});
-    const priceNum = parseFloat(price);
+    const priceNum = parseFloat(price.replace(",", "."));
 
     for (let i = 0; i < colorVariations.length; i++) {
       const cv = colorVariations[i];
@@ -277,8 +322,20 @@ export function AddNewItemPage() {
         });
         return;
       }
+      const filledSizes = cv.variants.filter((v) => v.size.trim());
+      if (filledSizes.length === 0) {
+        toast({
+          title: "Ошибка",
+          description: `Добавьте хотя бы один размер для цвета "${cv.colorName}".`,
+          variant: "destructive",
+        });
+        return;
+      }
       for (const v of cv.variants) {
-        if (v.size.trim() && (v.stock_quantity < 0 || !Number.isInteger(v.stock_quantity))) {
+        if (
+          v.size.trim() &&
+          (v.stock_quantity < 0 || !Number.isInteger(v.stock_quantity))
+        ) {
           toast({
             title: "Ошибка",
             description: `Количество по размеру не может быть отрицательным (цвет "${cv.colorName}").`,
@@ -287,6 +344,15 @@ export function AddNewItemPage() {
           return;
         }
       }
+    }
+
+    if (!sizingTableFile) {
+      toast({
+        title: "Ошибка",
+        description: "Загрузите таблицу размеров.",
+        variant: "destructive",
+      });
+      return;
     }
 
     if (!token) {
@@ -299,11 +365,14 @@ export function AddNewItemPage() {
     }
 
     const hasGeneralImages = generalImageFiles.length > 0;
-    const hasOnePerColor = colorVariations.every((cv) => cv.imageFiles.length > 0);
+    const hasOnePerColor = colorVariations.every(
+      (cv) => cv.imageFiles.length > 0,
+    );
     if (!hasGeneralImages && !hasOnePerColor) {
       toast({
         title: "Ошибка",
-        description: "Добавьте хотя бы одно общее изображение или хотя бы одно изображение в каждом цвете.",
+        description:
+          "Добавьте хотя бы одно общее изображение или хотя бы одно изображение в каждом цвете.",
         variant: "destructive",
       });
       return;
@@ -314,11 +383,8 @@ export function AddNewItemPage() {
       // Upload images to S3 via presigned URLs
       const uploadOne = async (file: File): Promise<string> => {
         const contentType = file.type || "image/jpeg";
-        const { upload_url, public_url } = await api.getProductImagePresignedUrl(
-          contentType,
-          token,
-          file.name
-        );
+        const { upload_url, public_url } =
+          await api.getProductImagePresignedUrl(contentType, token, file.name);
         await api.uploadFileToPresignedUrl(file, upload_url, contentType);
         return public_url;
       };
@@ -339,11 +405,16 @@ export function AddNewItemPage() {
             color_hex: cv.colorHex,
             images: imageUrls,
             variants: cv.variants.filter(
-              (v) => v.size.trim() && v.stock_quantity >= 0
+              (v) => v.size.trim() && v.stock_quantity >= 0,
             ),
           };
-        })
+        }),
       );
+
+      let sizingTableImageUrl: string | null = null;
+      if (sizingTableFile) {
+        sizingTableImageUrl = await uploadOne(sizingTableFile);
+      }
 
       const productData = {
         name,
@@ -353,7 +424,7 @@ export function AddNewItemPage() {
           selectedMaterials.length > 0
             ? selectedMaterials.join(", ")
             : undefined,
-        brand_id: user?.id ?? '',
+        brand_id: user?.id ?? "",
         category_id: selectedCategory,
         styles: selectedStyle ? [selectedStyle] : [],
         color_variants: colorVariantsWithUrls,
@@ -362,6 +433,7 @@ export function AddNewItemPage() {
         delivery_time_min: deliveryTimeMin,
         delivery_time_max: deliveryTimeMax,
         country_of_manufacture: countryOfManufacture || undefined,
+        sizing_table_image: sizingTableImageUrl || undefined,
       };
 
       await api.createProduct(productData, token);
@@ -381,9 +453,14 @@ export function AddNewItemPage() {
       setDeliveryTimeMin(undefined);
       setDeliveryTimeMax(undefined);
       setCountryOfManufacture("");
+      setSizingTableImage(null);
+      setSizingTableFile(null);
     } catch (error: unknown) {
       console.error("Failed to add product:", error);
-      const err = error as { message?: string; fieldErrors?: Record<string, string> };
+      const err = error as {
+        message?: string;
+        fieldErrors?: Record<string, string>;
+      };
       if (err.fieldErrors) {
         setFieldErrors(err.fieldErrors);
       }
@@ -420,19 +497,27 @@ export function AddNewItemPage() {
               value={name}
               onChange={(e) => setName(e.target.value)}
             />
-            {fieldErrors.name && <p className="text-xs text-destructive mt-1">{fieldErrors.name}</p>}
+            {fieldErrors.name && (
+              <p className="text-xs text-destructive mt-1">
+                {fieldErrors.name}
+              </p>
+            )}
           </div>
           <div>
             <Label htmlFor="price">Цена</Label>
             <Input
               id="price"
-              type="number"
-              placeholder="напр., 150.00"
+              inputMode="decimal"
+              placeholder="напр., 150,00"
               className="mt-1"
               value={price}
               onChange={(e) => setPrice(e.target.value)}
             />
-            {fieldErrors.price && <p className="text-xs text-destructive mt-1">{fieldErrors.price}</p>}
+            {fieldErrors.price && (
+              <p className="text-xs text-destructive mt-1">
+                {fieldErrors.price}
+              </p>
+            )}
           </div>
           <div>
             <Label htmlFor="description">Описание</Label>
@@ -443,7 +528,11 @@ export function AddNewItemPage() {
               value={description}
               onChange={(e) => setDescription(e.target.value)}
             />
-            {fieldErrors.description && <p className="text-xs text-destructive mt-1">{fieldErrors.description}</p>}
+            {fieldErrors.description && (
+              <p className="text-xs text-destructive mt-1">
+                {fieldErrors.description}
+              </p>
+            )}
           </div>
 
           <div>
@@ -458,6 +547,11 @@ export function AddNewItemPage() {
               placeholder="Выберите материалы"
               className="mt-1"
             />
+            {fieldErrors.selectedMaterials && (
+              <p className="text-xs text-destructive mt-1">
+                {fieldErrors.selectedMaterials}
+              </p>
+            )}
           </div>
 
           <div>
@@ -469,10 +563,15 @@ export function AddNewItemPage() {
               value={countryOfManufacture}
               onChange={(e) => setCountryOfManufacture(e.target.value)}
             />
+            {fieldErrors.countryOfManufacture && (
+              <p className="text-xs text-destructive mt-1">
+                {fieldErrors.countryOfManufacture}
+              </p>
+            )}
           </div>
 
           <div>
-            <Label htmlFor="category">Категория *</Label>
+            <Label htmlFor="category">Категория</Label>
             <Select
               onValueChange={setSelectedCategory}
               value={selectedCategory}
@@ -488,7 +587,11 @@ export function AddNewItemPage() {
                 ))}
               </SelectContent>
             </Select>
-            {fieldErrors.selectedCategory && <p className="text-xs text-destructive mt-1">{fieldErrors.selectedCategory}</p>}
+            {fieldErrors.selectedCategory && (
+              <p className="text-xs text-destructive mt-1">
+                {fieldErrors.selectedCategory}
+              </p>
+            )}
           </div>
 
           <div>
@@ -505,17 +608,34 @@ export function AddNewItemPage() {
                 ))}
               </SelectContent>
             </Select>
+            {fieldErrors.selectedStyle && (
+              <p className="text-xs text-destructive mt-1">
+                {fieldErrors.selectedStyle}
+              </p>
+            )}
           </div>
 
           <div className="space-y-2">
-            <Label>Срок доставки (переопределить по умолчанию бренда — необязательно)</Label>
-            <p className="text-xs text-muted-foreground">Если не выбрать — применяется срок из настроек бренда.</p>
+            <Label>
+              Срок доставки (переопределить по умолчанию бренда — необязательно)
+            </Label>
+            <p className="text-xs text-muted-foreground">
+              Если не выбрать — применяется срок из настроек бренда.
+            </p>
             <div className="flex gap-4">
               <div className="flex-1">
-                <Label className="text-xs text-muted-foreground">От (дней)</Label>
+                <Label className="text-xs text-muted-foreground">
+                  От (дней)
+                </Label>
                 <Select
-                  value={deliveryTimeMin !== undefined ? String(deliveryTimeMin) : "none"}
-                  onValueChange={(v) => setDeliveryTimeMin(v === "none" ? undefined : Number(v))}
+                  value={
+                    deliveryTimeMin !== undefined
+                      ? String(deliveryTimeMin)
+                      : "none"
+                  }
+                  onValueChange={(v) =>
+                    setDeliveryTimeMin(v === "none" ? undefined : Number(v))
+                  }
                 >
                   <SelectTrigger className="mt-1 h-10">
                     <SelectValue placeholder="По умолчанию" />
@@ -523,16 +643,26 @@ export function AddNewItemPage() {
                   <SelectContent>
                     <SelectItem value="none">По умолчанию</SelectItem>
                     {DELIVERY_TIME_OPTIONS.map((o) => (
-                      <SelectItem key={o.value} value={String(o.value)}>{o.label}</SelectItem>
+                      <SelectItem key={o.value} value={String(o.value)}>
+                        {o.label}
+                      </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
               <div className="flex-1">
-                <Label className="text-xs text-muted-foreground">До (дней)</Label>
+                <Label className="text-xs text-muted-foreground">
+                  До (дней)
+                </Label>
                 <Select
-                  value={deliveryTimeMax !== undefined ? String(deliveryTimeMax) : "none"}
-                  onValueChange={(v) => setDeliveryTimeMax(v === "none" ? undefined : Number(v))}
+                  value={
+                    deliveryTimeMax !== undefined
+                      ? String(deliveryTimeMax)
+                      : "none"
+                  }
+                  onValueChange={(v) =>
+                    setDeliveryTimeMax(v === "none" ? undefined : Number(v))
+                  }
                 >
                   <SelectTrigger className="mt-1 h-10">
                     <SelectValue placeholder="По умолчанию" />
@@ -540,7 +670,9 @@ export function AddNewItemPage() {
                   <SelectContent>
                     <SelectItem value="none">По умолчанию</SelectItem>
                     {DELIVERY_TIME_OPTIONS.map((o) => (
-                      <SelectItem key={o.value} value={String(o.value)}>{o.label}</SelectItem>
+                      <SelectItem key={o.value} value={String(o.value)}>
+                        {o.label}
+                      </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -576,6 +708,44 @@ export function AddNewItemPage() {
                 </div>
               ))}
             </div>
+          </div>
+
+          {/* Sizing table image */}
+          <div className="space-y-2">
+            <Label>Таблица размеров</Label>
+            <p className="text-xs text-muted-foreground">
+              Изображение с таблицей размеров для покупателей
+            </p>
+            <FileInput
+              accept="image/*"
+              onFilesChange={(files) => {
+                if (files[0]) {
+                  setSizingTableFile(files[0]);
+                  setSizingTableImage(URL.createObjectURL(files[0]));
+                }
+              }}
+              selectedFileNames={sizingTableFile ? [sizingTableFile.name] : []}
+              className="mt-1"
+            />
+            {sizingTableImage && (
+              <div className="relative mt-2 inline-block">
+                <img
+                  src={sizingTableImage}
+                  alt="Таблица размеров"
+                  className="h-24 object-contain rounded-md border border-border/30"
+                />
+                <button
+                  type="button"
+                  className="absolute -top-2 -right-2 h-4 w-4 text-red-500"
+                  onClick={() => {
+                    setSizingTableImage(null);
+                    setSizingTableFile(null);
+                  }}
+                >
+                  <XCircle className="h-4 w-4" />
+                </button>
+              </div>
+            )}
           </div>
 
           {/* Color variations */}
@@ -617,10 +787,14 @@ export function AddNewItemPage() {
                       </SelectTrigger>
                       <SelectContent>
                         {colors.map((c) => (
-                          <SelectItem key={c.name} value={c.name} textValue={c.russian}>
+                          <SelectItem
+                            key={c.name}
+                            value={c.name}
+                            textValue={c.russian}
+                          >
                             <div className="flex items-center gap-2">
                               <div
-                                className="w-4 h-4 rounded-full border"
+                                className="w-4 h-4 min-w-4 min-h-4 shrink-0 rounded-full border"
                                 style={{
                                   background: c.hex || "#808080",
                                 }}
@@ -665,7 +839,7 @@ export function AddNewItemPage() {
                     </div>
                   </div>
                   <div>
-                    <Label>Размеры и количество</Label>
+                    <Label>Размеры и инвентарь</Label>
                     {cv.variants.map((v, vIdx) => (
                       <div key={vIdx} className="flex gap-2 mt-1 items-center">
                         <Select
@@ -678,7 +852,7 @@ export function AddNewItemPage() {
                             <SelectValue placeholder="Размер" />
                           </SelectTrigger>
                           <SelectContent>
-                            {sizes.map((s) => (
+                            {getAvailableSizes(cv.variants).map((s) => (
                               <SelectItem key={s.name} value={s.name}>
                                 {s.russian}
                               </SelectItem>
@@ -716,6 +890,7 @@ export function AddNewItemPage() {
                       size="sm"
                       className="mt-2"
                       onClick={() => addVariant(colorIndex)}
+                      disabled={!canAddVariant(cv.variants)}
                     >
                       <PlusCircle className="h-4 w-4 mr-2" /> Добавить размер
                     </Button>

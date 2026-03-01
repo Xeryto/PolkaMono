@@ -73,6 +73,17 @@ const CardBack: React.FC<CardBackProps> = ({
           title="политика возврата"
           content={card.brand_return_policy || "политика возврата не указана"}
         />
+        {formatDeliveryTime(card.delivery_time_min, card.delivery_time_max) ? (
+          <ExpandableSection
+            title="доставка"
+            content={
+              formatDeliveryTime(
+                card.delivery_time_min,
+                card.delivery_time_max,
+              )!
+            }
+          />
+        ) : null}
         {card.sizing_table_image ? (
           <View style={{ marginTop: 12, marginBottom: 4 }}>
             <ScrollView
@@ -88,14 +99,6 @@ const CardBack: React.FC<CardBackProps> = ({
               />
             </ScrollView>
           </View>
-        ) : null}
-        {formatDeliveryTime(card.delivery_time_min, card.delivery_time_max) ? (
-          <ExpandableSection
-            title="доставка"
-            content={
-              formatDeliveryTime(card.delivery_time_min, card.delivery_time_max)!
-            }
-          />
         ) : null}
       </ScrollView>
       {bottomStrip}

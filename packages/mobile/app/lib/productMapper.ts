@@ -32,7 +32,7 @@ export function mapProductToCardItem(product: api.Product, index?: number): Card
   const selected = color_variants[selected_index];
   const generalUrls = product.general_images || [];
   const colorUrls = selected?.images || [];
-  const combinedUrls = [...generalUrls, ...colorUrls];
+  const combinedUrls = [...colorUrls, ...generalUrls];
   const images = mapImages(combinedUrls.length > 0 ? combinedUrls : (selected?.images || []));
   const variants = selected?.variants ?? [];
   const available_sizes = variants.map((v) => v.size);
@@ -88,7 +88,7 @@ export function getCardItemForColorIndex(card: CardItem, colorIndex: number): {
     };
   }
   const colorUrls = cv.images ?? [];
-  const combined = [...generalUrls, ...colorUrls];
+  const combined = [...colorUrls, ...generalUrls];
   const images = combined.length > 0 ? combined.map((uri) => ({ uri })) : [];
   const variants = cv.variants ?? [];
   return {
