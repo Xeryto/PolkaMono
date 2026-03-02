@@ -39,6 +39,7 @@ import Tick from "./assets/Tick";
 import { AnimatedCircularProgress } from "react-native-circular-progress";
 import * as api from "./services/api";
 import { apiWrapper } from "./services/apiWrapper";
+import { log } from "./services/config";
 import {
   ANIMATION_DURATIONS,
   ANIMATION_DELAYS,
@@ -197,9 +198,8 @@ const Wall = ({ navigation, onLogout, openOrderId }: WallProps) => {
     try {
       const count = await api.getCurrentSwipeCount();
       setSwipeCount(count);
-      console.log("Wall - Loaded swipe count from session storage:", count);
     } catch (error) {
-      console.error("Error loading swipe count:", error);
+      log.error("Error loading swipe count:", error);
       setSwipeCount(0);
     }
   };
@@ -212,7 +212,7 @@ const Wall = ({ navigation, onLogout, openOrderId }: WallProps) => {
       const fetchedOrders = await api.getOrders();
       setOrders(fetchedOrders);
     } catch (error) {
-      console.error("Error loading orders:", error);
+      log.error("Error loading orders:", error);
       setOrderError("не удалось загрузить заказы.");
     } finally {
       setIsLoadingOrders(false);
@@ -311,7 +311,7 @@ const Wall = ({ navigation, onLogout, openOrderId }: WallProps) => {
         setSelectedBrands([]);
       }
     } catch (error: any) {
-      console.error("Error loading user profile:", error);
+      log.error("Error loading user profile:", error);
     } finally {
       setIsLoadingProfile(false);
     }
@@ -323,7 +323,7 @@ const Wall = ({ navigation, onLogout, openOrderId }: WallProps) => {
       const brands = await apiWrapper.getBrands("WallPage");
       setPopularBrands((brands || []).map((brand) => brand.name));
     } catch (error: any) {
-      console.error("Error loading brands:", error);
+      log.error("Error loading brands:", error);
     }
   };
 
@@ -337,7 +337,6 @@ const Wall = ({ navigation, onLogout, openOrderId }: WallProps) => {
       userStats &&
       now - statsLastLoaded < STATS_CACHE_DURATION
     ) {
-      console.log("Using cached user stats");
       return;
     }
 
@@ -351,9 +350,8 @@ const Wall = ({ navigation, onLogout, openOrderId }: WallProps) => {
         api.syncSwipeCountFromApi(stats.items_swiped);
       }
       setStatsLastLoaded(now);
-      console.log("User stats loaded successfully");
     } catch (error: any) {
-      console.error("Error loading user stats:", error);
+      log.error("Error loading user stats:", error);
     } finally {
       setIsLoadingStats(false);
     }
@@ -379,14 +377,13 @@ const Wall = ({ navigation, onLogout, openOrderId }: WallProps) => {
 
       try {
         await api.updateUserProfileData({ selected_size: size });
-        console.log("User size updated successfully");
       } catch (apiError: any) {
-        console.error("API error updating user size:", apiError);
+        log.error("API error updating user size:", apiError);
         setSelectedSize(originalSelectedSize);
         setUserProfile(originalUserProfile);
       }
     } catch (error: any) {
-      console.error("Error updating user size:", error);
+      log.error("Error updating user size:", error);
     }
   };
 
@@ -400,7 +397,7 @@ const Wall = ({ navigation, onLogout, openOrderId }: WallProps) => {
         .map((brand) => brand.name);
       setSelectedBrands(selectedBrandNames);
     } catch (error) {
-      console.error("Error updating user brands:", error);
+      log.error("Error updating user brands:", error);
       Alert.alert(
         "ошибка обновления",
         "не удалось обновить любимые бренды. попробуйте позже.",
@@ -414,7 +411,7 @@ const Wall = ({ navigation, onLogout, openOrderId }: WallProps) => {
     try {
       const brand = popularBrands.find((b) => b === brandName);
       if (!brand) {
-        console.error("Brand not found in loaded brands:", brandName);
+        log.error("Brand not found in loaded brands:", brandName);
         Alert.alert("ошибка", "бренд не найден.");
         return;
       }
@@ -422,7 +419,7 @@ const Wall = ({ navigation, onLogout, openOrderId }: WallProps) => {
       const allBrands = await apiWrapper.getBrands("WallPage");
       const brandObj = (allBrands || []).find((b) => b.name === brandName);
       if (!brandObj) {
-        console.error("Brand object not found:", brandName);
+        log.error("Brand object not found:", brandName);
         Alert.alert("ошибка", "бренд не найден.");
         return;
       }
@@ -475,14 +472,13 @@ const Wall = ({ navigation, onLogout, openOrderId }: WallProps) => {
 
       try {
         await api.updateUserBrands(newBrandIds);
-        console.log("Brand selection updated successfully");
       } catch (apiError: any) {
-        console.error("API error updating brands:", apiError);
+        log.error("API error updating brands:", apiError);
         setSelectedBrands(originalSelectedBrands);
         setUserProfile(originalUserProfile);
       }
     } catch (error: any) {
-      console.error("Error selecting brand:", error);
+      log.error("Error selecting brand:", error);
       Alert.alert("ошибка", "не удалось обновить список брендов.");
     }
   };
@@ -605,7 +601,6 @@ const Wall = ({ navigation, onLogout, openOrderId }: WallProps) => {
           text: "выйти",
           style: "destructive",
           onPress: () => {
-            console.log("User logged out");
             if (onLogout) {
               onLogout();
             }
@@ -792,7 +787,7 @@ const Wall = ({ navigation, onLogout, openOrderId }: WallProps) => {
         navigation.navigate("Home", { addCardItem: cardItem });
       }
     } catch (error) {
-      console.log(
+      log.error(
         "Wall - Product details unavailable, using order item data:",
         (error as any)?.message,
       );
@@ -1276,7 +1271,7 @@ const Wall = ({ navigation, onLogout, openOrderId }: WallProps) => {
               setShowAvatarEdit(false);
               loadUserProfile();
             } catch (err: any) {
-              console.error("Avatar upload failed:", err);
+              log.error("Avatar upload failed:", err);
               Alert.alert(
                 "Ошибка",
                 err?.message ||

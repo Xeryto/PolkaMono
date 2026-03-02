@@ -28,6 +28,7 @@ import {
   ActivityIndicator,
 } from "react-native";
 import { Image } from "expo-image";
+import { log } from "./services/config";
 import Animated, {
   FadeIn,
   FadeInDown,
@@ -259,10 +260,6 @@ const Favorites = ({ navigation }: FavoritesProps) => {
         apiWrapper.getReceivedFriendRequests("FavoritesPage"),
       ]);
 
-      console.log("API Response - Friends:", friends);
-      console.log("API Response - Sent Requests:", sent);
-      console.log("API Response - Received Requests:", received);
-
       // Convert API friends to FriendItem format - handle null values
       const friendsList: FriendItem[] = (friends || []).map((friend) => ({
         ...friend,
@@ -296,13 +293,11 @@ const Favorites = ({ navigation }: FavoritesProps) => {
         ...friendsList, // Second: added friends
         ...sentRequestsList, // Third: sent friendship invitations
       ];
-      console.log("Processed Friend Items:", allFriendItems);
-
       setFriendItems(allFriendItems);
       setSentRequests(sent || []);
       setReceivedRequests(received || []);
     } catch (error: any) {
-      console.error("Error loading friends data:", error);
+      log.error("Error loading friends data:", error);
       // Don't show alerts for authentication errors
       if (error.status !== 401) {
         Alert.alert("ошибка", "не удалось загрузить список друзей");
@@ -324,7 +319,7 @@ const Favorites = ({ navigation }: FavoritesProps) => {
         ),
       );
     } catch (error: any) {
-      console.error("Error loading saved items:", error);
+      log.error("Error loading saved items:", error);
       if (error.status !== 401) {
         setSavedItems([]);
       }
@@ -422,12 +417,6 @@ const Favorites = ({ navigation }: FavoritesProps) => {
 
   // Simplify toggle view with no animations
   const toggleView = () => {
-    console.log(
-      "Toggling view from",
-      activeView,
-      "to",
-      activeView === "friends" ? "saved" : "friends",
-    );
     // Use InteractionManager to avoid UI thread blocking
     InteractionManager.runAfterInteractions(() => {
       // Simply toggle the view without animations
@@ -497,15 +486,11 @@ const Favorites = ({ navigation }: FavoritesProps) => {
           }));
 
           setSearchResults(searchUsersList);
-        } else {
-          console.log(
-            `Favorites - Ignoring stale search results (request ${currentRequestId} is not the latest ${searchRequestIdRef.current})`,
-          );
         }
       } catch (error) {
         // Only update if this is still the latest request
         if (currentRequestId === searchRequestIdRef.current) {
-          console.error("Error searching users:", error);
+          log.error("Error searching users:", error);
           setSearchResults([]);
           // Don't show alert for every error - only for unexpected ones
           if (
@@ -552,7 +537,6 @@ const Favorites = ({ navigation }: FavoritesProps) => {
 
   // Handle friend selection
   const handleFriendSelect = (friend: FriendItem) => {
-    console.log(`Friend selected: ${friend.username}`);
     setSelectedFriend(friend);
   };
 
@@ -565,8 +549,6 @@ const Favorites = ({ navigation }: FavoritesProps) => {
   const handleRegenerateRecommendations = () => {
     // Only proceed if a friend is selected
     if (!selectedFriend) return;
-
-    console.log("Regenerating recommendations for", selectedFriend.username);
 
     // Show loading indicator
     setIsRegenerating(true);
@@ -619,13 +601,10 @@ const Favorites = ({ navigation }: FavoritesProps) => {
             ...params, // Spread all fields to preserve article_number and other optional fields
           } as CardItem,
         };
-        console.log("NAVIGATING TO HOME WITH PARAMS:", navigationParams);
         navigation.navigate(screen, navigationParams);
       } else if (screen === "Home") {
-        console.log("NAVIGATING TO HOME WITHOUT PARAMS");
         navigation.navigate(screen);
       } else {
-        console.log("NAVIGATING TO:", screen);
         navigation.navigate(screen);
       }
     }, delay);
@@ -684,7 +663,6 @@ const Favorites = ({ navigation }: FavoritesProps) => {
 
   // Real API functions for friend actions
   const acceptFriendRequest = async (requestId: string) => {
-    console.log(`Accepting friend request ${requestId}...`);
     try {
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 
@@ -702,14 +680,13 @@ const Favorites = ({ navigation }: FavoritesProps) => {
 
       Alert.alert("успех", "заявка в друзья принята");
     } catch (error) {
-      console.error("Error accepting friend request:", error);
+      log.error("Error accepting friend request:", error);
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       Alert.alert("ошибка", "не удалось принять заявку в друзья");
     }
   };
 
   const rejectFriendRequest = async (requestId: string) => {
-    console.log(`Rejecting friend request ${requestId}...`);
     try {
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
 
@@ -725,14 +702,13 @@ const Favorites = ({ navigation }: FavoritesProps) => {
 
       Alert.alert("успех", "заявка в друзья отклонена");
     } catch (error) {
-      console.error("Error rejecting friend request:", error);
+      log.error("Error rejecting friend request:", error);
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       Alert.alert("ошибка", "не удалось отклонить заявку в друзья");
     }
   };
 
   const sendFriendRequest = async (username: string) => {
-    console.log(`Sending friend request to user ${username}...`);
     try {
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 
@@ -764,14 +740,13 @@ const Favorites = ({ navigation }: FavoritesProps) => {
 
       Alert.alert("успех", "заявка в друзья отправлена");
     } catch (error) {
-      console.error("Error sending friend request:", error);
+      log.error("Error sending friend request:", error);
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       Alert.alert("ошибка", "не удалось отправить заявку в друзья");
     }
   };
 
   const cancelFriendRequest = async (requestId: string) => {
-    console.log(`Cancelling friend request ${requestId}...`);
     try {
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
 
@@ -792,7 +767,7 @@ const Favorites = ({ navigation }: FavoritesProps) => {
 
       Alert.alert("успех", "заявка в друзья отменена");
     } catch (error) {
-      console.error("Error cancelling friend request:", error);
+      log.error("Error cancelling friend request:", error);
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       Alert.alert("ошибка", "не удалось отменить заявку в друзья");
     }
@@ -800,7 +775,6 @@ const Favorites = ({ navigation }: FavoritesProps) => {
 
   // Remove friend function (now uses real API endpoint)
   const removeFriend = async (friendId: string) => {
-    console.log(`Removing friend ${friendId}...`);
     try {
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
 
@@ -815,7 +789,7 @@ const Favorites = ({ navigation }: FavoritesProps) => {
 
       Alert.alert("успех", "друг удален из списка");
     } catch (error) {
-      console.error("Error removing friend:", error);
+      log.error("Error removing friend:", error);
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       Alert.alert("ошибка", "не удалось удалить друга");
     }
@@ -859,7 +833,6 @@ const Favorites = ({ navigation }: FavoritesProps) => {
       <Pressable
         style={styles.productImageContainer}
         onPress={() => {
-          console.log(`Saved item pressed: ${item.brand_name}`);
           handleNavigate("Home", item, true);
         }}
       >
@@ -978,7 +951,6 @@ const Favorites = ({ navigation }: FavoritesProps) => {
           <Pressable
             style={styles.itemImageContainer}
             onPress={() => {
-              console.log(`Recommended item pressed: ${item.brand_name}`);
               navigation.navigate("FriendRecommendations", {
                 friendId: friend.id,
                 friendUsername: friend.username,
@@ -1086,7 +1058,7 @@ const Favorites = ({ navigation }: FavoritesProps) => {
           if (sentRequest) {
             await cancelFriendRequest(sentRequest.id);
           } else {
-            console.error("Could not find request ID for user:", item.username);
+            log.error("Could not find request ID for user:", item.username);
             Alert.alert("ошибка", "не удалось найти заявку для отмены");
           }
         }
@@ -1101,7 +1073,6 @@ const Favorites = ({ navigation }: FavoritesProps) => {
             onPress={() => {
               // Only allow viewing profile if user is an accepted friend
               if (item.status === "friend") {
-                console.log(`Friend item pressed: ${item.username}`);
                 handleFriendSelect(item);
               }
             }}
@@ -1805,7 +1776,6 @@ const FriendProfileView = React.memo(
     // Check if user is actually a friend - kick them out if not
     useEffect(() => {
       if (friend.status !== "friend") {
-        console.log("User is not a friend, redirecting back");
         onBack();
       }
     }, [friend.status, onBack]);
@@ -1819,9 +1789,8 @@ const FriendProfileView = React.memo(
 
           const profile = await api.getUserPublicProfile(friend.id);
           setFriendProfile(profile);
-          console.log("Loaded friend profile:", profile);
         } catch (error) {
-          console.error("Error loading friend profile:", error);
+          log.error("Error loading friend profile:", error);
           setProfileError("не удалось загрузить профиль пользователя");
         } finally {
           setIsLoadingProfile(false);
@@ -1929,7 +1898,7 @@ const FriendProfileView = React.memo(
             }),
           );
         } catch (error: any) {
-          console.error("Error loading friend recommendations:", error);
+          log.error("Error loading friend recommendations:", error);
           setCustomRecommendations(
             (prev: { [key: string]: RecommendedItem[] }) => ({
               ...prev,
@@ -1940,7 +1909,7 @@ const FriendProfileView = React.memo(
           // Show appropriate error message based on error type
           if (error.status === 401) {
             // Don't show alert for authentication errors, just log them
-            console.log("Authentication error loading friend recommendations");
+            log.error("Authentication error loading friend recommendations");
           } else if (error.status === 404) {
             Alert.alert("ошибка", "друг не найден");
           } else if (error.status >= 500) {
@@ -2945,8 +2914,6 @@ const FriendListItem = memo(
     styles,
     width,
   }: FriendListItemProps) => {
-    console.log("FriendListItem rendering with item:", item);
-
     return (
       <View style={styles.itemWrapper}>
         <Animated.View

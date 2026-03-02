@@ -42,12 +42,13 @@ import FriendRecommendationsScreen from "./app/screens/FriendRecommendationsScre
 
 import * as SplashScreen from "expo-splash-screen";
 import * as Notifications from "expo-notifications";
+import { log } from "./app/services/config";
 
 let isNotificationsAvailable = true;
 try {
   require("expo-modules-core").requireNativeModule("ExpoPushTokenManager");
 } catch {
-  console.warn("expo-notifications native module not available, push disabled");
+  log.warn("expo-notifications native module not available, push disabled");
   isNotificationsAvailable = false;
 }
 import { GestureHandlerRootView } from "react-native-gesture-handler";
@@ -212,9 +213,6 @@ if (isNotificationsAvailable) {
 
 async function registerForPushNotificationsAsync(): Promise<string | null> {
   if (!isNotificationsAvailable) {
-    console.log(
-      "App - Push: native module not available, skipping registration",
-    );
     return null;
   }
 
@@ -227,7 +225,6 @@ async function registerForPushNotificationsAsync(): Promise<string | null> {
   }
 
   if (finalStatus !== "granted") {
-    console.log("App - Push: permission not granted");
     return null;
   }
 
@@ -731,7 +728,6 @@ function AppContent() {
 
   useEffect(() => {
     const handleSessionExpired = async () => {
-      console.log("App - Session expired, clearing cart");
       try {
         // Clear cart storage
         await cartStorage.clearCart();
@@ -739,19 +735,15 @@ function AppContent() {
         // Clear global cart storage
         if (global.cartStorage) {
           global.cartStorage = cartStorage.createCartStorage([]);
-          console.log(
-            "App - Global cart storage reset due to session expiration",
-          );
         }
       } catch (error) {
-        console.error("Error clearing cart on session expiration:", error);
+        log.error("Error clearing cart on session expiration:", error);
       }
     };
 
     const handleTokenInvalidation = async () => {
       // Prevent multiple alerts from showing - check and set atomically using ref
       if (alertShowingRef.current) {
-        console.log("App - Alert already showing, skipping duplicate");
         return;
       }
 
@@ -770,10 +762,6 @@ function AppContent() {
       ];
       const isOnAuthenticatedScreen = authenticatedPhases.includes(
         currentPhaseRef.current,
-      );
-
-      console.log(
-        `App - Token invalid, current phase: ${currentPhaseRef.current}, showing alert: ${isOnAuthenticatedScreen}`,
       );
 
       // Clear session immediately (don't wait for user to press OK)
@@ -804,9 +792,6 @@ function AppContent() {
           },
         );
       } else {
-        console.log(
-          "App - User not on authenticated screen, navigating silently without alert",
-        );
         // Reset flag since we're not showing an alert
         alertShowingRef.current = false;
       }
@@ -917,10 +902,6 @@ function AppContent() {
       };
       if (data?.order_id && handledPushIdRef.current !== data.order_id) {
         pendingOrderIdRef.current = data.order_id;
-        console.log(
-          "App - Cold-start push tap: deferred navigation for order",
-          data.order_id,
-        );
       }
     });
   }, []);
@@ -940,13 +921,8 @@ function AppContent() {
           mainNavigationRef.current.navigate("Wall", {
             openOrderId: data.order_id,
           });
-          console.log("App - Push tapped: navigating to order", data.order_id);
         } else {
           pendingOrderIdRef.current = data.order_id;
-          console.log(
-            "App - Push tapped: deferred navigation for order",
-            data.order_id,
-          );
         }
       },
     );
@@ -973,7 +949,6 @@ function AppContent() {
       pendingOrderIdRef.current = null;
       setTimeout(() => {
         mainNavigationRef.current?.navigate("Wall", { openOrderId: orderId });
-        console.log("App - Push deferred navigation: order", orderId);
       }, 300);
     }
   }, [navState.phase]);
@@ -984,7 +959,7 @@ function AppContent() {
 
   // Helper function to handle authentication errors consistently
   const handleAuthError = async (error: any, context: string) => {
-    console.error(`Auth error in ${context}:`, error);
+    log.error(`Auth error in ${context}:`, error);
 
     // Check if this is an authentication error
     const isAuthError =
@@ -996,9 +971,6 @@ function AppContent() {
         error.message.includes("session"));
 
     if (isAuthError) {
-      console.log(
-        `Authentication error in ${context}, triggering session manager to show alert`,
-      );
       // Use session manager to handle login required, which will show alert and clear data
       api.sessionManager.handleLoginRequired();
       return true; // Indicates auth error was handled
@@ -1049,12 +1021,8 @@ function AppContent() {
         global.cartStorage = cartStorage.createCartStorage(savedItems);
 
         setCartInitialized(true);
-        console.log(
-          "App - Cart initialized from storage with items:",
-          savedItems.length,
-        );
       } catch (error) {
-        console.error("Error initializing cart:", error);
+        log.error("Error initializing cart:", error);
         // Fallback to empty cart
         global.cartStorage = cartStorage.createCartStorage([]);
         setCartInitialized(true);
@@ -1073,16 +1041,12 @@ function AppContent() {
       }
 
       if (!isAuthenticated) {
-        console.log(
-          "App - Unauthenticated at startup, clearing cart and going to Welcome.",
-        );
         await cartStorage.clearCart();
         transitionTo("unauthenticated", "up");
         return;
       }
 
       try {
-        console.log("Checking user profile and email verification...");
         // Try to get user from session manager first to avoid duplicate API calls
         let user = await sessionManager.getCurrentUser();
         if (!user) {
@@ -1093,12 +1057,10 @@ function AppContent() {
 
         // Check email verification first
         if (!user.is_email_verified) {
-          console.log("User email not verified, showing verification screen");
           transitionTo("email_verification", "up");
           return;
         }
 
-        console.log("Checking profile completion status...");
         const completionStatus = await api.getProfileCompletionStatus();
         setProfileCompletionStatus(completionStatus);
         const required = completionStatus.requiredScreens || [];
@@ -1114,9 +1076,7 @@ function AppContent() {
 
           // Wait for preloading to complete before transitioning
           if (preloadPromises.length > 0) {
-            console.log("Preloading data for profile completion screens...");
             await Promise.all(preloadPromises);
-            console.log("Data preloading completed");
           }
 
           // Keep static loading screen until we're ready to show the completion screen
@@ -1136,7 +1096,7 @@ function AppContent() {
           transitionTo("main", "down");
         }
       } catch (error) {
-        console.error("Error checking user profile:", error);
+        log.error("Error checking user profile:", error);
 
         // Check if this is an authentication error
         const authErrorHandled = await handleAuthError(error, "bootstrap");
@@ -1205,7 +1165,7 @@ function AppContent() {
       try {
         await loadFonts();
       } catch (e) {
-        console.warn(e);
+        log.warn('Font loading error', e);
       } finally {
         setFontsLoaded(true);
         // Hide the splash screen after loading resources
@@ -1230,28 +1190,21 @@ function AppContent() {
   const triggerPushRegistration = () => {
     registerForPushNotificationsAsync()
       .then((token) => {
-        console.log("App - Push token obtained:", token);
         if (token) {
-          registerPushToken(token)
-            .then(() => console.log("App - Push token registered with API"))
-            .catch((err) =>
-              console.log("App - Push token registration failed:", err),
-            );
+          registerPushToken(token).catch(() => {});
         }
       })
-      .catch((err) => console.log("App - Push registration error:", err));
+      .catch(() => {});
   };
 
   const handleLogin = async () => {
     // Prevent multiple simultaneous login flows
     if (isAuthFlowInProgress) {
-      console.log("Login flow already in progress, skipping...");
       return;
     }
 
     try {
       setIsAuthFlowInProgress(true);
-      console.log("App - User logged in, checking profile completion status");
 
       // Show loading screen immediately to prevent UI flicker
       dispatchNav({ type: "SET_OVERLAY", overlay: "static" });
@@ -1264,9 +1217,6 @@ function AppContent() {
       setUserEmail(user.email);
 
       if (!user.is_email_verified) {
-        console.log(
-          "User email not verified after login, showing verification screen",
-        );
         dispatchNav({ type: "SET_OVERLAY", overlay: "up" });
         transitionTo("email_verification");
         return;
@@ -1274,27 +1224,11 @@ function AppContent() {
 
       // Get profile completion status with error handling for international users
       let completionStatus;
-      console.log("Attempting to get profile completion status...");
       try {
         completionStatus = await api.getProfileCompletionStatus();
         setProfileCompletionStatus(completionStatus);
-        console.log(
-          "Profile completion status after login:",
-          JSON.stringify(completionStatus),
-        );
       } catch (error) {
-        console.error(
-          "Error getting profile completion status after login:",
-          error,
-        );
-        console.error(
-          "Error type:",
-          error instanceof Error ? error.constructor.name : typeof error,
-        );
-        console.error(
-          "Error message:",
-          error instanceof Error ? error.message : String(error),
-        );
+        log.error("Error getting profile completion status after login:", error);
         // If we can't get profile completion status, check email verification status
         // and assume user needs to complete onboarding
         const user = await api.getCurrentUser();
@@ -1331,9 +1265,7 @@ function AppContent() {
 
         // Wait for preloading to complete before transitioning
         if (preloadPromises.length > 0) {
-          console.log("Preloading data for profile completion screens...");
           await Promise.all(preloadPromises);
-          console.log("Data preloading completed");
         }
 
         // Keep static loading screen until we're ready to show the completion screen
@@ -1352,7 +1284,7 @@ function AppContent() {
         transitionTo("main");
       }
     } catch (error) {
-      console.error("Error checking profile completion after login:", error);
+      log.error("Error checking profile completion after login:", error);
 
       // First check if this is an authentication error
       const authErrorHandled = await handleAuthError(error, "handleLogin");
@@ -1378,9 +1310,6 @@ function AppContent() {
       const isApiError = error instanceof ApiError && error.status === 0;
 
       if (isNetworkError || isApiError) {
-        console.log(
-          "Network/API error detected, showing error message and staying on current screen",
-        );
         // Show error message to user but don't skip to main screen
         Alert.alert(
           "Проблема с подключением",
@@ -1409,7 +1338,6 @@ function AppContent() {
       }
 
       // For other errors, proceed with normal login flow
-      console.log("Non-network error in login flow, proceeding to main screen");
       setComingFromSignup(false);
       dispatchNav({ type: "SET_OVERLAY", overlay: "down" });
       transitionTo("main");
@@ -1425,14 +1353,12 @@ function AppContent() {
   ) => {
     // Prevent multiple simultaneous registration flows
     if (isAuthFlowInProgress) {
-      console.log("Registration flow already in progress, skipping...");
       return;
     }
 
     try {
       setIsAuthFlowInProgress(true);
       await api.registerUser(username, email, password);
-      console.log("App - User registered, checking profile completion status");
 
       // Show loading screen immediately to prevent UI flicker
       dispatchNav({ type: "SET_OVERLAY", overlay: "static" });
@@ -1444,7 +1370,6 @@ function AppContent() {
       setUserEmail(user.email);
 
       if (!user.is_email_verified) {
-        console.log("New user needs email verification after registration");
         setComingFromSignup(true);
         dispatchNav({ type: "SET_OVERLAY", overlay: "up" });
         transitionTo("email_verification");
@@ -1456,12 +1381,8 @@ function AppContent() {
       try {
         completionStatus = await api.getProfileCompletionStatus();
         setProfileCompletionStatus(completionStatus);
-        console.log(
-          "Profile completion status after registration:",
-          JSON.stringify(completionStatus),
-        );
       } catch (error) {
-        console.error("Error getting profile completion status:", error);
+        log.error("Error getting profile completion status:", error);
         // If profile completion check fails, assume user needs email verification
         // This prevents skipping essential onboarding steps
         completionStatus = {
@@ -1489,9 +1410,7 @@ function AppContent() {
 
         // Wait for preloading to complete before transitioning
         if (preloadPromises.length > 0) {
-          console.log("Preloading data for profile completion screens...");
           await Promise.all(preloadPromises);
-          console.log("Data preloading completed");
         }
 
         // Keep static loading screen until we're ready to show the completion screen
@@ -1510,10 +1429,7 @@ function AppContent() {
         transitionTo("main");
       }
     } catch (error) {
-      console.error(
-        "Error checking profile completion after registration:",
-        error,
-      );
+      log.error("Error checking profile completion after registration:", error);
 
       // First check if this is an authentication error
       const authErrorHandled = await handleAuthError(error, "handleRegister");
@@ -1539,9 +1455,6 @@ function AppContent() {
       const isApiError = error instanceof ApiError && error.status === 0;
 
       if (isNetworkError || isApiError) {
-        console.log(
-          "Network/API error detected during registration, showing error message and staying on current screen",
-        );
         // Show error message to user but don't skip to main screen
         Alert.alert(
           "Проблема с подключением",
@@ -1570,9 +1483,6 @@ function AppContent() {
       }
 
       // For other errors, proceed with normal registration flow
-      console.log(
-        "Non-network error in registration flow, proceeding to main screen",
-      );
       setComingFromSignup(false);
       dispatchNav({ type: "SET_OVERLAY", overlay: "down" });
       transitionTo("main");
@@ -1583,15 +1493,12 @@ function AppContent() {
 
   const handleLogout = async () => {
     try {
-      console.log("App - User logging out");
-
       // Clear cart
       await cartStorage.clearCart();
 
       // Clear global cart storage
       if (global.cartStorage) {
         global.cartStorage = cartStorage.createCartStorage([]);
-        console.log("App - Global cart storage reset during logout");
       }
 
       // Clear data cache
@@ -1603,26 +1510,19 @@ function AppContent() {
       // Show up animation and move to unauthenticated
       dispatchNav({ type: "SET_OVERLAY", overlay: "up" });
 
-      // Small delay to ensure auth loading screen is visible before changing logged in state
-      setTimeout(() => {
-        console.log("App - User logged out, cart cleared");
-      }, 50);
-
       // Reset states
       setProfileCompletionStatus(null);
       setGender(null);
       setSelectedBrands([]);
       transitionTo("unauthenticated");
     } catch (error) {
-      console.error("Error during logout:", error);
+      log.error("Error during logout:", error);
       dispatchNav({ type: "SET_OVERLAY", overlay: "up" });
     }
   };
 
   // Handle confirmation screen completion
   const handleConfirmationComplete = async (choice: "male" | "female") => {
-    console.log(`User selected gender: ${choice}`);
-
     // Save the gender
     setGender(choice);
 
@@ -1632,10 +1532,6 @@ function AppContent() {
 
       // Check next requirements and transition
       const completionStatus = await api.getProfileCompletionStatus();
-      console.log(
-        "Profile completion status after gender update:",
-        JSON.stringify(completionStatus),
-      );
       const required = completionStatus.requiredScreens || [];
       if (required.includes("brand_selection")) {
         transitionTo("profile_brands");
@@ -1650,7 +1546,7 @@ function AppContent() {
         await yieldToReact();
       }
     } catch (error) {
-      console.error("Error updating gender:", error);
+      log.error("Error updating gender:", error);
 
       const authErrorHandled = await handleAuthError(
         error,
@@ -1673,7 +1569,6 @@ function AppContent() {
   // Handle brand search completion
   const handleBrandSearchComplete = async (brands: string[]) => {
     setIsProfileStepSaving(true);
-    console.log(`User selected brands: ${brands.join(", ")}`);
     setSelectedBrands(brands);
 
     try {
@@ -1693,7 +1588,7 @@ function AppContent() {
         await yieldToReact();
       }
     } catch (error) {
-      console.error("Error updating selected brands:", error);
+      log.error("Error updating selected brands:", error);
       setIsProfileStepSaving(false);
       const authErrorHandled = await handleAuthError(
         error,
@@ -1709,7 +1604,6 @@ function AppContent() {
   // Handle styles selection completion
   const handleStylesSelectionComplete = async (styles: string[]) => {
     setIsProfileStepSaving(true);
-    console.log(`User selected styles: ${styles.join(", ")}`);
 
     try {
       await api.updateUserStyles(styles);
@@ -1720,7 +1614,7 @@ function AppContent() {
       setIsProfileStepSaving(false);
       await yieldToReact();
     } catch (error) {
-      console.error("Error updating favorite styles:", error);
+      log.error("Error updating favorite styles:", error);
       setIsProfileStepSaving(false);
       const authErrorHandled = await handleAuthError(
         error,
@@ -1736,16 +1630,11 @@ function AppContent() {
   const handleEmailVerificationSuccess = async () => {
     // Prevent multiple simultaneous verification flows
     if (isAuthFlowInProgress) {
-      console.log("Email verification flow already in progress, skipping...");
       return;
     }
 
     try {
       setIsAuthFlowInProgress(true);
-      console.log(
-        "Email verification successful, checking profile completion...",
-      );
-
       // Show loading screen immediately to prevent UI flicker
       dispatchNav({ type: "SET_OVERLAY", overlay: "static" });
 
@@ -1755,29 +1644,11 @@ function AppContent() {
 
       // Check profile completion status with error handling
       let completionStatus;
-      console.log(
-        "Attempting to get profile completion status after email verification...",
-      );
       try {
         completionStatus = await api.getProfileCompletionStatus();
         setProfileCompletionStatus(completionStatus);
-        console.log(
-          "Profile completion status after email verification:",
-          JSON.stringify(completionStatus),
-        );
       } catch (error) {
-        console.error(
-          "Error getting profile completion status after email verification:",
-          error,
-        );
-        console.error(
-          "Error type:",
-          error instanceof Error ? error.constructor.name : typeof error,
-        );
-        console.error(
-          "Error message:",
-          error instanceof Error ? error.message : String(error),
-        );
+        log.error("Error getting profile completion status after email verification:", error);
         // If we can't get profile completion status, assume user needs to complete onboarding
         completionStatus = {
           isComplete: false,
@@ -1802,9 +1673,7 @@ function AppContent() {
 
         // Wait for preloading to complete before transitioning
         if (preloadPromises.length > 0) {
-          console.log("Preloading data for profile completion screens...");
           await Promise.all(preloadPromises);
-          console.log("Data preloading completed");
         }
 
         // Dismiss loading screen and transition to completion screens
@@ -1825,10 +1694,7 @@ function AppContent() {
         transitionTo("main");
       }
     } catch (error) {
-      console.error(
-        "Error checking profile completion after email verification:",
-        error,
-      );
+      log.error("Error checking profile completion after email verification:", error);
 
       // First check if this is an authentication error
       const authErrorHandled = await handleAuthError(
@@ -1857,9 +1723,6 @@ function AppContent() {
       const isApiError = error instanceof ApiError && error.status === 0;
 
       if (isNetworkError || isApiError) {
-        console.log(
-          "Network/API error detected after email verification, showing error message and staying on current screen",
-        );
         // Show error message to user but don't skip to main screen
         Alert.alert(
           "Проблема с подключением",
@@ -1895,22 +1758,17 @@ function AppContent() {
   };
 
   const handleForgotPassword = async (usernameOrEmail: string) => {
-    console.log("Password reset requested for:", usernameOrEmail);
     setForgotPasswordEmail(usernameOrEmail);
     dispatchNav({ type: "SET_OVERLAY", overlay: "up" });
     transitionTo("password_reset_verification");
   };
 
   const handlePasswordResetVerificationSuccess = async (code: string) => {
-    console.log(
-      "Password reset verification successful, showing reset form...",
-    );
     setPasswordResetCode(code);
     transitionTo("password_reset");
   };
 
   const handlePasswordResetSuccess = async () => {
-    console.log("Password reset successful, returning to login...");
     // Clear forgot password state
     setForgotPasswordEmail("");
     setPasswordResetCode("");

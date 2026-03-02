@@ -319,8 +319,9 @@ class AuthService:
     @staticmethod
     def record_failed_login(db: Session, auth_account: AuthAccount) -> None:
         """Increment failed attempts; lock if threshold reached."""
-        auth_account.failed_login_attempts = sa_func.coalesce(AuthAccount.failed_login_attempts, 0) + 1
-        if auth_account.failed_login_attempts >= settings.LOGIN_MAX_FAILED_ATTEMPTS:
+        new_count = (auth_account.failed_login_attempts or 0) + 1
+        auth_account.failed_login_attempts = new_count
+        if new_count >= settings.LOGIN_MAX_FAILED_ATTEMPTS:
             auth_account.login_locked_until = datetime.now(timezone.utc) + timedelta(minutes=settings.LOGIN_LOCKOUT_MINUTES)
         db.commit()
 

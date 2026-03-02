@@ -81,10 +81,18 @@ export const fetchWithTimeoutAndRetry = async (
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), timeout);
       
-      // Merge abort signals if provided
-      const signal = requestOptions.signal 
-        ? AbortSignal.any([controller.signal, requestOptions.signal])
-        : controller.signal;
+      // Merge abort signals — AbortSignal.any() requires iOS 17+, so use a
+      // manual listener fallback for broader compatibility.
+      let signal: AbortSignal;
+      if (requestOptions.signal) {
+        const linked = new AbortController();
+        const onAbort = () => linked.abort();
+        controller.signal.addEventListener("abort", onAbort);
+        requestOptions.signal.addEventListener("abort", onAbort);
+        signal = linked.signal;
+      } else {
+        signal = controller.signal;
+      }
       
       // Make the request
       const response = await fetch(url, {

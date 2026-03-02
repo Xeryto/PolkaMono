@@ -1,5 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { CartItem, Product } from './types/product';
+import { log } from './services/config';
 
 // Key for storing cart data
 const CART_ITEMS_KEY = '@PolkaMobile:cartItems';
@@ -21,12 +22,11 @@ export const initializeCart = async (): Promise<CartItem[]> => {
         }
       });
       
-      console.log('cartStorage - Initialized cart from storage with items:', parsedItems.length);
       return parsedItems;
     }
     return [];
   } catch (error) {
-    console.error('Error initializing cart from storage:', error);
+    log.error('Error initializing cart from storage:', error);
     return [];
   }
 };
@@ -38,9 +38,8 @@ export const saveCartItems = async (items: CartItem[]): Promise<void> => {
     // because they can't be serialized - we'll store references that we can resolve later
     
     await AsyncStorage.setItem(CART_ITEMS_KEY, JSON.stringify(items));
-    console.log('cartStorage - Saved cart items to storage, count:', items.length);
   } catch (error) {
-    console.error('Error saving cart items to storage:', error);
+    log.error('Error saving cart items to storage:', error);
   }
 };
 
@@ -48,9 +47,8 @@ export const saveCartItems = async (items: CartItem[]): Promise<void> => {
 export const clearCart = async (): Promise<void> => {
   try {
     await AsyncStorage.removeItem(CART_ITEMS_KEY);
-    console.log('cartStorage - Cart data cleared from storage');
   } catch (error) {
-    console.error('Error clearing cart data:', error);
+    log.error('Error clearing cart data:', error);
   }
 };
 

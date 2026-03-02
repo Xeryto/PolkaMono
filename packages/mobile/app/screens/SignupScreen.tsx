@@ -11,6 +11,7 @@ import {
   ActivityIndicator,
   Alert,
   Modal,
+  Pressable,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
@@ -21,6 +22,8 @@ import BackIcon from "../components/svg/BackIcon";
 import InfoIcon from "../components/svg/InfoIcon";
 import CheckboxChecked from "../components/svg/CheckboxChecked";
 import CheckboxUnchecked from "../components/svg/CheckboxUnchecked";
+import EyeIcon from "../components/svg/EyeIcon";
+import EyeOffIcon from "../components/svg/EyeOffIcon";
 import { Dimensions } from "react-native";
 import * as api from "../services/api";
 import {
@@ -30,6 +33,7 @@ import {
 } from "../lib/animations";
 import { useTheme } from "../lib/ThemeContext";
 import type { ThemeColors } from "../lib/theme";
+import { log } from "../services/config";
 
 const { width, height } = Dimensions.get("window");
 
@@ -58,6 +62,10 @@ const SignupScreen: React.FC<SignupScreenProps> = ({ onSignup, onBack }) => {
     general: "",
   });
   const [isLoading, setIsLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [passwordKey, setPasswordKey] = useState(0);
+  const [confirmPasswordKey, setConfirmPasswordKey] = useState(0);
   const [isCheckingUsername, setIsCheckingUsername] = useState(false);
   const [isCheckingEmail, setIsCheckingEmail] = useState(false);
   const [usernameAvailable, setUsernameAvailable] = useState<boolean | null>(
@@ -95,7 +103,7 @@ const SignupScreen: React.FC<SignupScreenProps> = ({ onSignup, onBack }) => {
             }));
           }
         } catch (error) {
-          console.error("Error checking username:", error);
+          log.error("Error checking username:", error);
           setUsernameAvailable(null);
         } finally {
           setIsCheckingUsername(false);
@@ -130,7 +138,7 @@ const SignupScreen: React.FC<SignupScreenProps> = ({ onSignup, onBack }) => {
             }));
           }
         } catch (error) {
-          console.error("Error checking email:", error);
+          log.error("Error checking email:", error);
           setEmailAvailable(null);
         } finally {
           setIsCheckingEmail(false);
@@ -213,8 +221,8 @@ const SignupScreen: React.FC<SignupScreenProps> = ({ onSignup, onBack }) => {
     if (!password) {
       newErrors.password = "Пароль обязателен";
       valid = false;
-    } else if (password.length < 6) {
-      newErrors.password = "пароль должен быть не менее 6 символов";
+    } else if (password.length < 8) {
+      newErrors.password = "пароль должен быть не менее 8 символов";
       valid = false;
     } else if (!passwordRegex.test(password)) {
       newErrors.password = "пароль должен содержать буквы и цифры";
@@ -438,16 +446,26 @@ const SignupScreen: React.FC<SignupScreenProps> = ({ onSignup, onBack }) => {
               >
                 <View style={styles.inputContainer}>
                   <TextInput
+                    key={passwordKey}
                     style={[
                       styles.input,
+                      styles.passwordInput,
                       errors.password ? styles.inputError : null,
                     ]}
                     placeholder="пароль"
                     placeholderTextColor={theme.text.placeholderDark}
-                    secureTextEntry
+                    secureTextEntry={!showPassword}
                     value={password}
                     onChangeText={setPassword}
+                    onBlur={() => setPasswordKey((k) => k + 1)}
                   />
+                  <Pressable
+                    style={styles.eyeButton}
+                    onPress={() => setShowPassword(!showPassword)}
+                    hitSlop={8}
+                  >
+                    {showPassword ? <EyeIcon /> : <EyeOffIcon />}
+                  </Pressable>
                 </View>
                 {errors.password ? (
                   <Text style={styles.errorText}>{errors.password}</Text>
@@ -462,16 +480,26 @@ const SignupScreen: React.FC<SignupScreenProps> = ({ onSignup, onBack }) => {
               >
                 <View style={styles.inputContainer}>
                   <TextInput
+                    key={confirmPasswordKey}
                     style={[
                       styles.input,
+                      styles.passwordInput,
                       errors.confirmPassword ? styles.inputError : null,
                     ]}
                     placeholder="повторите пароль"
                     placeholderTextColor={theme.text.placeholderDark}
-                    secureTextEntry
+                    secureTextEntry={!showConfirmPassword}
                     value={confirmPassword}
                     onChangeText={setConfirmPassword}
+                    onBlur={() => setConfirmPasswordKey((k) => k + 1)}
                   />
+                  <Pressable
+                    style={styles.eyeButton}
+                    onPress={() => setShowConfirmPassword(!showConfirmPassword)}
+                    hitSlop={8}
+                  >
+                    {showConfirmPassword ? <EyeIcon /> : <EyeOffIcon />}
+                  </Pressable>
                 </View>
                 {errors.confirmPassword ? (
                   <Text style={styles.errorText}>{errors.confirmPassword}</Text>
@@ -694,6 +722,17 @@ const createStyles = (theme: ThemeColors) =>
           overflow: "hidden",
         },
       }),
+    },
+    passwordInput: {
+      paddingRight: 48,
+    },
+    eyeButton: {
+      position: "absolute",
+      right: 16,
+      top: 0,
+      bottom: 0,
+      justifyContent: "center",
+      padding: 4,
     },
     inputError: {
       borderColor: theme.border.error,

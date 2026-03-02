@@ -37,6 +37,7 @@ import {
   COLOR_DROPDOWN_BOTTOM_PADDING,
 } from "../lib/swipeCardConstants";
 import * as api from "../services/api";
+import { log } from "../services/config";
 
 export interface SwipeDeckConfig {
   cardWidthFraction: number; // 0.88 MainPage, 0.80 FRS
@@ -133,7 +134,7 @@ export function useSwipeDeck(config: SwipeDeckConfig) {
           setUserSelectedSize(userProfile.profile?.selected_size || null);
         }
       } catch (error) {
-        console.error("Error fetching user data:", error);
+        log.error("Error fetching user data:", error);
         setUserSelectedSize(null);
       }
     };
@@ -162,7 +163,7 @@ export function useSwipeDeck(config: SwipeDeckConfig) {
     try {
       await api.trackSwipeWithOptimisticUpdate({ product_id: productId });
     } catch (error) {
-      console.error("Error tracking swipe:", error);
+      log.error("Error tracking swipe:", error);
     }
     onSwipe?.(productId, direction || "up");
   };
@@ -537,7 +538,7 @@ export function useSwipeDeck(config: SwipeDeckConfig) {
       });
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     } catch (error) {
-      console.error("Error refreshing cards:", error);
+      log.error("Error refreshing cards:", error);
     } finally {
       setIsRefreshing(false);
     }
@@ -709,7 +710,7 @@ export function useSwipeDeck(config: SwipeDeckConfig) {
             }
           })
           .catch((error) => {
-            console.error("Error fetching cards:", error);
+            log.error("Error fetching cards:", error);
             setIsAnimating(false);
             pan.setValue({ x: 0, y: 0 });
           })

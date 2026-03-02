@@ -16,7 +16,7 @@ import { Image } from "expo-image";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import * as ImagePicker from "expo-image-picker";
 import * as ImageManipulator from "expo-image-manipulator";
-import * as FileSystem from "expo-file-system/legacy";
+import * as FileSystem from "expo-file-system";
 import BackIcon from "../components/svg/BackIcon";
 import Me from "../components/svg/Me";
 import { ANIMATION_DURATIONS, ANIMATION_DELAYS } from "../lib/animations";
@@ -29,6 +29,7 @@ import {
 } from "../types/avatar";
 import { useTheme } from "../lib/ThemeContext";
 import type { ThemeColors } from "../lib/theme";
+import { log } from "../services/config";
 
 const { width, height } = Dimensions.get("window");
 
@@ -110,7 +111,7 @@ const AvatarEditScreen: React.FC<AvatarEditScreenProps> = ({
       }
 
       const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        mediaTypes: ["images"],
         allowsEditing: false,
         quality: 1,
         aspect: [1, 1],
@@ -126,7 +127,7 @@ const AvatarEditScreen: React.FC<AvatarEditScreenProps> = ({
         lastTranslate.current = { x: 0, y: 0 };
       }
     } catch (error) {
-      console.error("Error picking image:", error);
+      log.error("Error picking image:", error);
       Alert.alert("Ошибка", "Не удалось выбрать изображение.");
     }
   };
@@ -401,7 +402,7 @@ const AvatarEditScreen: React.FC<AvatarEditScreenProps> = ({
         onSave(manipulatedImage.uri, fullLocalUri, avatarCrop, avatarTransform)
       );
     } catch (error) {
-      console.error("Error saving avatar:", error);
+      log.error("Error saving avatar:", error);
       setIsLoading(false);
       if (!saveCalled) {
         Alert.alert("ошибка", "не удалось обработать изображение.");

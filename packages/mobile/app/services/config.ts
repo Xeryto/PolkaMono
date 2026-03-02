@@ -1,18 +1,6 @@
 import { Platform } from 'react-native';
 import Constants from 'expo-constants';
 
-// Debug environment variables
-console.log('Environment variables debug:', {
-  EXPO_PUBLIC_API_URL: process.env.EXPO_PUBLIC_API_URL,
-  EXPO_PUBLIC_ENVIRONMENT: process.env.EXPO_PUBLIC_ENVIRONMENT,
-  EXPO_PUBLIC_API_TIMEOUT: process.env.EXPO_PUBLIC_API_TIMEOUT,
-  EXPO_PUBLIC_AUTH_TIMEOUT: process.env.EXPO_PUBLIC_AUTH_TIMEOUT,
-  EXPO_PUBLIC_DEBUG_MODE: process.env.EXPO_PUBLIC_DEBUG_MODE,
-  EXPO_PUBLIC_LOG_LEVEL: process.env.EXPO_PUBLIC_LOG_LEVEL,
-  isEASUpdate: Constants.expoConfig?.extra?.isEASUpdate,
-  isDevelopmentBuild: Constants.expoConfig?.extra?.isDevelopmentBuild,
-});
-
 // Determine if this is an EAS update (production build with OTA update)
 const isEASUpdate = Constants.expoConfig?.extra?.isEASUpdate === true;
 const isDevelopmentBuild = Constants.expoConfig?.extra?.isDevelopmentBuild === true;
@@ -23,24 +11,24 @@ export const API_CONFIG = {
   API_BASE_URL: process.env.EXPO_PUBLIC_API_URL,
   API_TIMEOUT: parseInt(process.env.EXPO_PUBLIC_API_TIMEOUT),
   AUTH_TIMEOUT: parseInt(process.env.EXPO_PUBLIC_AUTH_TIMEOUT),
-  
+
   // Environment
   ENVIRONMENT: process.env.EXPO_PUBLIC_ENVIRONMENT,
   IS_PRODUCTION: process.env.EXPO_PUBLIC_ENVIRONMENT === 'production',
   IS_DEVELOPMENT: process.env.EXPO_PUBLIC_ENVIRONMENT !== 'production',
-  
+
   // Debug settings
   DEBUG_MODE: process.env.EXPO_PUBLIC_DEBUG_MODE === 'true',
   LOG_LEVEL: process.env.EXPO_PUBLIC_LOG_LEVEL as 'debug' | 'info' | 'warn' | 'error',
-  
+
   // Development settings (only available in development)
   DEV: {
     API_DELAY: parseInt(process.env.EXPO_PUBLIC_API_DELAY),
   },
-  
+
   // SSL Pinning Configuration
   SSL_PINNING_CONFIG: {
-    CERTIFICATES: process.env.EXPO_PUBLIC_SSL_CERTIFICATES ? 
+    CERTIFICATES: process.env.EXPO_PUBLIC_SSL_CERTIFICATES ?
       process.env.EXPO_PUBLIC_SSL_CERTIFICATES.split(',') : [],
   },
 };
@@ -49,20 +37,20 @@ export const API_CONFIG = {
 export const isProduction = (): boolean => API_CONFIG.IS_PRODUCTION;
 export const isDevelopment = (): boolean => API_CONFIG.IS_DEVELOPMENT;
 
-// Logging utility
+// Logging utility — debug/info/warn are no-op in production builds
 export const log = {
   debug: (message: string, ...args: any[]) => {
-    if (API_CONFIG.DEBUG_MODE && ['debug'].includes(API_CONFIG.LOG_LEVEL)) {
+    if (__DEV__ && API_CONFIG.DEBUG_MODE && ['debug'].includes(API_CONFIG.LOG_LEVEL)) {
       console.log(`[DEBUG] ${message}`, ...args);
     }
   },
   info: (message: string, ...args: any[]) => {
-    if (['debug', 'info'].includes(API_CONFIG.LOG_LEVEL)) {
+    if (__DEV__ && ['debug', 'info'].includes(API_CONFIG.LOG_LEVEL)) {
       console.info(`[INFO] ${message}`, ...args);
     }
   },
   warn: (message: string, ...args: any[]) => {
-    if (['debug', 'info', 'warn'].includes(API_CONFIG.LOG_LEVEL)) {
+    if (__DEV__ && ['debug', 'info', 'warn'].includes(API_CONFIG.LOG_LEVEL)) {
       console.warn(`[WARN] ${message}`, ...args);
     }
   },

@@ -1,5 +1,6 @@
 import { CardItem } from "../types/product";
 import * as api from "../services/api";
+import { log } from "../services/config";
 import fallbackImage from "../assets/Vision.png";
 import { LOADING_CARD_ID } from "./swipeCardConstants";
 
@@ -55,7 +56,7 @@ export const toggleLikeApi = async (
     await api.toggleFavorite(productId, action);
     return true;
   } catch (error) {
-    console.error("Error toggling favorite:", error);
+    log.error("Error toggling favorite:", error);
     return false;
   }
 };

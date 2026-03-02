@@ -42,6 +42,7 @@ import LinkPressed from "./components/svg/LinkPressed";
 import ShareIcon from "./components/svg/Share";
 import Cancel from "./components/svg/Cancel";
 import * as api from "./services/api";
+import { log } from "./services/config";
 import { apiWrapper } from "./services/apiWrapper";
 import { CardItem, CartItem } from "./types/product";
 import { mapProductToCardItem } from "./lib/productMapper";
@@ -98,7 +99,7 @@ const fetchMoreCards = async (count: number = 2): Promise<CardItem[]> => {
       Alert.alert("сессия истекла", "пожалуйста, войдите в аккаунт снова.");
       return [];
     }
-    console.error("Error fetching recommendations:", error);
+    log.error("Error fetching recommendations:", error);
     return [];
   }
 };
@@ -169,7 +170,7 @@ const MainPage = ({ navigation, route }: MainPageProps) => {
           deck.setCurrentCardIndex(0);
         }
       } catch (error) {
-        console.error("Error handling deep link:", error);
+        log.error("Error handling deep link:", error);
       }
     };
     Linking.getInitialURL().then((url) => { if (url) handleDeepLink(url); });
@@ -248,7 +249,7 @@ const MainPage = ({ navigation, route }: MainPageProps) => {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       setTimeout(() => { setIsLinkCopied(false); setShowLinkCopiedPopup(false); }, 2000);
     } catch (error) {
-      console.error("Error copying link:", error);
+      log.error("Error copying link:", error);
     }
   }, [deck.cards, deck.currentCardIndex]);
 
@@ -264,7 +265,7 @@ const MainPage = ({ navigation, route }: MainPageProps) => {
       });
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     } catch (error) {
-      console.error("Error sharing:", error);
+      log.error("Error sharing:", error);
     }
   }, [deck.cards, deck.currentCardIndex]);
 

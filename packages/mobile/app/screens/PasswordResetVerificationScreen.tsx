@@ -25,6 +25,7 @@ import {
 } from "../lib/animations";
 import { useTheme } from "../lib/ThemeContext";
 import type { ThemeColors } from "../lib/theme";
+import { log } from "../services/config";
 
 interface PasswordResetVerificationScreenProps {
   onVerificationSuccess: (code: string) => void;
@@ -107,7 +108,7 @@ const PasswordResetVerificationScreen: React.FC<
       }
     } catch (err) {
       // Silently fail if clipboard access fails
-      console.warn("Failed to access clipboard:", err);
+      log.warn("Failed to access clipboard:", err);
     }
   };
 

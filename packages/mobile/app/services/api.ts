@@ -94,7 +94,6 @@ class SessionManager {
         throw new Error('No refresh token available');
       }
 
-      console.log('Attempting to refresh token with:', refreshToken);
       const response = await fetch(`${API_URL}/api/v1/auth/refresh`, {
         method: 'POST',
         headers: {
@@ -103,18 +102,16 @@ class SessionManager {
         body: JSON.stringify({ refresh_token: refreshToken }),
       });
 
-      console.log('Refresh token response status:', response.status);
       if (!response.ok) {
         const errorData = await response.json();
-        console.error('Refresh token failed with error:', errorData);
+        log.error('Refresh token failed with error:', errorData);
         throw new Error('Token refresh failed');
       }
       const data = await response.json();
-      console.log('Refresh token successful. New token data:', data);
       await this.storeSession(data.token, data.expires_at, data.refresh_token);
       return data.token;
     } catch (error) {
-      console.error('Token refresh failed:', error);
+      log.error('Token refresh failed:', error);
       throw error;
     }
   }
@@ -122,7 +119,6 @@ class SessionManager {
   // Store session
   async storeSession(token: string, expiresAt: string, refreshToken?: string) {
     try {
-      console.log('Storing session: token (first 10 chars)=', token.substring(0, 10), '..., expiresAt=', expiresAt, 'refreshToken (first 10 chars)=', refreshToken?.substring(0, 10));
       await SecureStore.setItemAsync('authToken', token);
       
       await AsyncStorage.setItem('tokenExpiry', expiresAt); // Expiry can remain in AsyncStorage
@@ -130,9 +126,8 @@ class SessionManager {
         await SecureStore.setItemAsync('refreshToken', refreshToken);
       }
       this.sessionState = SessionState.VALID;
-      console.log('Session stored successfully.');
     } catch (error) {
-      console.error('Error storing session:', error);
+      log.error('Error storing session:', error);
     }
   }
 
@@ -164,7 +159,7 @@ class SessionManager {
       this.sessionState = SessionState.VALID;
       return { token, isValid: true };
     } catch (error) {
-      console.error('Error getting valid session:', error);
+      log.error('Error getting valid session:', error);
       this.sessionState = SessionState.EXPIRED;
       return { token: null, isValid: false };
     }
@@ -194,9 +189,8 @@ class SessionManager {
       try {
         const { clearCart } = await import('../cartStorage');
         await clearCart();
-        console.log('SessionManager - Cart cleared during session clear');
       } catch (cartError) {
-        console.error('Error clearing cart during session clear:', cartError);
+        log.error('Error clearing cart during session clear:', cartError);
       }
       
       // Clear user profile cache
@@ -209,7 +203,7 @@ class SessionManager {
       this.sessionState = SessionState.EXPIRED;
       this.emit('session_cleared');
     } catch (error) {
-      console.error('Error clearing session:', error);
+      log.error('Error clearing session:', error);
     } finally {
       this.logoutInProgress = false;
     }
@@ -223,13 +217,11 @@ class SessionManager {
 
   // Public method to handle login required
   handleLoginRequired() {
-    console.log('handleLoginRequired called. Current session state:', this.sessionState);
     // Always set state to EXPIRED and emit event, even if already expired
     // This ensures listeners always get notified, even if they were set up late
     if (this.sessionState !== SessionState.EXPIRED) {
       this.sessionState = SessionState.EXPIRED;
     }
-    console.log('Emitting login_required event.');
     this.emit('login_required');
   }
 
@@ -248,11 +240,9 @@ class SessionManager {
     
     // Return cached user profile if it's still fresh
     if (this.userProfileCache && (now - this.userProfileCacheTime) < this.USER_CACHE_DURATION) {
-      console.log('Returning cached user profile from session manager');
       return this.userProfileCache;
     }
     
-    console.log('Fetching fresh user profile from session manager');
     const user = await retrieveUserProfile();
     
     // Cache the result
@@ -319,7 +309,6 @@ export interface ProfileCompletionStatus {
 
 // Email Verification API functions
 export const requestVerificationEmail = async (): Promise<{ message: string }> => {
-  console.log("requesting email");
   return await apiRequest('/api/v1/auth/request-verification', 'POST');
 }; 
 
@@ -443,18 +432,15 @@ const apiRequest = async (
     );
 
     if (response.status === 401) {
-      console.log('API Request: Received 401 status.');
       // Try refreshing token once before giving up
       if (requireAuth && !requestOptions._isRetryAfterRefresh) {
         try {
-          console.log('API Request: Attempting token refresh before logout.');
           await sessionManager.refreshToken();
           return apiRequest(endpoint, method, body, requireAuth, {
             ...requestOptions,
             _isRetryAfterRefresh: true,
           });
         } catch (refreshError) {
-          console.log('API Request: Token refresh failed, triggering handleLoginRequired.');
           sessionManager.handleLoginRequired();
           return await handleApiResponse(response);
         }
@@ -475,7 +461,7 @@ const apiRequest = async (
     
     if (error instanceof ApiError && error.status === 401) {
       // Log the authentication error for debugging
-      console.log('API authentication error:', error.message);
+      log.error('API authentication error:', error.message);
     }
     throw error;
   }
@@ -499,7 +485,7 @@ export const storeUserProfile = async (profile: UserProfile) => {
   try {
     await AsyncStorage.setItem(USER_PROFILE_KEY, JSON.stringify(profile));
   } catch (error) {
-    console.error('Error storing user profile:', error);
+    log.error('Error storing user profile:', error);
     throw error;
   }
 };
@@ -509,7 +495,7 @@ export const retrieveUserProfile = async (): Promise<UserProfile | null> => {
     const profileString = await AsyncStorage.getItem(USER_PROFILE_KEY);
     return profileString ? JSON.parse(profileString) : null;
   } catch (error) {
-    console.error('Error retrieving user profile:', error);
+    log.error('Error retrieving user profile:', error);
     return null;
   }
 };
@@ -520,7 +506,7 @@ export const checkUsernameAvailability = async (username: string): Promise<boole
     const response = await apiRequest(`/api/v1/auth/check-username/${encodeURIComponent(username)}`, 'GET', null, false);
     return response.available;
   } catch (error) {
-    console.error('Error checking username availability:', error);
+    log.error('Error checking username availability:', error);
     return false; // Assume not available on error to be safe
   }
 };
@@ -530,7 +516,7 @@ export const checkEmailAvailability = async (email: string): Promise<boolean> =>
     const response = await apiRequest(`/api/v1/auth/check-email/${encodeURIComponent(email)}`, 'GET', null, false);
     return response.available;
   } catch (error) {
-    console.error('Error checking email availability:', error);
+    log.error('Error checking email availability:', error);
     return false; // Assume not available on error to be safe
   }
 };
@@ -574,13 +560,10 @@ export const loginUser = async (
   identifier: string, // Can be username or email
   password: string
 ): Promise<AuthResponse> => {
-  console.log("here")
   const response = await apiRequest('/api/v1/auth/login', 'POST', {
     identifier, // Backend should handle both username and email
     password
   }, false);
-
-  console.log(response);
 
   // Store session
   await sessionManager.storeSession(
@@ -603,7 +586,7 @@ export const logoutUser = async (): Promise<void> => {
     // Call logout endpoint to invalidate tokens on server
     await apiRequest('/api/v1/auth/logout', 'POST');
   } catch (error) {
-    console.error('Error calling logout endpoint:', error);
+    log.error('Error calling logout endpoint:', error);
     // Continue with local logout even if server call fails
   } finally {
     // Always clear local session
@@ -667,11 +650,9 @@ export const getCurrentUser = async (): Promise<UserProfile> => {
   
   // Check if there's already a pending request
   if (pendingRequests.has(requestKey)) {
-    console.log('Waiting for existing user profile request');
     return pendingRequests.get(requestKey)!;
   }
   
-  console.log('Fetching user profile from API');
   const userPromise = apiRequest('/api/v1/user/profile', 'GET', undefined, true, {
     timeout: API_CONFIG.AUTH_TIMEOUT
   }).then(response => {
@@ -697,11 +678,9 @@ export const getProfileCompletionStatus = async (): Promise<ProfileCompletionSta
   
   // Check if there's already a pending request
   if (pendingRequests.has(requestKey)) {
-    console.log('Waiting for existing profile completion status request');
     return pendingRequests.get(requestKey)!;
   }
   
-  console.log('Fetching profile completion status from API');
   const completionPromise = apiRequest('/api/v1/user/profile/completion-status', 'GET', undefined, true, {
     timeout: API_CONFIG.AUTH_TIMEOUT
   }).then(status => {
@@ -974,7 +953,6 @@ const pendingRequests = new Map<string, Promise<any>>();
 
 // Clear global caches to prevent cross-user contamination
 export const clearGlobalCaches = () => {
-  console.log('Clearing global caches to prevent cross-user contamination');
   brandsCache = null;
   stylesCache = null;
   categoriesCache = null;
@@ -1069,7 +1047,6 @@ export const clearDataCache = () => {
   stylesCacheTime = 0;
   categoriesCacheTime = 0;
   pendingRequests.clear();
-  console.log('Data cache and pending requests cleared');
 };
 
 // Friends interfaces
@@ -1226,7 +1203,7 @@ export const simulateResetPassword = async (usernameOrEmail: string): Promise<bo
     await new Promise(resolve => setTimeout(resolve, 1000));
     return true; // Always return true for simulation
   } catch (error) {
-    console.error('Error simulating password reset:', error);
+    log.error('Error simulating password reset:', error);
     return false;
   }
 };
@@ -1297,7 +1274,6 @@ export interface PaymentCreateResponse {
 }
 
 export const createPayment = async (paymentDetails: PaymentCreateRequest): Promise<PaymentCreateResponse> => {
-  console.log(paymentDetails)
   const response = await apiRequest('/api/v1/payments/create', 'POST', paymentDetails);
   return response as PaymentCreateResponse;
 };
@@ -1552,7 +1528,6 @@ const POPULAR_ITEMS_CACHE_DURATION = 5 * 60 * 1000; // 5 minutes in milliseconds
 export const clearPopularItemsCache = () => {
   popularItemsCache = null;
   popularItemsCacheTime = 0;
-  console.log('Popular items cache cleared');
 };
 
 export const getPopularItems = async (limit: number = 8): Promise<Product[]> => {
@@ -1685,11 +1660,9 @@ export const initializeSwipeCount = async (): Promise<number> => {
     
     // Store in session storage
     await AsyncStorage.setItem(SWIPE_COUNT_KEY, swipeCount.toString());
-    console.log('Initialized swipe count from API:', swipeCount);
-    
     return swipeCount;
   } catch (error) {
-    console.error('Error initializing swipe count:', error);
+    log.error('Error initializing swipe count:', error);
     // Fallback to 0 if API fails
     await AsyncStorage.setItem(SWIPE_COUNT_KEY, '0');
     return 0;
@@ -1702,7 +1675,7 @@ export const getCurrentSwipeCount = async (): Promise<number> => {
     const count = await AsyncStorage.getItem(SWIPE_COUNT_KEY);
     return count ? parseInt(count, 10) : 0;
   } catch (error) {
-    console.error('Error getting swipe count:', error);
+    log.error('Error getting swipe count:', error);
     return 0;
   }
 };
@@ -1713,10 +1686,9 @@ export const incrementSwipeCount = async (): Promise<number> => {
     const currentCount = await getCurrentSwipeCount();
     const newCount = currentCount + 1;
     await AsyncStorage.setItem(SWIPE_COUNT_KEY, newCount.toString());
-    console.log('Incremented swipe count to:', newCount);
     return newCount;
   } catch (error) {
-    console.error('Error incrementing swipe count:', error);
+    log.error('Error incrementing swipe count:', error);
     return 0;
   }
 };
@@ -1727,10 +1699,9 @@ export const decrementSwipeCount = async (): Promise<number> => {
     const currentCount = await getCurrentSwipeCount();
     const newCount = Math.max(0, currentCount - 1);
     await AsyncStorage.setItem(SWIPE_COUNT_KEY, newCount.toString());
-    console.log('Decremented swipe count to:', newCount);
     return newCount;
   } catch (error) {
-    console.error('Error decrementing swipe count:', error);
+    log.error('Error decrementing swipe count:', error);
     return 0;
   }
 };
@@ -1740,7 +1711,7 @@ export const syncSwipeCountFromApi = async (apiCount: number): Promise<void> => 
   try {
     await AsyncStorage.setItem(SWIPE_COUNT_KEY, apiCount.toString());
   } catch (error) {
-    console.error('Error syncing swipe count:', error);
+    log.error('Error syncing swipe count:', error);
   }
 };
 
@@ -1753,11 +1724,10 @@ export const trackSwipeWithOptimisticUpdate = async (swipeData: SwipeTrackingReq
     // 2. Send to API
     await trackUserSwipe(swipeData);
     
-    console.log('Swipe tracked successfully, count:', newCount);
     return { success: true, newCount };
     
   } catch (error) {
-    console.error('Error tracking swipe, rolling back:', error);
+    log.error('Error tracking swipe, rolling back:', error);
     
     // 3. Rollback on failure
     const rollbackCount = await decrementSwipeCount();

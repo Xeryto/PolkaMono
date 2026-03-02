@@ -1,4 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { log } from './services/config';
 
 // Keys for storing auth data
 const AUTH_TOKEN_KEY = 'PolkaMobile_authToken';
@@ -24,7 +25,7 @@ export const storeAuthToken = async (token: string): Promise<void> => {
   try {
     await AsyncStorage.setItem(AUTH_TOKEN_KEY, token);
   } catch (error) {
-    console.error('Error storing auth token:', error);
+    log.error('Error storing auth token:', error);
     throw error;
   }
 };
@@ -34,7 +35,7 @@ export const getAuthToken = async (): Promise<string | null> => {
   try {
     return await AsyncStorage.getItem(AUTH_TOKEN_KEY);
   } catch (error) {
-    console.error('Error getting auth token:', error);
+    log.error('Error getting auth token:', error);
     return null;
   }
 };
@@ -44,7 +45,7 @@ export const storeUserData = async (userData: UserData): Promise<void> => {
   try {
     await AsyncStorage.setItem(USER_DATA_KEY, JSON.stringify(userData));
   } catch (error) {
-    console.error('Error storing user data:', error);
+    log.error('Error storing user data:', error);
     throw error;
   }
 };
@@ -55,7 +56,7 @@ export const getUserData = async (): Promise<UserData | null> => {
     const userDataString = await AsyncStorage.getItem(USER_DATA_KEY);
     return userDataString ? JSON.parse(userDataString) : null;
   } catch (error) {
-    console.error('Error getting user data:', error);
+    log.error('Error getting user data:', error);
     return null;
   }
 };
@@ -65,7 +66,7 @@ export const setLoggedIn = async (isLoggedIn: boolean): Promise<void> => {
   try {
     await AsyncStorage.setItem(IS_LOGGED_IN_KEY, JSON.stringify(isLoggedIn));
   } catch (error) {
-    console.error('Error storing login status:', error);
+    log.error('Error storing login status:', error);
     throw error;
   }
 };
@@ -76,7 +77,7 @@ export const isLoggedIn = async (): Promise<boolean> => {
     const value = await AsyncStorage.getItem(IS_LOGGED_IN_KEY);
     return value === 'true';
   } catch (error) {
-    console.error('Error getting login status:', error);
+    log.error('Error getting login status:', error);
     return false;
   }
 };
@@ -90,7 +91,7 @@ export const login = async (token: string, userData: UserData): Promise<void> =>
       setLoggedIn(true)
     ]);
   } catch (error) {
-    console.error('Error during login:', error);
+    log.error('Error during login:', error);
     throw error;
   }
 };
@@ -104,7 +105,7 @@ export const logout = async (): Promise<void> => {
       setLoggedIn(false)
     ]);
   } catch (error) {
-    console.error('Error during logout:', error);
+    log.error('Error during logout:', error);
     throw error;
   }
 }; 

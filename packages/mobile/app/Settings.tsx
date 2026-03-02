@@ -5,6 +5,7 @@ import React, {
   useCallback,
   useMemo,
 } from "react";
+import { log } from "./services/config";
 import { ActivityIndicator } from "react-native";
 import {
   View,
@@ -709,9 +710,8 @@ const Settings = ({
     try {
       const count = await api.getCurrentSwipeCount();
       setSwipeCount(count);
-      console.log("Settings - Loaded swipe count from session storage:", count);
     } catch (error) {
-      console.error("Error loading swipe count:", error);
+      log.error("Error loading swipe count:", error);
       setSwipeCount(0);
     }
   };
@@ -778,7 +778,7 @@ const Settings = ({
         setMarketingNotifications(prefs.marketing_notifications ?? true);
       }
     } catch (error) {
-      console.error("Error loading preferences:", error);
+      log.error("Error loading preferences:", error);
     }
   };
 
@@ -789,7 +789,7 @@ const Settings = ({
         const bottomText = getBottomText();
         navigation.setBottomText(bottomText);
       } catch (error) {
-        console.error("Error updating bottom text:", error);
+        log.error("Error updating bottom text:", error);
       }
     }
   }, [activeSection, embedded, navigation, getBottomText]);
@@ -800,11 +800,6 @@ const Settings = ({
       const profile = await apiWrapper.getCurrentUser("SettingsPage");
       if (profile) {
         setUserProfile(profile);
-        console.log("Settings - User profile loaded:", profile);
-        console.log(
-          "Settings - Profile favorite_brands:",
-          profile.favorite_brands,
-        );
 
         // Set selected size from profile object
         if (profile.profile?.selected_size) {
@@ -815,10 +810,6 @@ const Settings = ({
         if (profile.favorite_brands && profile.favorite_brands.length > 0) {
           const brandNames = profile.favorite_brands.map((brand) => brand.name);
           setSelectedBrands(brandNames);
-          console.log(
-            "Settings - Loaded favorite brands from profile:",
-            brandNames,
-          );
         }
 
         // Pre-load privacy & notification prefs so entering those sections
@@ -833,14 +824,12 @@ const Settings = ({
         }
       } else {
         setSelectedBrands([]);
-        console.log("Settings - No favorite brands found in profile");
       }
     } catch (error: any) {
-      console.error("Error loading user profile:", error);
+      log.error("Error loading user profile:", error);
 
       // Show appropriate error message based on error type
       if (error.status === 401) {
-        console.log("Authentication error loading user profile");
         // Don't show alert for auth errors
       } else if (error.status >= 500) {
         Alert.alert(
@@ -866,11 +855,10 @@ const Settings = ({
       const brands = await apiWrapper.getBrands("SettingsPage");
       setPopularBrands((brands || []).map((brand) => brand.name));
     } catch (error: any) {
-      console.error("Error loading brands:", error);
+      log.error("Error loading brands:", error);
 
       // Show appropriate error message based on error type
       if (error.status === 401) {
-        console.log("Authentication error loading brands");
         // Don't show alert for auth errors
       } else if (error.status >= 500) {
         Alert.alert(
@@ -898,7 +886,6 @@ const Settings = ({
       userStats &&
       now - statsLastLoaded < STATS_CACHE_DURATION
     ) {
-      console.log("Using cached user stats");
       return;
     }
 
@@ -909,17 +896,8 @@ const Settings = ({
         setUserStats(stats);
       }
       setStatsLastLoaded(now);
-      console.log("User stats loaded successfully");
     } catch (error: any) {
-      console.error("Error loading user stats:", error);
-
-      // Don't show alerts for stats loading errors to avoid interrupting user experience
-      // Just log the error and continue with mock data
-      if (error.status === 401) {
-        console.log("Authentication error loading user stats");
-      } else {
-        console.log("Failed to load user stats, using fallback data");
-      }
+      log.error("Error loading user stats:", error);
     } finally {
       setIsLoadingStats(false);
     }
@@ -949,9 +927,8 @@ const Settings = ({
       // Perform API call in background
       try {
         await api.updateUserProfileData({ selected_size: size });
-        console.log("User size updated successfully");
       } catch (apiError: any) {
-        console.error("API error updating user size:", apiError);
+        log.error("API error updating user size:", apiError);
 
         // Rollback local changes
         setSelectedSize(originalSelectedSize);
@@ -959,7 +936,7 @@ const Settings = ({
 
         // Show appropriate error message
         if (apiError.status === 401) {
-          console.log("Authentication error updating user size");
+          // Don't show alert for auth errors
         } else if (apiError.status >= 500) {
           Alert.alert("ошибка", "проблема с сервером. попробуйте позже.");
         } else {
@@ -970,7 +947,7 @@ const Settings = ({
         }
       }
     } catch (error: any) {
-      console.error("Error updating user size:", error);
+      log.error("Error updating user size:", error);
       Alert.alert("ошибка", "не удалось обновить размер.");
     }
   };
@@ -986,7 +963,7 @@ const Settings = ({
         .map((brand) => brand.name);
       setSelectedBrands(selectedBrandNames);
     } catch (error) {
-      console.error("Error updating user brands:", error);
+      log.error("Error updating user brands:", error);
       Alert.alert(
         "ошибка обновления",
         "не удалось обновить любимые бренды. попробуйте позже.",
@@ -1026,7 +1003,7 @@ const Settings = ({
         apartmentNumber: shoppingData.apartment_number || "",
       });
     } catch (error: any) {
-      console.error("Error loading shopping information:", error);
+      log.error("Error loading shopping information:", error);
       setShoppingInfoError("не удалось загрузить информацию о доставке.");
     } finally {
       setIsLoadingShoppingInfo(false);
@@ -1060,7 +1037,7 @@ const Settings = ({
         setUsernameError("");
       }
     } catch (error: any) {
-      console.error("Error loading my info:", error);
+      log.error("Error loading my info:", error);
       setMyInfoError("не удалось загрузить данные.");
     } finally {
       setIsLoadingMyInfo(false);
@@ -1107,7 +1084,7 @@ const Settings = ({
             setUsernameError("");
           }
         } catch (error) {
-          console.error("Error checking username:", error);
+          log.error("Error checking username:", error);
           setUsernameAvailable(null);
         } finally {
           setIsCheckingUsername(false);
@@ -1249,7 +1226,7 @@ const Settings = ({
       // Go back to main settings
       setActiveSection(null);
     } catch (error: any) {
-      console.error("Error saving my info:", error);
+      log.error("Error saving my info:", error);
       setMyInfoError("не удалось сохранить данные.");
       Alert.alert("ошибка", "не удалось сохранить данные. попробуйте позже.");
     } finally {
@@ -1372,7 +1349,7 @@ const Settings = ({
 
       Alert.alert("успешно", "информация о доставке сохранена.");
     } catch (error: any) {
-      console.error("Error saving shopping information:", error);
+      log.error("Error saving shopping information:", error);
       // Check if it's a validation error from the backend
       const errorMessage =
         error?.response?.data?.detail ||
@@ -1395,7 +1372,7 @@ const Settings = ({
       // Use already loaded brands instead of fetching again
       const brand = popularBrands.find((b) => b === brandName);
       if (!brand) {
-        console.error("Brand not found in loaded brands:", brandName);
+        log.error("Brand not found in loaded brands:", brandName);
         Alert.alert("Ошибка", "Бренд не найден.");
         return;
       }
@@ -1404,7 +1381,7 @@ const Settings = ({
       const allBrands = await apiWrapper.getBrands("SettingsPage");
       const brandObj = (allBrands || []).find((b) => b.name === brandName);
       if (!brandObj) {
-        console.error("Brand object not found:", brandName);
+        log.error("Brand object not found:", brandName);
         Alert.alert("Ошибка", "Бренд не найден.");
         return;
       }
@@ -1466,9 +1443,8 @@ const Settings = ({
       // Perform API call in background
       try {
         await api.updateUserBrands(newBrandIds);
-        console.log("Brand selection updated successfully");
       } catch (apiError: any) {
-        console.error("API error updating brands:", apiError);
+        log.error("API error updating brands:", apiError);
 
         // Rollback local changes
         setSelectedBrands(originalSelectedBrands);
@@ -1476,7 +1452,7 @@ const Settings = ({
 
         // Show appropriate error message
         if (apiError.status === 401) {
-          console.log("Authentication error updating brands");
+          // Don't show alert for auth errors
         } else if (apiError.status >= 500) {
           Alert.alert("ошибка", "проблема с сервером. попробуйте позже.");
         } else {
@@ -1487,7 +1463,7 @@ const Settings = ({
         }
       }
     } catch (error: any) {
-      console.error("Error selecting brand:", error);
+      log.error("Error selecting brand:", error);
       Alert.alert("ошибка", "не удалось обновить список брендов.");
     }
   };
@@ -3080,7 +3056,7 @@ const Settings = ({
     try {
       await api.updateUserPreferences({ order_notifications: value });
     } catch (error) {
-      console.error("Error saving notification preference:", error);
+      log.error("Error saving notification preference:", error);
       // Rollback on error
       setOrderNotifications(!value);
     }
@@ -3093,7 +3069,7 @@ const Settings = ({
     try {
       await api.updateUserPreferences({ marketing_notifications: value });
     } catch (error) {
-      console.error("Error saving notification preference:", error);
+      log.error("Error saving notification preference:", error);
       // Rollback on error
       setMarketingNotifications(!value);
     }
@@ -3168,7 +3144,7 @@ const Settings = ({
                   }
                   await api.updateUserPreferences(updateData);
                 } catch (error) {
-                  console.error("Error saving privacy preference:", error);
+                  log.error("Error saving privacy preference:", error);
                   // Rollback on error
                   item.onChange(item.value);
                 }

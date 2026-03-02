@@ -6,6 +6,8 @@
  * and consistent theming.
  */
 
+import { log } from '../services/config';
+
 export type ColorScheme = 'light' | 'dark';
 
 export interface ThemeColors {
@@ -512,7 +514,7 @@ export const getColor = (path: string): string => {
     if (value && typeof value === 'object' && key in value) {
       value = value[key];
     } else {
-      console.warn(`Color path "${path}" not found in theme`);
+      log.warn(`Color path "${path}" not found in theme`);
       return '#000000'; // Fallback color
     }
   }

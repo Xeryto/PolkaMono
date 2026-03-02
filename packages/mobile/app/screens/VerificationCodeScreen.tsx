@@ -25,6 +25,7 @@ import {
 } from "../lib/animations";
 import { useTheme } from "../lib/ThemeContext";
 import type { ThemeColors } from "../lib/theme";
+import { log } from "../services/config";
 
 interface VerificationCodeScreenProps {
   onVerificationSuccess: () => void;
@@ -108,7 +109,7 @@ const VerificationCodeScreen: React.FC<VerificationCodeScreenProps> = ({
       }
     } catch (err) {
       // Silently fail if clipboard access fails
-      console.warn("Failed to access clipboard:", err);
+      log.warn("Failed to access clipboard:", err);
     }
   };
 

@@ -12,6 +12,8 @@ import {
   Alert,
   Pressable,
 } from "react-native";
+import EyeIcon from "../components/svg/EyeIcon";
+import EyeOffIcon from "../components/svg/EyeOffIcon";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 import Animated, { FadeIn, FadeInDown } from "react-native-reanimated";
@@ -54,6 +56,8 @@ const LoginScreen: React.FC<LoginScreenProps> = ({
     general: "",
   });
   const [isLoading, setIsLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [passwordKey, setPasswordKey] = useState(0);
 
   // Validate form
   const validateForm = () => {
@@ -89,11 +93,14 @@ const LoginScreen: React.FC<LoginScreenProps> = ({
     if (!password) {
       newErrors.password = "пароль обязателен";
       valid = false;
-    } else if (password.length < 6) {
-      newErrors.password = "пароль должен быть не менее 6 символов";
+    } else if (password.length < 8) {
+      newErrors.password = "пароль должен быть не менее 8 символов";
       valid = false;
     } else if (!passwordRegex.test(password)) {
       newErrors.password = "пароль должен содержать буквы и цифры";
+      valid = false;
+    } else if (password.includes(" ")) {
+      newErrors.password = "пароль не должен содержать пробелов";
       valid = false;
     }
 
@@ -203,16 +210,26 @@ const LoginScreen: React.FC<LoginScreenProps> = ({
               >
                 <View style={styles.inputContainer}>
                   <TextInput
+                    key={passwordKey}
                     style={[
                       styles.input,
+                      styles.passwordInput,
                       errors.password ? styles.inputError : null,
                     ]}
                     placeholder="пароль"
                     placeholderTextColor={theme.text.placeholderDark}
-                    secureTextEntry
+                    secureTextEntry={!showPassword}
                     value={password}
                     onChangeText={setPassword}
+                    onBlur={() => setPasswordKey((k) => k + 1)}
                   />
+                  <Pressable
+                    style={styles.eyeButton}
+                    onPress={() => setShowPassword(!showPassword)}
+                    hitSlop={8}
+                  >
+                    {showPassword ? <EyeIcon /> : <EyeOffIcon />}
+                  </Pressable>
                 </View>
                 {errors.password ? (
                   <Text style={styles.errorText}>{errors.password}</Text>
@@ -346,6 +363,17 @@ const createStyles = (theme: ThemeColors) =>
           overflow: "hidden",
         },
       }),
+    },
+    passwordInput: {
+      paddingRight: 48,
+    },
+    eyeButton: {
+      position: "absolute",
+      right: 16,
+      top: 0,
+      bottom: 0,
+      justifyContent: "center",
+      padding: 4,
     },
     inputError: {
       borderColor: theme.border.error,

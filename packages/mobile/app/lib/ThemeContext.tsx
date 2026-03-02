@@ -3,6 +3,7 @@ import { Appearance } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getTheme, setColorScheme, ColorScheme } from './theme';
 import type { ThemeColors } from './theme';
+import { log } from '../services/config';
 
 type ThemeMode = 'system' | 'light' | 'dark';
 
@@ -69,7 +70,7 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
         }, 0);
       }
     } catch (error) {
-      console.error('Error loading theme preference:', error);
+      log.error('Error loading theme preference:', error);
       applyColorSchemeImmediate('light');
     }
   };
@@ -98,7 +99,7 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
         : mode as ColorScheme;
       applyColorScheme(targetScheme, mode);
     } catch (error) {
-      console.error('Error saving theme preference:', error);
+      log.error('Error saving theme preference:', error);
     }
   };
 

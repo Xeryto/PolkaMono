@@ -21,6 +21,7 @@ import {
 } from "../lib/animations";
 import { useTheme } from "../lib/ThemeContext";
 import type { ThemeColors } from "../lib/theme";
+import { log } from "../services/config";
 
 import BackIcon from "../components/svg/BackIcon";
 import * as api from "../services/api";
@@ -84,7 +85,7 @@ const FriendRecommendationsScreen = ({
         Alert.alert("сессия истекла", "пожалуйста, войдите в аккаунт снова.");
         return [];
       }
-      console.error("Error fetching friend recommendations:", error);
+      log.error("Error fetching friend recommendations:", error);
       return [];
     }
   };

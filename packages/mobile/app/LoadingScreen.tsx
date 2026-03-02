@@ -31,7 +31,6 @@ const LoadingScreen: React.FC<LoadingScreenProps> = ({ onFinish }) => {
   };
 
   useEffect(() => {
-    console.log('Loading Screen mounted, starting animation');
     // Wait for 500ms with the logo showing
     const initialDelay = Animated.delay(500);
 

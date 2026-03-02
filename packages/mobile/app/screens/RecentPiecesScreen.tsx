@@ -38,6 +38,7 @@ import {
 import { Easing } from "react-native";
 import { useTheme } from "../lib/ThemeContext";
 import type { ThemeColors } from "../lib/theme";
+import { log } from "../services/config";
 
 const { width, height } = Dimensions.get("window");
 
@@ -163,7 +164,6 @@ const RecentPiecesScreen: React.FC<RecentPiecesScreenProps> = ({
       if (cachedData && cachedTime) {
         const cacheAge = Date.now() - parseInt(cachedTime, 10);
         if (cacheAge < CACHE_DURATION) {
-          console.log("Loading recent pieces from cache");
           const parsed = JSON.parse(cachedData);
           setRecentPieces(parsed);
           setIsLoading(false);
@@ -177,7 +177,7 @@ const RecentPiecesScreen: React.FC<RecentPiecesScreenProps> = ({
       // Fetch from API
       await fetchRecentPieces(false);
     } catch (err) {
-      console.error("Error loading recent pieces:", err);
+      log.error("Error loading recent pieces:", err);
       setError("Не удалось загрузить просмотренные товары");
       setIsLoading(false);
     }
@@ -220,7 +220,7 @@ const RecentPiecesScreen: React.FC<RecentPiecesScreenProps> = ({
         Date.now().toString(),
       );
     } catch (err) {
-      console.error("Error fetching recent pieces:", err);
+      log.error("Error fetching recent pieces:", err);
       if (!isBackground && isMounted) {
         setError("не удалось загрузить просмотренные товары");
         setIsLoading(false);
@@ -253,11 +253,8 @@ const RecentPiecesScreen: React.FC<RecentPiecesScreenProps> = ({
             try {
               const action = newLikedStatus ? "like" : "unlike";
               await api.toggleFavorite(pieceId, action);
-              console.log(
-                `RecentPieces - Updated piece ${pieceId} like status to: ${newLikedStatus}`,
-              );
             } catch (error) {
-              console.error("Error toggling favorite:", error);
+              log.error("Error toggling favorite:", error);
               // Revert on error
               setRecentPieces((revertPieces) =>
                 revertPieces.map((p) =>

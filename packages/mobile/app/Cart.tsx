@@ -38,6 +38,7 @@ import {
   ANIMATION_EASING,
 } from "./lib/animations";
 import { getEffectivePrice, formatPrice } from "./lib/swipeCardUtils";
+import { log } from "./services/config";
 import { useTheme } from "./lib/ThemeContext";
 import type { ThemeColors } from "./lib/theme";
 import { SkeletonCartList } from "./components/SkeletonCard";
@@ -318,7 +319,7 @@ const Cart = ({ navigation }: CartProps) => {
         }
         setBrandsMap(map);
       })
-      .catch((e) => console.warn("Cart: failed to load brands", e));
+      .catch((e) => log.warn("Cart: failed to load brands", e));
   }, []);
 
   useEffect(() => {
@@ -326,7 +327,6 @@ const Cart = ({ navigation }: CartProps) => {
       const url = new URL(event.url);
       const paymentId = url.searchParams.get("payment_id");
 
-      console.log(paymentId);
       if (paymentId) {
         try {
           const paymentStatusResponse = await api.getPaymentStatus(paymentId);
@@ -404,7 +404,6 @@ const Cart = ({ navigation }: CartProps) => {
   // Listen for session events to clear cart when user logs out or session expires
   useEffect(() => {
     const handleSessionEvent = () => {
-      console.log("Cart - Session event received, clearing cart items");
       setCartItems([]);
     };
 
@@ -488,7 +487,7 @@ const Cart = ({ navigation }: CartProps) => {
         missingFields,
       };
     } catch (error) {
-      console.error("Error validating address information:", error);
+      log.error("Error validating address information:", error);
       return {
         isValid: false,
         missingFields: ["не удалось загрузить информацию о доставке"],

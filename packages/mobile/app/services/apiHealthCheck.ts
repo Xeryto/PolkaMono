@@ -1,5 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { healthCheck } from './api';
+import { log } from './config';
 
 // Simple API health tracking without overloading the API
 export enum ApiHealthStatus {
@@ -76,7 +77,7 @@ class ApiHealthChecker {
         this.healthState.lastCheck = parseInt(lastCheck, 10);
       }
     } catch (error) {
-      console.error('Error loading API health state:', error);
+      log.error('Error loading API health state:', error);
     }
   }
 
@@ -89,7 +90,7 @@ class ApiHealthChecker {
         AsyncStorage.setItem(API_LAST_CHECK_KEY, this.healthState.lastCheck.toString())
       ]);
     } catch (error) {
-      console.error('Error saving API health state:', error);
+      log.error('Error saving API health state:', error);
     }
   }
 
@@ -108,7 +109,7 @@ class ApiHealthChecker {
     this.isChecking = true;
 
     try {
-      console.log('API Health Checker - Starting health check...');
+      log.info('API Health Checker - Starting health check...');
       
       // Use timeout for health check
       const healthCheckPromise = healthCheck();
@@ -125,7 +126,7 @@ class ApiHealthChecker {
         consecutiveFailures: 0
       };
 
-      console.log('API Health Checker - Health check successful');
+      log.info('API Health Checker - Health check successful');
       
     } catch (error) {
       const consecutiveFailures = this.healthState.consecutiveFailures + 1;
@@ -141,7 +142,7 @@ class ApiHealthChecker {
         consecutiveFailures
       };
 
-      console.error(`API Health Checker - Health check failed. Attempt ${consecutiveFailures}/${MAX_CONSECUTIVE_FAILURES}. Error:`, error);
+      log.error(`API Health Checker - Health check failed. Attempt ${consecutiveFailures}/${MAX_CONSECUTIVE_FAILURES}. Error:`, error);
     } finally {
       this.isChecking = false;
       await this.saveHealthState();
@@ -177,7 +178,7 @@ class ApiHealthChecker {
       return; // Already monitoring
     }
 
-    console.log('API Health Checker - Starting periodic monitoring (5 minute intervals)');
+    log.info('API Health Checker - Starting periodic monitoring (5 minute intervals)');
     
     // Perform initial health check
     this.checkApiHealth();
@@ -193,7 +194,7 @@ class ApiHealthChecker {
     if (this.healthCheckTimeout) {
       clearTimeout(this.healthCheckTimeout);
       this.healthCheckTimeout = null;
-      console.log('API Health Checker - Stopped periodic monitoring');
+      log.info('API Health Checker - Stopped periodic monitoring');
     }
   }
 

@@ -199,7 +199,7 @@ app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(request: Request, exc: RequestValidationError):
     logger.error("Validation error on %s %s: %s", request.method, request.url.path, exc.errors())
-    return JSONResponse(status_code=422, content={"detail": exc.errors()})
+    return JSONResponse(status_code=422, content={"detail": json.loads(json.dumps(exc.errors(), default=str))})
 
 
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):
@@ -533,7 +533,9 @@ def get_current_brand_user(
 
 
 @app.get("/api/v1/payments/status", response_model=PaymentStatusResponse)
+@limiter.limit("30/minute")
 async def get_payment_status(
+    request: Request,
     payment_id: str,
     current_user=Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -597,7 +599,9 @@ def get_current_admin(
 
 
 @app.get("/api/v1/brands/profile", response_model=schemas.BrandResponse)
+@limiter.limit("30/minute")
 async def get_brand_profile(
+    request: Request,
     current_brand_user: User = Depends(get_current_brand_user),
     db: Session = Depends(get_db),
 ):
@@ -672,7 +676,9 @@ _REVENUE_STATUSES = [
 
 
 @app.get("/api/v1/brands/stats", response_model=BrandStatsResponse)
+@limiter.limit("60/minute")
 async def get_brand_stats(
+    request: Request,
     current_brand_user: Brand = Depends(get_current_brand_user),
     db: Session = Depends(get_db),
 ):
@@ -716,7 +722,7 @@ async def get_brand_stats(
     total_sold = float(row.gross) + float(shipping_total)
     total_returned = float(row.returned)
     total_withdrawn = float(current_brand_user.amount_withdrawn or 0)
-    current_balance = total_sold - total_returned - total_withdrawn
+    current_balance = total_sold - total_withdrawn
 
     return BrandStatsResponse(
         total_sold=total_sold,
@@ -727,7 +733,9 @@ async def get_brand_stats(
 
 
 @app.get("/api/v1/user/stats", response_model=UserStatsResponse)
+@limiter.limit("60/minute")
 async def get_user_stats(
+    request: Request,
     current_user: User = Depends(get_current_user), db: Session = Depends(get_db)
 ):
     """Get statistics for the authenticated user"""
@@ -773,7 +781,9 @@ async def get_user_stats(
 
 
 @app.post("/api/v1/user/swipe", response_model=MessageResponse)
+@limiter.limit("60/minute")
 async def track_user_swipe(
+    request: Request,
     swipe_data: SwipeTrackingRequest,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -800,7 +810,9 @@ async def track_user_swipe(
 
 
 @app.put("/api/v1/brands/profile", response_model=schemas.BrandResponse)
+@limiter.limit("30/minute")
 async def update_brand_profile(
+    request: Request,
     brand_data: schemas.BrandUpdate,
     current_brand_user: User = Depends(get_current_brand_user),
     db: Session = Depends(get_db),
@@ -1024,6 +1036,15 @@ async def login(request: Request, user_data: UserLogin, db: Session = Depends(ge
 
     # Reset failed login attempts on success
     auth_service.reset_failed_login(db, user.auth_account)
+
+    # Send verification email if not verified
+    if not user.auth_account.is_email_verified:
+        code = auth_service.create_verification_code(db, user)
+        mail_service.send_email(
+            to_email=user.auth_account.email,
+            subject="Verify your email address",
+            html_content=f"Your email verification code is: <b>{code}</b>. It will expire in {settings.EMAIL_VERIFICATION_CODE_EXPIRE_MINUTES} minutes. Please enter this code in the app to verify your email.",
+        )
 
     # Create access token
     access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
@@ -1568,7 +1589,9 @@ async def brand_forgot_password(
 
 
 @app.post("/api/v1/brands/auth/validate-password-reset-code")
+@limiter.limit("5/minute")
 async def brand_validate_password_reset_code(
+    request: Request,
     validation_request: schemas.ValidatePasswordResetCodeRequest,
     db: Session = Depends(get_db),
 ):
@@ -1599,7 +1622,9 @@ async def brand_validate_password_reset_code(
 
 
 @app.post("/api/v1/brands/auth/reset-password-with-code")
+@limiter.limit("5/minute")
 async def brand_reset_password_with_code(
+    request: Request,
     reset_password_request: schemas.ResetPasswordWithCodeRequest,
     db: Session = Depends(get_db),
 ):
@@ -1664,7 +1689,9 @@ async def brand_reset_password_with_code(
 
 
 @app.patch("/api/v1/brands/me/inactive")
+@limiter.limit("10/minute")
 async def toggle_brand_inactive(
+    request: Request,
     payload: schemas.BrandInactiveToggle,
     current_user: Brand = Depends(get_current_brand_user),
     db: Session = Depends(get_db),
@@ -1676,7 +1703,9 @@ async def toggle_brand_inactive(
 
 
 @app.delete("/api/v1/brands/me")
+@limiter.limit("5/minute")
 async def request_brand_deletion(
+    request: Request,
     current_user: Brand = Depends(get_current_brand_user),
     db: Session = Depends(get_db),
 ):
@@ -1702,7 +1731,9 @@ async def request_brand_deletion(
 
 
 @app.post("/api/v1/brands/auth/change-password")
+@limiter.limit("5/minute")
 async def brand_change_password(
+    request: Request,
     payload: schemas.BrandChangePassword,
     current_user: Brand = Depends(get_current_brand_user),
     db: Session = Depends(get_db),
@@ -1767,7 +1798,9 @@ async def brand_enable_2fa(
 
 
 @app.post("/api/v1/brands/auth/2fa/confirm")
+@limiter.limit("10/minute")
 async def brand_confirm_2fa(
+    request: Request,
     payload: schemas.Brand2FAConfirm,
     current_user: Brand = Depends(get_current_brand_user),
     db: Session = Depends(get_db),
@@ -1788,7 +1821,9 @@ async def brand_confirm_2fa(
 
 
 @app.post("/api/v1/brands/auth/2fa/disable")
+@limiter.limit("5/minute")
 async def brand_disable_2fa(
+    request: Request,
     payload: schemas.Brand2FADisable,
     current_user: Brand = Depends(get_current_brand_user),
     db: Session = Depends(get_db),
@@ -1809,7 +1844,8 @@ async def brand_disable_2fa(
 
 
 @app.get("/api/v1/auth/oauth/providers", response_model=List[OAuthProviderResponse])
-async def get_oauth_providers():
+@limiter.limit("60/minute")
+async def get_oauth_providers(request: Request):
     """Get available OAuth providers"""
     providers = []
 
@@ -1857,6 +1893,7 @@ async def get_oauth_providers():
 
 
 @app.get("/api/v1/auth/oauth/{provider}/authorize")
+@limiter.limit("60/minute")
 async def oauth_authorize(provider: str, request: Request):
     """Redirect to OAuth provider authorization URL"""
     oauth_client = oauth_service.get_oauth_client(provider)
@@ -1876,7 +1913,9 @@ async def oauth_authorize(provider: str, request: Request):
 
 
 @app.get("/api/v1/auth/oauth/callback/{provider}")
+@limiter.limit("60/minute")
 async def oauth_callback(
+    request: Request,
     provider: str, code: str, state: str, db: Session = Depends(get_db)
 ):
     """Handle OAuth callback"""
@@ -2159,7 +2198,9 @@ async def logout(
 
 
 @app.post("/api/v1/exclusive-access-signup", status_code=status.HTTP_201_CREATED)
+@limiter.limit("5/minute")
 async def exclusive_access_signup(
+    request: Request,
     signup_data: schemas.ExclusiveAccessSignupRequest, db: Session = Depends(get_db)
 ):
     """Store email for exclusive access signup"""
@@ -2181,7 +2222,9 @@ async def exclusive_access_signup(
 
 
 @app.get("/api/v1/user/profile", response_model=schemas.UserProfileResponse)
+@limiter.limit("60/minute")
 async def get_user_profile(
+    request: Request,
     current_user: User = Depends(get_current_user), db: Session = Depends(get_db)
 ):
     """Get current user's complete profile (users only)"""
@@ -2275,7 +2318,9 @@ class PushTokenUpdate(BaseModel):
 
 
 @app.post("/api/v1/users/push-token", status_code=204)
+@limiter.limit("30/minute")
 def register_push_token(
+    request: Request,
     body: PushTokenUpdate,
     current_user=Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -2290,7 +2335,9 @@ def register_push_token(
 
 
 @app.delete("/api/v1/users/me", status_code=status.HTTP_200_OK)
+@limiter.limit("5/minute")
 async def delete_my_account(
+    request: Request,
     current_user: any = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -2362,7 +2409,9 @@ async def delete_my_account(
     "/api/v1/brands/upload/presigned-url",
     response_model=schemas.PresignedUploadResponse,
 )
+@limiter.limit("30/minute")
 async def get_product_image_presigned_url(
+    request: Request,
     body: schemas.PresignedUploadRequest,
     current_user: Brand = Depends(get_current_brand_user),
 ):
@@ -2389,7 +2438,9 @@ async def get_product_image_presigned_url(
     response_model=schemas.Product,
     status_code=status.HTTP_201_CREATED,
 )
+@limiter.limit("10/minute")
 async def create_product(
+    request: Request,
     product_data: schemas.ProductCreateRequest,
     current_user: User = Depends(get_current_brand_user),
     db: Session = Depends(get_db),
@@ -2566,7 +2617,9 @@ async def create_product(
 
 
 @app.put("/api/v1/brands/products/{product_id}", response_model=schemas.Product)
+@limiter.limit("30/minute")
 async def update_product(
+    request: Request,
     product_id: str,
     product_data: schemas.ProductUpdateRequest,
     current_user: User = Depends(get_current_brand_user),
@@ -2701,7 +2754,9 @@ async def update_product(
 
 
 @app.get("/api/v1/brands/products", response_model=List[schemas.Product])
+@limiter.limit("60/minute")
 async def get_brand_products(
+    request: Request,
     current_user: User = Depends(get_current_brand_user), db: Session = Depends(get_db)
 ):
     """Get all products for the authenticated brand user"""
@@ -2710,7 +2765,9 @@ async def get_brand_products(
 
 
 @app.get("/api/v1/brands/products/{product_id}", response_model=schemas.Product)
+@limiter.limit("60/minute")
 async def get_brand_product_details(
+    request: Request,
     product_id: str,
     current_user: User = Depends(get_current_brand_user),
     db: Session = Depends(get_db),
@@ -2730,7 +2787,9 @@ async def get_brand_product_details(
 
 
 @app.put("/api/v1/brands/orders/{order_id}/tracking", response_model=MessageResponse)
+@limiter.limit("30/minute")
 async def update_order_tracking(
+    request: Request,
     order_id: str,
     tracking_data: schemas.UpdateTrackingRequest,
     current_user: Brand = Depends(get_current_brand_user),
@@ -2786,7 +2845,9 @@ async def update_order_tracking(
 
 
 @app.put("/api/v1/brands/orders/{order_id}/return", response_model=MessageResponse)
+@limiter.limit("30/minute")
 async def mark_order_returned(
+    request: Request,
     order_id: str,
     current_user: Brand = Depends(get_current_brand_user),
     db: Session = Depends(get_db),
@@ -2832,7 +2893,9 @@ class UpdateOrderItemSKURequest(BaseModel):
 @app.put(
     "/api/v1/brands/order-items/{order_item_id}/sku", response_model=MessageResponse
 )
+@limiter.limit("30/minute")
 async def update_order_item_sku(
+    request: Request,
     order_item_id: str,
     sku_data: UpdateOrderItemSKURequest,
     current_user: User = Depends(get_current_brand_user),
@@ -2867,7 +2930,9 @@ async def update_order_item_sku(
 
 
 @app.get("/api/v1/user/profile/completion-status")
+@limiter.limit("60/minute")
 async def get_profile_completion_status(
+    request: Request,
     current_user: User = Depends(get_current_user), db: Session = Depends(get_db)
 ):
     """Check user profile completion status"""
@@ -2911,7 +2976,9 @@ async def get_profile_completion_status(
 
 
 @app.get("/api/v1/user/oauth-accounts")
+@limiter.limit("60/minute")
 async def get_oauth_accounts(
+    request: Request,
     current_user: User = Depends(get_current_user), db: Session = Depends(get_db)
 ):
     """Get user's OAuth accounts"""
@@ -2933,7 +3000,9 @@ async def get_oauth_accounts(
 
 # Enhanced User Profile Management
 @app.put("/api/v1/user/profile", response_model=schemas.UserProfileResponse)
+@limiter.limit("30/minute")
 async def update_user_profile(
+    request: Request,
     profile_data: schemas.UserProfileUpdateRequest,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -2965,7 +3034,9 @@ async def update_user_profile(
 
 
 @app.put("/api/v1/user/profile/data", response_model=schemas.ProfileResponse)
+@limiter.limit("30/minute")
 async def update_user_profile_data(
+    request: Request,
     profile_data: schemas.ProfileUpdateRequest,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -3017,7 +3088,9 @@ async def update_user_profile_data(
 @app.post(
     "/api/v1/user/upload/presigned-url", response_model=schemas.PresignedUploadResponse
 )
+@limiter.limit("30/minute")
 async def get_avatar_presigned_url(
+    request: Request,
     body: schemas.PresignedUploadRequest,
     current_user: User = Depends(get_current_user),
 ):
@@ -3045,7 +3118,9 @@ async def get_avatar_presigned_url(
 
 
 @app.put("/api/v1/user/shipping", response_model=schemas.ShippingInfoResponse)
+@limiter.limit("30/minute")
 async def update_user_shipping_info(
+    request: Request,
     shipping_data: schemas.ShippingInfoUpdateRequest,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -3101,7 +3176,9 @@ async def update_user_shipping_info(
 
 
 @app.put("/api/v1/user/preferences", response_model=schemas.PreferencesResponse)
+@limiter.limit("30/minute")
 async def update_user_preferences(
+    request: Request,
     preferences_data: schemas.PreferencesUpdateRequest,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -3152,7 +3229,8 @@ async def update_user_preferences(
 
 # Brand Management
 @app.get("/api/v1/brands", response_model=List[BrandResponse])
-async def get_brands(db: Session = Depends(get_db)):
+@limiter.limit("60/minute")
+async def get_brands(request: Request, db: Session = Depends(get_db)):
     """Get all available brands"""
     brands = db.query(Brand).filter(Brand.is_inactive == False).all()
     return [
@@ -3174,7 +3252,9 @@ async def get_brands(db: Session = Depends(get_db)):
 
 
 @app.post("/api/v1/user/brands")
+@limiter.limit("30/minute")
 async def update_user_brands(
+    request: Request,
     brands_data: UserBrandsUpdate,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -3203,7 +3283,8 @@ async def update_user_brands(
 
 # Style Management
 @app.get("/api/v1/styles", response_model=List[schemas.StyleResponse])
-async def get_styles(db: Session = Depends(get_db)):
+@limiter.limit("60/minute")
+async def get_styles(request: Request, db: Session = Depends(get_db)):
     """Get all available styles"""
     styles = db.query(Style).all()
     return [
@@ -3215,7 +3296,9 @@ async def get_styles(db: Session = Depends(get_db)):
 
 
 @app.post("/api/v1/user/styles")
+@limiter.limit("30/minute")
 async def update_user_styles(
+    request: Request,
     styles_data: UserStylesUpdate,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -3243,7 +3326,8 @@ async def update_user_styles(
 
 
 @app.get("/api/v1/categories", response_model=List[CategoryResponse])
-async def get_categories(db: Session = Depends(get_db)):
+@limiter.limit("60/minute")
+async def get_categories(request: Request, db: Session = Depends(get_db)):
     """Get all available categories"""
     categories = db.query(Category).all()
     return [
@@ -3256,7 +3340,9 @@ async def get_categories(db: Session = Depends(get_db)):
 
 # Liking Items Endpoint
 @app.post("/api/v1/user/favorites/toggle", response_model=MessageResponse)
+@limiter.limit("60/minute")
 async def toggle_favorite_item(
+    request: Request,
     toggle_data: ToggleFavoriteRequest,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -3301,7 +3387,9 @@ async def toggle_favorite_item(
 
 # Get User Favorites Endpoint
 @app.get("/api/v1/user/favorites", response_model=List[schemas.Product])
+@limiter.limit("60/minute")
 async def get_user_favorites(
+    request: Request,
     current_user: User = Depends(get_current_user), db: Session = Depends(get_db)
 ):
     """Get all products liked by the current user"""
@@ -3321,7 +3409,9 @@ async def get_user_favorites(
 
 # Get Recent Swipes Endpoint
 @app.get("/api/v1/user/recent-swipes", response_model=List[schemas.Product])
+@limiter.limit("60/minute")
 async def get_recent_swipes(
+    request: Request,
     limit: int = 5,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -3369,7 +3459,9 @@ async def get_recent_swipes(
 
 # Item Recommendations Endpoints
 @app.get("/api/v1/recommendations/for_user", response_model=List[schemas.Product])
+@limiter.limit("30/minute")
 async def get_recommendations_for_user(
+    request: Request,
     limit: int = 5,  # Default to 5 products
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -3386,7 +3478,9 @@ async def get_recommendations_for_user(
     "/api/v1/recommendations/for_friend/{friend_id}",
     response_model=List[schemas.Product],
 )
+@limiter.limit("30/minute")
 async def get_recommendations_for_friend(
+    request: Request,
     friend_id: str,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -3420,7 +3514,9 @@ def invalidate_popular_items_cache():
 
 
 @app.get("/api/v1/products/popular", response_model=List[schemas.Product])
+@limiter.limit("30/minute")
 async def get_popular_products(
+    request: Request,
     limit: int = 16,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -3465,7 +3561,9 @@ async def get_popular_products(
 
 
 @app.get("/api/v1/products/search", response_model=List[schemas.Product])
+@limiter.limit("30/minute")
 async def search_products(
+    request: Request,
     query: Optional[str] = None,
     category: Optional[str] = None,
     categories: Optional[List[str]] = Query(default=None),
@@ -3523,7 +3621,9 @@ async def search_products(
 
 
 @app.get("/api/v1/products/{product_id}", response_model=schemas.Product)
+@limiter.limit("60/minute")
 async def get_product_details(
+    request: Request,
     product_id: str,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -3544,7 +3644,9 @@ async def get_product_details(
 
 # Friend System Endpoints
 @app.post("/api/v1/friends/request", response_model=MessageResponse)
+@limiter.limit("20/minute")
 async def send_friend_request(
+    request: Request,
     request_data: FriendRequestCreate,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -3635,7 +3737,9 @@ async def send_friend_request(
 
 
 @app.get("/api/v1/friends/requests/sent", response_model=List[FriendRequestResponse])
+@limiter.limit("60/minute")
 async def get_sent_friend_requests(
+    request: Request,
     current_user: User = Depends(get_current_user), db: Session = Depends(get_db)
 ):
     """Get sent friend requests"""
@@ -3657,7 +3761,9 @@ async def get_sent_friend_requests(
     "/api/v1/friends/requests/received",
     response_model=List[ReceivedFriendRequestResponse],
 )
+@limiter.limit("60/minute")
 async def get_received_friend_requests(
+    request: Request,
     current_user: User = Depends(get_current_user), db: Session = Depends(get_db)
 ):
     """Get received friend requests"""
@@ -3683,7 +3789,9 @@ async def get_received_friend_requests(
 @app.post(
     "/api/v1/friends/requests/{request_id}/accept", response_model=MessageResponse
 )
+@limiter.limit("30/minute")
 async def accept_friend_request(
+    request: Request,
     request_id: str,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -3724,7 +3832,9 @@ async def accept_friend_request(
 @app.post(
     "/api/v1/friends/requests/{request_id}/reject", response_model=MessageResponse
 )
+@limiter.limit("30/minute")
 async def reject_friend_request(
+    request: Request,
     request_id: str,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -3757,7 +3867,9 @@ async def reject_friend_request(
 @app.delete(
     "/api/v1/friends/requests/{request_id}/cancel", response_model=MessageResponse
 )
+@limiter.limit("30/minute")
 async def cancel_friend_request(
+    request: Request,
     request_id: str,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -3788,7 +3900,9 @@ async def cancel_friend_request(
 
 
 @app.get("/api/v1/friends", response_model=List[FriendResponse])
+@limiter.limit("60/minute")
 async def get_friends_list(
+    request: Request,
     current_user: User = Depends(get_current_user), db: Session = Depends(get_db)
 ):
     """Get user's friends list"""
@@ -3823,7 +3937,9 @@ async def get_friends_list(
 
 
 @app.delete("/api/v1/friends/{friend_id}", response_model=MessageResponse)
+@limiter.limit("20/minute")
 async def remove_friend(
+    request: Request,
     friend_id: str,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -3857,7 +3973,9 @@ async def remove_friend(
 
 
 @app.get("/api/v1/users/search", response_model=List[UserSearchResponse])
+@limiter.limit("30/minute")
 async def search_users(
+    request: Request,
     query: str,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -3945,7 +4063,9 @@ async def search_users(
 
 
 @app.get("/api/v1/users/{user_id}/profile", response_model=PublicUserProfileResponse)
+@limiter.limit("60/minute")
 async def get_public_user_profile(
+    request: Request,
     user_id: str,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -3987,7 +4107,9 @@ async def health_check():
 
 
 @app.post("/api/v1/payments/create", response_model=PaymentCreateResponse)
+@limiter.limit("10/minute")
 async def create_payment_endpoint(
+    request: Request,
     payment_data: schemas.PaymentCreate,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -4188,7 +4310,9 @@ def _order_to_full_response(order: Order) -> schemas.OrderResponse:
 
 
 @app.post("/api/v1/orders/test", response_model=schemas.OrderTestCreateResponse)
+@limiter.limit("10/minute")
 async def create_order_test_endpoint(
+    request: Request,
     order_data: schemas.OrderTestCreate,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -4223,7 +4347,9 @@ async def create_order_test_endpoint(
 
 
 @app.get("/api/v1/orders", response_model=List[schemas.OrderSummaryResponse])
+@limiter.limit("60/minute")
 async def get_orders(
+    request: Request,
     current_user: any = Depends(get_current_user), db: Session = Depends(get_db)
 ):
     """Get order list. Users see Checkouts; brands see their Orders."""
@@ -4279,7 +4405,9 @@ def _order_delivery(order: Order):
 
 
 @app.get("/api/v1/orders/{order_id}", response_model=schemas.OrderResponse)
+@limiter.limit("60/minute")
 async def get_order_by_id(
+    request: Request,
     order_id: str,
     current_user: any = Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -4321,7 +4449,9 @@ async def get_order_by_id(
 
 
 @app.delete("/api/v1/orders/{order_id}/cancel", response_model=MessageResponse)
+@limiter.limit("10/minute")
 async def buyer_cancel_order(
+    request: Request,
     order_id: str,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -4359,7 +4489,9 @@ async def buyer_cancel_order(
 
 
 @app.post("/api/v1/admin/orders/{order_id}/cancel", response_model=MessageResponse)
+@limiter.limit("30/minute")
 async def admin_cancel_order(
+    request: Request,
     order_id: str,
     admin: AuthAccount = Depends(get_current_admin),
     db: Session = Depends(get_db),
@@ -4387,7 +4519,9 @@ class AdminNotificationSend(BaseModel):
 
 
 @app.post("/api/v1/admin/notifications/send", status_code=204)
+@limiter.limit("30/minute")
 def admin_send_notification(
+    request: Request,
     body: AdminNotificationSend,
     admin: AuthAccount = Depends(get_current_admin),
     db: Session = Depends(get_db),
@@ -4398,7 +4532,9 @@ def admin_send_notification(
 
 
 @app.get("/api/v1/admin/returns", response_model=List[schemas.AdminReturnItem])
+@limiter.limit("30/minute")
 def admin_get_returns(
+    request: Request,
     date_from: Optional[str] = Query(None),
     date_to: Optional[str] = Query(None),
     admin: AuthAccount = Depends(get_current_admin),
@@ -4457,7 +4593,9 @@ def admin_get_returns(
 
 
 @app.get("/api/v1/admin/orders/lookup", response_model=schemas.AdminOrderLookupResponse)
+@limiter.limit("30/minute")
 def admin_order_lookup(
+    request: Request,
     order_id: str,
     admin: AuthAccount = Depends(get_current_admin),
     db: Session = Depends(get_db),
@@ -4502,7 +4640,9 @@ def admin_order_lookup(
 
 
 @app.post("/api/v1/admin/returns/log", status_code=204)
+@limiter.limit("30/minute")
 def admin_log_return(
+    request: Request,
     body: schemas.AdminLogReturnRequest,
     admin: AuthAccount = Depends(get_current_admin),
     db: Session = Depends(get_db),
@@ -4568,7 +4708,9 @@ def admin_log_return(
 
 
 @app.post("/api/v1/admin/notifications/send-buyers", status_code=204)
+@limiter.limit("30/minute")
 def admin_send_buyer_push(
+    request: Request,
     body: AdminNotificationSend,
     admin: AuthAccount = Depends(get_current_admin),
     db: Session = Depends(get_db),
@@ -4624,7 +4766,9 @@ def admin_record_withdrawal(
 
 
 @app.get("/api/v1/admin/withdrawals", response_model=schemas.BrandWithdrawalListResponse)
+@limiter.limit("30/minute")
 def admin_list_withdrawals(
+    request: Request,
     brand_id: Optional[str] = Query(None),
     date_from: Optional[str] = Query(None),
     date_to: Optional[str] = Query(None),
@@ -4665,7 +4809,9 @@ def admin_list_withdrawals(
 
 
 @app.get("/api/v1/admin/brands/search")
+@limiter.limit("30/minute")
 def admin_search_brands(
+    request: Request,
     q: str = Query(..., min_length=1),
     admin: AuthAccount = Depends(get_current_admin),
     db: Session = Depends(get_db),
@@ -4684,7 +4830,9 @@ def admin_search_brands(
 
 
 @app.get("/api/v1/admin/orders", response_model=List[schemas.AdminOrderSummaryResponse])
+@limiter.limit("30/minute")
 def admin_list_orders(
+    request: Request,
     date_from: Optional[str] = Query(None),
     date_to: Optional[str] = Query(None),
     admin: AuthAccount = Depends(get_current_admin),
@@ -4733,7 +4881,9 @@ class OrderStatusEventResponse(BaseModel):
 @app.get(
     "/api/v1/orders/{order_id}/history", response_model=List[OrderStatusEventResponse]
 )
+@limiter.limit("60/minute")
 async def get_order_status_history(
+    request: Request,
     order_id: str,
     current_user=Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -4769,7 +4919,9 @@ async def get_order_status_history(
 
 
 @app.get("/api/v1/checkouts/{checkout_id}", response_model=schemas.CheckoutResponse)
+@limiter.limit("60/minute")
 async def get_checkout_by_id(
+    request: Request,
     checkout_id: str,
     current_user: any = Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -4802,7 +4954,9 @@ async def get_checkout_by_id(
 
 
 @app.get("/api/v1/notifications/", response_model=schemas.NotificationsResponse)
+@limiter.limit("60/minute")
 def get_brand_notifications(
+    request: Request,
     current_user=Depends(get_current_brand_user),
     db: Session = Depends(get_db),
 ):
@@ -4827,7 +4981,9 @@ def get_brand_notifications(
 
 
 @app.post("/api/v1/notifications/read", status_code=204)
+@limiter.limit("30/minute")
 def mark_all_notifications_read(
+    request: Request,
     current_user=Depends(get_current_brand_user),
     db: Session = Depends(get_db),
 ):

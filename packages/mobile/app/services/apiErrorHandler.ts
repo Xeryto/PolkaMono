@@ -1,6 +1,7 @@
 import { Alert } from 'react-native';
+import { log } from './config';
 import { sessionManager } from './api';
-import { 
+import {
   NetworkTimeoutError, 
   NetworkRetryError, 
   isRetryableError, 
@@ -132,23 +133,21 @@ export class ApiErrorHandler {
   ): Promise<void> {
     const errorInfo = this.classifyError(error, context);
     
-    console.error(`API Error in ${context.pageName}/${context.operation}:`, error);
+    log.error(`API Error in ${context.pageName}/${context.operation}:`, error);
 
     // Handle logout case
     if (errorInfo.shouldLogout) {
-      console.log(`Authentication error in ${context.pageName}/${context.operation}, triggering logout`);
       sessionManager.handleLoginRequired();
       return;
     }
 
     // Handle retryable errors with backoff
     if (errorInfo.isRetryable && errorInfo.strategy === ApiErrorStrategy.RETRY_WITH_BACKOFF && retryFn) {
-      console.log(`Retrying ${context.operation} in ${context.pageName}...`);
       try {
         await this.retryWithBackoff(retryFn, 3);
         return;
       } catch (retryError) {
-        console.error(`Retry failed for ${context.operation}:`, retryError);
+        log.error(`Retry failed for ${context.operation}:`, retryError);
         // Fall through to show error
       }
     }
@@ -200,7 +199,7 @@ export class ApiErrorHandler {
         }
         
         const delay = Math.pow(2, attempt) * 1000; // 2s, 4s, 8s...
-        console.log(`Retry attempt ${attempt} failed, waiting ${delay}ms before next attempt`);
+        log.error(`Retry attempt ${attempt} failed, waiting ${delay}ms before next attempt`);
         await new Promise(resolve => setTimeout(resolve, delay));
       }
     }
