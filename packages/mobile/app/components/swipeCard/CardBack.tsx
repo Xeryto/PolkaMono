@@ -187,7 +187,7 @@ const CardBack: React.FC<CardBackProps> = ({
           exiting={FadeOutDown.duration(200)}
           style={[styles.linkCopiedPopup, { top: -30 }]}
         >
-          <Text style={styles.linkCopiedText}>Ссылка скопирована</Text>
+          <Text style={styles.linkCopiedText}>ссылка скопирована</Text>
         </Animated.View>
       )}
       <Pressable style={styles.removeButton} onPress={onFlip}>
@@ -202,7 +202,7 @@ const CardBack: React.FC<CardBackProps> = ({
           />
         ) : (
           <View style={[styles.cardBackImage, styles.imagePlaceholder]}>
-            <Text style={styles.imagePlaceholderText}>Нет изображения</Text>
+            <Text style={styles.imagePlaceholderText}>нет изображения</Text>
           </View>
         )}
         <Text style={styles.cardBackName}>{card.name}</Text>

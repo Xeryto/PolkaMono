@@ -1,16 +1,15 @@
 import React, { useState, useEffect } from "react";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import * as api from "@/services/api";
-import { BrandResponse, BrandProfileUpdateRequest, parsePydanticErrors } from "@/services/api";
+import {
+  BrandResponse,
+  BrandProfileUpdateRequest,
+  parsePydanticErrors,
+} from "@/services/api";
 import { useAuth } from "@/context/AuthContext";
 import { formatCurrency } from "@/lib/currency";
 import { Label } from "@/components/ui/label";
@@ -42,22 +41,39 @@ const DELIVERY_TIME_OPTIONS = [
   { value: 90, label: "3 месяца" },
 ];
 
-const profileSchema = z.object({
-  name: z.string().min(1, "Обязательное поле").max(100),
-  email: z.string().min(1, "Обязательное поле").email("Неверный формат email"),
-  description: z.string().min(1, "Обязательное поле").max(1000),
-  return_policy: z.string().min(1, "Обязательное поле"),
-  shipping_price: z
-    .number({ required_error: "Обязательное поле", invalid_type_error: "Введите число" })
-    .min(0, "Не может быть отрицательной"),
-  min_free_shipping: z.number({ invalid_type_error: "Введите число" }).min(0).optional(),
-  shipping_provider: z.string().min(1, "Обязательное поле").max(100),
-  delivery_time_min: z.number({ required_error: "Обязательное поле" }).int().min(1, "Обязательное поле"),
-  delivery_time_max: z.number({ required_error: "Обязательное поле" }).int().min(1, "Обязательное поле"),
-}).refine(
-  (d) => d.delivery_time_max >= d.delivery_time_min,
-  { message: "Максимальный срок должен быть не меньше минимального", path: ["delivery_time_max"] }
-);
+const profileSchema = z
+  .object({
+    name: z.string().min(1, "Обязательное поле").max(100),
+    email: z
+      .string()
+      .min(1, "Обязательное поле")
+      .email("Неверный формат email"),
+    description: z.string().min(1, "Обязательное поле").max(1000),
+    return_policy: z.string().min(1, "Обязательное поле"),
+    shipping_price: z
+      .number({
+        required_error: "Обязательное поле",
+        invalid_type_error: "Введите число",
+      })
+      .min(0, "Не может быть отрицательной"),
+    min_free_shipping: z
+      .number({ invalid_type_error: "Введите число" })
+      .min(0)
+      .optional(),
+    shipping_provider: z.string().min(1, "Обязательное поле").max(100),
+    delivery_time_min: z
+      .number({ required_error: "Обязательное поле" })
+      .int()
+      .min(1, "Обязательное поле"),
+    delivery_time_max: z
+      .number({ required_error: "Обязательное поле" })
+      .int()
+      .min(1, "Обязательное поле"),
+  })
+  .refine((d) => d.delivery_time_max >= d.delivery_time_min, {
+    message: "Максимальный срок должен быть не меньше минимального",
+    path: ["delivery_time_max"],
+  });
 
 export function ProfileSettingsPage() {
   const [isEditing, setIsEditing] = useState(false);
@@ -74,9 +90,9 @@ export function ProfileSettingsPage() {
       if (!token) {
         setIsLoading(false);
         toast({
-          title: "Error",
+          title: "ошибка",
           description:
-            "Токен аутентификации не найден. Пожалуйста, войдите в систему.",
+            "токен аутентификации не найден. пожалуйста, войдите в систему.",
           variant: "destructive",
         });
         return;
@@ -90,7 +106,7 @@ export function ProfileSettingsPage() {
         console.error("Failed to fetch brand profile:", error);
         const err = error as { message?: string };
         toast({
-          title: "Error",
+          title: "ошибка",
           description: err.message || "Не удалось загрузить профиль.",
           variant: "destructive",
         });
@@ -102,19 +118,25 @@ export function ProfileSettingsPage() {
   }, [token, toast]);
 
   const handleInputChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
   ) => {
     const { id, value } = e.target;
     if (id === "shipping_price" || id === "min_free_shipping") {
       setProfile((prev) =>
-        prev ? { ...prev, [id]: value === "" ? undefined : parseFloat(value) } : null
+        prev
+          ? { ...prev, [id]: value === "" ? undefined : parseFloat(value) }
+          : null,
       );
     } else {
       setProfile((prev) => (prev ? { ...prev, [id]: value } : null));
     }
     // Clear field error on change
     if (fieldErrors[id]) {
-      setFieldErrors((prev) => { const next = { ...prev }; delete next[id]; return next; });
+      setFieldErrors((prev) => {
+        const next = { ...prev };
+        delete next[id];
+        return next;
+      });
     }
   };
 
@@ -123,8 +145,9 @@ export function ProfileSettingsPage() {
 
     if (!token) {
       toast({
-        title: "Ошибка",
-        description: "Токен аутентификации не найден. Пожалуйста, войдите в систему.",
+        title: "ошибка",
+        description:
+          "токен аутентификации не найден. пожалуйста, войдите в систему.",
         variant: "destructive",
       });
       return;
@@ -146,7 +169,7 @@ export function ProfileSettingsPage() {
     if (!parseResult.success) {
       const errors: Record<string, string> = {};
       for (const [field, msgs] of Object.entries(
-        parseResult.error.flatten().fieldErrors
+        parseResult.error.flatten().fieldErrors,
       )) {
         if (msgs && msgs.length > 0) errors[field] = msgs[0];
       }
@@ -175,17 +198,20 @@ export function ProfileSettingsPage() {
       setProfile(response);
       setIsEditing(false);
       toast({
-        title: "Успех",
+        title: "успех",
         description: "Профиль бренда успешно обновлен!",
       });
     } catch (error: unknown) {
       console.error("Failed to update brand profile:", error);
-      const err = error as { message?: string; fieldErrors?: Record<string, string> };
+      const err = error as {
+        message?: string;
+        fieldErrors?: Record<string, string>;
+      };
       if (err.fieldErrors) {
         setFieldErrors(err.fieldErrors);
       }
       toast({
-        title: "Ошибка",
+        title: "ошибка",
         description: err.message || "Не удалось обновить профиль бренда.",
         variant: "destructive",
       });
@@ -209,7 +235,7 @@ export function ProfileSettingsPage() {
         </CardHeader>
         <CardContent className="space-y-4">
           {isLoading ? (
-            <div>Загрузка профиля...</div>
+            <div>загрузка профиля...</div>
           ) : profile ? (
             isEditing ? (
               <>
@@ -227,7 +253,9 @@ export function ProfileSettingsPage() {
                     className="mt-1"
                   />
                   {fieldErrors.name && (
-                    <p className="text-xs text-destructive mt-1">{fieldErrors.name}</p>
+                    <p className="text-xs text-destructive mt-1">
+                      {fieldErrors.name}
+                    </p>
                   )}
                 </div>
                 <div>
@@ -235,7 +263,7 @@ export function ProfileSettingsPage() {
                     htmlFor="email"
                     className="text-sm font-medium text-muted-foreground"
                   >
-                    Контактный Email
+                    контактный email
                   </label>
                   <Input
                     id="email"
@@ -245,7 +273,9 @@ export function ProfileSettingsPage() {
                     className="mt-1"
                   />
                   {fieldErrors.email && (
-                    <p className="text-xs text-destructive mt-1">{fieldErrors.email}</p>
+                    <p className="text-xs text-destructive mt-1">
+                      {fieldErrors.email}
+                    </p>
                   )}
                 </div>
                 <div>
@@ -262,21 +292,31 @@ export function ProfileSettingsPage() {
                     className="mt-1"
                   />
                   {fieldErrors.description && (
-                    <p className="text-xs text-destructive mt-1">{fieldErrors.description}</p>
+                    <p className="text-xs text-destructive mt-1">
+                      {fieldErrors.description}
+                    </p>
                   )}
                 </div>
 
                 {/* Legal info — view-only modal trigger */}
                 <div>
-                  <h3 className="text-sm font-semibold text-foreground mb-2">Юридические данные</h3>
-                  <Button variant="outline" size="sm" onClick={() => setLegalModalOpen(true)}>
+                  <h3 className="text-sm font-semibold text-foreground mb-2">
+                    Юридические данные
+                  </h3>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setLegalModalOpen(true)}
+                  >
                     Просмотреть реквизиты
                   </Button>
                 </div>
 
                 {/* Delivery section */}
                 <div className="space-y-4">
-                  <h3 className="text-sm font-semibold text-foreground">Доставка</h3>
+                  <h3 className="text-sm font-semibold text-foreground">
+                    Доставка
+                  </h3>
                   <div>
                     <Label htmlFor="shipping_price">Цена доставки (руб.)</Label>
                     <Input
@@ -288,7 +328,9 @@ export function ProfileSettingsPage() {
                       className="mt-1"
                     />
                     {fieldErrors.shipping_price && (
-                      <p className="text-xs text-destructive mt-1">{fieldErrors.shipping_price}</p>
+                      <p className="text-xs text-destructive mt-1">
+                        {fieldErrors.shipping_price}
+                      </p>
                     )}
                   </div>
                   <div>
@@ -304,7 +346,9 @@ export function ProfileSettingsPage() {
                       className="mt-1"
                     />
                     {fieldErrors.min_free_shipping && (
-                      <p className="text-xs text-destructive mt-1">{fieldErrors.min_free_shipping}</p>
+                      <p className="text-xs text-destructive mt-1">
+                        {fieldErrors.min_free_shipping}
+                      </p>
                     )}
                   </div>
                   <div className="flex gap-4">
@@ -314,7 +358,12 @@ export function ProfileSettingsPage() {
                         value={String(profile.delivery_time_min ?? "")}
                         onValueChange={(v) =>
                           setProfile((p) =>
-                            p ? { ...p, delivery_time_min: v ? Number(v) : undefined } : null
+                            p
+                              ? {
+                                  ...p,
+                                  delivery_time_min: v ? Number(v) : undefined,
+                                }
+                              : null,
                           )
                         }
                       >
@@ -330,7 +379,9 @@ export function ProfileSettingsPage() {
                         </SelectContent>
                       </Select>
                       {fieldErrors.delivery_time_min && (
-                        <p className="text-xs text-destructive mt-1">{fieldErrors.delivery_time_min}</p>
+                        <p className="text-xs text-destructive mt-1">
+                          {fieldErrors.delivery_time_min}
+                        </p>
                       )}
                     </div>
                     <div className="flex-1">
@@ -339,7 +390,12 @@ export function ProfileSettingsPage() {
                         value={String(profile.delivery_time_max ?? "")}
                         onValueChange={(v) =>
                           setProfile((p) =>
-                            p ? { ...p, delivery_time_max: v ? Number(v) : undefined } : null
+                            p
+                              ? {
+                                  ...p,
+                                  delivery_time_max: v ? Number(v) : undefined,
+                                }
+                              : null,
                           )
                         }
                       >
@@ -355,7 +411,9 @@ export function ProfileSettingsPage() {
                         </SelectContent>
                       </Select>
                       {fieldErrors.delivery_time_max && (
-                        <p className="text-xs text-destructive mt-1">{fieldErrors.delivery_time_max}</p>
+                        <p className="text-xs text-destructive mt-1">
+                          {fieldErrors.delivery_time_max}
+                        </p>
                       )}
                     </div>
                   </div>
@@ -368,7 +426,9 @@ export function ProfileSettingsPage() {
                       className="mt-1"
                     />
                     {fieldErrors.shipping_provider && (
-                      <p className="text-xs text-destructive mt-1">{fieldErrors.shipping_provider}</p>
+                      <p className="text-xs text-destructive mt-1">
+                        {fieldErrors.shipping_provider}
+                      </p>
                     )}
                   </div>
                 </div>
@@ -387,14 +447,19 @@ export function ProfileSettingsPage() {
                     className="mt-1"
                   />
                   {fieldErrors.return_policy && (
-                    <p className="text-xs text-destructive mt-1">{fieldErrors.return_policy}</p>
+                    <p className="text-xs text-destructive mt-1">
+                      {fieldErrors.return_policy}
+                    </p>
                   )}
                 </div>
 
                 <div className="flex justify-end gap-2">
                   <Button
                     variant="outline"
-                    onClick={() => { setIsEditing(false); setFieldErrors({}); }}
+                    onClick={() => {
+                      setIsEditing(false);
+                      setFieldErrors({});
+                    }}
                     disabled={isLoading}
                   >
                     Отмена
@@ -414,15 +479,21 @@ export function ProfileSettingsPage() {
                 </div>
                 <div>
                   <p className="text-sm font-medium text-muted-foreground">
-                    Контактный Email
+                    контактный email
                   </p>
                   <p className="text-lg">{profile.email}</p>
                 </div>
 
                 {/* Legal info — view-only modal trigger (also in view mode) */}
                 <div>
-                  <h3 className="text-sm font-semibold text-foreground mb-2">Юридические данные</h3>
-                  <Button variant="outline" size="sm" onClick={() => setLegalModalOpen(true)}>
+                  <h3 className="text-sm font-semibold text-foreground mb-2">
+                    Юридические данные
+                  </h3>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setLegalModalOpen(true)}
+                  >
                     Просмотреть реквизиты
                   </Button>
                 </div>
@@ -484,7 +555,8 @@ export function ProfileSettingsPage() {
           <DialogHeader>
             <DialogTitle>Юридические данные и выплаты</DialogTitle>
             <DialogDescription>
-              Эти данные доступны только для просмотра. Для изменений обратитесь в поддержку.
+              Эти данные доступны только для просмотра. Для изменений обратитесь
+              в поддержку.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3 text-sm">
@@ -494,7 +566,9 @@ export function ProfileSettingsPage() {
             </div>
             <div>
               <p className="text-muted-foreground">Адрес регистрации</p>
-              <p className="font-medium">{profile?.registration_address || "—"}</p>
+              <p className="font-medium">
+                {profile?.registration_address || "—"}
+              </p>
             </div>
             <div>
               <p className="text-muted-foreground">Счёт для выплат</p>

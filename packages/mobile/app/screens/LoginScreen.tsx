@@ -179,7 +179,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({
               <Animated.View
                 style={styles.inputShadow}
                 entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
-                  ANIMATION_DELAYS.SMALL
+                  ANIMATION_DELAYS.SMALL,
                 )}
               >
                 <View style={styles.inputContainer}>
@@ -205,7 +205,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({
               <Animated.View
                 style={styles.inputShadow}
                 entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
-                  ANIMATION_DELAYS.STANDARD
+                  ANIMATION_DELAYS.STANDARD,
                 )}
               >
                 <View style={styles.inputContainer}>
@@ -243,7 +243,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({
               >
                 <Animated.View
                   entering={FadeInDown.duration(
-                    ANIMATION_DURATIONS.MEDIUM
+                    ANIMATION_DURATIONS.MEDIUM,
                   ).delay(ANIMATION_DELAYS.MEDIUM)}
                   style={[
                     styles.loginButton,
@@ -261,7 +261,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({
               <Animated.View
                 style={styles.forgotPasswordButton}
                 entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
-                  ANIMATION_DELAYS.LARGE
+                  ANIMATION_DELAYS.LARGE,
                 )}
               >
                 <TouchableOpacity onPress={onForgotPassword}>
@@ -272,7 +272,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({
               <Animated.View
                 style={styles.socialContainer}
                 entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
-                  ANIMATION_DELAYS.EXTENDED
+                  ANIMATION_DELAYS.EXTENDED,
                 )}
               >
                 <TouchableOpacity
@@ -280,7 +280,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({
                   onPress={() =>
                     Alert.alert(
                       "vk вход",
-                      "vk вход будет реализован в будущем обновлении."
+                      "vk вход будет реализован в будущем обновлении.",
                     )
                   }
                 >

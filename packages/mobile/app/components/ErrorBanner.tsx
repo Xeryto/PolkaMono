@@ -1,5 +1,11 @@
 import React, { useMemo } from "react";
-import { View, Text, TouchableOpacity, StyleSheet, ViewStyle } from "react-native";
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  StyleSheet,
+  ViewStyle,
+} from "react-native";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { AntDesign } from "@expo/vector-icons";
 import { useTheme } from "../lib/ThemeContext";
@@ -15,14 +21,23 @@ interface ErrorBannerProps {
 export const getErrorMessage = (error: unknown): string => {
   if (error instanceof Error) {
     const msg = error.message.toLowerCase();
-    if (msg.includes("timeout") || msg.includes("network") || msg.includes("fetch")) {
-      return "Не удалось загрузить. Проверьте подключение к интернету";
+    if (
+      msg.includes("timeout") ||
+      msg.includes("network") ||
+      msg.includes("fetch")
+    ) {
+      return "не удалось загрузить. проверьте подключение к интернету";
     }
-    if (msg.includes("500") || msg.includes("502") || msg.includes("503") || msg.includes("server")) {
-      return "Сервер временно недоступен. Попробуйте позже";
+    if (
+      msg.includes("500") ||
+      msg.includes("502") ||
+      msg.includes("503") ||
+      msg.includes("server")
+    ) {
+      return "сервер временно недоступен. попробуйте позже";
     }
   }
-  return "Произошла ошибка. Попробуйте снова";
+  return "произошла ошибка. попробуйте снова";
 };
 
 const ErrorBanner = ({ message, onRetry, style }: ErrorBannerProps) => {
@@ -34,11 +49,16 @@ const ErrorBanner = ({ message, onRetry, style }: ErrorBannerProps) => {
       entering={FadeInDown.duration(300)}
       style={[styles.container, style]}
     >
-      <AntDesign name="warning" size={20} color={theme.status.error} style={styles.icon} />
+      <AntDesign
+        name="warning"
+        size={20}
+        color={theme.status.error}
+        style={styles.icon}
+      />
       <Text style={styles.message}>{message}</Text>
       {onRetry && (
         <TouchableOpacity onPress={onRetry} style={styles.retryButton}>
-          <Text style={styles.retryText}>Повторить</Text>
+          <Text style={styles.retryText}>повторить</Text>
         </TouchableOpacity>
       )}
     </Animated.View>

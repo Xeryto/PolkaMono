@@ -17,7 +17,11 @@ import {
   SafeAreaView,
   useSafeAreaInsets,
 } from "react-native-safe-area-context";
-import { NavigationContainer, useFocusEffect, CommonActions } from "@react-navigation/native";
+import {
+  NavigationContainer,
+  useFocusEffect,
+  CommonActions,
+} from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { LinearGradient } from "expo-linear-gradient";
 import MainPage from "./app/MainPage";
@@ -607,13 +611,16 @@ function MainAppNavigator({
               <NavButton
                 onPress={() => {
                   const now = Date.now();
-                  if (currentRoute === "Home" && now - lastHomeTapRef.current < 400) {
+                  if (
+                    currentRoute === "Home" &&
+                    now - lastHomeTapRef.current < 400
+                  ) {
                     // Double-tap while on Home → refresh recommendations
                     navigationRef.current?.dispatch(
                       CommonActions.setParams({
                         refreshCards: true,
                         refreshTimestamp: now,
-                      })
+                      }),
                     );
                     lastHomeTapRef.current = 0;
                   } else {
@@ -707,7 +714,7 @@ const ThemeTransitionScreen: React.FC = () => {
           paddingHorizontal: 20,
         }}
       >
-        ПОЛКА
+        Полка
       </Text>
     </Animated.View>
   );
@@ -788,11 +795,11 @@ function AppContent() {
       if (isOnAuthenticatedScreen) {
         // Show popup alert to user
         Alert.alert(
-          "Сессия истекла",
-          "Ваша сессия истекла. Пожалуйста, войдите в систему снова.",
+          "сессия истекла",
+          "ваша сессия истекла. пожалуйста, войдите в систему снова.",
           [
             {
-              text: "OK",
+              text: "ок",
               onPress: () => {
                 alertShowingRef.current = false;
               },
@@ -1178,7 +1185,7 @@ function AppContent() {
       try {
         await loadFonts();
       } catch (e) {
-        log.warn('Font loading error', e);
+        log.warn("Font loading error", e);
       } finally {
         setFontsLoaded(true);
         // Hide the splash screen after loading resources
@@ -1241,7 +1248,10 @@ function AppContent() {
         completionStatus = await api.getProfileCompletionStatus();
         setProfileCompletionStatus(completionStatus);
       } catch (error) {
-        log.error("Error getting profile completion status after login:", error);
+        log.error(
+          "Error getting profile completion status after login:",
+          error,
+        );
         // If we can't get profile completion status, check email verification status
         // and assume user needs to complete onboarding
         const user = await api.getCurrentUser();
@@ -1325,11 +1335,11 @@ function AppContent() {
       if (isNetworkError || isApiError) {
         // Show error message to user but don't skip to main screen
         Alert.alert(
-          "Проблема с подключением",
-          "Не удалось проверить статус профиля. Это может быть связано с медленным интернет-соединением. Попробуйте еще раз или проверьте подключение к интернету.",
+          "проблема с подключением",
+          "не удалось проверить статус профиля. это может быть связано с медленным интернет-соединением. попробуйте еще раз или проверьте подключение к интернету.",
           [
             {
-              text: "Попробовать снова",
+              text: "попробовать снова",
               onPress: () => {
                 // Retry the login flow
                 handleLogin();
@@ -1470,11 +1480,11 @@ function AppContent() {
       if (isNetworkError || isApiError) {
         // Show error message to user but don't skip to main screen
         Alert.alert(
-          "Проблема с подключением",
-          "Не удалось проверить статус профиля после регистрации. Это может быть связано с медленным интернет-соединением. Попробуйте еще раз или проверьте подключение к интернету.",
+          "проблема с подключением",
+          "не удалось проверить статус профиля после регистрации. это может быть связано с медленным интернет-соединением. попробуйте еще раз или проверьте подключение к интернету.",
           [
             {
-              text: "Попробовать снова",
+              text: "попробовать снова",
               onPress: () => {
                 // Retry the registration flow
                 handleRegister(username, email, password);
@@ -1661,7 +1671,10 @@ function AppContent() {
         completionStatus = await api.getProfileCompletionStatus();
         setProfileCompletionStatus(completionStatus);
       } catch (error) {
-        log.error("Error getting profile completion status after email verification:", error);
+        log.error(
+          "Error getting profile completion status after email verification:",
+          error,
+        );
         // If we can't get profile completion status, assume user needs to complete onboarding
         completionStatus = {
           isComplete: false,
@@ -1707,7 +1720,10 @@ function AppContent() {
         transitionTo("main");
       }
     } catch (error) {
-      log.error("Error checking profile completion after email verification:", error);
+      log.error(
+        "Error checking profile completion after email verification:",
+        error,
+      );
 
       // First check if this is an authentication error
       const authErrorHandled = await handleAuthError(
@@ -1738,11 +1754,11 @@ function AppContent() {
       if (isNetworkError || isApiError) {
         // Show error message to user but don't skip to main screen
         Alert.alert(
-          "Проблема с подключением",
-          "Не удалось проверить статус профиля после подтверждения email. Это может быть связано с медленным интернет-соединением. Попробуйте еще раз или проверьте подключение к интернету.",
+          "проблема с подключением",
+          "не удалось проверить статус профиля после подтверждения email. это может быть связано с медленным интернет-соединением. попробуйте еще раз или проверьте подключение к интернету.",
           [
             {
-              text: "Попробовать снова",
+              text: "попробовать снова",
               onPress: () => {
                 // Retry the email verification success flow
                 handleEmailVerificationSuccess();

@@ -48,7 +48,7 @@ const PasswordResetVerificationScreen: React.FC<
 
   const handleVerifyPress = async () => {
     if (!code || code.length !== 6) {
-      setError("Please enter a valid 6-digit code.");
+      setError("пожалуйста, введите корректный 6-значный код.");
       return;
     }
     setIsLoading(true);
@@ -61,7 +61,7 @@ const PasswordResetVerificationScreen: React.FC<
     } catch (err) {
       setIsLoading(false);
       const message =
-        err instanceof Error ? err.message : "An unknown error occurred.";
+        err instanceof Error ? err.message : "Произошла неизвестная ошибка.";
       setError(message);
     }
   };
@@ -74,13 +74,13 @@ const PasswordResetVerificationScreen: React.FC<
       await api.requestPasswordReset(email);
       setResendCooldown(60); // Start the 60-second cooldown
       Alert.alert(
-        "Код отправлен повторно",
-        "Новый код подтверждения был отправлен на ваш email."
+        "код отправлен повторно",
+        "новый код подтверждения был отправлен на ваш email.",
       );
     } catch (err) {
       const message =
-        err instanceof Error ? err.message : "An unknown error occurred.";
-      Alert.alert("Ошибка", `Не удалось отправить код повторно: ${message}`);
+        err instanceof Error ? err.message : "произошла неизвестная ошибка.";
+      Alert.alert("ошибка", `не удалось отправить код повторно: ${message}`);
     }
     setResendLoading(false);
   };
@@ -142,7 +142,7 @@ const PasswordResetVerificationScreen: React.FC<
               </TouchableOpacity>
               <Text style={styles.title}>Подтвердите код</Text>
               <Text style={styles.subtitle}>
-                Мы отправили 6-значный код на {email}. Пожалуйста, введите его
+                Мы отправили 6-значный код на {email}. пожалуйста, введите его
                 ниже для сброса пароля.
               </Text>
 
@@ -161,7 +161,7 @@ const PasswordResetVerificationScreen: React.FC<
                   <Animated.View
                     style={styles.codeContainer}
                     entering={FadeInDown.duration(
-                      ANIMATION_DURATIONS.MEDIUM
+                      ANIMATION_DURATIONS.MEDIUM,
                     ).delay(ANIMATION_DELAYS.STANDARD)}
                   >
                     {[0, 1, 2, 3, 4, 5].map((index) => (

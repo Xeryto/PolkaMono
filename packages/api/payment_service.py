@@ -121,7 +121,8 @@ def create_payment(
         total_amount=str(amount),
         currency=currency,
         status=OrderStatus.CREATED,
-        expires_at=datetime.now(timezone.utc)        + timedelta(hours=settings.ORDER_PENDING_EXPIRY_HOURS),
+        expires_at=datetime.now(timezone.utc)
+        + timedelta(hours=settings.ORDER_PENDING_EXPIRY_HOURS),
         # Store delivery information at order creation time
         delivery_full_name=user.full_name,
         delivery_email=user.delivery_email,
@@ -234,7 +235,7 @@ def _validate_delivery_info(profile, shipping_info, user) -> None:
         raise Exception(
             "Для оформления заказа необходимо заполнить информацию о доставке: "
             + ", ".join(missing)
-            + ". Пожалуйста, перейдите в настройки профиля."
+            + ". пожалуйста, перейдите в настройки профиля."
         )
 
 
@@ -350,7 +351,8 @@ def create_order_test(
             shipping_cost=shipping_cost,
             total_amount=order_total,
             status=OrderStatus.CREATED,
-            expires_at=datetime.now(timezone.utc)            + timedelta(hours=settings.ORDER_PENDING_EXPIRY_HOURS),
+            expires_at=datetime.now(timezone.utc)
+            + timedelta(hours=settings.ORDER_PENDING_EXPIRY_HOURS),
             delivery_full_name=delivery_full_name,
             delivery_email=delivery_email,
             delivery_phone=delivery_phone,
@@ -422,11 +424,15 @@ def update_order_status(
         # Batch-lock all variants for this order to prevent N+1 and race conditions
         variant_ids = [item.product_variant_id for item in order.items]
         variants = (
-            db.query(ProductVariant)
-            .with_for_update()
-            .filter(ProductVariant.id.in_(variant_ids))
-            .all()
-        ) if variant_ids else []
+            (
+                db.query(ProductVariant)
+                .with_for_update()
+                .filter(ProductVariant.id.in_(variant_ids))
+                .all()
+            )
+            if variant_ids
+            else []
+        )
         variant_map = {v.id: v for v in variants}
 
         # Update purchase_count when order status changes to/from PAID

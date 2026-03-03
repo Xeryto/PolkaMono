@@ -98,8 +98,8 @@ export function OrderDetailsPage({ order, onBack, onOrderUpdated }: OrderDetails
     setIsSavingTracking(true);
     if (!token) {
       toast({
-        title: "Error",
-        description: "Authentication token not found. Please log in.",
+        title: "ошибка",
+        description: "токен аутентификации не найден. пожалуйста, войдите в систему.",
         variant: "destructive",
       });
       setIsSavingTracking(false);
@@ -116,15 +116,15 @@ export function OrderDetailsPage({ order, onBack, onOrderUpdated }: OrderDetails
       ); // Pass token
       onOrderUpdated?.();
       toast({
-        title: "Success",
-        description: "Tracking information updated successfully.",
+        title: "успех",
+        description: "информация об отслеживании успешно обновлена.",
       });
     } catch (error: unknown) {
       console.error("Failed to update tracking information:", error);
       const err = error as { message?: string };
       toast({
-        title: "Error",
-        description: err.message || "Failed to update tracking information.",
+        title: "ошибка",
+        description: err.message || "не удалось обновить информацию об отслеживании.",
         variant: "destructive",
       });
     } finally {
@@ -139,36 +139,36 @@ export function OrderDetailsPage({ order, onBack, onOrderUpdated }: OrderDetails
           <ArrowLeft className="h-4 w-4" />
         </Button>
         <div>
-          <h2 className="text-2xl font-bold text-foreground">Order Details</h2>
+          <h2 className="text-2xl font-bold text-foreground">order details</h2>
           <p className="text-muted-foreground">
             Details for order {order.number}
           </p>
           <div className="mt-4">
-            <Label htmlFor="trackingNumber">Tracking Number</Label>
+            <Label htmlFor="trackingNumber">tracking number</Label>
             <div className="flex items-center space-x-2 mt-1">
               <Input
                 id="trackingNumber"
                 value={trackingNumberInput}
                 onChange={(e) => setTrackingNumberInput(e.target.value)}
-                placeholder="Enter tracking number"
+                placeholder="enter tracking number"
                 className="flex-1"
               />
               <Button
                 onClick={handleSaveTrackingNumber}
                 disabled={isSavingTracking}
               >
-                {isSavingTracking ? "Saving..." : "Save"}
+                {isSavingTracking ? "saving..." : "save"}
               </Button>
             </div>
             <div className="mt-4">
               <Label htmlFor="trackingLink" className="mt-2">
-                Tracking Link
+                tracking link
               </Label>
               <Input
                 id="trackingLink"
                 value={trackingLinkInput}
                 onChange={(e) => setTrackingLinkInput(e.target.value)}
-                placeholder="Enter full tracking URL"
+                placeholder="enter full tracking URL"
                 className="mt-1"
               />
               {order.tracking_number && order.tracking_link && (
@@ -275,11 +275,11 @@ export function OrderDetailsPage({ order, onBack, onOrderUpdated }: OrderDetails
                 <div>
                   <p className={`font-medium ${isReturned ? "text-muted-foreground" : "text-foreground"}`}>{item.name}</p>
                   <p className="text-sm text-muted-foreground">
-                    Size: {item.size}
+                    size: {item.size}
                   </p>
                   {item.sku && (
                     <p className="text-sm text-muted-foreground">
-                      SKU: {item.sku}
+                      sku: {item.sku}
                     </p>
                   )}
                   {isReturned && (

@@ -85,7 +85,7 @@ const StylesSelectionScreen: React.FC<StylesSelectionScreenProps> = ({
     gender === "female"
       ? stylesOptions
       : stylesOptions.filter(
-          (style) => !["romantic", "bohemian"].includes(style.id)
+          (style) => !["romantic", "bohemian"].includes(style.id),
         );
 
   const handleStyleSelect = (id: string) => {
@@ -112,7 +112,7 @@ const StylesSelectionScreen: React.FC<StylesSelectionScreenProps> = ({
       setIsSubmitting(false);
       Alert.alert(
         "ошибка",
-        "не удалось сохранить любимые стили. попробуйте еще раз."
+        "не удалось сохранить любимые стили. попробуйте еще раз.",
       );
     }
   };
@@ -207,7 +207,7 @@ const StylesSelectionScreen: React.FC<StylesSelectionScreenProps> = ({
               {/* Selected styles counter */}
               <Animated.View
                 entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
-                  ANIMATION_DELAYS.MICRO
+                  ANIMATION_DELAYS.MICRO,
                 )}
                 style={styles.counterContainer}
               >
@@ -218,7 +218,7 @@ const StylesSelectionScreen: React.FC<StylesSelectionScreenProps> = ({
 
               <Animated.View
                 entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
-                  ANIMATION_DELAYS.SMALL
+                  ANIMATION_DELAYS.SMALL,
                 )}
                 style={styles.stylesContainer}
               >
@@ -255,7 +255,7 @@ const StylesSelectionScreen: React.FC<StylesSelectionScreenProps> = ({
               </Animated.View>
               <Animated.View
                 entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
-                  ANIMATION_DELAYS.STANDARD
+                  ANIMATION_DELAYS.STANDARD,
                 )}
                 style={styles.buttonContainer}
               >
@@ -305,241 +305,241 @@ const createStyles = (theme: ThemeColors) =>
       width: "88%",
       height: "95%",
       borderRadius: 41,
-      backgroundColor: 'transparent',
+      backgroundColor: "transparent",
       position: "relative",
       borderWidth: 3,
       borderColor: theme.border.default,
     },
-  gradientBackground: {
-    borderRadius: 37,
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-  },
-  backButton: {
-    position: "absolute",
-    top: 21,
-    left: 21,
-    zIndex: 10,
-    width: 33,
-    height: 33,
-  },
-  formContainerShadow: {
-    top: -3,
-    left: -3,
-    width: width * 0.88,
-    height: "90%",
-    borderRadius: 41,
-    ...Platform.select({
-      ios: {
-        shadowColor: theme.shadow.default,
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.2,
-        shadowRadius: 8,
-      },
-      android: {
-        elevation: 6,
-      },
-    }),
-  },
-  formContainer: {
-    width: "100%",
-    height: "100%",
-    backgroundColor: theme.background.primary,
-    borderRadius: 41,
-    padding: 21,
-    alignItems: "center",
-    ...Platform.select({
-      android: {
-        overflow: "hidden",
-      },
-    }),
-  },
-  logoContainer: {
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 15,
-  },
-  counterContainer: {
-    marginBottom: 15,
-    alignItems: "center",
-  },
-  counterText: {
-    fontFamily: "IgraSans",
-    fontSize: 14,
-    color: theme.text.primary,
-    textAlign: "center",
-  },
-  scrollHintContainer: {
-    position: "absolute",
-    bottom: -5,
-    right: 0,
-    alignItems: "flex-end",
-    zIndex: 10,
-    paddingVertical: 8,
-    flexDirection: "row",
-  },
-  scrollHintText: {
-    fontFamily: "IgraSans",
-    fontSize: 14,
-    lineHeight: 26,
-    color: theme.text.primary,
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  stylesContainer: {
-    width: "100%",
-    height: height * 0.375 + 30 + 10,
-    position: "relative",
-  },
-  stylesList: {
-    borderRadius: 41,
-    //paddingBottom: 10,
-  },
-  styleItemContainer: {
-    width: "100%",
-    alignItems: "flex-start",
-    marginBottom: 15,
-  },
-  alignLeft: {
-    alignItems: "flex-start",
-  },
-  alignRight: {
-    alignItems: "flex-end",
-  },
-  styleItem: {
-    width: "55%",
-    height: height * 0.125,
-    marginHorizontal: 5,
-    borderRadius: 41,
-    backgroundColor: theme.background.input,
-    ...Platform.select({
-      ios: {
-        shadowColor: theme.shadow.default,
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.25,
-        shadowRadius: 4,
-      },
-      android: {
-        elevation: 6,
-      },
-    }),
-  },
-  pressedStyleItem: {
-    opacity: 0.8,
-  },
-  selectedStyleItem: {
-    backgroundColor: theme.gender.female,
-  },
-  buttonPressed: {
-    opacity: 0.8,
-  },
-  styleOverlay: {
-    flex: 1,
-    padding: 10,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  styleName: {
-    fontFamily: "IgraSans",
-    fontSize: 20,
-    color: theme.text.primary,
-    textAlign: "center",
-    marginBottom: 4,
-  },
-  styleNameSelected: {
-    color: theme.gender.femaleText,
-  },
-  styleDescription: {
-    fontFamily: "REM",
-    fontSize: 10,
-    color: theme.text.secondary,
-    textAlign: "center",
-    opacity: 0.8,
-  },
-  checkmarkContainer: {
-    position: "absolute",
-    top: 8,
-    right: 8,
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    backgroundColor: theme.button.primary,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  checkmark: {
-    color: theme.text.inverse,
-    fontSize: 14,
-  },
-  selectedCount: {
-    marginTop: 12,
-    marginBottom: 16,
-  },
-  selectedCountText: {
-    fontFamily: "REM",
-    fontSize: 14,
-    color: theme.text.secondary,
-    textAlign: "center",
-  },
-  buttonContainer: {
-    width: "100%",
-    alignItems: "flex-end",
-  },
-  continueButton: {
-    marginTop: height * 0.05,
-    backgroundColor: theme.background.input,
-    borderRadius: 41,
-    paddingVertical: 16,
-    paddingHorizontal: 25,
-    alignItems: "center",
-    ...Platform.select({
-      ios: {
-        shadowColor: theme.shadow.default,
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.25,
-        shadowRadius: 4,
-      },
-      android: {
-        elevation: 6,
-        overflow: "hidden",
-      },
-    }),
-  },
-  continueButtonText: {
-    fontFamily: "IgraSans",
-    fontSize: 20,
-    color: theme.text.primary,
-  },
-  continueButtonLoading: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-  },
-  textContainer: {
-    position: "absolute",
-    bottom: 0,
-    marginBottom: 18,
-    marginLeft: 27,
-  },
-  text: {
-    fontFamily: "IgraSans",
-    fontSize: 38,
-    color: theme.text.inverse,
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    paddingVertical: 20,
-  },
-  loadingText: {
-    fontFamily: "IgraSans",
-    fontSize: 20,
-    color: theme.text.primary,
-  },
+    gradientBackground: {
+      borderRadius: 37,
+      position: "absolute",
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+    },
+    backButton: {
+      position: "absolute",
+      top: 21,
+      left: 21,
+      zIndex: 10,
+      width: 33,
+      height: 33,
+    },
+    formContainerShadow: {
+      top: -3,
+      left: -3,
+      width: width * 0.88,
+      height: "90%",
+      borderRadius: 41,
+      ...Platform.select({
+        ios: {
+          shadowColor: theme.shadow.default,
+          shadowOffset: { width: 0, height: 4 },
+          shadowOpacity: 0.2,
+          shadowRadius: 8,
+        },
+        android: {
+          elevation: 6,
+        },
+      }),
+    },
+    formContainer: {
+      width: "100%",
+      height: "100%",
+      backgroundColor: theme.background.primary,
+      borderRadius: 41,
+      padding: 21,
+      alignItems: "center",
+      ...Platform.select({
+        android: {
+          overflow: "hidden",
+        },
+      }),
+    },
+    logoContainer: {
+      alignItems: "center",
+      justifyContent: "center",
+      marginBottom: 15,
+    },
+    counterContainer: {
+      marginBottom: 15,
+      alignItems: "center",
+    },
+    counterText: {
+      fontFamily: "IgraSans",
+      fontSize: 14,
+      color: theme.text.primary,
+      textAlign: "center",
+    },
+    scrollHintContainer: {
+      position: "absolute",
+      bottom: -5,
+      right: 0,
+      alignItems: "flex-end",
+      zIndex: 10,
+      paddingVertical: 8,
+      flexDirection: "row",
+    },
+    scrollHintText: {
+      fontFamily: "IgraSans",
+      fontSize: 14,
+      lineHeight: 26,
+      color: theme.text.primary,
+      flexDirection: "row",
+      alignItems: "center",
+    },
+    stylesContainer: {
+      width: "100%",
+      height: height * 0.375 + 30 + 10,
+      position: "relative",
+    },
+    stylesList: {
+      borderRadius: 41,
+      //paddingBottom: 10,
+    },
+    styleItemContainer: {
+      width: "100%",
+      alignItems: "flex-start",
+      marginBottom: 15,
+    },
+    alignLeft: {
+      alignItems: "flex-start",
+    },
+    alignRight: {
+      alignItems: "flex-end",
+    },
+    styleItem: {
+      width: "55%",
+      height: height * 0.125,
+      marginHorizontal: 5,
+      borderRadius: 41,
+      backgroundColor: theme.background.input,
+      ...Platform.select({
+        ios: {
+          shadowColor: theme.shadow.default,
+          shadowOffset: { width: 0, height: 4 },
+          shadowOpacity: 0.25,
+          shadowRadius: 4,
+        },
+        android: {
+          elevation: 6,
+        },
+      }),
+    },
+    pressedStyleItem: {
+      opacity: 0.8,
+    },
+    selectedStyleItem: {
+      backgroundColor: theme.gender.female,
+    },
+    buttonPressed: {
+      opacity: 0.8,
+    },
+    styleOverlay: {
+      flex: 1,
+      padding: 10,
+      justifyContent: "center",
+      alignItems: "center",
+    },
+    styleName: {
+      fontFamily: "IgraSans",
+      fontSize: 20,
+      color: theme.text.primary,
+      textAlign: "center",
+      marginBottom: 4,
+    },
+    styleNameSelected: {
+      color: theme.gender.femaleText,
+    },
+    styleDescription: {
+      fontFamily: "REM",
+      fontSize: 10,
+      color: theme.text.secondary,
+      textAlign: "center",
+      opacity: 0.8,
+    },
+    checkmarkContainer: {
+      position: "absolute",
+      top: 8,
+      right: 8,
+      width: 20,
+      height: 20,
+      borderRadius: 10,
+      backgroundColor: theme.button.primary,
+      justifyContent: "center",
+      alignItems: "center",
+    },
+    checkmark: {
+      color: theme.text.inverse,
+      fontSize: 14,
+    },
+    selectedCount: {
+      marginTop: 12,
+      marginBottom: 16,
+    },
+    selectedCountText: {
+      fontFamily: "REM",
+      fontSize: 14,
+      color: theme.text.secondary,
+      textAlign: "center",
+    },
+    buttonContainer: {
+      width: "100%",
+      alignItems: "flex-end",
+    },
+    continueButton: {
+      marginTop: height * 0.05,
+      backgroundColor: theme.background.input,
+      borderRadius: 41,
+      paddingVertical: 16,
+      paddingHorizontal: 25,
+      alignItems: "center",
+      ...Platform.select({
+        ios: {
+          shadowColor: theme.shadow.default,
+          shadowOffset: { width: 0, height: 4 },
+          shadowOpacity: 0.25,
+          shadowRadius: 4,
+        },
+        android: {
+          elevation: 6,
+          overflow: "hidden",
+        },
+      }),
+    },
+    continueButtonText: {
+      fontFamily: "IgraSans",
+      fontSize: 20,
+      color: theme.text.primary,
+    },
+    continueButtonLoading: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 10,
+    },
+    textContainer: {
+      position: "absolute",
+      bottom: 0,
+      marginBottom: 18,
+      marginLeft: 27,
+    },
+    text: {
+      fontFamily: "IgraSans",
+      fontSize: 38,
+      color: theme.text.inverse,
+    },
+    loadingContainer: {
+      flex: 1,
+      justifyContent: "center",
+      alignItems: "center",
+      paddingVertical: 20,
+    },
+    loadingText: {
+      fontFamily: "IgraSans",
+      fontSize: 20,
+      color: theme.text.primary,
+    },
   });
 
 export default StylesSelectionScreen;

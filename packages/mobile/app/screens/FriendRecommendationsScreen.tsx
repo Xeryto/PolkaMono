@@ -11,14 +11,8 @@ import {
 import { TouchableOpacity } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import * as Haptics from "expo-haptics";
-import Animated, {
-  FadeInDown,
-  FadeOutDown,
-} from "react-native-reanimated";
-import {
-  ANIMATION_DURATIONS,
-  ANIMATION_DELAYS,
-} from "../lib/animations";
+import Animated, { FadeInDown, FadeOutDown } from "react-native-reanimated";
+import { ANIMATION_DURATIONS, ANIMATION_DELAYS } from "../lib/animations";
 import { useTheme } from "../lib/ThemeContext";
 import type { ThemeColors } from "../lib/theme";
 import { log } from "../services/config";
@@ -75,11 +69,18 @@ const FriendRecommendationsScreen = ({
   const initialItems = route?.params?.initialItems || [];
   const clickedItemIndex = route?.params?.clickedItemIndex || 0;
 
-  const fetchMoreFriendCards = async (count: number = 2): Promise<CardItem[]> => {
+  const fetchMoreFriendCards = async (
+    count: number = 2,
+  ): Promise<CardItem[]> => {
     try {
-      const products = await apiWrapper.getFriendRecommendations(friendId, "FRS");
+      const products = await apiWrapper.getFriendRecommendations(
+        friendId,
+        "FRS",
+      );
       if (!products || !Array.isArray(products)) return [];
-      return products.slice(0, count).map((p: api.Product, i: number) => mapProductToCardItem(p, i));
+      return products
+        .slice(0, count)
+        .map((p: api.Product, i: number) => mapProductToCardItem(p, i));
     } catch (error: any) {
       if (error?.message?.toLowerCase().includes("invalid token")) {
         Alert.alert("сессия истекла", "пожалуйста, войдите в аккаунт снова.");
@@ -91,7 +92,7 @@ const FriendRecommendationsScreen = ({
   };
 
   const deck = useSwipeDeck({
-    cardWidthFraction: 0.80,
+    cardWidthFraction: 0.8,
     fetchCards: fetchMoreFriendCards,
     onAddToCart: (card, size, variantId) => {
       const cartItem: CartItem = {
@@ -114,8 +115,8 @@ const FriendRecommendationsScreen = ({
 
   const renderEmptyState = () => (
     <View style={[cardStyles.whiteBox, cardStyles.noCardsContainer]}>
-      <Text style={cardStyles.noCardsText}>Загрузка новых карточек...</Text>
-      <Text style={cardStyles.noCardsSubtext}>Пожалуйста, подождите</Text>
+      <Text style={cardStyles.noCardsText}>загрузка новых карточек...</Text>
+      <Text style={cardStyles.noCardsSubtext}>пожалуйста, подождите</Text>
     </View>
   );
 
@@ -126,7 +127,9 @@ const FriendRecommendationsScreen = ({
   return (
     <Animated.View
       style={styles.container}
-      entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(ANIMATION_DELAYS.LARGE)}
+      entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
+        ANIMATION_DELAYS.LARGE,
+      )}
       exiting={FadeOutDown.duration(ANIMATION_DURATIONS.MICRO)}
     >
       {/* Friend Header */}
@@ -192,7 +195,7 @@ const FriendRecommendationsScreen = ({
                 styles={cardStyles}
                 imageCarouselWidth={deck.imageCarouselWidth}
                 screenWidth={deck.screenWidth}
-                cardWidthFraction={0.80}
+                cardWidthFraction={0.8}
                 onImageLayout={deck.handleImageLayout}
                 imageScrollViewRef={deck.imageScrollViewRef}
                 onImageScroll={deck.handleImageScroll}
@@ -231,16 +234,33 @@ const FriendRecommendationsScreen = ({
           renderEmptyState()
         )}
 
-        <RNAnimated.View style={{ opacity: deck.refreshAnim, width: "100%", height: "100%" }}>
-          <RNAnimated.View style={[cardStyles.text, { opacity: deck.fadeAnim }]}>
+        <RNAnimated.View
+          style={{ opacity: deck.refreshAnim, width: "100%", height: "100%" }}
+        >
+          <RNAnimated.View
+            style={[cardStyles.text, { opacity: deck.fadeAnim }]}
+          >
             {deck.cards.length > 0 ? (
               <>
-                <Text style={cardStyles.brandName} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.5}>
+                <Text
+                  style={cardStyles.brandName}
+                  numberOfLines={1}
+                  adjustsFontSizeToFit
+                  minimumFontScale={0.5}
+                >
                   {currentCard?.brand_name || "бренд не указан"}
                 </Text>
                 {hasSale ? (
-                  <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-                    <Text style={[cardStyles.price, cardStyles.priceStrikethrough]}>
+                  <View
+                    style={{
+                      flexDirection: "row",
+                      alignItems: "center",
+                      gap: 6,
+                    }}
+                  >
+                    <Text
+                      style={[cardStyles.price, cardStyles.priceStrikethrough]}
+                    >
                       {`${formatPrice(currentCard!.price)} ₽`}
                     </Text>
                     <Text style={[cardStyles.price, cardStyles.priceSale]}>
@@ -255,8 +275,10 @@ const FriendRecommendationsScreen = ({
               </>
             ) : (
               <>
-                <Text style={cardStyles.name} numberOfLines={1}>Загрузка...</Text>
-                <Text style={cardStyles.price}>Пожалуйста, подождите</Text>
+                <Text style={cardStyles.name} numberOfLines={1}>
+                  загрузка...
+                </Text>
+                <Text style={cardStyles.price}>пожалуйста, подождите</Text>
               </>
             )}
           </RNAnimated.View>

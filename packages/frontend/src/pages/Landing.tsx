@@ -12,8 +12,8 @@ const Landing = () => {
   const { toast } = useToast();
 
   useEffect(() => {
-    document.documentElement.classList.add('dark');
-    return () => document.documentElement.classList.remove('dark');
+    document.documentElement.classList.add("dark");
+    return () => document.documentElement.classList.remove("dark");
   }, []);
 
   const handleExclusiveSignup = async (e: React.FormEvent) => {
@@ -25,9 +25,12 @@ const Landing = () => {
       setIsSignedUp(true);
       setEmail("");
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : "Не удалось отправить запрос. Попробуйте позже.";
+      const message =
+        err instanceof Error
+          ? err.message
+          : "Не удалось отправить запрос. Попробуйте позже.";
       toast({
-        title: "Ошибка",
+        title: "ошибка",
         description: message,
         variant: "destructive",
       });
@@ -41,12 +44,18 @@ const Landing = () => {
       return (
         <div className="flex items-center gap-2 justify-center py-3 px-4 rounded-xl bg-brand-dark/10 border border-brand/30">
           <Sparkles className="h-5 w-5 text-brand-dark" />
-          <p className="text-brand-dark font-medium">Вы в списке! Мы скоро свяжемся.</p>
+          <p className="text-brand-dark font-medium">
+            Вы в списке! Мы скоро свяжемся.
+          </p>
         </div>
       );
     }
     return (
-      <form onSubmit={handleExclusiveSignup} className="flex flex-col sm:flex-row gap-3 w-full max-w-md" id={id}>
+      <form
+        onSubmit={handleExclusiveSignup}
+        className="flex flex-col sm:flex-row gap-3 w-full max-w-md"
+        id={id}
+      >
         <Input
           type="email"
           placeholder="ваш@email.com"
@@ -76,18 +85,15 @@ const Landing = () => {
         <div className="absolute inset-0 bg-gradient-to-b from-accent/50 via-background to-background" />
 
         <div className="relative z-10 flex flex-col items-center gap-8 max-w-2xl">
-          <img
-            src="/assets/LogoAlt.svg"
-            alt="Polka"
-            className="h-20 w-20"
-          />
+          <img src="/assets/LogoAlt.svg" alt="Polka" className="h-20 w-20" />
 
           <div className="space-y-4">
             <h1 className="font-display text-5xl sm:text-6xl md:text-7xl tracking-tight text-brand-dark">
               Polka
             </h1>
             <p className="text-lg sm:text-xl text-brand-muted max-w-lg mx-auto leading-relaxed">
-              Открывайте уникальные бренды. Листайте, вдохновляйтесь, покупайте — всё в одном приложении.
+              Открывайте уникальные бренды. Листайте, вдохновляйтесь, покупайте
+              — всё в одном приложении.
             </p>
           </div>
 
@@ -116,9 +122,12 @@ const Landing = () => {
               <div className="h-12 w-12 rounded-full bg-brand/20 flex items-center justify-center">
                 <Sparkles className="h-6 w-6 text-brand-dark" />
               </div>
-              <h3 className="font-semibold text-foreground">Уникальные бренды</h3>
+              <h3 className="font-semibold text-foreground">
+                Уникальные бренды
+              </h3>
               <p className="text-sm text-muted-foreground leading-relaxed">
-                Только проверенные дизайнеры и независимые марки, которые вы не найдёте в масс-маркете
+                Только проверенные дизайнеры и независимые марки, которые вы не
+                найдёте в масс-маркете
               </p>
             </div>
 
@@ -126,9 +135,12 @@ const Landing = () => {
               <div className="h-12 w-12 rounded-full bg-brand/20 flex items-center justify-center">
                 <Heart className="h-6 w-6 text-brand-dark" />
               </div>
-              <h3 className="font-semibold text-foreground">Листайте и выбирайте</h3>
+              <h3 className="font-semibold text-foreground">
+                Листайте и выбирайте
+              </h3>
               <p className="text-sm text-muted-foreground leading-relaxed">
-                Свайпайте через подборки, сохраняйте любимое. Алгоритм учится вашему стилю
+                Свайпайте через подборки, сохраняйте любимое. Алгоритм учится
+                вашему стилю
               </p>
             </div>
 
@@ -138,7 +150,8 @@ const Landing = () => {
               </div>
               <h3 className="font-semibold text-foreground">Быстрая покупка</h3>
               <p className="text-sm text-muted-foreground leading-relaxed">
-                От обнаружения до покупки за секунды. Безопасная оплата, доставка по всей России
+                От обнаружения до покупки за секунды. Безопасная оплата,
+                доставка по всей России
               </p>
             </div>
           </div>
@@ -152,7 +165,8 @@ const Landing = () => {
             Свайпай. Сохраняй. Покупай.
           </h2>
           <p className="text-muted-foreground max-w-md mx-auto">
-            Интерфейс, который делает шопинг интуитивным — как листать ленту, только каждый свайп ведёт к чему-то стильному
+            Интерфейс, который делает шопинг интуитивным — как листать ленту,
+            только каждый свайп ведёт к чему-то стильному
           </p>
 
           {/* Mockup cards */}
@@ -186,7 +200,8 @@ const Landing = () => {
             Не пропустите запуск
           </h2>
           <p className="text-muted-foreground">
-            Первые участники получат ранний доступ и эксклюзивные предложения от брендов
+            Первые участники получат ранний доступ и эксклюзивные предложения от
+            брендов
           </p>
 
           <SignupForm id="footer-form" />
@@ -200,10 +215,7 @@ const Landing = () => {
             <img src="/assets/LogoAlt.svg" alt="Polka" className="h-6 w-6" />
             <span>Polka</span>
           </div>
-          <a
-            href="/portal"
-            className="hover:text-foreground transition-colors"
-          >
+          <a href="/portal" className="hover:text-foreground transition-colors">
             Для брендов →
           </a>
         </div>
@@ -226,7 +238,12 @@ const Landing = () => {
               required
               className="h-10 bg-input border-border/50 flex-1 text-sm"
             />
-            <Button type="submit" size="sm" disabled={isSubmitting} className="h-10 px-4">
+            <Button
+              type="submit"
+              size="sm"
+              disabled={isSubmitting}
+              className="h-10 px-4"
+            >
               {isSubmitting ? "..." : "Записаться"}
             </Button>
           </form>

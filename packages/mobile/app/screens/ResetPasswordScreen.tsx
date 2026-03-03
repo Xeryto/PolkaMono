@@ -74,13 +74,13 @@ const ResetPasswordScreen: React.FC<ResetPasswordScreenProps> = ({
       newErrors.password = "пароль обязателен";
       valid = false;
     } else if (password.length < 8) {
-      newErrors.password = "Пароль должен быть не менее 8 символов";
+      newErrors.password = "пароль должен быть не менее 8 символов";
       valid = false;
     } else if (!passwordRegex.test(password)) {
       newErrors.password = "пароль должен содержать буквы и цифры";
       valid = false;
     } else if (password.includes(" ")) {
-      newErrors.password = "Пароль не должен содержать пробелов";
+      newErrors.password = "пароль не должен содержать пробелов";
       valid = false;
     } else if (illegalCharRegex.test(password)) {
       newErrors.password = "пароль содержит недопустимые символы";
@@ -89,7 +89,7 @@ const ResetPasswordScreen: React.FC<ResetPasswordScreenProps> = ({
 
     // Validate password confirmation
     if (!confirmPassword) {
-      newErrors.confirmPassword = "Пожалуйста, подтвердите пароль";
+      newErrors.confirmPassword = "пожалуйста, подтвердите пароль";
       valid = false;
     } else if (password !== confirmPassword) {
       newErrors.confirmPassword = "пароли не совпадают";
@@ -108,8 +108,8 @@ const ResetPasswordScreen: React.FC<ResetPasswordScreenProps> = ({
       // Use the new code-based reset API
       await api.resetPasswordWithCode(identifier, code, password);
       setIsLoading(false);
-      Alert.alert("Успех", "Ваш пароль был успешно сброшен.", [
-        { text: "ОК", onPress: onSuccess },
+      Alert.alert("успех", "ваш пароль был успешно сброшен.", [
+        { text: "ок", onPress: onSuccess },
       ]);
     } catch (err) {
       setIsLoading(false);
@@ -117,11 +117,11 @@ const ResetPasswordScreen: React.FC<ResetPasswordScreenProps> = ({
 
       if (err instanceof Error) {
         if (err.message.includes("You cannot reuse a previous password")) {
-          errorMessage = "Вы не можете использовать предыдущий пароль.";
+          errorMessage = "вы не можете использовать предыдущий пароль.";
         } else if (
           err.message.includes("You cannot reuse your current password")
         ) {
-          errorMessage = "Вы не можете использовать текущий пароль.";
+          errorMessage = "вы не можете использовать текущий пароль.";
         } else {
           errorMessage = err.message;
         }
@@ -164,7 +164,7 @@ const ResetPasswordScreen: React.FC<ResetPasswordScreenProps> = ({
                 <Logo width={LOGO_SIZE} height={LOGO_SIZE} />
               </View>
 
-              <Text style={styles.title}>Установить новый пароль</Text>
+              <Text style={styles.title}>установить новый пароль</Text>
 
               {errors.general ? (
                 <View style={styles.errorContainer}>
@@ -175,7 +175,7 @@ const ResetPasswordScreen: React.FC<ResetPasswordScreenProps> = ({
               <Animated.View
                 style={styles.inputShadow}
                 entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
-                  ANIMATION_DELAYS.SMALL
+                  ANIMATION_DELAYS.SMALL,
                 )}
               >
                 <View style={styles.inputContainer}>
@@ -209,7 +209,7 @@ const ResetPasswordScreen: React.FC<ResetPasswordScreenProps> = ({
               <Animated.View
                 style={styles.inputShadow}
                 entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
-                  ANIMATION_DELAYS.STANDARD
+                  ANIMATION_DELAYS.STANDARD,
                 )}
               >
                 <View style={styles.inputContainer}>
@@ -247,7 +247,7 @@ const ResetPasswordScreen: React.FC<ResetPasswordScreenProps> = ({
               >
                 <Animated.View
                   entering={FadeInDown.duration(
-                    ANIMATION_DURATIONS.MEDIUM
+                    ANIMATION_DURATIONS.MEDIUM,
                   ).delay(ANIMATION_DELAYS.MEDIUM)}
                   style={[
                     styles.resetButton,
@@ -257,7 +257,7 @@ const ResetPasswordScreen: React.FC<ResetPasswordScreenProps> = ({
                   {isLoading ? (
                     <ActivityIndicator color={theme.button.primaryText} />
                   ) : (
-                    <Text style={styles.resetButtonText}>Сбросить пароль</Text>
+                    <Text style={styles.resetButtonText}>сбросить пароль</Text>
                   )}
                 </Animated.View>
               </TouchableOpacity>

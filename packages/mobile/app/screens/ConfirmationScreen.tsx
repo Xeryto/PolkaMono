@@ -173,7 +173,10 @@ const ConfirmationScreen: React.FC<ConfirmationScreenProps> = ({
               {/* Saving text at bottom of white box (absolute) */}
               {isSubmitting && (
                 <View style={styles.savingContainer}>
-                  <ActivityIndicator size="small" color={theme.text.secondary} />
+                  <ActivityIndicator
+                    size="small"
+                    color={theme.text.secondary}
+                  />
                   <Text style={styles.savingText}>сохранение...</Text>
                 </View>
               )}
@@ -203,173 +206,173 @@ const createStyles = (theme: ThemeColors) =>
       width: "88%",
       height: "95%",
       borderRadius: 41,
-      backgroundColor: 'transparent',
+      backgroundColor: "transparent",
       position: "relative",
       borderWidth: 3,
       borderColor: theme.border.default,
     },
-  gradientBackground: {
-    borderRadius: 37,
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-  },
-  backButton: {
-    position: "absolute",
-    top: 20,
-    left: 20,
-    zIndex: 10,
-    width: 33,
-    height: 33,
-  },
-  formContainerShadow: {
-    width: width * 0.88,
-    top: -3,
-    left: -3,
-    height: "90%",
-    borderRadius: 41,
-    ...Platform.select({
-      ios: {
-        shadowColor: theme.shadow.default,
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.25,
-        shadowRadius: 4,
-      },
-      android: {
-        elevation: 6,
-      },
-    }),
-  },
-  formContainer: {
-    width: "100%",
-    height: "100%",
-    flexDirection: "column",
-    backgroundColor: theme.background.primary,
-    borderRadius: 41,
-    ...Platform.select({
-      android: {
-        overflow: "hidden",
-      },
-    }),
-  },
-  formContentRow: {
-    flex: 1,
-    width: "100%",
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-around",
-  },
-  logoContainer: {
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 30,
-    shadowColor: theme.shadow.default,
-    shadowOffset: {
-      width: 0,
-      height: 4,
+    gradientBackground: {
+      borderRadius: 37,
+      position: "absolute",
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
     },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 8,
-    position: "absolute",
-    top: height * 0.03,
-    left: width / 2 - LOGO_SIZE / 2,
-    right: width / 2 - LOGO_SIZE / 2,
-  },
-  buttonShadow: {
-    borderRadius: 41,
-    ...Platform.select({
-      ios: {
-        shadowColor: theme.shadow.default,
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.25,
-        shadowRadius: 4,
+    backButton: {
+      position: "absolute",
+      top: 20,
+      left: 20,
+      zIndex: 10,
+      width: 33,
+      height: 33,
+    },
+    formContainerShadow: {
+      width: width * 0.88,
+      top: -3,
+      left: -3,
+      height: "90%",
+      borderRadius: 41,
+      ...Platform.select({
+        ios: {
+          shadowColor: theme.shadow.default,
+          shadowOffset: { width: 0, height: 4 },
+          shadowOpacity: 0.25,
+          shadowRadius: 4,
+        },
+        android: {
+          elevation: 6,
+        },
+      }),
+    },
+    formContainer: {
+      width: "100%",
+      height: "100%",
+      flexDirection: "column",
+      backgroundColor: theme.background.primary,
+      borderRadius: 41,
+      ...Platform.select({
+        android: {
+          overflow: "hidden",
+        },
+      }),
+    },
+    formContentRow: {
+      flex: 1,
+      width: "100%",
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-around",
+    },
+    logoContainer: {
+      alignItems: "center",
+      justifyContent: "center",
+      marginBottom: 30,
+      shadowColor: theme.shadow.default,
+      shadowOffset: {
+        width: 0,
+        height: 4,
       },
-      android: {
-        elevation: 6,
-      },
-    }),
-  },
-  optionButton: {
-    width: 99,
-    height: 99,
-    borderRadius: 41,
-    alignItems: "center",
-    justifyContent: "center",
-    ...Platform.select({
-      android: {
-        overflow: "hidden",
-      },
-    }),
-  },
-  buttonPressed: {
-    opacity: 0.8,
-  },
-  selectedButtonM: {
-    backgroundColor: theme.gender.maleSelected,
-  },
-  selectedButtonF: {
-    backgroundColor: theme.gender.femaleSelected,
-  },
-  optionButtonTextM: {
-    fontFamily: "IgraSans",
-    fontSize: 40,
-    color: theme.gender.maleText,
-  },
-  optionButtonTextF: {
-    fontFamily: "IgraSans",
-    fontSize: 40,
-    color: theme.gender.femaleText,
-  },
-  selectedButtonTextM: {
-    color: theme.gender.maleTextSelected,
-  },
-  selectedButtonTextF: {
-    color: theme.gender.femaleTextSelected,
-  },
-  buttonsRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-around",
-    width: "100%",
-  },
-  buttonDimmed: {
-    opacity: 0.5,
-  },
-  savingContainer: {
-    position: "absolute",
-    bottom: 0,
-    left: 0,
-    right: 0,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 10,
-    paddingVertical: 20,
-    paddingBottom: 28,
-    borderTopWidth: 1,
-    borderTopColor: theme.border.subtle,
-    backgroundColor: theme.background.primary,
-    borderRadius: 41,
-  },
-  savingText: {
-    fontFamily: "IgraSans",
-    fontSize: 20,
-    color: theme.text.secondary,
-  },
-  textContainer: {
-    position: "absolute",
-    bottom: 0,
-    marginBottom: 18,
-    marginLeft: 27,
-  },
-  text: {
-    fontFamily: "IgraSans",
-    fontSize: 38,
-    color: theme.text.inverse,
-  },
+      shadowOpacity: 0.25,
+      shadowRadius: 4,
+      elevation: 8,
+      position: "absolute",
+      top: height * 0.03,
+      left: width / 2 - LOGO_SIZE / 2,
+      right: width / 2 - LOGO_SIZE / 2,
+    },
+    buttonShadow: {
+      borderRadius: 41,
+      ...Platform.select({
+        ios: {
+          shadowColor: theme.shadow.default,
+          shadowOffset: { width: 0, height: 4 },
+          shadowOpacity: 0.25,
+          shadowRadius: 4,
+        },
+        android: {
+          elevation: 6,
+        },
+      }),
+    },
+    optionButton: {
+      width: 99,
+      height: 99,
+      borderRadius: 41,
+      alignItems: "center",
+      justifyContent: "center",
+      ...Platform.select({
+        android: {
+          overflow: "hidden",
+        },
+      }),
+    },
+    buttonPressed: {
+      opacity: 0.8,
+    },
+    selectedButtonM: {
+      backgroundColor: theme.gender.maleSelected,
+    },
+    selectedButtonF: {
+      backgroundColor: theme.gender.femaleSelected,
+    },
+    optionButtonTextM: {
+      fontFamily: "IgraSans",
+      fontSize: 40,
+      color: theme.gender.maleText,
+    },
+    optionButtonTextF: {
+      fontFamily: "IgraSans",
+      fontSize: 40,
+      color: theme.gender.femaleText,
+    },
+    selectedButtonTextM: {
+      color: theme.gender.maleTextSelected,
+    },
+    selectedButtonTextF: {
+      color: theme.gender.femaleTextSelected,
+    },
+    buttonsRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-around",
+      width: "100%",
+    },
+    buttonDimmed: {
+      opacity: 0.5,
+    },
+    savingContainer: {
+      position: "absolute",
+      bottom: 0,
+      left: 0,
+      right: 0,
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 10,
+      paddingVertical: 20,
+      paddingBottom: 28,
+      borderTopWidth: 1,
+      borderTopColor: theme.border.subtle,
+      backgroundColor: theme.background.primary,
+      borderRadius: 41,
+    },
+    savingText: {
+      fontFamily: "IgraSans",
+      fontSize: 20,
+      color: theme.text.secondary,
+    },
+    textContainer: {
+      position: "absolute",
+      bottom: 0,
+      marginBottom: 18,
+      marginLeft: 27,
+    },
+    text: {
+      fontFamily: "IgraSans",
+      fontSize: 38,
+      color: theme.text.inverse,
+    },
   });
 
 export default ConfirmationScreen;

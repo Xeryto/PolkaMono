@@ -835,13 +835,13 @@ const Settings = ({
         Alert.alert(
           "ошибка сервера",
           "проблема с сервером. попробуйте позже.",
-          [{ text: "OK" }],
+          [{ text: "ок" }],
         );
       } else {
         Alert.alert(
           "ошибка загрузки",
           "не удалось загрузить профиль пользователя.",
-          [{ text: "OK" }],
+          [{ text: "ок" }],
         );
       }
     } finally {
@@ -864,13 +864,13 @@ const Settings = ({
         Alert.alert(
           "ошибка сервера",
           "проблема с сервером. попробуйте позже.",
-          [{ text: "OK" }],
+          [{ text: "ок" }],
         );
       } else {
         Alert.alert(
-          "Ошибка загрузки",
+          "ошибка загрузки",
           "не удалось загрузить список брендов. попробуйте позже.",
-          [{ text: "OK" }],
+          [{ text: "ок" }],
         );
       }
     }
@@ -941,7 +941,7 @@ const Settings = ({
           Alert.alert("ошибка", "проблема с сервером. попробуйте позже.");
         } else {
           Alert.alert(
-            "Ошибка",
+            "ошибка",
             "не удалось обновить размер. попробуйте позже.",
           );
         }
@@ -967,7 +967,7 @@ const Settings = ({
       Alert.alert(
         "ошибка обновления",
         "не удалось обновить любимые бренды. попробуйте позже.",
-        [{ text: "OK" }],
+        [{ text: "ок" }],
       );
     }
   };
@@ -1247,7 +1247,7 @@ const Settings = ({
         }
 
         if (!shoppingInfo.phoneNumber.trim()) {
-          Alert.alert("Ошибка", "Пожалуйста, введите ваш телефон.");
+          Alert.alert("ошибка", "пожалуйста, введите ваш телефон.");
           return;
         }
 
@@ -1255,7 +1255,7 @@ const Settings = ({
         const phoneDigits = shoppingInfo.phoneNumber.replace(/\D/g, "");
         if (phoneDigits.length !== 10) {
           Alert.alert(
-            "Ошибка",
+            "ошибка",
             "номер телефона должен содержать 10 цифр (без кода страны +7).",
           );
           return;
@@ -1277,8 +1277,8 @@ const Settings = ({
       // Validate required fields
       if (!shoppingInfo.fullName.trim()) {
         Alert.alert(
-          "Ошибка",
-          "Пожалуйста, введите ваше полное имя для доставки.",
+          "ошибка",
+          "пожалуйста, введите ваше полное имя для доставки.",
         );
         return;
       }
@@ -1289,7 +1289,7 @@ const Settings = ({
       }
 
       if (!shoppingInfo.phoneNumber.trim()) {
-        Alert.alert("Ошибка", "Пожалуйста, введите ваш телефон.");
+        Alert.alert("ошибка", "пожалуйста, введите ваш телефон.");
         return;
       }
 
@@ -1297,7 +1297,7 @@ const Settings = ({
       const phoneDigits = shoppingInfo.phoneNumber.replace(/\D/g, "");
       if (phoneDigits.length !== 10) {
         Alert.alert(
-          "Ошибка",
+          "ошибка",
           "номер телефона должен содержать 10 цифр (без кода страны +7).",
         );
         return;
@@ -1319,7 +1319,7 @@ const Settings = ({
       if (postalCodeToUse.trim()) {
         const postalDigits = postalCodeToUse.replace(/\D/g, "");
         if (postalDigits.length !== 6) {
-          Alert.alert("Ошибка", "Почтовый индекс должен содержать 6 цифр.");
+          Alert.alert("ошибка", "почтовый индекс должен содержать 6 цифр.");
           return;
         }
       }
@@ -1354,7 +1354,7 @@ const Settings = ({
       const errorMessage =
         error?.response?.data?.detail ||
         error?.message ||
-        "Не удалось сохранить информацию о доставке.";
+        "не удалось сохранить информацию о доставке.";
       // If it's an array of validation errors, extract the message
       const validationError =
         Array.isArray(errorMessage) && errorMessage[0]
@@ -1373,7 +1373,7 @@ const Settings = ({
       const brand = popularBrands.find((b) => b === brandName);
       if (!brand) {
         log.error("Brand not found in loaded brands:", brandName);
-        Alert.alert("Ошибка", "Бренд не найден.");
+        Alert.alert("ошибка", "бренд не найден.");
         return;
       }
 
@@ -1382,7 +1382,7 @@ const Settings = ({
       const brandObj = (allBrands || []).find((b) => b.name === brandName);
       if (!brandObj) {
         log.error("Brand object not found:", brandName);
-        Alert.alert("Ошибка", "Бренд не найден.");
+        Alert.alert("ошибка", "бренд не найден.");
         return;
       }
 
@@ -1457,7 +1457,7 @@ const Settings = ({
           Alert.alert("ошибка", "проблема с сервером. попробуйте позже.");
         } else {
           Alert.alert(
-            "Ошибка",
+            "ошибка",
             "не удалось обновить выбор бренда. попробуйте позже.",
           );
         }
@@ -1688,7 +1688,7 @@ const Settings = ({
           {selectedBrands.length > 0 ? (
             selectedBrands.map(renderBrandBubble)
           ) : (
-            <Text style={styles.emptyBrandsText}>Выберите бренды</Text>
+            <Text style={styles.emptyBrandsText}>выберите бренды</Text>
           )}
         </ScrollView>
       </Animated.View>
@@ -1803,7 +1803,7 @@ const Settings = ({
             ANIMATION_DELAYS.STANDARD
           )}
         >
-          <Text style={styles.profileName}>Рейтинг стиля</Text>
+          <Text style={styles.profileName}>рейтинг стиля</Text>
         </Animated.View>
 
         <Animated.View
@@ -1901,7 +1901,7 @@ const Settings = ({
               )}
               style={styles.shoppingFormContainer}
             >
-              <Text style={styles.loadingText}>Загрузка...</Text>
+              <Text style={styles.loadingText}>загрузка...</Text>
             </Animated.View>
           ) : shoppingInfoError ? (
             <Animated.View
@@ -2676,7 +2676,11 @@ const Settings = ({
                     {option.label}
                   </Text>
                   {isSelected && (
-                    <TickBold width={28} height={28} color={theme.text.primary} />
+                    <TickBold
+                      width={28}
+                      height={28}
+                      color={theme.text.primary}
+                    />
                   )}
                 </Pressable>
               </Animated.View>
@@ -2726,7 +2730,7 @@ const Settings = ({
                       setMyInfo((prev) => ({ ...prev, gender: "male" }));
                     }}
                   >
-                    <Text style={[styles.genderCircleText]}>М</Text>
+                    <Text style={[styles.genderCircleText]}>м</Text>
                   </TouchableOpacity>
                   <TouchableOpacity
                     style={[
@@ -2739,7 +2743,7 @@ const Settings = ({
                       setMyInfo((prev) => ({ ...prev, gender: "female" }));
                     }}
                   >
-                    <Text style={[styles.genderCircleText]}>Ж</Text>
+                    <Text style={[styles.genderCircleText]}>ж</Text>
                   </TouchableOpacity>
                 </View>
               </View>
@@ -3000,7 +3004,7 @@ const Settings = ({
             )}
             style={styles.shoppingFormContainer}
           >
-            <Text style={styles.loadingText}>Загрузка...</Text>
+            <Text style={styles.loadingText}>загрузка...</Text>
           </Animated.View>
         ) : myInfoError ? (
           <Animated.View
@@ -3402,7 +3406,7 @@ const Settings = ({
                 {activeSection === "payment" && "оплата"}
                 {activeSection === "documents" && "документы"}
               </Text>
-              <Text style={styles.placeholderSubtext}>Раздел в разработке</Text>
+              <Text style={styles.placeholderSubtext}>раздел в разработке</Text>
             </View>
           </View>
         );
@@ -3413,11 +3417,7 @@ const Settings = ({
 
   // If embedded, render only content without outer container
   if (embedded) {
-    return (
-      <View style={styles.embeddedContainer}>
-        {renderContent()}
-      </View>
-    );
+    return <View style={styles.embeddedContainer}>{renderContent()}</View>;
   }
 
   return (
@@ -3440,7 +3440,12 @@ const Settings = ({
 
         {/* Bottom Text */}
         <View style={styles.textContainer}>
-          <Text style={styles.text} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.5}>
+          <Text
+            style={styles.text}
+            numberOfLines={1}
+            adjustsFontSizeToFit
+            minimumFontScale={0.5}
+          >
             {getBottomText()}
           </Text>
         </View>

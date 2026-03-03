@@ -432,7 +432,7 @@ const darkColors: ThemeColors = {
   // Size Selection
   size: {
     available: '#3D3028',
-    unavailable: '#261E1A',
+    unavailable: '#BFBBB8',
     userSize: '#806B59',
     selected: '#806B59',
     text: '#FFFFFF',

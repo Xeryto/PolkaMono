@@ -27,7 +27,9 @@ export function AdminWithdrawalsView() {
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<BrandSearchResult[]>([]);
   const [showDropdown, setShowDropdown] = useState(false);
-  const [selectedBrand, setSelectedBrand] = useState<BrandSearchResult | null>(null);
+  const [selectedBrand, setSelectedBrand] = useState<BrandSearchResult | null>(
+    null,
+  );
   const debounceRef = useRef<ReturnType<typeof setTimeout>>();
 
   // Form
@@ -45,17 +47,24 @@ export function AdminWithdrawalsView() {
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
 
-  const fetchHistory = useCallback(async (brandId?: string) => {
-    setLoadingHistory(true);
-    try {
-      const data = await getWithdrawals(brandId, dateFrom || undefined, dateTo || undefined);
-      setHistory(data);
-    } catch {
-      /* ignore */
-    } finally {
-      setLoadingHistory(false);
-    }
-  }, [dateFrom, dateTo]);
+  const fetchHistory = useCallback(
+    async (brandId?: string) => {
+      setLoadingHistory(true);
+      try {
+        const data = await getWithdrawals(
+          brandId,
+          dateFrom || undefined,
+          dateTo || undefined,
+        );
+        setHistory(data);
+      } catch {
+        /* ignore */
+      } finally {
+        setLoadingHistory(false);
+      }
+    },
+    [dateFrom, dateTo],
+  );
 
   // Debounced brand search — skip when a brand is already selected
   useEffect(() => {
@@ -109,11 +118,13 @@ export function AdminWithdrawalsView() {
       setNote("");
       // Refresh brand withdrawn total
       setSelectedBrand((prev) =>
-        prev ? { ...prev, amount_withdrawn: prev.amount_withdrawn + numAmount } : prev
+        prev
+          ? { ...prev, amount_withdrawn: prev.amount_withdrawn + numAmount }
+          : prev,
       );
       await fetchHistory(selectedBrand.id);
     } catch (e: unknown) {
-      setSubmitError(e instanceof Error ? e.message : "Ошибка");
+      setSubmitError(e instanceof Error ? e.message : "ошибка");
     } finally {
       setSubmitting(false);
     }
@@ -128,7 +139,9 @@ export function AdminWithdrawalsView() {
 
       {/* Brand search */}
       <div className="bg-card rounded-xl border border-border/30 p-5 space-y-4">
-        <span className="text-sm font-semibold text-foreground block">Выбрать бренд</span>
+        <span className="text-sm font-semibold text-foreground block">
+          Выбрать бренд
+        </span>
         <div className="relative">
           <Input
             value={searchQuery}
@@ -161,8 +174,14 @@ export function AdminWithdrawalsView() {
 
         {selectedBrand && (
           <div className="text-sm text-muted-foreground">
-            Бренд: <span className="text-foreground font-medium">{selectedBrand.name}</span>
-            {" · "}Выведено: <span className="text-foreground">{formatCurrency(selectedBrand.amount_withdrawn)}</span>
+            Бренд:{" "}
+            <span className="text-foreground font-medium">
+              {selectedBrand.name}
+            </span>
+            {" · "}Выведено:{" "}
+            <span className="text-foreground">
+              {formatCurrency(selectedBrand.amount_withdrawn)}
+            </span>
           </div>
         )}
       </div>
@@ -170,10 +189,15 @@ export function AdminWithdrawalsView() {
       {/* Withdrawal form */}
       {selectedBrand && (
         <div className="bg-card rounded-xl border border-border/30 p-5 space-y-4">
-          <span className="text-sm font-semibold text-foreground block">Записать вывод</span>
+          <span className="text-sm font-semibold text-foreground block">
+            Записать вывод
+          </span>
 
           <div className="space-y-1">
-            <Label htmlFor="withdrawal-amount" className="text-xs text-muted-foreground">
+            <Label
+              htmlFor="withdrawal-amount"
+              className="text-xs text-muted-foreground"
+            >
               Сумма
             </Label>
             <Input
@@ -189,7 +213,10 @@ export function AdminWithdrawalsView() {
           </div>
 
           <div className="space-y-1">
-            <Label htmlFor="withdrawal-note" className="text-xs text-muted-foreground">
+            <Label
+              htmlFor="withdrawal-note"
+              className="text-xs text-muted-foreground"
+            >
               Примечание (необязательно)
             </Label>
             <textarea
@@ -204,7 +231,9 @@ export function AdminWithdrawalsView() {
           </div>
 
           {submitError && <p className="text-sm text-red-500">{submitError}</p>}
-          {submitSuccess && <p className="text-sm text-green-500">Вывод записан</p>}
+          {submitSuccess && (
+            <p className="text-sm text-green-500">Вывод записан</p>
+          )}
 
           <Button
             onClick={handleSubmit}
@@ -220,17 +249,22 @@ export function AdminWithdrawalsView() {
       {selectedBrand && (
         <div className="bg-card rounded-xl border border-border/30 overflow-hidden">
           <div className="px-4 py-3 border-b border-border/30 flex items-center justify-between gap-4">
-            <span className="text-sm font-semibold text-foreground">История выводов</span>
+            <span className="text-sm font-semibold text-foreground">
+              История выводов
+            </span>
             <DateRangePicker
               dateFrom={dateFrom}
               dateTo={dateTo}
               onDateFromChange={setDateFrom}
               onDateToChange={setDateTo}
-              onClear={() => { setDateFrom(""); setDateTo(""); }}
+              onClear={() => {
+                setDateFrom("");
+                setDateTo("");
+              }}
             />
           </div>
           {loadingHistory ? (
-            <div className="p-4 text-sm text-muted-foreground">Загрузка...</div>
+            <div className="p-4 text-sm text-muted-foreground">загрузка...</div>
           ) : history.length === 0 ? (
             <div className="p-4 text-sm text-muted-foreground">Нет выводов</div>
           ) : (
@@ -239,17 +273,30 @@ export function AdminWithdrawalsView() {
                 <tr className="border-b border-border/30 text-muted-foreground text-xs uppercase">
                   <th className="px-4 py-2 text-left font-medium">Дата</th>
                   <th className="px-4 py-2 text-left font-medium">Сумма</th>
-                  <th className="px-4 py-2 text-left font-medium">Примечание</th>
+                  <th className="px-4 py-2 text-left font-medium">
+                    Примечание
+                  </th>
                   <th className="px-4 py-2 text-left font-medium">Админ</th>
                 </tr>
               </thead>
               <tbody>
                 {history.map((row) => (
-                  <tr key={row.id} className="border-b border-border/20 last:border-0">
-                    <td className="px-4 py-2 text-muted-foreground">{formatDate(row.created_at)}</td>
-                    <td className="px-4 py-2 text-foreground font-medium">{formatCurrency(row.amount)}</td>
-                    <td className="px-4 py-2 text-foreground">{row.note || "—"}</td>
-                    <td className="px-4 py-2 text-muted-foreground text-xs">{row.admin_email}</td>
+                  <tr
+                    key={row.id}
+                    className="border-b border-border/20 last:border-0"
+                  >
+                    <td className="px-4 py-2 text-muted-foreground">
+                      {formatDate(row.created_at)}
+                    </td>
+                    <td className="px-4 py-2 text-foreground font-medium">
+                      {formatCurrency(row.amount)}
+                    </td>
+                    <td className="px-4 py-2 text-foreground">
+                      {row.note || "—"}
+                    </td>
+                    <td className="px-4 py-2 text-muted-foreground text-xs">
+                      {row.admin_email}
+                    </td>
                   </tr>
                 ))}
               </tbody>

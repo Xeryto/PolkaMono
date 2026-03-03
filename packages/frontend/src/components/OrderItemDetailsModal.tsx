@@ -39,8 +39,8 @@ export const OrderItemDetailsModal: React.FC<OrderItemDetailsModalProps> = ({
   const handleSaveSKU = async () => {
     if (!skuInput.trim()) {
       toast({
-        title: "Error",
-        description: "SKU cannot be empty.",
+        title: "ошибка",
+        description: "sku не может быть пустым.",
         variant: "destructive",
       });
       return;
@@ -48,8 +48,8 @@ export const OrderItemDetailsModal: React.FC<OrderItemDetailsModalProps> = ({
 
     if (!token) {
       toast({
-        title: "Error",
-        description: "Authentication token not found. Please log in.",
+        title: "ошибка",
+        description: "токен аутентификации не найден. пожалуйста, войдите в систему.",
         variant: "destructive",
       });
       return;
@@ -60,16 +60,16 @@ export const OrderItemDetailsModal: React.FC<OrderItemDetailsModalProps> = ({
       // Call API to update SKU
       await api.updateOrderItemSKU(orderItem.id, skuInput, token); // Pass token
       toast({
-        title: "Success",
-        description: "SKU updated successfully.",
+        title: "успех",
+        description: "sku успешно обновлён.",
       });
       onSKUUpdated(orderItem.id, skuInput);
       onClose();
     } catch (error: unknown) {
       const err = error as { message?: string };
       toast({
-        title: "Error",
-        description: err.message || "Failed to update SKU.",
+        title: "ошибка",
+        description: err.message || "не удалось обновить sku.",
         variant: "destructive",
       });
     } finally {
@@ -81,7 +81,7 @@ export const OrderItemDetailsModal: React.FC<OrderItemDetailsModalProps> = ({
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>Order Item Details</DialogTitle>
+          <DialogTitle>order item details</DialogTitle>
           <DialogDescription>
             View details for {orderItem.name} (Size: {orderItem.size})
           </DialogDescription>
@@ -95,13 +95,13 @@ export const OrderItemDetailsModal: React.FC<OrderItemDetailsModalProps> = ({
             />
           )}
           <p>
-            <strong>Product:</strong> {orderItem.name}
+            <strong>product:</strong> {orderItem.name}
           </p>
           <p>
-            <strong>Size:</strong> {orderItem.size}
+            <strong>size:</strong> {orderItem.size}
           </p>
           <p>
-            <strong>Price:</strong> {formatCurrency(orderItem.price)}
+            <strong>price:</strong> {formatCurrency(orderItem.price)}
           </p>
 
           <div>
@@ -109,7 +109,7 @@ export const OrderItemDetailsModal: React.FC<OrderItemDetailsModalProps> = ({
               htmlFor="sku"
               className="text-sm font-medium text-muted-foreground"
             >
-              SKU (Stock Keeping Unit)
+              sku (stock keeping unit)
             </label>
             <Input
               id="sku"
@@ -120,18 +120,18 @@ export const OrderItemDetailsModal: React.FC<OrderItemDetailsModalProps> = ({
             />
             {orderItem.sku && (
               <p className="text-xs text-muted-foreground mt-1">
-                SKU is locked once assigned.
+                sku is locked once assigned.
               </p>
             )}
           </div>
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>
-            Close
+            close
           </Button>
           {!orderItem.sku && ( // Only show save button if SKU is not yet assigned
             <Button onClick={handleSaveSKU} disabled={isSubmitting}>
-              {isSubmitting ? "Saving..." : "Save SKU"}
+              {isSubmitting ? "saving..." : "save sku"}
             </Button>
           )}
         </DialogFooter>

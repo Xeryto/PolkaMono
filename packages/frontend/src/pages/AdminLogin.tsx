@@ -32,7 +32,7 @@ const AdminLogin = () => {
     try {
       await login(email, password);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Ошибка входа");
+      setError(err instanceof Error ? err.message : "ошибка входа");
     }
   };
 
@@ -54,7 +54,9 @@ const AdminLogin = () => {
       const remaining = await resendOtp();
       setResendMsg(`Код отправлен повторно (осталось: ${remaining})`);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Ошибка повторной отправки");
+      setError(
+        err instanceof Error ? err.message : "ошибка повторной отправки",
+      );
     } finally {
       setResending(false);
     }
@@ -63,7 +65,9 @@ const AdminLogin = () => {
   return (
     <div className="min-h-screen flex items-center justify-center bg-background">
       <div className="w-full max-w-sm bg-card rounded-xl border border-border/30 p-8 space-y-6">
-        <h1 className="text-2xl font-bold text-foreground text-center">Админ</h1>
+        <h1 className="text-2xl font-bold text-foreground text-center">
+          Админ
+        </h1>
 
         {!otpPending ? (
           <form onSubmit={handleLoginSubmit} className="space-y-4">
@@ -112,7 +116,9 @@ const AdminLogin = () => {
                 maxLength={6}
                 placeholder="000000"
                 value={otpCode}
-                onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                onChange={(e) =>
+                  setOtpCode(e.target.value.replace(/\D/g, "").slice(0, 6))
+                }
                 className="text-center text-lg tracking-[0.3em]"
                 required
               />
@@ -121,7 +127,11 @@ const AdminLogin = () => {
             {error && <p className="text-sm text-red-500">{error}</p>}
             {resendMsg && <p className="text-sm text-green-500">{resendMsg}</p>}
 
-            <Button type="submit" disabled={loading || otpCode.length !== 6} className="w-full">
+            <Button
+              type="submit"
+              disabled={loading || otpCode.length !== 6}
+              className="w-full"
+            >
               {loading ? "Проверка..." : "Подтвердить"}
             </Button>
 

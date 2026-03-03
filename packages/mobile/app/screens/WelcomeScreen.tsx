@@ -187,7 +187,7 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
               style={styles.logoContainer}
             >
               <Logo width={LOGO_SIZE} height={LOGO_SIZE} />
-              <Text style={styles.logoText}>ПОЛКА</Text>
+              <Text style={styles.logoText}>Полка</Text>
             </Animated.View>
 
             <Animated.View

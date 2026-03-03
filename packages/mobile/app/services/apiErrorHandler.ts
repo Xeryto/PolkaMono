@@ -1,20 +1,20 @@
-import { Alert } from 'react-native';
-import { log } from './config';
-import { sessionManager } from './api';
+import { Alert } from "react-native";
+import { log } from "./config";
+import { sessionManager } from "./api";
 import {
-  NetworkTimeoutError, 
-  NetworkRetryError, 
-  isRetryableError, 
-  getNetworkErrorMessage 
-} from './networkUtils';
-import { ApiError } from './apiHelpers';
+  NetworkTimeoutError,
+  NetworkRetryError,
+  isRetryableError,
+  getNetworkErrorMessage,
+} from "./networkUtils";
+import { ApiError } from "./apiHelpers";
 
 // API Error handling strategies
 export enum ApiErrorStrategy {
-  LOGOUT_USER = 'logout_user', // Token invalid - redirect to welcome
-  SHOW_ERROR = 'show_error',   // Show error message but stay on page
-  SILENT_FAIL = 'silent_fail', // Fail silently, use fallback data
-  RETRY_WITH_BACKOFF = 'retry_with_backoff' // Retry with exponential backoff
+  LOGOUT_USER = "logout_user", // Token invalid - redirect to welcome
+  SHOW_ERROR = "show_error", // Show error message but stay on page
+  SILENT_FAIL = "silent_fail", // Fail silently, use fallback data
+  RETRY_WITH_BACKOFF = "retry_with_backoff", // Retry with exponential backoff
 }
 
 // Error classification
@@ -42,7 +42,7 @@ export interface ApiCallContext {
 export class ApiErrorHandler {
   private static instance: ApiErrorHandler;
   private static alertShowing = false; // Global guard to prevent multiple alerts
-  
+
   static getInstance(): ApiErrorHandler {
     if (!ApiErrorHandler.instance) {
       ApiErrorHandler.instance = new ApiErrorHandler();
@@ -59,26 +59,26 @@ export class ApiErrorHandler {
       return {
         error,
         strategy: ApiErrorStrategy.LOGOUT_USER,
-        userMessage: 'Сессия истекла. Пожалуйста, войдите в систему снова.',
+        userMessage: "сессия истекла. пожалуйста, войдите в систему снова.",
         shouldLogout: true,
         shouldShowAlert: false, // Session manager will handle the alert
-        isRetryable: false
+        isRetryable: false,
       };
     }
 
     // Network errors - check if retryable
     if (isRetryableError(error)) {
-      const strategy = context.isCritical 
-        ? ApiErrorStrategy.RETRY_WITH_BACKOFF 
+      const strategy = context.isCritical
+        ? ApiErrorStrategy.RETRY_WITH_BACKOFF
         : ApiErrorStrategy.SHOW_ERROR;
-      
+
       return {
         error,
         strategy,
         userMessage: getNetworkErrorMessage(error),
         shouldLogout: false,
         shouldShowAlert: context.isCritical,
-        isRetryable: true
+        isRetryable: true,
       };
     }
 
@@ -86,13 +86,13 @@ export class ApiErrorHandler {
     if (this.isServerError(error)) {
       return {
         error,
-        strategy: context.hasFallback 
-          ? ApiErrorStrategy.SILENT_FAIL 
+        strategy: context.hasFallback
+          ? ApiErrorStrategy.SILENT_FAIL
           : ApiErrorStrategy.SHOW_ERROR,
-        userMessage: 'Проблема с сервером. Попробуйте позже.',
+        userMessage: "проблема с сервером. попробуйте позже.",
         shouldLogout: false,
         shouldShowAlert: !context.hasFallback,
-        isRetryable: true
+        isRetryable: true,
       };
     }
 
@@ -100,26 +100,26 @@ export class ApiErrorHandler {
     if (this.isClientError(error)) {
       return {
         error,
-        strategy: context.hasFallback 
-          ? ApiErrorStrategy.SILENT_FAIL 
+        strategy: context.hasFallback
+          ? ApiErrorStrategy.SILENT_FAIL
           : ApiErrorStrategy.SHOW_ERROR,
-        userMessage: 'Не удалось выполнить запрос. Проверьте данные.',
+        userMessage: "не удалось выполнить запрос. проверьте данные.",
         shouldLogout: false,
         shouldShowAlert: !context.hasFallback,
-        isRetryable: false
+        isRetryable: false,
       };
     }
 
     // Unknown errors
     return {
       error,
-      strategy: context.hasFallback 
-        ? ApiErrorStrategy.SILENT_FAIL 
+      strategy: context.hasFallback
+        ? ApiErrorStrategy.SILENT_FAIL
         : ApiErrorStrategy.SHOW_ERROR,
-      userMessage: 'Произошла неизвестная ошибка. Попробуйте еще раз.',
+      userMessage: "произошла неизвестная ошибка. попробуйте еще раз.",
       shouldLogout: false,
       shouldShowAlert: context.isCritical,
-      isRetryable: false
+      isRetryable: false,
     };
   }
 
@@ -127,12 +127,12 @@ export class ApiErrorHandler {
    * Handle API error with appropriate strategy
    */
   async handleApiError(
-    error: Error, 
+    error: Error,
     context: ApiCallContext,
-    retryFn?: () => Promise<any>
+    retryFn?: () => Promise<any>,
   ): Promise<void> {
     const errorInfo = this.classifyError(error, context);
-    
+
     log.error(`API Error in ${context.pageName}/${context.operation}:`, error);
 
     // Handle logout case
@@ -142,7 +142,11 @@ export class ApiErrorHandler {
     }
 
     // Handle retryable errors with backoff
-    if (errorInfo.isRetryable && errorInfo.strategy === ApiErrorStrategy.RETRY_WITH_BACKOFF && retryFn) {
+    if (
+      errorInfo.isRetryable &&
+      errorInfo.strategy === ApiErrorStrategy.RETRY_WITH_BACKOFF &&
+      retryFn
+    ) {
       try {
         await this.retryWithBackoff(retryFn, 3);
         return;
@@ -156,29 +160,33 @@ export class ApiErrorHandler {
     if (errorInfo.shouldShowAlert && !ApiErrorHandler.alertShowing) {
       ApiErrorHandler.alertShowing = true;
       Alert.alert(
-        'Ошибка',
+        "ошибка",
         errorInfo.userMessage,
         [
           {
-            text: 'OK',
-            style: 'default',
+            text: "ок",
+            style: "default",
             onPress: () => {
               ApiErrorHandler.alertShowing = false;
-            }
+            },
           },
-          ...(errorInfo.isRetryable && retryFn ? [{
-            text: 'Повторить',
-            onPress: () => {
-              ApiErrorHandler.alertShowing = false;
-              retryFn();
-            }
-          }] : [])
+          ...(errorInfo.isRetryable && retryFn
+            ? [
+                {
+                  text: "повторить",
+                  onPress: () => {
+                    ApiErrorHandler.alertShowing = false;
+                    retryFn();
+                  },
+                },
+              ]
+            : []),
         ],
         {
           onDismiss: () => {
             ApiErrorHandler.alertShowing = false;
-          }
-        }
+          },
+        },
       );
     }
   }
@@ -187,8 +195,8 @@ export class ApiErrorHandler {
    * Retry function with exponential backoff
    */
   private async retryWithBackoff(
-    fn: () => Promise<any>, 
-    maxRetries: number = 3
+    fn: () => Promise<any>,
+    maxRetries: number = 3,
   ): Promise<any> {
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       try {
@@ -197,10 +205,12 @@ export class ApiErrorHandler {
         if (attempt === maxRetries) {
           throw error;
         }
-        
+
         const delay = Math.pow(2, attempt) * 1000; // 2s, 4s, 8s...
-        log.error(`Retry attempt ${attempt} failed, waiting ${delay}ms before next attempt`);
-        await new Promise(resolve => setTimeout(resolve, delay));
+        log.error(
+          `Retry attempt ${attempt} failed, waiting ${delay}ms before next attempt`,
+        );
+        await new Promise((resolve) => setTimeout(resolve, delay));
       }
     }
   }
@@ -212,12 +222,14 @@ export class ApiErrorHandler {
     if (error instanceof ApiError && error.status === 401) {
       return true;
     }
-    
-    return error.message.includes('401') ||
-           error.message.includes('unauthorized') ||
-           error.message.includes('authentication') ||
-           error.message.includes('token') ||
-           error.message.includes('session');
+
+    return (
+      error.message.includes("401") ||
+      error.message.includes("unauthorized") ||
+      error.message.includes("authentication") ||
+      error.message.includes("token") ||
+      error.message.includes("session")
+    );
   }
 
   /**
@@ -227,28 +239,37 @@ export class ApiErrorHandler {
     if (error instanceof ApiError && error.status >= 500) {
       return true;
     }
-    
-    return error.message.includes('500') ||
-           error.message.includes('502') ||
-           error.message.includes('503') ||
-           error.message.includes('504') ||
-           error.message.includes('server error') ||
-           error.message.includes('internal error');
+
+    return (
+      error.message.includes("500") ||
+      error.message.includes("502") ||
+      error.message.includes("503") ||
+      error.message.includes("504") ||
+      error.message.includes("server error") ||
+      error.message.includes("internal error")
+    );
   }
 
   /**
    * Check if error is client error (4xx, except 401)
    */
   private isClientError(error: Error): boolean {
-    if (error instanceof ApiError && error.status >= 400 && error.status < 500 && error.status !== 401) {
+    if (
+      error instanceof ApiError &&
+      error.status >= 400 &&
+      error.status < 500 &&
+      error.status !== 401
+    ) {
       return true;
     }
-    
-    return error.message.includes('400') ||
-           error.message.includes('403') ||
-           error.message.includes('404') ||
-           error.message.includes('422') ||
-           error.message.includes('validation');
+
+    return (
+      error.message.includes("400") ||
+      error.message.includes("403") ||
+      error.message.includes("404") ||
+      error.message.includes("422") ||
+      error.message.includes("validation")
+    );
   }
 }
 
@@ -261,7 +282,7 @@ export const apiErrorHandler = ApiErrorHandler.getInstance();
 export async function withApiErrorHandling<T>(
   apiCall: () => Promise<T>,
   context: ApiCallContext,
-  retryFn?: () => Promise<T>
+  retryFn?: () => Promise<T>,
 ): Promise<T | null> {
   try {
     return await apiCall();
@@ -276,8 +297,11 @@ export async function withApiErrorHandling<T>(
  */
 export function useApiErrorHandler() {
   return {
-    handleError: (error: Error, context: ApiCallContext, retryFn?: () => Promise<any>) =>
-      apiErrorHandler.handleApiError(error, context, retryFn),
-    withErrorHandling: withApiErrorHandling
+    handleError: (
+      error: Error,
+      context: ApiCallContext,
+      retryFn?: () => Promise<any>,
+    ) => apiErrorHandler.handleApiError(error, context, retryFn),
+    withErrorHandling: withApiErrorHandling,
   };
 }

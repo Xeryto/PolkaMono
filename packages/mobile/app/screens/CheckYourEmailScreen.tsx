@@ -1,10 +1,5 @@
 import React, { useMemo } from "react";
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-} from "react-native";
+import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 import Animated, { FadeInDown } from "react-native-reanimated";
@@ -61,10 +56,10 @@ const CheckYourEmailScreen: React.FC<CheckYourEmailScreenProps> = ({
             <Logo width={LOGO_SIZE} height={LOGO_SIZE} />
           </View>
 
-          <Text style={styles.title}>Check Your Email</Text>
+          <Text style={styles.title}>проверьте почту</Text>
           <Text style={styles.subtitle}>
-            We've sent a verification link to your email address. Please click
-            the link to verify your account before logging in.
+            мы отправили ссылку для подтверждения на ваш email. пожалуйста,
+            перейдите по ссылке, чтобы подтвердить аккаунт перед входом.
           </Text>
 
           <TouchableOpacity
@@ -74,12 +69,12 @@ const CheckYourEmailScreen: React.FC<CheckYourEmailScreenProps> = ({
           >
             <Animated.View
               entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
-                ANIMATION_DELAYS.LARGE
+                ANIMATION_DELAYS.LARGE,
               )}
               style={styles.buttonView}
             >
               <Text style={styles.buttonText}>
-                {isResending ? "Resending..." : "Resend Email"}
+                {isResending ? "отправка..." : "отправить повторно"}
               </Text>
             </Animated.View>
           </TouchableOpacity>
@@ -87,11 +82,11 @@ const CheckYourEmailScreen: React.FC<CheckYourEmailScreenProps> = ({
           <TouchableOpacity style={styles.backButton} onPress={onBackToLogin}>
             <Animated.View
               entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
-                ANIMATION_DELAYS.STANDARD
+                ANIMATION_DELAYS.STANDARD,
               )}
               style={styles.buttonView}
             >
-              <Text style={styles.buttonText}>Back to Login</Text>
+              <Text style={styles.buttonText}>назад к входу</Text>
             </Animated.View>
           </TouchableOpacity>
         </Animated.View>

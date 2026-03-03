@@ -77,7 +77,7 @@ const BrandSearchScreen: React.FC<BrandSearchScreenProps> = ({
       timeout: 15000, // 15 seconds for brands
       retries: 2,
       onSuccess: (data) => setBrands(data || []),
-    }
+    },
   );
 
   // Animation values
@@ -166,7 +166,7 @@ const BrandSearchScreen: React.FC<BrandSearchScreenProps> = ({
       setIsSubmitting(false);
       Alert.alert(
         "ошибка",
-        "не удалось сохранить любимые бренды. попробуйте еще раз."
+        "не удалось сохранить любимые бренды. попробуйте еще раз.",
       );
     }
   };
@@ -181,7 +181,7 @@ const BrandSearchScreen: React.FC<BrandSearchScreenProps> = ({
   const filteredBrands =
     searchQuery.length > 0
       ? brands.filter((brand) =>
-          brand.name.toLowerCase().includes(searchQuery.toLowerCase())
+          brand.name.toLowerCase().includes(searchQuery.toLowerCase()),
         )
       : brands;
 
@@ -272,7 +272,7 @@ const BrandSearchScreen: React.FC<BrandSearchScreenProps> = ({
                 {/* Search Container */}
                 <Animated.View
                   entering={FadeInDown.duration(
-                    ANIMATION_DURATIONS.MEDIUM
+                    ANIMATION_DURATIONS.MEDIUM,
                   ).delay(ANIMATION_DELAYS.SMALL)}
                   style={[
                     styles.searchContainer,
@@ -292,10 +292,10 @@ const BrandSearchScreen: React.FC<BrandSearchScreenProps> = ({
                     {isSearchActive && (
                       <Animated.View
                         entering={FadeInDown.duration(
-                          ANIMATION_DURATIONS.STANDARD
+                          ANIMATION_DURATIONS.STANDARD,
                         )}
                         exiting={FadeOutDown.duration(
-                          ANIMATION_DURATIONS.MEDIUM
+                          ANIMATION_DURATIONS.MEDIUM,
                         )}
                         style={styles.cancelButtonContainer}
                       >
@@ -361,7 +361,7 @@ const BrandSearchScreen: React.FC<BrandSearchScreenProps> = ({
                   >
                     <View style={styles.bubblesRow}>
                       {selectedBrands.map((brandId) =>
-                        renderBrandBubble(brandId, 0)
+                        renderBrandBubble(brandId, 0),
                       )}
                     </View>
                   </ScrollView>
@@ -370,7 +370,7 @@ const BrandSearchScreen: React.FC<BrandSearchScreenProps> = ({
 
               <Animated.View
                 entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
-                  ANIMATION_DELAYS.STANDARD
+                  ANIMATION_DELAYS.STANDARD,
                 )}
                 style={styles.buttonContainer}
               >
@@ -420,300 +420,300 @@ const createStyles = (theme: ThemeColors) =>
       width: "88%",
       height: "95%",
       borderRadius: 41,
-      backgroundColor: 'transparent',
+      backgroundColor: "transparent",
       position: "relative",
       borderWidth: 3,
       borderColor: theme.border.default,
     },
-  gradientBackground: {
-    borderRadius: 37,
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-  },
-  backButton: {
-    position: "absolute",
-    top: 21,
-    left: 21,
-    zIndex: 10,
-    width: 33,
-    height: 33,
-  },
-  formContainerShadow: {
-    top: -3,
-    left: -3,
-    width: width * 0.88,
-    height: "90%",
-    borderRadius: 41,
-    ...Platform.select({
-      ios: {
-        shadowColor: theme.shadow.default,
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.2,
-        shadowRadius: 8,
-      },
-      android: {
-        elevation: 6,
-      },
-    }),
-  },
-  formContainer: {
-    width: "100%",
-    height: "100%",
-    backgroundColor: theme.background.primary,
-    borderRadius: 41,
-    padding: 21,
-    alignItems: "center",
-    ...Platform.select({
-      android: {
-        overflow: "hidden",
-      },
-    }),
-    justifyContent: "center",
-  },
-  logoContainer: {
-    alignItems: "center",
-    justifyContent: "center",
-    width: "100%",
-    height: LOGO_SIZE,
-    marginBottom: 25,
-  },
-  searchAndResultsContainer: {
-    width: "100%",
-    height: 0.7 * height - LOGO_SIZE - 52 - 25,
-    justifyContent: "flex-end",
-    alignItems: "center",
-  },
-  searchContainer: {
-    width: "100%",
-    borderRadius: 41,
-    backgroundColor: theme.background.input,
-    zIndex: 10,
-    ...Platform.select({
-      ios: {
-        shadowColor: theme.shadow.default,
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.25,
-        shadowRadius: 4,
-      },
-      android: {
-        elevation: 6,
-      },
-    }),
-  },
-  searchContainerActive: {
-    backgroundColor: theme.surface.elevated,
-  },
-  searchInputContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  searchInput: {
-    flex: 1,
-    fontFamily: "IgraSans",
-    fontSize: 20,
-    color: theme.text.primary,
-    height: "100%",
-    paddingHorizontal: 20,
-    paddingVertical: 45,
-  },
-  cancelButtonContainer: {
-    //marginLeft: 10,
-  },
-  cancelButton: {
-    paddingHorizontal: 30,
-    paddingVertical: 45,
-    borderRadius: 41,
-    backgroundColor: theme.button.cancel,
-    overflow: "hidden",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  cancelButtonText: {
-    fontFamily: "IgraSans",
-    fontSize: 20,
-    color: theme.text.primary,
-  },
-  selectedBubblesContainer: {
-    width: "100%",
-    marginVertical: 10,
-    borderRadius: 41,
-  },
-  selectedBubblesContent: {
-    flexDirection: "column",
-  },
-  bubblesRow: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    justifyContent: "flex-start",
-    alignItems: "center",
-  },
-  brandBubble: {
-    backgroundColor: theme.surface.selection,
-    borderRadius: 41,
-    paddingHorizontal: 18,
-    paddingVertical: 12,
-    margin: 4,
-    ...Platform.select({
-      ios: {
-        shadowColor: theme.shadow.default,
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.25,
-        shadowRadius: 4,
-      },
-      android: {
-        elevation: 6,
-        overflow: "hidden",
-      },
-    }),
-  },
-  brandBubbleText: {
-    fontFamily: "IgraSans",
-    fontSize: 22,
-    color: theme.text.primary,
-  },
-  removeBubbleIcon: {
-    marginLeft: 4,
-    width: 20,
-    height: 20,
-    borderRadius: 41,
-    backgroundColor: theme.button.delete,
-    justifyContent: "center",
-    alignItems: "center",
-    ...Platform.select({
-      ios: {
-        shadowColor: theme.shadow.default,
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.25,
-        shadowRadius: 4,
-      },
-      android: {
-        elevation: 6,
-      },
-    }),
-  },
-  searchResultsContainer: {
-    width: "100%",
-    zIndex: 5,
-    backgroundColor: theme.background.input,
-    borderRadius: 41,
-    marginTop: -110,
-    height: 110,
-    overflow: "hidden",
-    ...Platform.select({
-      ios: {
-        shadowColor: theme.shadow.default,
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.15,
-        shadowRadius: 4,
-      },
-      android: {
-        elevation: 4,
-      },
-    }),
-  },
-  brandsContainer: {
-    width: "100%",
-    flex: 1,
-  },
-  brandsList: {
-    paddingVertical: 8,
-  },
-  brandItem: {
-    flex: 1,
-    margin: 6,
-    padding: 15,
-  },
-  brandItemContent: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  selectedBrandItem: {
-    backgroundColor: theme.primary,
-  },
-  pressedItem: {
-    opacity: 0.8,
-  },
-  brandText: {
-    fontFamily: "IgraSans",
-    fontSize: 20,
-    color: theme.text.primary,
-  },
-  selectedBrandText: {
-    color: theme.text.inverse,
-  },
-  tickContainer: {
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  buttonContainer: {
-    width: "100%",
-    alignItems: "flex-end",
-  },
-  continueButton: {
-    backgroundColor: theme.background.input,
-    borderRadius: 41,
-    paddingVertical: 16,
-    paddingHorizontal: 25,
-    alignItems: "center",
-    ...Platform.select({
-      ios: {
-        shadowColor: theme.shadow.default,
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.25,
-        shadowRadius: 4,
-      },
-      android: {
-        elevation: 6,
-        overflow: "hidden",
-      },
-    }),
-  },
-  continueButtonText: {
-    fontFamily: "IgraSans",
-    fontSize: 20,
-    color: theme.text.primary,
-  },
-  continueButtonLoading: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-  },
-  textContainer: {
-    position: "absolute",
-    bottom: 0,
-    marginBottom: 18,
-    marginLeft: 27,
-  },
-  text: {
-    fontFamily: "IgraSans",
-    fontSize: 38,
-    color: theme.text.inverse,
-  },
-  selectedBubblesHeader: {
-    paddingHorizontal: 10,
-    paddingTop: 6,
-    paddingBottom: 2,
-  },
-  selectedBubblesTitle: {
-    fontFamily: "IgraSans",
-    fontSize: 12,
-    color: theme.text.secondary,
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    paddingVertical: 20,
-  },
-  loadingText: {
-    fontFamily: "IgraSans",
-    fontSize: 20,
-    color: theme.text.primary,
-  },
+    gradientBackground: {
+      borderRadius: 37,
+      position: "absolute",
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+    },
+    backButton: {
+      position: "absolute",
+      top: 21,
+      left: 21,
+      zIndex: 10,
+      width: 33,
+      height: 33,
+    },
+    formContainerShadow: {
+      top: -3,
+      left: -3,
+      width: width * 0.88,
+      height: "90%",
+      borderRadius: 41,
+      ...Platform.select({
+        ios: {
+          shadowColor: theme.shadow.default,
+          shadowOffset: { width: 0, height: 4 },
+          shadowOpacity: 0.2,
+          shadowRadius: 8,
+        },
+        android: {
+          elevation: 6,
+        },
+      }),
+    },
+    formContainer: {
+      width: "100%",
+      height: "100%",
+      backgroundColor: theme.background.primary,
+      borderRadius: 41,
+      padding: 21,
+      alignItems: "center",
+      ...Platform.select({
+        android: {
+          overflow: "hidden",
+        },
+      }),
+      justifyContent: "center",
+    },
+    logoContainer: {
+      alignItems: "center",
+      justifyContent: "center",
+      width: "100%",
+      height: LOGO_SIZE,
+      marginBottom: 25,
+    },
+    searchAndResultsContainer: {
+      width: "100%",
+      height: 0.7 * height - LOGO_SIZE - 52 - 25,
+      justifyContent: "flex-end",
+      alignItems: "center",
+    },
+    searchContainer: {
+      width: "100%",
+      borderRadius: 41,
+      backgroundColor: theme.background.input,
+      zIndex: 10,
+      ...Platform.select({
+        ios: {
+          shadowColor: theme.shadow.default,
+          shadowOffset: { width: 0, height: 4 },
+          shadowOpacity: 0.25,
+          shadowRadius: 4,
+        },
+        android: {
+          elevation: 6,
+        },
+      }),
+    },
+    searchContainerActive: {
+      backgroundColor: theme.surface.elevated,
+    },
+    searchInputContainer: {
+      flexDirection: "row",
+      alignItems: "center",
+    },
+    searchInput: {
+      flex: 1,
+      fontFamily: "IgraSans",
+      fontSize: 20,
+      color: theme.text.primary,
+      height: "100%",
+      paddingHorizontal: 20,
+      paddingVertical: 45,
+    },
+    cancelButtonContainer: {
+      //marginLeft: 10,
+    },
+    cancelButton: {
+      paddingHorizontal: 30,
+      paddingVertical: 45,
+      borderRadius: 41,
+      backgroundColor: theme.button.cancel,
+      overflow: "hidden",
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    cancelButtonText: {
+      fontFamily: "IgraSans",
+      fontSize: 20,
+      color: theme.text.primary,
+    },
+    selectedBubblesContainer: {
+      width: "100%",
+      marginVertical: 10,
+      borderRadius: 41,
+    },
+    selectedBubblesContent: {
+      flexDirection: "column",
+    },
+    bubblesRow: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      justifyContent: "flex-start",
+      alignItems: "center",
+    },
+    brandBubble: {
+      backgroundColor: theme.surface.selection,
+      borderRadius: 41,
+      paddingHorizontal: 18,
+      paddingVertical: 12,
+      margin: 4,
+      ...Platform.select({
+        ios: {
+          shadowColor: theme.shadow.default,
+          shadowOffset: { width: 0, height: 4 },
+          shadowOpacity: 0.25,
+          shadowRadius: 4,
+        },
+        android: {
+          elevation: 6,
+          overflow: "hidden",
+        },
+      }),
+    },
+    brandBubbleText: {
+      fontFamily: "IgraSans",
+      fontSize: 22,
+      color: theme.text.primary,
+    },
+    removeBubbleIcon: {
+      marginLeft: 4,
+      width: 20,
+      height: 20,
+      borderRadius: 41,
+      backgroundColor: theme.button.delete,
+      justifyContent: "center",
+      alignItems: "center",
+      ...Platform.select({
+        ios: {
+          shadowColor: theme.shadow.default,
+          shadowOffset: { width: 0, height: 4 },
+          shadowOpacity: 0.25,
+          shadowRadius: 4,
+        },
+        android: {
+          elevation: 6,
+        },
+      }),
+    },
+    searchResultsContainer: {
+      width: "100%",
+      zIndex: 5,
+      backgroundColor: theme.background.input,
+      borderRadius: 41,
+      marginTop: -110,
+      height: 110,
+      overflow: "hidden",
+      ...Platform.select({
+        ios: {
+          shadowColor: theme.shadow.default,
+          shadowOffset: { width: 0, height: 4 },
+          shadowOpacity: 0.15,
+          shadowRadius: 4,
+        },
+        android: {
+          elevation: 4,
+        },
+      }),
+    },
+    brandsContainer: {
+      width: "100%",
+      flex: 1,
+    },
+    brandsList: {
+      paddingVertical: 8,
+    },
+    brandItem: {
+      flex: 1,
+      margin: 6,
+      padding: 15,
+    },
+    brandItemContent: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+    },
+    selectedBrandItem: {
+      backgroundColor: theme.primary,
+    },
+    pressedItem: {
+      opacity: 0.8,
+    },
+    brandText: {
+      fontFamily: "IgraSans",
+      fontSize: 20,
+      color: theme.text.primary,
+    },
+    selectedBrandText: {
+      color: theme.text.inverse,
+    },
+    tickContainer: {
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    buttonContainer: {
+      width: "100%",
+      alignItems: "flex-end",
+    },
+    continueButton: {
+      backgroundColor: theme.background.input,
+      borderRadius: 41,
+      paddingVertical: 16,
+      paddingHorizontal: 25,
+      alignItems: "center",
+      ...Platform.select({
+        ios: {
+          shadowColor: theme.shadow.default,
+          shadowOffset: { width: 0, height: 4 },
+          shadowOpacity: 0.25,
+          shadowRadius: 4,
+        },
+        android: {
+          elevation: 6,
+          overflow: "hidden",
+        },
+      }),
+    },
+    continueButtonText: {
+      fontFamily: "IgraSans",
+      fontSize: 20,
+      color: theme.text.primary,
+    },
+    continueButtonLoading: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 10,
+    },
+    textContainer: {
+      position: "absolute",
+      bottom: 0,
+      marginBottom: 18,
+      marginLeft: 27,
+    },
+    text: {
+      fontFamily: "IgraSans",
+      fontSize: 38,
+      color: theme.text.inverse,
+    },
+    selectedBubblesHeader: {
+      paddingHorizontal: 10,
+      paddingTop: 6,
+      paddingBottom: 2,
+    },
+    selectedBubblesTitle: {
+      fontFamily: "IgraSans",
+      fontSize: 12,
+      color: theme.text.secondary,
+    },
+    loadingContainer: {
+      flex: 1,
+      justifyContent: "center",
+      alignItems: "center",
+      paddingVertical: 20,
+    },
+    loadingText: {
+      fontFamily: "IgraSans",
+      fontSize: 20,
+      color: theme.text.primary,
+    },
   });
 
 export default BrandSearchScreen;

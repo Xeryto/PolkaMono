@@ -178,7 +178,7 @@ const RecentPiecesScreen: React.FC<RecentPiecesScreenProps> = ({
       await fetchRecentPieces(false);
     } catch (err) {
       log.error("Error loading recent pieces:", err);
-      setError("Не удалось загрузить просмотренные товары");
+      setError("не удалось загрузить просмотренные товары");
       setIsLoading(false);
     }
   }, []);
@@ -331,7 +331,7 @@ const RecentPiecesScreen: React.FC<RecentPiecesScreenProps> = ({
                 />
               ) : (
                 <View style={[styles.pieceImage, styles.placeholderImage]}>
-                  <Text style={styles.placeholderText}>Нет изображения</Text>
+                  <Text style={styles.placeholderText}>нет изображения</Text>
                 </View>
               )}
             </Pressable>
@@ -353,7 +353,12 @@ const RecentPiecesScreen: React.FC<RecentPiecesScreenProps> = ({
 
           {/* Text section below - brand name and price */}
           <View style={styles.textSection}>
-            <Text style={styles.brandName} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.5}>
+            <Text
+              style={styles.brandName}
+              numberOfLines={1}
+              adjustsFontSizeToFit
+              minimumFontScale={0.5}
+            >
               {item.brand_name || "бренд не указан"}
             </Text>
             <Text style={styles.price}>
@@ -370,7 +375,7 @@ const RecentPiecesScreen: React.FC<RecentPiecesScreenProps> = ({
       return (
         <View style={styles.emptyContainer}>
           <ActivityIndicator size="large" color={theme.primary} />
-          <Text style={styles.emptyText}>Загрузка...</Text>
+          <Text style={styles.emptyText}>загрузка...</Text>
         </View>
       );
     }
@@ -383,7 +388,7 @@ const RecentPiecesScreen: React.FC<RecentPiecesScreenProps> = ({
             style={styles.retryButton}
             onPress={loadRecentPieces}
           >
-            <Text style={styles.retryButtonText}>Попробовать снова</Text>
+            <Text style={styles.retryButtonText}>попробовать снова</Text>
           </TouchableOpacity>
         </View>
       );

@@ -49,7 +49,7 @@ const ForgotPasswordScreen: React.FC<ForgotPasswordScreenProps> = ({
 
   const validateInput = () => {
     if (!usernameOrEmail.trim()) {
-      setError("Username or email is required");
+      setError("введите имя пользователя или email");
       return false;
     }
     setError("");

@@ -1,10 +1,5 @@
 import React, { useState, useEffect } from "react";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -35,8 +30,14 @@ const passwordSchema = z
       .string()
       .min(6, "Минимум 6 символов")
       .refine((v) => !v.includes(" "), "Пароль не должен содержать пробелов")
-      .refine((v) => passwordRegex.test(v), "Пароль должен содержать буквы и цифры")
-      .refine((v) => !illegalCharRegex.test(v), "Пароль содержит недопустимые символы"),
+      .refine(
+        (v) => passwordRegex.test(v),
+        "Пароль должен содержать буквы и цифры",
+      )
+      .refine(
+        (v) => !illegalCharRegex.test(v),
+        "Пароль содержит недопустимые символы",
+      ),
     confirm_new_password: z.string().min(1, "Обязательное поле"),
   })
   .refine((d) => d.new_password === d.confirm_new_password, {
@@ -93,7 +94,13 @@ export function SecuritySettingsPage() {
         const data = await api.getBrandProfile(token);
         setProfile(data);
       } catch (err: unknown) {
-        toast({ title: "Ошибка", description: (err as { message?: string }).message || "Не удалось загрузить профиль.", variant: "destructive" });
+        toast({
+          title: "ошибка",
+          description:
+            (err as { message?: string }).message ||
+            "Не удалось загрузить профиль.",
+          variant: "destructive",
+        });
       } finally {
         setIsLoading(false);
       }
@@ -123,13 +130,21 @@ export function SecuritySettingsPage() {
     try {
       const newState = !profile.is_inactive;
       await api.toggleBrandInactive(newState, token);
-      setProfile((p) => p ? { ...p, is_inactive: newState } : null);
+      setProfile((p) => (p ? { ...p, is_inactive: newState } : null));
       toast({
-        title: "Успех",
-        description: newState ? "Аккаунт деактивирован." : "Аккаунт активирован.",
+        title: "успех",
+        description: newState
+          ? "Аккаунт деактивирован."
+          : "Аккаунт активирован.",
       });
     } catch (err: unknown) {
-      toast({ title: "Ошибка", description: (err as { message?: string }).message || "Не удалось изменить статус.", variant: "destructive" });
+      toast({
+        title: "ошибка",
+        description:
+          (err as { message?: string }).message ||
+          "Не удалось изменить статус.",
+        variant: "destructive",
+      });
     } finally {
       setTogglingInactive(false);
       setInactiveDialogOpen(false);
@@ -141,7 +156,11 @@ export function SecuritySettingsPage() {
     const { id, value } = e.target;
     setPwForm((prev) => ({ ...prev, [id]: value }));
     if (pwErrors[id]) {
-      setPwErrors((prev) => { const next = { ...prev }; delete next[id]; return next; });
+      setPwErrors((prev) => {
+        const next = { ...prev };
+        delete next[id];
+        return next;
+      });
     }
   };
 
@@ -150,7 +169,9 @@ export function SecuritySettingsPage() {
     const result = passwordSchema.safeParse(pwForm);
     if (!result.success) {
       const errors: Record<string, string> = {};
-      for (const [field, msgs] of Object.entries(result.error.flatten().fieldErrors)) {
+      for (const [field, msgs] of Object.entries(
+        result.error.flatten().fieldErrors,
+      )) {
         if (msgs && msgs.length > 0) errors[field] = msgs[0];
       }
       setPwErrors(errors);
@@ -160,15 +181,27 @@ export function SecuritySettingsPage() {
     setPwErrors({});
     setPwLoading(true);
     try {
-      await api.changeBrandPassword(pwForm.current_password, pwForm.new_password, token);
-      setPwForm({ current_password: "", new_password: "", confirm_new_password: "" });
-      toast({ title: "Успех", description: "Пароль успешно изменён." });
+      await api.changeBrandPassword(
+        pwForm.current_password,
+        pwForm.new_password,
+        token,
+      );
+      setPwForm({
+        current_password: "",
+        new_password: "",
+        confirm_new_password: "",
+      });
+      toast({ title: "успех", description: "Пароль успешно изменён." });
     } catch (err: unknown) {
       const e = err as { message?: string; status?: number };
       if (e.status === 400) {
         setPwErrors({ current_password: "Текущий пароль неверный" });
       } else {
-        toast({ title: "Ошибка", description: e.message || "Не удалось изменить пароль.", variant: "destructive" });
+        toast({
+          title: "ошибка",
+          description: e.message || "Не удалось изменить пароль.",
+          variant: "destructive",
+        });
       }
     } finally {
       setPwLoading(false);
@@ -187,7 +220,12 @@ export function SecuritySettingsPage() {
       setResendCountdown(60);
       setResendCount(1);
     } catch (err: unknown) {
-      toast({ title: "Ошибка", description: (err as { message?: string }).message || "Не удалось включить 2FA.", variant: "destructive" });
+      toast({
+        title: "ошибка",
+        description:
+          (err as { message?: string }).message || "Не удалось включить 2FA.",
+        variant: "destructive",
+      });
     } finally {
       setTwoFALoading(false);
     }
@@ -199,10 +237,10 @@ export function SecuritySettingsPage() {
     setOtpError("");
     try {
       await api.confirmBrand2FA(otpCode, token);
-      setProfile((p) => p ? { ...p, two_factor_enabled: true } : null);
+      setProfile((p) => (p ? { ...p, two_factor_enabled: true } : null));
       setTwoFAState("idle");
       setOtpCode("");
-      toast({ title: "Успех", description: "2FA включена." });
+      toast({ title: "успех", description: "2FA включена." });
     } catch (err: unknown) {
       setOtpError((err as { message?: string }).message || "Неверный код");
     } finally {
@@ -219,7 +257,12 @@ export function SecuritySettingsPage() {
       setResendCount((c) => c + 1);
       setOtpError("");
     } catch (err: unknown) {
-      toast({ title: "Ошибка", description: (err as { message?: string }).message || "Не удалось отправить код.", variant: "destructive" });
+      toast({
+        title: "ошибка",
+        description:
+          (err as { message?: string }).message || "Не удалось отправить код.",
+        variant: "destructive",
+      });
     } finally {
       setTwoFALoading(false);
     }
@@ -231,12 +274,14 @@ export function SecuritySettingsPage() {
     setDisableError("");
     try {
       await api.disableBrand2FA(disablePassword, token);
-      setProfile((p) => p ? { ...p, two_factor_enabled: false } : null);
+      setProfile((p) => (p ? { ...p, two_factor_enabled: false } : null));
       setTwoFAState("idle");
       setDisablePassword("");
-      toast({ title: "Успех", description: "2FA отключена." });
+      toast({ title: "успех", description: "2FA отключена." });
     } catch (err: unknown) {
-      setDisableError((err as { message?: string }).message || "Неверный пароль");
+      setDisableError(
+        (err as { message?: string }).message || "Неверный пароль",
+      );
     } finally {
       setTwoFALoading(false);
     }
@@ -250,13 +295,19 @@ export function SecuritySettingsPage() {
     try {
       const result = await api.requestBrandDeletion(token);
       toast({
-        title: "Аккаунт будет удалён",
+        title: "аккаунт будет удалён",
         description: `Удаление запланировано: ${result.scheduled_deletion_at}`,
       });
       logout();
       navigate("/portal");
     } catch (err: unknown) {
-      toast({ title: "Ошибка", description: (err as { message?: string }).message || "Не удалось удалить аккаунт.", variant: "destructive" });
+      toast({
+        title: "ошибка",
+        description:
+          (err as { message?: string }).message ||
+          "Не удалось удалить аккаунт.",
+        variant: "destructive",
+      });
     } finally {
       setDeleteLoading(false);
       setDeleteStep("idle");
@@ -265,7 +316,7 @@ export function SecuritySettingsPage() {
   };
 
   if (isLoading) {
-    return <div className="p-6 text-muted-foreground">Загрузка...</div>;
+    return <div className="p-6 text-muted-foreground">загрузка...</div>;
   }
 
   return (
@@ -280,7 +331,13 @@ export function SecuritySettingsPage() {
         <CardContent className="space-y-4">
           <p className="text-sm text-muted-foreground">
             Текущий статус:{" "}
-            <span className={profile?.is_inactive ? "text-destructive font-medium" : "text-green-500 font-medium"}>
+            <span
+              className={
+                profile?.is_inactive
+                  ? "text-destructive font-medium"
+                  : "text-green-500 font-medium"
+              }
+            >
               {profile?.is_inactive ? "Неактивный" : "Активный"}
             </span>
           </p>
@@ -289,14 +346,21 @@ export function SecuritySettingsPage() {
             onClick={() => setInactiveDialogOpen(true)}
             disabled={togglingInactive}
           >
-            {profile?.is_inactive ? "Активировать аккаунт" : "Деактивировать аккаунт"}
+            {profile?.is_inactive
+              ? "Активировать аккаунт"
+              : "Деактивировать аккаунт"}
           </Button>
 
-          <AlertDialog open={inactiveDialogOpen} onOpenChange={setInactiveDialogOpen}>
+          <AlertDialog
+            open={inactiveDialogOpen}
+            onOpenChange={setInactiveDialogOpen}
+          >
             <AlertDialogContent>
               <AlertDialogHeader>
                 <AlertDialogTitle>
-                  {profile?.is_inactive ? "Активировать аккаунт?" : "Деактивировать аккаунт?"}
+                  {profile?.is_inactive
+                    ? "Активировать аккаунт?"
+                    : "Деактивировать аккаунт?"}
                 </AlertDialogTitle>
                 <AlertDialogDescription>
                   {profile?.is_inactive
@@ -306,7 +370,10 @@ export function SecuritySettingsPage() {
               </AlertDialogHeader>
               <AlertDialogFooter>
                 <AlertDialogCancel>Отмена</AlertDialogCancel>
-                <AlertDialogAction onClick={handleToggleInactive} disabled={togglingInactive}>
+                <AlertDialogAction
+                  onClick={handleToggleInactive}
+                  disabled={togglingInactive}
+                >
                   Подтвердить
                 </AlertDialogAction>
               </AlertDialogFooter>
@@ -332,7 +399,9 @@ export function SecuritySettingsPage() {
                 className="mt-1"
               />
               {pwErrors.current_password && (
-                <p className="text-sm text-red-500 mt-1">{pwErrors.current_password}</p>
+                <p className="text-sm text-red-500 mt-1">
+                  {pwErrors.current_password}
+                </p>
               )}
             </div>
             <div>
@@ -345,11 +414,15 @@ export function SecuritySettingsPage() {
                 className="mt-1"
               />
               {pwErrors.new_password && (
-                <p className="text-sm text-red-500 mt-1">{pwErrors.new_password}</p>
+                <p className="text-sm text-red-500 mt-1">
+                  {pwErrors.new_password}
+                </p>
               )}
             </div>
             <div>
-              <Label htmlFor="confirm_new_password">Повторите новый пароль</Label>
+              <Label htmlFor="confirm_new_password">
+                Повторите новый пароль
+              </Label>
               <Input
                 id="confirm_new_password"
                 type="password"
@@ -358,7 +431,9 @@ export function SecuritySettingsPage() {
                 className="mt-1"
               />
               {pwErrors.confirm_new_password && (
-                <p className="text-sm text-red-500 mt-1">{pwErrors.confirm_new_password}</p>
+                <p className="text-sm text-red-500 mt-1">
+                  {pwErrors.confirm_new_password}
+                </p>
               )}
             </div>
             <div className="flex justify-end">
@@ -380,12 +455,22 @@ export function SecuritySettingsPage() {
             <>
               <p className="text-sm text-muted-foreground">
                 Статус 2FA:{" "}
-                <span className={profile?.two_factor_enabled ? "text-green-500 font-medium" : "text-muted-foreground font-medium"}>
+                <span
+                  className={
+                    profile?.two_factor_enabled
+                      ? "text-green-500 font-medium"
+                      : "text-muted-foreground font-medium"
+                  }
+                >
                   {profile?.two_factor_enabled ? "Включена" : "Отключена"}
                 </span>
               </p>
               {profile?.two_factor_enabled ? (
-                <Button variant="outline" onClick={() => setTwoFAState("disabling")} disabled={twoFALoading}>
+                <Button
+                  variant="outline"
+                  onClick={() => setTwoFAState("disabling")}
+                  disabled={twoFALoading}
+                >
                   Отключить 2FA
                 </Button>
               ) : (
@@ -402,12 +487,15 @@ export function SecuritySettingsPage() {
                 Введите 6-значный код из письма для подтверждения.
                 {profile?.email && (
                   <>
-                    {" "}Код отправлен на{" "}
+                    {" "}
+                    Код отправлен на{" "}
                     <span className="font-medium text-foreground">
                       {(() => {
                         const [local, domain] = profile.email.split("@");
                         const visible = local.slice(0, 3);
-                        const masked = "*".repeat(Math.max(local.length - 3, 1));
+                        const masked = "*".repeat(
+                          Math.max(local.length - 3, 1),
+                        );
                         return `${visible}${masked}@${domain}`;
                       })()}
                     </span>
@@ -422,29 +510,43 @@ export function SecuritySettingsPage() {
                   inputMode="numeric"
                   maxLength={6}
                   value={otpCode}
-                  onChange={(e) => { setOtpCode(e.target.value); setOtpError(""); }}
+                  onChange={(e) => {
+                    setOtpCode(e.target.value);
+                    setOtpError("");
+                  }}
                   className="mt-1"
                   placeholder="123456"
                 />
-                {otpError && <p className="text-sm text-red-500 mt-1">{otpError}</p>}
+                {otpError && (
+                  <p className="text-sm text-red-500 mt-1">{otpError}</p>
+                )}
               </div>
               <div className="flex gap-2">
-                <Button onClick={handleConfirm2FA} disabled={twoFALoading || otpCode.length !== 6}>
+                <Button
+                  onClick={handleConfirm2FA}
+                  disabled={twoFALoading || otpCode.length !== 6}
+                >
                   {twoFALoading ? "Проверка..." : "Подтвердить"}
                 </Button>
                 <Button
                   variant="outline"
                   onClick={handleResend2FA}
-                  disabled={twoFALoading || resendCountdown > 0 || resendCount >= 3}
+                  disabled={
+                    twoFALoading || resendCountdown > 0 || resendCount >= 3
+                  }
                 >
                   {resendCountdown > 0
                     ? `Отправить повторно (${resendCountdown}с)`
                     : resendCount >= 3
-                    ? "Лимит отправок исчерпан"
-                    : "Отправить повторно"}
+                      ? "Лимит отправок исчерпан"
+                      : "Отправить повторно"}
                 </Button>
               </div>
-              <Button variant="ghost" size="sm" onClick={() => setTwoFAState("idle")}>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setTwoFAState("idle")}
+              >
                 Отмена
               </Button>
             </div>
@@ -461,16 +563,32 @@ export function SecuritySettingsPage() {
                   id="disable_2fa_password"
                   type="password"
                   value={disablePassword}
-                  onChange={(e) => { setDisablePassword(e.target.value); setDisableError(""); }}
+                  onChange={(e) => {
+                    setDisablePassword(e.target.value);
+                    setDisableError("");
+                  }}
                   className="mt-1"
                 />
-                {disableError && <p className="text-sm text-red-500 mt-1">{disableError}</p>}
+                {disableError && (
+                  <p className="text-sm text-red-500 mt-1">{disableError}</p>
+                )}
               </div>
               <div className="flex gap-2">
-                <Button variant="destructive" onClick={handleDisable2FA} disabled={twoFALoading || !disablePassword}>
+                <Button
+                  variant="destructive"
+                  onClick={handleDisable2FA}
+                  disabled={twoFALoading || !disablePassword}
+                >
                   {twoFALoading ? "Отключение..." : "Подтвердить отключение"}
                 </Button>
-                <Button variant="outline" onClick={() => { setTwoFAState("idle"); setDisablePassword(""); setDisableError(""); }}>
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setTwoFAState("idle");
+                    setDisablePassword("");
+                    setDisableError("");
+                  }}
+                >
                   Отмена
                 </Button>
               </div>
@@ -486,7 +604,8 @@ export function SecuritySettingsPage() {
         </CardHeader>
         <CardContent className="space-y-4">
           <p className="text-sm text-muted-foreground">
-            Это действие нельзя отменить немедленно. У вас есть 30 дней для восстановления.
+            Это действие нельзя отменить немедленно. У вас есть 30 дней для
+            восстановления.
           </p>
           <Button
             variant="destructive"
@@ -496,22 +615,40 @@ export function SecuritySettingsPage() {
             Удалить аккаунт
           </Button>
 
-          <AlertDialog open={deleteStep === "confirm"} onOpenChange={(open) => { if (!open) { setDeleteStep("idle"); setDeleteNameInput(""); } }}>
+          <AlertDialog
+            open={deleteStep === "confirm"}
+            onOpenChange={(open) => {
+              if (!open) {
+                setDeleteStep("idle");
+                setDeleteNameInput("");
+              }
+            }}
+          >
             <AlertDialogContent>
               <AlertDialogHeader>
-                <AlertDialogTitle>Вы уверены, что хотите удалить аккаунт?</AlertDialogTitle>
+                <AlertDialogTitle>
+                  Вы уверены, что хотите удалить аккаунт?
+                </AlertDialogTitle>
                 <AlertDialogDescription asChild>
                   <div className="space-y-2 text-sm text-muted-foreground">
                     <ul className="list-disc list-inside space-y-1">
                       <li>Ваши заказы сохранятся (историческая запись)</li>
                       <li>Ваши товары будут скрыты из маркетплейса</li>
-                      <li>Персональные данные будут удалены в соответствии с законодательством РФ</li>
-                      <li>У вас есть 30 дней для восстановления аккаунта (просто войдите снова)</li>
+                      <li>
+                        Персональные данные будут удалены в соответствии с
+                        законодательством РФ
+                      </li>
+                      <li>
+                        У вас есть 30 дней для восстановления аккаунта (просто
+                        войдите снова)
+                      </li>
                     </ul>
                     <div className="mt-4">
                       <p className="mb-1">
                         Введите название вашего бренда для подтверждения:{" "}
-                        <span className="font-semibold text-foreground">{profile?.name}</span>
+                        <span className="font-semibold text-foreground">
+                          {profile?.name}
+                        </span>
                       </p>
                       <Input
                         value={deleteNameInput}
@@ -524,7 +661,9 @@ export function SecuritySettingsPage() {
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
-                <AlertDialogCancel onClick={() => setDeleteNameInput("")}>Отмена</AlertDialogCancel>
+                <AlertDialogCancel onClick={() => setDeleteNameInput("")}>
+                  Отмена
+                </AlertDialogCancel>
                 <AlertDialogAction
                   onClick={handleDeleteAccount}
                   disabled={deleteLoading || deleteNameInput !== profile?.name}

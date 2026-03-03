@@ -19,11 +19,16 @@ interface OrdersViewProps {
   onTargetConsumed?: () => void;
 }
 
-export function OrdersView({ targetOrderId, onTargetConsumed }: OrdersViewProps) {
+export function OrdersView({
+  targetOrderId,
+  onTargetConsumed,
+}: OrdersViewProps) {
   const [orders, setOrders] = useState<api.OrderSummary[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
-  const [selectedOrder, setSelectedOrder] = useState<api.OrderResponse | null>(null);
+  const [selectedOrder, setSelectedOrder] = useState<api.OrderResponse | null>(
+    null,
+  );
   const [isLoadingDetail, setIsLoadingDetail] = useState(false);
   const { toast } = useToast();
   const { token } = useAuth();
@@ -33,9 +38,9 @@ export function OrdersView({ targetOrderId, onTargetConsumed }: OrdersViewProps)
       if (!token) {
         setIsLoading(false);
         toast({
-          title: "Ошибка",
+          title: "ошибка",
           description:
-            "Токен аутентификации не найден. Пожалуйста, войдите в систему.",
+            "токен аутентификации не найден. пожалуйста, войдите в систему.",
           variant: "destructive",
         });
         return;
@@ -49,8 +54,8 @@ export function OrdersView({ targetOrderId, onTargetConsumed }: OrdersViewProps)
         console.error("Failed to fetch orders:", error);
         const err = error as { message?: string };
         toast({
-          title: "Ошибка",
-          description: err.message || "Не удалось загрузить заказы.",
+          title: "ошибка",
+          description: err.message || "не удалось загрузить заказы.",
           variant: "destructive",
         });
       } finally {
@@ -73,8 +78,8 @@ export function OrdersView({ targetOrderId, onTargetConsumed }: OrdersViewProps)
       .catch((err) => {
         if (!cancelled) {
           toast({
-            title: "Ошибка",
-            description: err.message || "Не удалось загрузить заказ.",
+            title: "ошибка",
+            description: err.message || "не удалось загрузить заказ.",
             variant: "destructive",
           });
         }
@@ -95,10 +100,10 @@ export function OrdersView({ targetOrderId, onTargetConsumed }: OrdersViewProps)
     if (!targetOrderId) return;
     const el = document.querySelector(`[data-order-id="${targetOrderId}"]`);
     if (el) {
-      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      el.classList.add('ring-2', 'ring-brand', 'transition-all');
+      el.scrollIntoView({ behavior: "smooth", block: "center" });
+      el.classList.add("ring-2", "ring-brand", "transition-all");
       const timer = setTimeout(() => {
-        el.classList.remove('ring-2', 'ring-brand');
+        el.classList.remove("ring-2", "ring-brand");
         onTargetConsumed?.();
       }, 2000);
       return () => clearTimeout(timer);
@@ -129,7 +134,7 @@ export function OrdersView({ targetOrderId, onTargetConsumed }: OrdersViewProps)
     }
     return (
       <div className="flex items-center justify-center py-12 text-muted-foreground">
-        Загрузка заказа...
+        загрузка заказа...
       </div>
     );
   }
@@ -149,7 +154,10 @@ export function OrdersView({ targetOrderId, onTargetConsumed }: OrdersViewProps)
           {isLoading ? (
             <div className="space-y-3">
               {Array.from({ length: 3 }).map((_, i) => (
-                <div key={i} className="flex items-center justify-between p-3 rounded-lg">
+                <div
+                  key={i}
+                  className="flex items-center justify-between p-3 rounded-lg"
+                >
                   <div className="space-y-2">
                     <div className="h-4 w-32 bg-muted/30 rounded animate-shimmer bg-[length:200%_100%] bg-gradient-to-r from-muted/20 via-muted/40 to-muted/20" />
                     <div className="h-3 w-24 bg-muted/30 rounded animate-shimmer bg-[length:200%_100%] bg-gradient-to-r from-muted/20 via-muted/40 to-muted/20" />
@@ -161,7 +169,9 @@ export function OrdersView({ targetOrderId, onTargetConsumed }: OrdersViewProps)
           ) : orders.length === 0 ? (
             <div className="flex flex-col items-center py-12 text-center">
               <p className="text-muted-foreground">Заказов пока нет</p>
-              <p className="text-sm text-muted-foreground/70 mt-1">Заказы появятся здесь, когда покупатели оформят покупку.</p>
+              <p className="text-sm text-muted-foreground/70 mt-1">
+                Заказы появятся здесь, когда покупатели оформят покупку.
+              </p>
             </div>
           ) : (
             <div className="space-y-4">

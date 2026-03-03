@@ -1,12 +1,7 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   InputOTP,
   InputOTPGroup,
@@ -21,8 +16,8 @@ import { useNavigate } from "react-router-dom";
 
 const Portal = () => {
   useEffect(() => {
-    document.documentElement.classList.add('dark');
-    return () => document.documentElement.classList.remove('dark');
+    document.documentElement.classList.add("dark");
+    return () => document.documentElement.classList.remove("dark");
   }, []);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -46,7 +41,10 @@ const Portal = () => {
     if (resendCountdown <= 0) return;
     const timer = setInterval(() => {
       setResendCountdown((c) => {
-        if (c <= 1) { clearInterval(timer); return 0; }
+        if (c <= 1) {
+          clearInterval(timer);
+          return 0;
+        }
         return c - 1;
       });
     }, 1000);
@@ -64,11 +62,19 @@ const Portal = () => {
     e.preventDefault();
 
     if (!email.trim()) {
-      toast({ title: "Ошибка", description: "Пожалуйста, введите email бренда.", variant: "destructive" });
+      toast({
+        title: "ошибка",
+        description: "пожалуйста, введите email бренда.",
+        variant: "destructive",
+      });
       return;
     }
     if (!password.trim()) {
-      toast({ title: "Ошибка", description: "Пожалуйста, введите пароль.", variant: "destructive" });
+      toast({
+        title: "ошибка",
+        description: "пожалуйста, введите пароль.",
+        variant: "destructive",
+      });
       return;
     }
 
@@ -77,9 +83,12 @@ const Portal = () => {
       const credentials: BrandLoginRequest = { email: email.trim(), password };
       const response = await api.brandLogin(credentials);
 
-      const resp = response as { otp_required?: boolean; session_token?: string };
+      const resp = response as {
+        otp_required?: boolean;
+        session_token?: string;
+      };
       if (resp.otp_required) {
-        setOtpSessionToken(resp.session_token ?? '');
+        setOtpSessionToken(resp.session_token ?? "");
         setShowOtpStep(true);
         setResendCountdown(60);
         setResendCount(1);
@@ -93,13 +102,19 @@ const Portal = () => {
       const err = error as { message?: string; status?: number };
       let errorMessage = "Произошла ошибка при входе в систему.";
       if (err.status === 401) {
-        errorMessage = "Неверные учетные данные. Проверьте правильность email и пароля.";
+        errorMessage =
+          "Неверные учетные данные. Проверьте правильность email и пароля.";
       } else if (err.status === 0) {
-        errorMessage = "Проблемы с подключением к интернету. Проверьте соединение и попробуйте снова.";
+        errorMessage =
+          "Проблемы с подключением к интернету. Проверьте соединение и попробуйте снова.";
       } else if (err.message) {
         errorMessage = err.message;
       }
-      toast({ title: "Ошибка входа", description: errorMessage, variant: "destructive" });
+      toast({
+        title: "ошибка входа",
+        description: errorMessage,
+        variant: "destructive",
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -129,7 +144,13 @@ const Portal = () => {
       setResendCount((c) => c + 1);
       setOtpError("");
     } catch (error: unknown) {
-      toast({ title: "Ошибка", description: (error as { message?: string }).message || "Не удалось отправить код.", variant: "destructive" });
+      toast({
+        title: "ошибка",
+        description:
+          (error as { message?: string }).message ||
+          "Не удалось отправить код.",
+        variant: "destructive",
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -165,7 +186,10 @@ const Portal = () => {
                   <InputOTP
                     maxLength={6}
                     value={otpCode}
-                    onChange={(value) => { setOtpCode(value); setOtpError(""); }}
+                    onChange={(value) => {
+                      setOtpCode(value);
+                      setOtpError("");
+                    }}
                   >
                     <InputOTPGroup>
                       <InputOTPSlot index={0} />
@@ -178,7 +202,9 @@ const Portal = () => {
                   </InputOTP>
                 </div>
                 {otpError && (
-                  <p className="text-sm text-destructive text-center">{otpError}</p>
+                  <p className="text-sm text-destructive text-center">
+                    {otpError}
+                  </p>
                 )}
                 <Button
                   type="submit"
@@ -193,18 +219,24 @@ const Portal = () => {
                   variant="ghost"
                   className="w-full"
                   onClick={handleResendOtp}
-                  disabled={isSubmitting || resendCountdown > 0 || resendCount >= 3}
+                  disabled={
+                    isSubmitting || resendCountdown > 0 || resendCount >= 3
+                  }
                 >
                   {resendCountdown > 0
                     ? `Отправить повторно (${resendCountdown}с)`
                     : resendCount >= 3
-                    ? "Лимит отправок исчерпан"
-                    : "Отправить повторно"}
+                      ? "Лимит отправок исчерпан"
+                      : "Отправить повторно"}
                 </Button>
                 <div className="text-center">
                   <button
                     type="button"
-                    onClick={() => { setShowOtpStep(false); setOtpCode(""); setOtpError(""); }}
+                    onClick={() => {
+                      setShowOtpStep(false);
+                      setOtpCode("");
+                      setOtpError("");
+                    }}
                     className="text-sm text-muted-foreground hover:text-foreground transition-colors underline"
                   >
                     ← Вернуться к входу
@@ -216,7 +248,7 @@ const Portal = () => {
                 <div>
                   <Input
                     type="email"
-                    placeholder="Email"
+                    placeholder="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     required
@@ -237,7 +269,11 @@ const Portal = () => {
                     onClick={() => setShowPassword(!showPassword)}
                     className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
                   >
-                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    {showPassword ? (
+                      <EyeOff className="h-4 w-4" />
+                    ) : (
+                      <Eye className="h-4 w-4" />
+                    )}
                   </button>
                 </div>
                 <Button

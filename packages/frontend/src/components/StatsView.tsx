@@ -1,5 +1,11 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { RotateCcw, RussianRuble, TrendingDown, TrendingUp, Package } from "lucide-react";
+import {
+  RotateCcw,
+  RussianRuble,
+  TrendingDown,
+  TrendingUp,
+  Package,
+} from "lucide-react";
 import { useEffect, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import * as api from "@/services/api";
@@ -26,9 +32,12 @@ function EmptyStats() {
   return (
     <div className="flex flex-col items-center justify-center py-16 text-center">
       <Package className="h-12 w-12 text-muted-foreground/50 mb-4" />
-      <h3 className="text-lg font-semibold text-foreground mb-1">Пока нет данных</h3>
+      <h3 className="text-lg font-semibold text-foreground mb-1">
+        Пока нет данных
+      </h3>
       <p className="text-sm text-muted-foreground max-w-sm">
-        Статистика появится после первых продаж. Добавьте товары и ожидайте заказов.
+        Статистика появится после первых продаж. Добавьте товары и ожидайте
+        заказов.
       </p>
     </div>
   );
@@ -72,9 +81,9 @@ export function StatsView() {
       if (!token) {
         setIsLoading(false);
         toast({
-          title: "Ошибка",
+          title: "ошибка",
           description:
-            "Токен аутентификации не найден. Пожалуйста, войдите в систему.",
+            "токен аутентификации не найден. пожалуйста, войдите в систему.",
           variant: "destructive",
         });
         return;
@@ -88,8 +97,8 @@ export function StatsView() {
         console.error("Failed to fetch stats:", error);
         const err = error as { message?: string };
         toast({
-          title: "Ошибка",
-          description: err.message || "Не удалось загрузить статистику.",
+          title: "ошибка",
+          description: err.message || "не удалось загрузить статистику.",
           variant: "destructive",
         });
       } finally {

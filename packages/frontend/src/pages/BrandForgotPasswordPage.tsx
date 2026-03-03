@@ -15,8 +15,8 @@ import * as api from "@/services/api";
 
 const BrandForgotPasswordPage = () => {
   useEffect(() => {
-    document.documentElement.classList.add('dark');
-    return () => document.documentElement.classList.remove('dark');
+    document.documentElement.classList.add("dark");
+    return () => document.documentElement.classList.remove("dark");
   }, []);
   const [email, setEmail] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -29,8 +29,8 @@ const BrandForgotPasswordPage = () => {
 
     if (!email.trim()) {
       toast({
-        title: "Ошибка",
-        description: "Пожалуйста, введите email бренда.",
+        title: "ошибка",
+        description: "пожалуйста, введите email бренда.",
         variant: "destructive",
       });
       return;
@@ -55,7 +55,7 @@ const BrandForgotPasswordPage = () => {
       }
 
       toast({
-        title: "Ошибка",
+        title: "ошибка",
         description: errorMessage,
         variant: "destructive",
       });
@@ -148,7 +148,7 @@ const BrandForgotPasswordPage = () => {
               <div>
                 <Input
                   type="email"
-                  placeholder="Email бренда"
+                  placeholder="email бренда"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
@@ -185,6 +185,3 @@ const BrandForgotPasswordPage = () => {
 };
 
 export default BrandForgotPasswordPage;
-
-
-

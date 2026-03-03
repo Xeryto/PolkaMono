@@ -48,7 +48,7 @@ export function ProductsView() {
     async (token: string) => {
       if (!token) {
         throw new Error(
-          "Токен аутентификации не найден. Пожалуйста, войдите в систему.",
+          "токен аутентификации не найден. пожалуйста, войдите в систему.",
         );
       }
       return await api.getBrandProducts(token);
@@ -58,8 +58,8 @@ export function ProductsView() {
       retries: 2,
       onError: (error) => {
         toast({
-          title: "Ошибка",
-          description: error.message || "Не удалось загрузить товары.",
+          title: "ошибка",
+          description: error.message || "не удалось загрузить товары.",
           variant: "destructive",
         });
       },
@@ -70,7 +70,7 @@ export function ProductsView() {
     if (token) {
       fetchProducts(token);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
 
   const handleProductClick = (product: api.ProductResponse) => {
@@ -83,12 +83,15 @@ export function ProductsView() {
       fetchProducts(token); // Re-fetch products after update
     }
     toast({
-      title: "Успех",
-      description: "Товар успешно обновлен.",
+      title: "успех",
+      description: "товар успешно обновлен.",
     });
   };
 
-  const handleRemoveSaleClick = (e: React.MouseEvent, product: api.ProductResponse) => {
+  const handleRemoveSaleClick = (
+    e: React.MouseEvent,
+    product: api.ProductResponse,
+  ) => {
     e.stopPropagation();
     setRemoveSaleProduct(product);
   };
@@ -96,14 +99,18 @@ export function ProductsView() {
   const confirmRemoveSale = async () => {
     if (!token || !removeSaleProduct) return;
     try {
-      await api.updateProduct(removeSaleProduct.id, { sale_price: null, sale_type: null }, token);
+      await api.updateProduct(
+        removeSaleProduct.id,
+        { sale_price: null, sale_type: null },
+        token,
+      );
       fetchProducts(token);
-      toast({ title: 'Скидка удалена' });
+      toast({ title: "Скидка удалена" });
     } catch {
       toast({
-        title: 'Ошибка',
-        description: 'Не удалось удалить скидку.',
-        variant: 'destructive',
+        title: "ошибка",
+        description: "не удалось удалить скидку.",
+        variant: "destructive",
       });
     } finally {
       setRemoveSaleProduct(null);
@@ -125,7 +132,7 @@ export function ProductsView() {
             error={error}
             onRetry={retryFetchProducts}
             timeout={15000}
-            message="Загрузка товаров..."
+            message="загрузка товаров..."
           />
 
           {!isLoading && !error && products && (
@@ -172,7 +179,7 @@ export function ProductsView() {
                   <div className="flex flex-col items-end gap-1">
                     {product.sale_price != null && (
                       <span className="text-xs bg-red-900/20 text-red-300 px-2 py-0.5 rounded-full">
-                        {product.sale_type === 'percent'
+                        {product.sale_type === "percent"
                           ? `-${product.sale_price}%`
                           : `${formatCurrency(product.sale_price)}`}
                       </span>
@@ -180,14 +187,23 @@ export function ProductsView() {
                     {product.sale_price != null ? (
                       <div className="flex flex-col items-end">
                         <p className="font-bold text-red-400">
-                          {product.sale_type === 'percent'
-                            ? formatCurrency(Math.round(product.price * (1 - product.sale_price / 100)))
+                          {product.sale_type === "percent"
+                            ? formatCurrency(
+                                Math.round(
+                                  product.price *
+                                    (1 - product.sale_price / 100),
+                                ),
+                              )
                             : formatCurrency(product.sale_price)}
                         </p>
-                        <p className="text-xs text-muted-foreground line-through">{formatCurrency(product.price)}</p>
+                        <p className="text-xs text-muted-foreground line-through">
+                          {formatCurrency(product.price)}
+                        </p>
                       </div>
                     ) : (
-                      <p className="font-bold text-foreground">{formatCurrency(product.price)}</p>
+                      <p className="font-bold text-foreground">
+                        {formatCurrency(product.price)}
+                      </p>
                     )}
                     {product.sale_price != null && (
                       <button
@@ -214,17 +230,25 @@ export function ProductsView() {
         />
       )}
 
-      <AlertDialog open={!!removeSaleProduct} onOpenChange={(open) => { if (!open) setRemoveSaleProduct(null); }}>
+      <AlertDialog
+        open={!!removeSaleProduct}
+        onOpenChange={(open) => {
+          if (!open) setRemoveSaleProduct(null);
+        }}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Убрать скидку?</AlertDialogTitle>
             <AlertDialogDescription>
-              Скидка на товар «{removeSaleProduct?.name}» будет удалена. Покупатели увидят только оригинальную цену.
+              Скидка на товар «{removeSaleProduct?.name}» будет удалена.
+              Покупатели увидят только оригинальную цену.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Отмена</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmRemoveSale}>Убрать скидку</AlertDialogAction>
+            <AlertDialogAction onClick={confirmRemoveSale}>
+              Убрать скидку
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

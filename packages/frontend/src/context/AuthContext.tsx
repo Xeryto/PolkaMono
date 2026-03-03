@@ -82,7 +82,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
         setIsAuthenticated(true);
       } else {
         throw new Error(
-          "Учетная запись не является брендом. Пожалуйста, используйте правильные учетные данные бренда."
+          "учетная запись не является брендом. пожалуйста, используйте правильные учетные данные бренда.",
         );
       }
     } catch (error) {
@@ -92,7 +92,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
       if (error instanceof Error) {
         throw error;
       } else {
-        throw new Error("Произошла неизвестная ошибка при входе в систему.");
+        throw new Error("произошла неизвестная ошибка при входе в систему.");
       }
     } finally {
       setLoading(false);

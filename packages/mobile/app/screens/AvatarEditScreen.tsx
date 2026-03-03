@@ -16,7 +16,7 @@ import { Image } from "expo-image";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import * as ImagePicker from "expo-image-picker";
 import * as ImageManipulator from "expo-image-manipulator";
-import * as FileSystem from "expo-file-system";
+import { Paths, File } from "expo-file-system";
 import BackIcon from "../components/svg/BackIcon";
 import Me from "../components/svg/Me";
 import { ANIMATION_DURATIONS, ANIMATION_DELAYS } from "../lib/animations";
@@ -51,7 +51,7 @@ interface AvatarEditScreenProps {
     avatarUrl: string,
     avatarUrlFull?: string | null,
     avatarCrop?: AvatarCropJson,
-    avatarTransform?: string
+    avatarTransform?: string,
   ) => void | Promise<void>;
 }
 
@@ -67,7 +67,7 @@ const AvatarEditScreen: React.FC<AvatarEditScreenProps> = ({
   const styles = useMemo(() => createStyles(theme), [theme]);
 
   const [selectedImage, setSelectedImage] = useState<string | null>(
-    currentAvatarFull || currentAvatar || null
+    currentAvatarFull || currentAvatar || null,
   );
   const [isLoading, setIsLoading] = useState(false);
   const scale = useRef(new RNAnimated.Value(1)).current;
@@ -84,12 +84,17 @@ const AvatarEditScreen: React.FC<AvatarEditScreenProps> = ({
   // Restore pan/zoom from device-independent transform (recompute pixels from container size).
   useEffect(() => {
     const transform = parseAvatarTransform(currentAvatarTransform);
-    if (!selectedImage || !transform || selectedImage !== (currentAvatarFull || currentAvatar || null)) return;
-    const { scale: s, translateX: tx, translateY: ty } = transformToPixels(
-      transform,
-      containerWidth,
-      containerHeight
-    );
+    if (
+      !selectedImage ||
+      !transform ||
+      selectedImage !== (currentAvatarFull || currentAvatar || null)
+    )
+      return;
+    const {
+      scale: s,
+      translateX: tx,
+      translateY: ty,
+    } = transformToPixels(transform, containerWidth, containerHeight);
     lastScale.current = s;
     lastTranslate.current = { x: tx, y: ty };
     scale.setValue(s);
@@ -105,7 +110,7 @@ const AvatarEditScreen: React.FC<AvatarEditScreenProps> = ({
       if (permissionResult.granted === false) {
         Alert.alert(
           "разрешение необходимо",
-          "необходимо разрешение для доступа к фотографиям."
+          "необходимо разрешение для доступа к фотографиям.",
         );
         return;
       }
@@ -128,7 +133,7 @@ const AvatarEditScreen: React.FC<AvatarEditScreenProps> = ({
       }
     } catch (error) {
       log.error("Error picking image:", error);
-      Alert.alert("Ошибка", "Не удалось выбрать изображение.");
+      Alert.alert("ошибка", "не удалось выбрать изображение.");
     }
   };
 
@@ -164,7 +169,7 @@ const AvatarEditScreen: React.FC<AvatarEditScreenProps> = ({
           const touch2 = evt.nativeEvent.touches[1];
           const distance = Math.sqrt(
             Math.pow(touch2.pageX - touch1.pageX, 2) +
-              Math.pow(touch2.pageY - touch1.pageY, 2)
+              Math.pow(touch2.pageY - touch1.pageY, 2),
           );
           lastPinchDistance.current = distance;
         }
@@ -178,14 +183,14 @@ const AvatarEditScreen: React.FC<AvatarEditScreenProps> = ({
           const touch2 = touches[1];
           const distance = Math.sqrt(
             Math.pow(touch2.pageX - touch1.pageX, 2) +
-              Math.pow(touch2.pageY - touch1.pageY, 2)
+              Math.pow(touch2.pageY - touch1.pageY, 2),
           );
 
           if (lastPinchDistance.current !== null) {
             const scaleChange = distance / lastPinchDistance.current;
             const newScale = Math.max(
               1,
-              Math.min(3, pinchStartScale.current * scaleChange)
+              Math.min(3, pinchStartScale.current * scaleChange),
             );
 
             // Constrain translation for new scale
@@ -195,11 +200,11 @@ const AvatarEditScreen: React.FC<AvatarEditScreenProps> = ({
 
             const constrainedX = Math.max(
               -constraints.maxX,
-              Math.min(constraints.maxX, currentX)
+              Math.min(constraints.maxX, currentX),
             );
             const constrainedY = Math.max(
               -constraints.maxY,
-              Math.min(constraints.maxY, currentY)
+              Math.min(constraints.maxY, currentY),
             );
 
             scale.setValue(newScale);
@@ -224,11 +229,11 @@ const AvatarEditScreen: React.FC<AvatarEditScreenProps> = ({
             // Constrain movement to keep image within crop bounds
             newX = Math.max(
               -constraints.maxX,
-              Math.min(constraints.maxX, newX)
+              Math.min(constraints.maxX, newX),
             );
             newY = Math.max(
               -constraints.maxY,
-              Math.min(constraints.maxY, newY)
+              Math.min(constraints.maxY, newY),
             );
 
             translateX.setValue(newX);
@@ -244,7 +249,7 @@ const AvatarEditScreen: React.FC<AvatarEditScreenProps> = ({
         lastPinchDistance.current = null;
         pinchStartScale.current = lastScale.current;
       },
-    })
+    }),
   ).current;
 
   const handleConfirm = async () => {
@@ -260,11 +265,15 @@ const AvatarEditScreen: React.FC<AvatarEditScreenProps> = ({
 
       // ImageManipulator only accepts local URIs; download remote (e.g. existing S3 avatar) to cache first
       let imageUriForProcessing = selectedImage;
-      const isRemote = selectedImage.startsWith("http://") || selectedImage.startsWith("https://");
+      const isRemote =
+        selectedImage.startsWith("http://") ||
+        selectedImage.startsWith("https://");
       if (isRemote) {
-        const localUri = `${FileSystem.cacheDirectory}avatar-edit-${Date.now()}.jpg`;
-        await FileSystem.downloadAsync(selectedImage, localUri);
-        imageUriForProcessing = localUri;
+        const cachedFile = await File.downloadFileAsync(
+          selectedImage,
+          new File(Paths.cache, `avatar-edit-${Date.now()}.jpg`),
+        );
+        imageUriForProcessing = cachedFile.uri;
       }
 
       // Get original image dimensions
@@ -273,9 +282,9 @@ const AvatarEditScreen: React.FC<AvatarEditScreenProps> = ({
           RNImage.getSize(
             imageUriForProcessing,
             (width, height) => resolve({ width, height }),
-            (error) => reject(error)
+            (error) => reject(error),
           );
-        }
+        },
       );
 
       const { width: originalWidth, height: originalHeight } = imageInfo;
@@ -298,10 +307,12 @@ const AvatarEditScreen: React.FC<AvatarEditScreenProps> = ({
       // View center in resized image coords (what the user sees as center of the circle)
       const centerXResized =
         resizeWidth / 2 -
-        (tx * minDim * resizeWidth) / (originalWidth * userScale * imageDisplaySize);
+        (tx * minDim * resizeWidth) /
+          (originalWidth * userScale * imageDisplaySize);
       const centerYResized =
         resizeHeight / 2 -
-        (ty * minDim * resizeHeight) / (originalHeight * userScale * imageDisplaySize);
+        (ty * minDim * resizeHeight) /
+          (originalHeight * userScale * imageDisplaySize);
 
       // Visible content size: wrapper is IMAGE_DISPLAY_SIZE, scaled by userScale, clipped by circle (CROP_SIZE).
       // The scaled wrapper size is IMAGE_DISPLAY_SIZE * userScale.
@@ -310,20 +321,26 @@ const AvatarEditScreen: React.FC<AvatarEditScreenProps> = ({
       // In wrapper coords (before scaling): visible = min(IMAGE_DISPLAY_SIZE * userScale, CROP_SIZE) / userScale
       // = min(IMAGE_DISPLAY_SIZE, CROP_SIZE / userScale)
       const scaledWrapperSize = imageDisplaySize * userScale;
-      const visibleInWrapperCoords = Math.min(scaledWrapperSize, cropSize) / userScale;
+      const visibleInWrapperCoords =
+        Math.min(scaledWrapperSize, cropSize) / userScale;
 
       // Convert visible size from wrapper coords to resized image coords
       // Wrapper shows image with cover: scale = imageDisplaySize/minDim
       // So visible in original = visibleInWrapperCoords * minDim / imageDisplaySize
       // In resized: visibleW = that * (resizeWidth/origW), visibleH = that * (resizeHeight/origH)
       const visibleInResizedW =
-        (visibleInWrapperCoords * minDim * resizeWidth) / (imageDisplaySize * originalWidth);
+        (visibleInWrapperCoords * minDim * resizeWidth) /
+        (imageDisplaySize * originalWidth);
       const visibleInResizedH =
-        (visibleInWrapperCoords * minDim * resizeHeight) / (imageDisplaySize * originalHeight);
+        (visibleInWrapperCoords * minDim * resizeHeight) /
+        (imageDisplaySize * originalHeight);
 
       // Always capture exactly the visible square, then scale to 600x600 so output matches what user sees.
       const visibleSquare = Math.min(visibleInResizedW, visibleInResizedH);
-      const cropSquareSize = Math.max(1, Math.min(resizeWidth, resizeHeight, Math.round(visibleSquare)));
+      const cropSquareSize = Math.max(
+        1,
+        Math.min(resizeWidth, resizeHeight, Math.round(visibleSquare)),
+      );
 
       let originX = centerXResized - cropSquareSize / 2;
       let originY = centerYResized - cropSquareSize / 2;
@@ -354,7 +371,7 @@ const AvatarEditScreen: React.FC<AvatarEditScreenProps> = ({
             resize: { width: 600, height: 600 },
           },
         ],
-        { compress: 0.9, format: ImageManipulator.SaveFormat.JPEG }
+        { compress: 0.9, format: ImageManipulator.SaveFormat.JPEG },
       );
 
       // Normalized crop in full image [0..1] for re-editing (pan out)
@@ -375,7 +392,7 @@ const AvatarEditScreen: React.FC<AvatarEditScreenProps> = ({
         tx,
         ty,
         containerWidth,
-        containerHeight
+        containerHeight,
       );
       const avatarTransform = JSON.stringify(normalizedTransform);
 
@@ -383,7 +400,8 @@ const AvatarEditScreen: React.FC<AvatarEditScreenProps> = ({
       let fullLocalUri: string | null = null;
       if (
         !isRemote &&
-        (imageUriForProcessing.startsWith("file://") || imageUriForProcessing.startsWith("file:"))
+        (imageUriForProcessing.startsWith("file://") ||
+          imageUriForProcessing.startsWith("file:"))
       ) {
         const { width: ow, height: oh } = imageInfo;
         const scaleFull = ow > oh ? maxEdge / ow : maxEdge / oh;
@@ -392,14 +410,14 @@ const AvatarEditScreen: React.FC<AvatarEditScreenProps> = ({
         const resized = await ImageManipulator.manipulateAsync(
           imageUriForProcessing,
           [{ resize: { width: w, height: h } }],
-          { compress: 0.9, format: ImageManipulator.SaveFormat.JPEG }
+          { compress: 0.9, format: ImageManipulator.SaveFormat.JPEG },
         );
         fullLocalUri = resized.uri;
       }
 
       saveCalled = true;
       await Promise.resolve(
-        onSave(manipulatedImage.uri, fullLocalUri, avatarCrop, avatarTransform)
+        onSave(manipulatedImage.uri, fullLocalUri, avatarCrop, avatarTransform),
       );
     } catch (error) {
       log.error("Error saving avatar:", error);
@@ -415,7 +433,7 @@ const AvatarEditScreen: React.FC<AvatarEditScreenProps> = ({
       <Animated.View
         style={styles.backButton}
         entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
-          ANIMATION_DELAYS.LARGE
+          ANIMATION_DELAYS.LARGE,
         )}
       >
         <TouchableOpacity onPress={onBack} disabled={isLoading}>
@@ -425,7 +443,7 @@ const AvatarEditScreen: React.FC<AvatarEditScreenProps> = ({
 
       <Animated.View
         entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
-          ANIMATION_DELAYS.EXTENDED
+          ANIMATION_DELAYS.EXTENDED,
         )}
         style={styles.content}
       >
