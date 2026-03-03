@@ -93,7 +93,7 @@ export function DashboardHeader({ onViewChange, onTargetOrder }: DashboardHeader
           aria-label="Открыть меню"
         />
         <h1 className="text-lg sm:text-xl font-bold text-foreground truncate">
-          Панель управления Polka
+          панель управления Polka
         </h1>
       </div>
 

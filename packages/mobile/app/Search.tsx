@@ -201,7 +201,7 @@ const SearchResultItem = memo(
             />
           ) : (
             <View style={[styles.itemImage, styles.noProductImagePlaceholder]}>
-              <Text style={styles.noProductImageText}>Нет изображения</Text>
+              <Text style={styles.noProductImageText}>нет изображения</Text>
             </View>
           )}
           <View style={styles.itemInfo}>
@@ -972,7 +972,7 @@ const Search = ({ navigation }: SearchProps) => {
                   style={styles.okButton}
                   onPress={() => setActiveFilter(null)}
                 >
-                  <Text style={styles.okButtonText}>OK</Text>
+                  <Text style={styles.okButtonText}>ок</Text>
                 </TouchableOpacity>
               </View>
               <ScrollView style={styles.scrollView}>

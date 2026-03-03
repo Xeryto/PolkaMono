@@ -69,7 +69,7 @@ const SignupScreen: React.FC<SignupScreenProps> = ({ onSignup, onBack }) => {
   const [isCheckingUsername, setIsCheckingUsername] = useState(false);
   const [isCheckingEmail, setIsCheckingEmail] = useState(false);
   const [usernameAvailable, setUsernameAvailable] = useState<boolean | null>(
-    null
+    null,
   );
   const [emailAvailable, setEmailAvailable] = useState<boolean | null>(null);
 
@@ -88,7 +88,7 @@ const SignupScreen: React.FC<SignupScreenProps> = ({ onSignup, onBack }) => {
         setIsCheckingUsername(true);
         try {
           const available = await api.checkUsernameAvailability(
-            username.trim()
+            username.trim(),
           );
           setUsernameAvailable(available);
           if (!available) {
@@ -219,7 +219,7 @@ const SignupScreen: React.FC<SignupScreenProps> = ({ onSignup, onBack }) => {
 
     // Validate password
     if (!password) {
-      newErrors.password = "Пароль обязателен";
+      newErrors.password = "пароль обязателен";
       valid = false;
     } else if (password.length < 8) {
       newErrors.password = "пароль должен быть не менее 8 символов";
@@ -347,7 +347,7 @@ const SignupScreen: React.FC<SignupScreenProps> = ({ onSignup, onBack }) => {
               <Animated.View
                 style={styles.inputShadow}
                 entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
-                  ANIMATION_DELAYS.SMALL
+                  ANIMATION_DELAYS.SMALL,
                 )}
               >
                 <View style={styles.inputContainer}>
@@ -393,7 +393,7 @@ const SignupScreen: React.FC<SignupScreenProps> = ({ onSignup, onBack }) => {
               <Animated.View
                 style={styles.inputShadow}
                 entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
-                  ANIMATION_DELAYS.STANDARD
+                  ANIMATION_DELAYS.STANDARD,
                 )}
               >
                 <View style={styles.inputContainer}>
@@ -441,7 +441,7 @@ const SignupScreen: React.FC<SignupScreenProps> = ({ onSignup, onBack }) => {
               <Animated.View
                 style={styles.inputShadow}
                 entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
-                  ANIMATION_DELAYS.MEDIUM
+                  ANIMATION_DELAYS.MEDIUM,
                 )}
               >
                 <View style={styles.inputContainer}>
@@ -475,7 +475,7 @@ const SignupScreen: React.FC<SignupScreenProps> = ({ onSignup, onBack }) => {
               <Animated.View
                 style={styles.inputShadow}
                 entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
-                  ANIMATION_DELAYS.LARGE
+                  ANIMATION_DELAYS.LARGE,
                 )}
               >
                 <View style={styles.inputContainer}>
@@ -519,7 +519,7 @@ const SignupScreen: React.FC<SignupScreenProps> = ({ onSignup, onBack }) => {
                       : null,
                   ]}
                   entering={FadeInDown.duration(
-                    ANIMATION_DURATIONS.MEDIUM
+                    ANIMATION_DURATIONS.MEDIUM,
                   ).delay(ANIMATION_DELAYS.EXTENDED)}
                 >
                   {isLoading ? (
@@ -535,7 +535,7 @@ const SignupScreen: React.FC<SignupScreenProps> = ({ onSignup, onBack }) => {
               <Animated.View
                 style={styles.termsContainer}
                 entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
-                  ANIMATION_DELAYS.VERY_LARGE
+                  ANIMATION_DELAYS.VERY_LARGE,
                 )}
               >
                 <View style={styles.termsRow}>
@@ -544,17 +544,17 @@ const SignupScreen: React.FC<SignupScreenProps> = ({ onSignup, onBack }) => {
                   </TouchableOpacity>
 
                   <Text style={styles.termsText}>
-                    Соглашаюсь с{" "}
+                    соглашаюсь с{" "}
                     <Text
                       style={styles.termsLink}
                       onPress={() =>
                         Alert.alert(
                           "условия",
-                          "здесь будут отображены условия использования."
+                          "здесь будут отображены условия использования.",
                         )
                       }
                     >
-                      Условиями использования
+                      условиями использования
                     </Text>{" "}
                     и{" "}
                     <Text
@@ -562,11 +562,11 @@ const SignupScreen: React.FC<SignupScreenProps> = ({ onSignup, onBack }) => {
                       onPress={() =>
                         Alert.alert(
                           "политика",
-                          "здесь будет отображена политика конфиденциальности."
+                          "здесь будет отображена политика конфиденциальности.",
                         )
                       }
                     >
-                      Политикой конфиденциальности
+                      политикой конфиденциальности
                     </Text>
                   </Text>
 
@@ -586,15 +586,15 @@ const SignupScreen: React.FC<SignupScreenProps> = ({ onSignup, onBack }) => {
               <Animated.View
                 style={styles.socialContainer}
                 entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
-                  ANIMATION_DELAYS.VERY_LARGE + ANIMATION_DELAYS.SMALL
+                  ANIMATION_DELAYS.VERY_LARGE + ANIMATION_DELAYS.SMALL,
                 )}
               >
                 <TouchableOpacity
                   style={styles.vkButton}
                   onPress={() =>
                     Alert.alert(
-                      "VK Вход",
-                      "VK вход будет реализован в будущем обновлении."
+                      "VK вход",
+                      "VK вход будет реализован в будущем обновлении.",
                     )
                   }
                 >
@@ -615,22 +615,22 @@ const SignupScreen: React.FC<SignupScreenProps> = ({ onSignup, onBack }) => {
       >
         <View style={styles.modalContainer}>
           <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Условия и Политика</Text>
+            <Text style={styles.modalTitle}>условия и политика</Text>
             <ScrollView style={styles.modalScroll}>
               <Text style={styles.modalText}>
-                <Text style={styles.modalSubtitle}>Условия использования:</Text>
+                <Text style={styles.modalSubtitle}>условия использования:</Text>
                 {"\n\n"}
-                Используя наше приложение, вы соглашаетесь соблюдать данные
-                условия использования. Приложение предоставляется "как есть" без
-                каких-либо гарантий. Мы оставляем за собой право изменять
+                используя наше приложение, вы соглашаетесь соблюдать данные
+                условия использования. приложение предоставляется "как есть" без
+                каких-либо гарантий. мы оставляем за собой право изменять
                 условия в любое время.{"\n\n"}
                 <Text style={styles.modalSubtitle}>
-                  Политика конфиденциальности:
+                  политика конфиденциальности:
                 </Text>
                 {"\n\n"}
-                Мы собираем только необходимые данные для функционирования
-                приложения. Ваши личные данные защищены и не передаются третьим
-                лицам без вашего согласия. Вы можете запросить удаление своих
+                мы собираем только необходимые данные для функционирования
+                приложения. ваши личные данные защищены и не передаются третьим
+                лицам без вашего согласия. вы можете запросить удаление своих
                 данных в любое время.
               </Text>
             </ScrollView>
@@ -638,7 +638,7 @@ const SignupScreen: React.FC<SignupScreenProps> = ({ onSignup, onBack }) => {
               style={styles.modalCloseButton}
               onPress={() => setShowTermsModal(false)}
             >
-              <Text style={styles.modalCloseButtonText}>Закрыть</Text>
+              <Text style={styles.modalCloseButtonText}>закрыть</Text>
             </TouchableOpacity>
           </View>
         </View>

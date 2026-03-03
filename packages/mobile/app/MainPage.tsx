@@ -29,10 +29,7 @@ import Animated, {
   withTiming,
   useAnimatedStyle,
 } from "react-native-reanimated";
-import {
-  ANIMATION_DURATIONS,
-  ANIMATION_DELAYS,
-} from "./lib/animations";
+import { ANIMATION_DURATIONS, ANIMATION_DELAYS } from "./lib/animations";
 import { useTheme } from "./lib/ThemeContext";
 import type { ThemeColors } from "./lib/theme";
 
@@ -93,7 +90,9 @@ const fetchMoreCards = async (count: number = 2): Promise<CardItem[]> => {
   try {
     const products = await apiWrapper.getUserRecommendations("MainPage");
     if (!products || !Array.isArray(products)) return [];
-    return products.slice(0, count).map((p: api.Product, i: number) => mapProductToCardItem(p, i));
+    return products
+      .slice(0, count)
+      .map((p: api.Product, i: number) => mapProductToCardItem(p, i));
   } catch (error: any) {
     if (error?.message?.toLowerCase().includes("invalid token")) {
       Alert.alert("сессия истекла", "пожалуйста, войдите в аккаунт снова.");
@@ -129,7 +128,9 @@ const MainPage = ({ navigation, route }: MainPageProps) => {
         navigation.navigate("Cart");
       }
     },
-    initialCards: persistentCardStorage.initialized ? persistentCardStorage.cards : undefined,
+    initialCards: persistentCardStorage.initialized
+      ? persistentCardStorage.cards
+      : undefined,
     onCardsChange: (cards) => {
       persistentCardStorage.cards = cards;
       persistentCardStorage.initialized = true;
@@ -173,7 +174,9 @@ const MainPage = ({ navigation, route }: MainPageProps) => {
         log.error("Error handling deep link:", error);
       }
     };
-    Linking.getInitialURL().then((url) => { if (url) handleDeepLink(url); });
+    Linking.getInitialURL().then((url) => {
+      if (url) handleDeepLink(url);
+    });
     const sub = Linking.addEventListener("url", (e) => handleDeepLink(e.url));
     return () => sub.remove();
   }, []);
@@ -204,7 +207,10 @@ const MainPage = ({ navigation, route }: MainPageProps) => {
     if (route?.params?.refreshCards && route?.params?.refreshTimestamp) {
       deck.hardRefresh();
       setTimeout(() => {
-        navigation.setParams?.({ refreshCards: undefined, refreshTimestamp: undefined });
+        navigation.setParams?.({
+          refreshCards: undefined,
+          refreshTimestamp: undefined,
+        });
       }, 100);
     }
   }, [route?.params?.refreshTimestamp]);
@@ -212,10 +218,24 @@ const MainPage = ({ navigation, route }: MainPageProps) => {
   // ─── Back-side button handlers ───────────────────────────────────────
   const makePressHandlers = (scale: RNAnimated.Value) => ({
     onPressIn: () => {
-      RNAnimated.timing(scale, { toValue: 0.85, duration: 80, useNativeDriver: true, easing: require("react-native").Easing.inOut(require("react-native").Easing.ease) }).start();
+      RNAnimated.timing(scale, {
+        toValue: 0.85,
+        duration: 80,
+        useNativeDriver: true,
+        easing: require("react-native").Easing.inOut(
+          require("react-native").Easing.ease,
+        ),
+      }).start();
     },
     onPressOut: () => {
-      RNAnimated.timing(scale, { toValue: 1, duration: 150, useNativeDriver: true, easing: require("react-native").Easing.inOut(require("react-native").Easing.ease) }).start();
+      RNAnimated.timing(scale, {
+        toValue: 1,
+        duration: 150,
+        useNativeDriver: true,
+        easing: require("react-native").Easing.inOut(
+          require("react-native").Easing.ease,
+        ),
+      }).start();
     },
   });
 
@@ -229,8 +249,12 @@ const MainPage = ({ navigation, route }: MainPageProps) => {
   };
 
   const handleCancelBackSizeSelection = () => {
-    backSizePanelWidth.value = withTiming(SIZE_PANEL_CLOSED_WIDTH, { duration: 220 });
-    requestAnimationFrame(() => setTimeout(() => setShowBackSizeSelection(false), 220));
+    backSizePanelWidth.value = withTiming(SIZE_PANEL_CLOSED_WIDTH, {
+      duration: 220,
+    });
+    requestAnimationFrame(() =>
+      setTimeout(() => setShowBackSizeSelection(false), 220),
+    );
   };
 
   const resetToBackButtons = () => {
@@ -247,7 +271,10 @@ const MainPage = ({ navigation, route }: MainPageProps) => {
       setIsLinkCopied(true);
       setShowLinkCopiedPopup(true);
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-      setTimeout(() => { setIsLinkCopied(false); setShowLinkCopiedPopup(false); }, 2000);
+      setTimeout(() => {
+        setIsLinkCopied(false);
+        setShowLinkCopiedPopup(false);
+      }, 2000);
     } catch (error) {
       log.error("Error copying link:", error);
     }
@@ -259,7 +286,7 @@ const MainPage = ({ navigation, route }: MainPageProps) => {
     const productUrl = `polka://product/${card.id}`;
     try {
       await Share.share({
-        message: `Посмотрите ${card.name} от ${card.brand_name} на Полке!\n${productUrl}`,
+        message: `посмотрите ${card.name} от ${card.brand_name} на полке!\n${productUrl}`,
         title: card.name,
         url: productUrl,
       });
@@ -290,7 +317,7 @@ const MainPage = ({ navigation, route }: MainPageProps) => {
             exiting={FadeOutDown.duration(200)}
             style={cardStyles.linkCopiedPopup}
           >
-            <Text style={cardStyles.linkCopiedText}>Ссылка скопирована</Text>
+            <Text style={cardStyles.linkCopiedText}>ссылка скопирована</Text>
           </Animated.View>
         )}
         <View style={cardStyles.backIconSlotsRow}>
@@ -300,27 +327,51 @@ const MainPage = ({ navigation, route }: MainPageProps) => {
               {...backCartHandlers}
               onPress={handleBackCartPress}
             >
-              <RNAnimated.View style={{ transform: [{ scale: backCartButtonScale }] }}>
+              <RNAnimated.View
+                style={{ transform: [{ scale: backCartButtonScale }] }}
+              >
                 <Cart2 width={33} height={33} />
               </RNAnimated.View>
             </Pressable>
           </View>
           <View style={cardStyles.backIconSpacer} />
-          <Pressable style={cardStyles.backIconBox} {...backLinkHandlers} onPress={handleLinkPress}>
-            <RNAnimated.View style={{ transform: [{ scale: backLinkButtonScale }] }}>
-              {isLinkCopied ? <LinkPressed width={33} height={33} /> : <Link width={33} height={33} />}
+          <Pressable
+            style={cardStyles.backIconBox}
+            {...backLinkHandlers}
+            onPress={handleLinkPress}
+          >
+            <RNAnimated.View
+              style={{ transform: [{ scale: backLinkButtonScale }] }}
+            >
+              {isLinkCopied ? (
+                <LinkPressed width={33} height={33} />
+              ) : (
+                <Link width={33} height={33} />
+              )}
             </RNAnimated.View>
           </Pressable>
           <View style={cardStyles.backIconSpacer} />
-          <Pressable style={cardStyles.backIconBox} {...backShareHandlers} onPress={handleSharePress}>
-            <RNAnimated.View style={{ transform: [{ scale: backShareButtonScale }] }}>
+          <Pressable
+            style={cardStyles.backIconBox}
+            {...backShareHandlers}
+            onPress={handleSharePress}
+          >
+            <RNAnimated.View
+              style={{ transform: [{ scale: backShareButtonScale }] }}
+            >
               <ShareIcon width={33} height={33} />
             </RNAnimated.View>
           </Pressable>
           <View style={cardStyles.backIconSpacer} />
-          <View style={cardStyles.backIconBoxWrapper} pointerEvents={showBackSizeSelection ? "none" : "auto"}>
+          <View
+            style={cardStyles.backIconBoxWrapper}
+            pointerEvents={showBackSizeSelection ? "none" : "auto"}
+          >
             <View style={cardStyles.backIconBox}>
-              <HeartButton isLiked={isLiked} onToggleLike={() => deck.toggleLike(index)} />
+              <HeartButton
+                isLiked={isLiked}
+                onToggleLike={() => deck.toggleLike(index)}
+              />
             </View>
             <Pressable
               style={StyleSheet.absoluteFill}
@@ -353,8 +404,12 @@ const MainPage = ({ navigation, route }: MainPageProps) => {
                     key={variant.size}
                     style={[
                       isOneSize ? cardStyles.sizeOval : cardStyles.sizeCircle,
-                      isAvail ? cardStyles.sizeCircleAvailable : cardStyles.sizeCircleUnavailable,
-                      isUserSize && isAvail ? cardStyles.sizeCircleUserSize : null,
+                      isAvail
+                        ? cardStyles.sizeCircleAvailable
+                        : cardStyles.sizeCircleUnavailable,
+                      isUserSize && isAvail
+                        ? cardStyles.sizeCircleUserSize
+                        : null,
                       vi > 0 ? { marginLeft: 10 } : null,
                     ]}
                     onPress={() => {
@@ -367,14 +422,24 @@ const MainPage = ({ navigation, route }: MainPageProps) => {
                     }}
                     disabled={!isAvail}
                   >
-                    <Text style={isOneSize ? cardStyles.sizeOvalText : cardStyles.sizeText}>
+                    <Text
+                      style={
+                        isOneSize
+                          ? cardStyles.sizeOvalText
+                          : cardStyles.sizeText
+                      }
+                    >
                       {variant.size}
                     </Text>
                   </Pressable>
                 );
               })}
             </ScrollView>
-            <Pressable onPress={handleCancelBackSizeSelection} style={cardStyles.sizePanelCancelButton} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+            <Pressable
+              onPress={handleCancelBackSizeSelection}
+              style={cardStyles.sizePanelCancelButton}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            >
               <Cancel width={27} height={27} />
             </Pressable>
           </View>
@@ -386,7 +451,9 @@ const MainPage = ({ navigation, route }: MainPageProps) => {
   return (
     <Animated.View
       style={styles.container}
-      entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(ANIMATION_DELAYS.LARGE)}
+      entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
+        ANIMATION_DELAYS.LARGE,
+      )}
       exiting={FadeOutDown.duration(ANIMATION_DURATIONS.MICRO)}
     >
       <View style={styles.roundedBox}>
@@ -400,7 +467,12 @@ const MainPage = ({ navigation, route }: MainPageProps) => {
 
         {/* Refreshing overlay — shows skeleton behind the fading card */}
         {deck.isRefreshing && (
-          <View style={[cardStyles.whiteBox, { position: "absolute", zIndex: 0, overflow: "hidden" }]}>
+          <View
+            style={[
+              cardStyles.whiteBox,
+              { position: "absolute", zIndex: 0, overflow: "hidden" },
+            ]}
+          >
             <SkeletonSwipeCard />
           </View>
         )}
@@ -454,7 +526,10 @@ const MainPage = ({ navigation, route }: MainPageProps) => {
                 onFlip={deck.handleFlip}
                 headerPanResponder={deck.headerPanResponder}
                 scrollViewRef={deck.scrollViewRef}
-                bottomStrip={renderBackBottomStrip(deck.cards[deck.currentCardIndex], deck.currentCardIndex)}
+                bottomStrip={renderBackBottomStrip(
+                  deck.cards[deck.currentCardIndex],
+                  deck.currentCardIndex,
+                )}
               />
             )}
           />
@@ -470,16 +545,36 @@ const MainPage = ({ navigation, route }: MainPageProps) => {
             </View>
           </View>
         ) : (
-          <RNAnimated.View style={{ opacity: deck.refreshAnim, width: "100%", height: "100%" }}>
-            <RNAnimated.View style={[cardStyles.text, { opacity: deck.fadeAnim }]}>
+          <RNAnimated.View
+            style={{ opacity: deck.refreshAnim, width: "100%", height: "100%" }}
+          >
+            <RNAnimated.View
+              style={[cardStyles.text, { opacity: deck.fadeAnim }]}
+            >
               {deck.cards.length > 0 ? (
                 <>
-                  <Text style={cardStyles.brandName} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.5}>
+                  <Text
+                    style={cardStyles.brandName}
+                    numberOfLines={1}
+                    adjustsFontSizeToFit
+                    minimumFontScale={0.5}
+                  >
                     {currentCard?.brand_name || "бренд не указан"}
                   </Text>
                   {hasSale ? (
-                    <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-                      <Text style={[cardStyles.price, cardStyles.priceStrikethrough]}>
+                    <View
+                      style={{
+                        flexDirection: "row",
+                        alignItems: "center",
+                        gap: 6,
+                      }}
+                    >
+                      <Text
+                        style={[
+                          cardStyles.price,
+                          cardStyles.priceStrikethrough,
+                        ]}
+                      >
                         {`${formatPrice(currentCard!.price)} ₽`}
                       </Text>
                       <Text style={[cardStyles.price, cardStyles.priceSale]}>
@@ -494,8 +589,10 @@ const MainPage = ({ navigation, route }: MainPageProps) => {
                 </>
               ) : (
                 <>
-                  <Text style={cardStyles.name} numberOfLines={1}>Загрузка...</Text>
-                  <Text style={cardStyles.price}>Пожалуйста, подождите</Text>
+                  <Text style={cardStyles.name} numberOfLines={1}>
+                    загрузка...
+                  </Text>
+                  <Text style={cardStyles.price}>пожалуйста, подождите</Text>
                 </>
               )}
             </RNAnimated.View>

@@ -1,8 +1,14 @@
-import React, { useEffect, useState, useMemo } from 'react';
-import { View, Text, StyleSheet, Animated, TouchableOpacity } from 'react-native';
-import { ActivityIndicator } from 'react-native';
-import { useTheme } from '../lib/ThemeContext';
-import type { ThemeColors } from '../lib/theme';
+import React, { useEffect, useState, useMemo } from "react";
+import {
+  View,
+  Text,
+  StyleSheet,
+  Animated,
+  TouchableOpacity,
+} from "react-native";
+import { ActivityIndicator } from "react-native";
+import { useTheme } from "../lib/ThemeContext";
+import type { ThemeColors } from "../lib/theme";
 
 interface NetworkLoadingIndicatorProps {
   isLoading: boolean;
@@ -19,7 +25,7 @@ const NetworkLoadingIndicator: React.FC<NetworkLoadingIndicatorProps> = ({
   onRetry,
   timeout = 10000,
   showTimeoutWarning = true,
-  message = 'Загрузка...'
+  message = "загрузка...",
 }) => {
   const { theme } = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
@@ -38,10 +44,14 @@ const NetworkLoadingIndicator: React.FC<NetworkLoadingIndicatorProps> = ({
 
       // Start timer
       interval = setInterval(() => {
-        setElapsedTime(prev => {
+        setElapsedTime((prev) => {
           const newTime = prev + 100;
           // Show timeout warning at 70% of timeout
-          if (showTimeoutWarning && newTime >= timeout * 0.7 && !showTimeoutMessage) {
+          if (
+            showTimeoutWarning &&
+            newTime >= timeout * 0.7 &&
+            !showTimeoutMessage
+          ) {
             setShowTimeoutMessage(true);
             Animated.timing(fadeAnim, {
               toValue: 1,
@@ -94,26 +104,21 @@ const NetworkLoadingIndicator: React.FC<NetworkLoadingIndicatorProps> = ({
           {/* Progress bar */}
           <View style={styles.progressContainer}>
             <View style={styles.progressBar}>
-              <View
-                style={[
-                  styles.progressFill,
-                  { width: `${progress}%` }
-                ]}
-              />
+              <View style={[styles.progressFill, { width: `${progress}%` }]} />
             </View>
-            <Text style={styles.progressText}>
-              {Math.round(progress)}%
-            </Text>
+            <Text style={styles.progressText}>{Math.round(progress)}%</Text>
           </View>
 
           {/* Timeout warning */}
           {showTimeoutMessage && (
-            <Animated.View style={[styles.timeoutWarning, { opacity: fadeAnim }]}>
+            <Animated.View
+              style={[styles.timeoutWarning, { opacity: fadeAnim }]}
+            >
               <Text style={styles.timeoutText}>
-                Запрос выполняется дольше обычного...
+                запрос выполняется дольше обычного...
               </Text>
               <Text style={styles.timeoutSubtext}>
-                Проверьте подключение к интернету
+                проверьте подключение к интернету
               </Text>
             </Animated.View>
           )}
@@ -123,11 +128,11 @@ const NetworkLoadingIndicator: React.FC<NetworkLoadingIndicatorProps> = ({
       {error && (
         <View style={styles.errorContainer}>
           <Text style={styles.errorText}>
-            {error.message || 'Произошла ошибка'}
+            {error.message || "произошла ошибка"}
           </Text>
           {onRetry && (
             <TouchableOpacity style={styles.retryButton} onPress={onRetry}>
-              <Text style={styles.retryText}>Повторить</Text>
+              <Text style={styles.retryText}>повторить</Text>
             </TouchableOpacity>
           )}
         </View>
@@ -136,91 +141,92 @@ const NetworkLoadingIndicator: React.FC<NetworkLoadingIndicatorProps> = ({
   );
 };
 
-const createStyles = (theme: ThemeColors) => StyleSheet.create({
-  container: {
-    padding: 16,
-    alignItems: 'center',
-  },
-  loadingContainer: {
-    alignItems: 'center',
-    width: '100%',
-  },
-  loadingText: {
-    fontFamily: 'REM-Regular',
-    fontSize: 14,
-    color: theme.text.secondary,
-    marginTop: 8,
-    textAlign: 'center',
-  },
-  progressContainer: {
-    width: '100%',
-    marginTop: 12,
-    alignItems: 'center',
-  },
-  progressBar: {
-    width: '100%',
-    height: 4,
-    backgroundColor: theme.border.light,
-    borderRadius: 2,
-    overflow: 'hidden',
-  },
-  progressFill: {
-    height: '100%',
-    backgroundColor: theme.text.secondary,
-    borderRadius: 2,
-  },
-  progressText: {
-    fontFamily: 'REM-Regular',
-    fontSize: 12,
-    color: theme.text.tertiary,
-    marginTop: 4,
-  },
-  timeoutWarning: {
-    marginTop: 12,
-    padding: 12,
-    backgroundColor: theme.status.warning,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: theme.status.warning,
-    width: '100%',
-  },
-  timeoutText: {
-    fontFamily: 'REM-Regular',
-    fontSize: 14,
-    color: theme.text.secondary,
-    textAlign: 'center',
-    fontWeight: '500',
-  },
-  timeoutSubtext: {
-    fontFamily: 'REM-Regular',
-    fontSize: 12,
-    color: theme.text.secondary,
-    textAlign: 'center',
-    marginTop: 4,
-  },
-  errorContainer: {
-    alignItems: 'center',
-    width: '100%',
-  },
-  errorText: {
-    fontFamily: 'REM-Regular',
-    fontSize: 14,
-    color: theme.status.error,
-    textAlign: 'center',
-    marginBottom: 12,
-  },
-  retryButton: {
-    backgroundColor: theme.button.primary,
-    paddingHorizontal: 20,
-    paddingVertical: 8,
-    borderRadius: 6,
-  },
-  retryText: {
-    fontFamily: 'REM-Regular',
-    fontSize: 14,
-    color: theme.text.inverse,
-    fontWeight: '500',
-  },
-});
+const createStyles = (theme: ThemeColors) =>
+  StyleSheet.create({
+    container: {
+      padding: 16,
+      alignItems: "center",
+    },
+    loadingContainer: {
+      alignItems: "center",
+      width: "100%",
+    },
+    loadingText: {
+      fontFamily: "REM-Regular",
+      fontSize: 14,
+      color: theme.text.secondary,
+      marginTop: 8,
+      textAlign: "center",
+    },
+    progressContainer: {
+      width: "100%",
+      marginTop: 12,
+      alignItems: "center",
+    },
+    progressBar: {
+      width: "100%",
+      height: 4,
+      backgroundColor: theme.border.light,
+      borderRadius: 2,
+      overflow: "hidden",
+    },
+    progressFill: {
+      height: "100%",
+      backgroundColor: theme.text.secondary,
+      borderRadius: 2,
+    },
+    progressText: {
+      fontFamily: "REM-Regular",
+      fontSize: 12,
+      color: theme.text.tertiary,
+      marginTop: 4,
+    },
+    timeoutWarning: {
+      marginTop: 12,
+      padding: 12,
+      backgroundColor: theme.status.warning,
+      borderRadius: 8,
+      borderWidth: 1,
+      borderColor: theme.status.warning,
+      width: "100%",
+    },
+    timeoutText: {
+      fontFamily: "REM-Regular",
+      fontSize: 14,
+      color: theme.text.secondary,
+      textAlign: "center",
+      fontWeight: "500",
+    },
+    timeoutSubtext: {
+      fontFamily: "REM-Regular",
+      fontSize: 12,
+      color: theme.text.secondary,
+      textAlign: "center",
+      marginTop: 4,
+    },
+    errorContainer: {
+      alignItems: "center",
+      width: "100%",
+    },
+    errorText: {
+      fontFamily: "REM-Regular",
+      fontSize: 14,
+      color: theme.status.error,
+      textAlign: "center",
+      marginBottom: 12,
+    },
+    retryButton: {
+      backgroundColor: theme.button.primary,
+      paddingHorizontal: 20,
+      paddingVertical: 8,
+      borderRadius: 6,
+    },
+    retryText: {
+      fontFamily: "REM-Regular",
+      fontSize: 14,
+      color: theme.text.inverse,
+      fontWeight: "500",
+    },
+  });
 
 export default NetworkLoadingIndicator;

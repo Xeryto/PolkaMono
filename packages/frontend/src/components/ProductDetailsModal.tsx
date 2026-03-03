@@ -2,13 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-} from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Label } from "@/components/ui/label";
 import { PlusCircle, XCircle } from "lucide-react";
@@ -172,8 +166,8 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({
         setCategories(fetchedCategories);
       } catch (error) {
         toast({
-          title: "Error fetching data",
-          description: "Could not fetch styles and categories.",
+          title: "ошибка загрузки данных",
+          description: "не удалось загрузить стили и категории.",
           variant: "destructive",
         });
       }
@@ -184,7 +178,7 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({
   const handleSave = async () => {
     if (!token) {
       toast({
-        title: "Ошибка",
+        title: "ошибка",
         description: "Войдите в систему для сохранения.",
         variant: "destructive",
       });
@@ -192,7 +186,7 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({
     }
     if (!name.trim()) {
       toast({
-        title: "Ошибка",
+        title: "ошибка",
         description: "Заполните название товара.",
         variant: "destructive",
       });
@@ -200,7 +194,7 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({
     }
     if (!isFinite(price) || price <= 0) {
       toast({
-        title: "Ошибка",
+        title: "ошибка",
         description: "Цена должна быть больше нуля.",
         variant: "destructive",
       });
@@ -208,7 +202,7 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({
     }
     if (!description.trim()) {
       toast({
-        title: "Ошибка",
+        title: "ошибка",
         description: "Заполните описание.",
         variant: "destructive",
       });
@@ -216,7 +210,7 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({
     }
     if (!selectedCategory) {
       toast({
-        title: "Ошибка",
+        title: "ошибка",
         description: "Выберите категорию.",
         variant: "destructive",
       });
@@ -225,7 +219,7 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({
     for (const cv of colorVariations) {
       if (!(cv.color_name || "").trim()) {
         toast({
-          title: "Ошибка",
+          title: "ошибка",
           description: "У каждого варианта должен быть выбран цвет.",
           variant: "destructive",
         });
@@ -233,7 +227,7 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({
       }
       if (hasDuplicateSizes(cv.variants || [])) {
         toast({
-          title: "Ошибка",
+          title: "ошибка",
           description: `Дублирующиеся размеры в цвете "${cv.color_name}".`,
           variant: "destructive",
         });
@@ -242,7 +236,7 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({
       const filledSizes = (cv.variants || []).filter((v) => v.size.trim());
       if (filledSizes.length === 0) {
         toast({
-          title: "Ошибка",
+          title: "ошибка",
           description: `Добавьте хотя бы один размер для цвета "${cv.color_name}".`,
           variant: "destructive",
         });
@@ -255,7 +249,7 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({
           (typeof q !== "number" || q < 0 || !Number.isInteger(q))
         ) {
           toast({
-            title: "Ошибка",
+            title: "ошибка",
             description: `Количество не может быть отрицательным (цвет "${cv.color_name}").`,
             variant: "destructive",
           });
@@ -266,7 +260,7 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({
 
     if (selectedMaterials.length === 0) {
       toast({
-        title: "Ошибка",
+        title: "ошибка",
         description: "Выберите хотя бы один материал.",
         variant: "destructive",
       });
@@ -274,7 +268,7 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({
     }
     if (!countryOfManufacture.trim()) {
       toast({
-        title: "Ошибка",
+        title: "ошибка",
         description: "Укажите страну производства.",
         variant: "destructive",
       });
@@ -282,7 +276,7 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({
     }
     if (!sizingTableImage && !sizingTableFile) {
       toast({
-        title: "Ошибка",
+        title: "ошибка",
         description: "Загрузите таблицу размеров.",
         variant: "destructive",
       });
@@ -293,7 +287,7 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({
       const salePriceNum = parseFloat(salePrice.replace(",", "."));
       if (!isFinite(salePriceNum)) {
         toast({
-          title: "Ошибка",
+          title: "ошибка",
           description: "Введите корректное значение скидки.",
           variant: "destructive",
         });
@@ -302,7 +296,7 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({
       if (saleType === "percent") {
         if (salePriceNum < 1 || salePriceNum > 99) {
           toast({
-            title: "Ошибка",
+            title: "ошибка",
             description: "Процент скидки должен быть от 1 до 99.",
             variant: "destructive",
           });
@@ -311,7 +305,7 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({
       } else if (saleType === "exact") {
         if (salePriceNum < 0) {
           toast({
-            title: "Ошибка",
+            title: "ошибка",
             description: "Цена со скидкой не может быть отрицательной.",
             variant: "destructive",
           });
@@ -319,7 +313,7 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({
         }
         if (salePriceNum >= price) {
           toast({
-            title: "Ошибка",
+            title: "ошибка",
             description: "Цена со скидкой должна быть меньше обычной цены.",
             variant: "destructive",
           });
@@ -343,7 +337,7 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({
       totalPerColor.length > 0 && totalPerColor.every((n) => n > 0);
     if (!hasGeneral && !hasAtLeastOnePerColor) {
       toast({
-        title: "Ошибка",
+        title: "ошибка",
         description:
           "Нужно хотя бы одно общее изображение или хотя бы одно изображение в каждом цвете.",
         variant: "destructive",
@@ -431,14 +425,14 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({
         token!,
       );
       toast({
-        title: "Успех",
-        description: "Товар обновлен.",
+        title: "успех",
+        description: "товар обновлен.",
       });
       onProductUpdated();
       onClose();
     } catch (error) {
       toast({
-        title: "Ошибка",
+        title: "ошибка",
         description: "Не удалось обновить товар.",
         variant: "destructive",
       });
@@ -475,7 +469,9 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({
     });
   };
 
-  const getAvailableSizes = (variants: { size: string; stock_quantity: number }[]) => {
+  const getAvailableSizes = (
+    variants: { size: string; stock_quantity: number }[],
+  ) => {
     const selected = variants.map((v) => v.size.trim()).filter(Boolean);
     const hasOneSize = selected.includes("One Size");
     const hasOther = selected.some((s) => s !== "One Size");
@@ -486,7 +482,9 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({
     });
   };
 
-  const canAddVariant = (variants: { size: string; stock_quantity: number }[]) => {
+  const canAddVariant = (
+    variants: { size: string; stock_quantity: number }[],
+  ) => {
     return !variants.some((v) => v.size === "One Size");
   };
 
@@ -535,7 +533,7 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({
   const handleRemoveColorVariation = (colorIndex: number) => {
     if (colorVariations.length <= 1) {
       toast({
-        title: "Ошибка",
+        title: "ошибка",
         description: "Должен остаться хотя бы один цвет.",
         variant: "destructive",
       });
@@ -550,7 +548,7 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({
     const prev = colorVariations[colorIndex];
     if ((prev.images?.length || 0) + newUrls.length > 5) {
       toast({
-        title: "Ошибка",
+        title: "ошибка",
         description: "Максимум 5 изображений на цвет.",
         variant: "destructive",
       });
@@ -586,7 +584,7 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({
     const newUrls = files.map((f) => URL.createObjectURL(f));
     if (generalImages.length + newUrls.length > 5) {
       toast({
-        title: "Ошибка",
+        title: "ошибка",
         description: "Максимум 5 общих изображений.",
         variant: "destructive",
       });
@@ -604,534 +602,532 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-4xl">
-        <Card className="bg-card border-0 shadow-none">
-          <CardHeader>
-            <CardTitle>Редактировать товар</CardTitle>
-            <CardDescription>
-              Внесите изменения в детали вашего товара
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <Tabs value={activeTab} onValueChange={setActiveTab}>
-              <TabsList className="mb-4">
-                <TabsTrigger value="info">Информация</TabsTrigger>
-                <TabsTrigger value="sale">Скидка</TabsTrigger>
-              </TabsList>
+        <div>
+          <h2 className="text-lg font-semibold leading-none tracking-tight">
+            Редактировать товар
+          </h2>
+          <p className="text-sm text-muted-foreground mt-1.5">
+            Внесите изменения в детали вашего товара
+          </p>
+        </div>
+        <div className="space-y-4">
+          <Tabs value={activeTab} onValueChange={setActiveTab}>
+            <TabsList className="mb-4">
+              <TabsTrigger value="info">Информация</TabsTrigger>
+              <TabsTrigger value="sale">Скидка</TabsTrigger>
+            </TabsList>
 
-              <TabsContent value="info" className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                  <div className="space-y-4">
-                    <div>
-                      <Label htmlFor="article_number">Артикул</Label>
-                      <Input
-                        id="article_number"
-                        placeholder="Автоматически присвоен при создании"
-                        className="mt-1 bg-muted cursor-not-allowed"
-                        value={product.article_number || "Не присвоен"}
-                        disabled
-                        readOnly
-                      />
-                      <p className="text-xs text-muted-foreground mt-1">
-                        Артикул автоматически генерируется системой и не может
-                        быть изменен
-                      </p>
-                    </div>
-                    <div>
-                      <Label htmlFor="name">Название товара</Label>
-                      <Input
-                        id="name"
-                        placeholder="напр., Элитное худи"
-                        className="mt-1"
-                        value={name}
-                        onChange={(e) => setName(e.target.value)}
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="price">Цена</Label>
-                      <Input
-                        id="price"
-                        inputMode="decimal"
-                        placeholder="напр., 150,00"
-                        className="mt-1"
-                        value={priceText}
-                        onChange={(e) => setPriceText(e.target.value)}
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="description">Описание</Label>
-                      <Textarea
-                        id="description"
-                        placeholder="Краткое описание товара"
-                        className="mt-1"
-                        value={description}
-                        onChange={(e) => setDescription(e.target.value)}
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="materials">Материал</Label>
-                      <MultiSelect
-                        options={materials.map((materialOption) => ({
-                          label: materialOption.russian,
-                          value: materialOption.name,
-                        }))}
-                        value={selectedMaterials}
-                        onValueChange={setSelectedMaterials}
-                        placeholder="Выберите материалы"
-                        className="mt-1"
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="country_of_manufacture">
-                        Страна производства
-                      </Label>
-                      <Input
-                        id="country_of_manufacture"
-                        placeholder="напр., Италия"
-                        className="mt-1"
-                        value={countryOfManufacture}
-                        onChange={(e) =>
-                          setCountryOfManufacture(e.target.value)
-                        }
-                      />
+            <TabsContent value="info" className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div className="space-y-4">
+                  <div>
+                    <Label htmlFor="article_number">Артикул</Label>
+                    <Input
+                      id="article_number"
+                      placeholder="Автоматически присвоен при создании"
+                      className="mt-1 bg-muted cursor-not-allowed"
+                      value={product.article_number || "Не присвоен"}
+                      disabled
+                      readOnly
+                    />
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Артикул автоматически генерируется системой и не может
+                      быть изменен
+                    </p>
+                  </div>
+                  <div>
+                    <Label htmlFor="name">Название товара</Label>
+                    <Input
+                      id="name"
+                      placeholder="напр., Элитное худи"
+                      className="mt-1"
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="price">Цена</Label>
+                    <Input
+                      id="price"
+                      inputMode="decimal"
+                      placeholder="напр., 150,00"
+                      className="mt-1"
+                      value={priceText}
+                      onChange={(e) => setPriceText(e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="description">Описание</Label>
+                    <Textarea
+                      id="description"
+                      placeholder="Краткое описание товара"
+                      className="mt-1"
+                      value={description}
+                      onChange={(e) => setDescription(e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="materials">Материал</Label>
+                    <MultiSelect
+                      options={materials.map((materialOption) => ({
+                        label: materialOption.russian,
+                        value: materialOption.name,
+                      }))}
+                      value={selectedMaterials}
+                      onValueChange={setSelectedMaterials}
+                      placeholder="Выберите материалы"
+                      className="mt-1"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="country_of_manufacture">
+                      Страна производства
+                    </Label>
+                    <Input
+                      id="country_of_manufacture"
+                      placeholder="напр., Италия"
+                      className="mt-1"
+                      value={countryOfManufacture}
+                      onChange={(e) => setCountryOfManufacture(e.target.value)}
+                    />
+                  </div>
+                </div>
+                <div className="space-y-4">
+                  <div>
+                    <Label htmlFor="category">Категория</Label>
+                    <Select
+                      onValueChange={setSelectedCategory}
+                      value={selectedCategory}
+                    >
+                      <SelectTrigger className="w-full mt-1 h-10 rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50">
+                        <SelectValue
+                          placeholder="Выберите категорию"
+                          className="text-muted-foreground"
+                        />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {categories.map((category) => (
+                          <SelectItem key={category.id} value={category.id}>
+                            {category.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Общие изображения (до 5)</Label>
+                    <p className="text-xs text-muted-foreground">
+                      Для всех цветов
+                    </p>
+                    <FileInput
+                      multiple
+                      accept="image/*"
+                      onFilesChange={(files) => handleGeneralImages(files)}
+                      selectedFileNames={generalImageFiles.map((f) => f.name)}
+                      className="mt-1"
+                    />
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      {generalImages.map((url, i) => (
+                        <div key={i} className="relative">
+                          <img
+                            src={url}
+                            alt=""
+                            className="w-20 h-20 object-cover rounded-md"
+                          />
+                          <button
+                            type="button"
+                            className="absolute -top-2 -right-2 h-4 w-4 text-red-500"
+                            onClick={() => removeGeneralImage(i)}
+                          >
+                            <XCircle className="h-4 w-4" />
+                          </button>
+                        </div>
+                      ))}
                     </div>
                   </div>
-                  <div className="space-y-4">
-                    <div>
-                      <Label htmlFor="category">Категория</Label>
-                      <Select
-                        onValueChange={setSelectedCategory}
-                        value={selectedCategory}
+                  {/* Sizing table image */}
+                  <div className="space-y-2">
+                    <Label>Таблица размеров</Label>
+                    <p className="text-xs text-muted-foreground">
+                      Изображение с таблицей размеров для покупателей
+                    </p>
+                    <FileInput
+                      accept="image/*"
+                      onFilesChange={(files) => {
+                        if (files[0]) {
+                          setSizingTableFile(files[0]);
+                          setSizingTableImage(URL.createObjectURL(files[0]));
+                        }
+                      }}
+                      selectedFileNames={
+                        sizingTableFile ? [sizingTableFile.name] : []
+                      }
+                      className="mt-1"
+                    />
+                    {sizingTableImage && (
+                      <div className="relative mt-2 inline-block">
+                        <img
+                          src={sizingTableImage}
+                          alt="Таблица размеров"
+                          className="h-24 object-contain rounded-md border border-border/30"
+                        />
+                        <button
+                          type="button"
+                          className="absolute -top-2 -right-2 h-4 w-4 text-red-500"
+                          onClick={() => {
+                            setSizingTableImage(null);
+                            setSizingTableFile(null);
+                          }}
+                        >
+                          <XCircle className="h-4 w-4" />
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <Label>Варианты по цветам</Label>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={handleAddColorVariation}
                       >
-                        <SelectTrigger className="w-full mt-1 h-10 rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50">
-                          <SelectValue
-                            placeholder="Выберите категорию"
-                            className="text-muted-foreground"
+                        <PlusCircle className="h-4 w-4 mr-1" /> Добавить цвет
+                      </Button>
+                    </div>
+                    {colorVariations.map((cv, colorIndex) => (
+                      <Card
+                        key={colorIndex}
+                        className="p-3 border border-border/50"
+                      >
+                        <div className="flex items-center justify-between gap-2 mb-2">
+                          <div className="flex items-center gap-2">
+                            <Select
+                              value={cv.color_name || ""}
+                              onValueChange={(v) =>
+                                handleColorSelect(colorIndex, v)
+                              }
+                            >
+                              <SelectTrigger className="w-[140px] h-8">
+                                <SelectValue placeholder="Цвет" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {colors.map((c) => (
+                                  <SelectItem
+                                    key={c.name}
+                                    value={c.name}
+                                    textValue={c.russian}
+                                  >
+                                    <div className="flex items-center gap-2">
+                                      <div
+                                        className="w-4 h-4 min-w-4 min-h-4 shrink-0 rounded-full border"
+                                        style={{
+                                          background: c.hex || "#808080",
+                                        }}
+                                      />
+                                      {c.russian}
+                                    </div>
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
+                            onClick={() =>
+                              handleRemoveColorVariation(colorIndex)
+                            }
+                            disabled={colorVariations.length <= 1}
+                          >
+                            <XCircle className="h-4 w-4 text-muted-foreground" />
+                          </Button>
+                        </div>
+                        <div className="space-y-2">
+                          <Label className="text-xs">Изображения (до 5)</Label>
+                          <FileInput
+                            multiple
+                            accept="image/*"
+                            onFilesChange={(files) =>
+                              handleColorVariationImages(colorIndex, files)
+                            }
+                            selectedFileNames={(
+                              colorVariationFiles[colorIndex] || []
+                            ).map((f) => f.name)}
+                            className="mt-1"
                           />
+                          <div className="mt-2 flex flex-wrap gap-2">
+                            {(cv.images || []).map((url, imgIdx) => (
+                              <div key={imgIdx} className="relative">
+                                <img
+                                  src={url}
+                                  alt=""
+                                  className="w-20 h-20 object-cover rounded-md"
+                                />
+                                <button
+                                  type="button"
+                                  className="absolute -top-2 -right-2 h-4 w-4 text-red-500"
+                                  onClick={() =>
+                                    removeColorVariationImage(
+                                      colorIndex,
+                                      imgIdx,
+                                    )
+                                  }
+                                >
+                                  <XCircle className="h-4 w-4" />
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                        <div>
+                          <Label className="text-xs">Размеры и инвентарь</Label>
+                          {(cv.variants || []).map((v, vIdx) => (
+                            <div
+                              key={vIdx}
+                              className="flex gap-2 mt-1 items-center"
+                            >
+                              <Select
+                                value={v.size}
+                                onValueChange={(val) =>
+                                  handleVariantChange(
+                                    colorIndex,
+                                    vIdx,
+                                    "size",
+                                    val,
+                                  )
+                                }
+                              >
+                                <SelectTrigger className="flex-1 h-9">
+                                  <SelectValue placeholder="Размер" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {getAvailableSizes(cv.variants || []).map(
+                                    (s) => (
+                                      <SelectItem key={s.name} value={s.name}>
+                                        {s.russian}
+                                      </SelectItem>
+                                    ),
+                                  )}
+                                </SelectContent>
+                              </Select>
+                              <Input
+                                type="number"
+                                min={0}
+                                value={v.stock_quantity}
+                                className="w-20"
+                                onChange={(e) =>
+                                  handleVariantChange(
+                                    colorIndex,
+                                    vIdx,
+                                    "stock_quantity",
+                                    parseInt(e.target.value) || 0,
+                                  )
+                                }
+                              />
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                className="h-9 w-9"
+                                onClick={() =>
+                                  handleRemoveVariant(colorIndex, vIdx)
+                                }
+                              >
+                                <XCircle className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          ))}
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className="mt-2"
+                            onClick={() => handleAddVariant(colorIndex)}
+                            disabled={!canAddVariant(cv.variants || [])}
+                          >
+                            <PlusCircle className="h-4 w-4 mr-1" /> Размер
+                          </Button>
+                        </div>
+                      </Card>
+                    ))}
+                  </div>
+                </div>
+              </div>
+              {/* Delivery time override */}
+              <div className="border border-border/30 rounded-lg p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="font-medium text-sm">
+                      Срок доставки для этого товара
+                    </h3>
+                    <p className="text-xs text-muted-foreground">
+                      Переопределяет настройки бренда
+                    </p>
+                  </div>
+                  <Select
+                    value={deliveryOverride ? "custom" : "default"}
+                    onValueChange={(v) => {
+                      const on = v === "custom";
+                      setDeliveryOverride(on);
+                      if (!on) {
+                        setDeliveryTimeMin("");
+                        setDeliveryTimeMax("");
+                      }
+                    }}
+                  >
+                    <SelectTrigger className="w-44">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="default">
+                        По умолчанию бренда
+                      </SelectItem>
+                      <SelectItem value="custom">Указать для товара</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                {deliveryOverride && (
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label>Минимальный срок</Label>
+                      <Select
+                        value={deliveryTimeMin || "none"}
+                        onValueChange={(v) =>
+                          setDeliveryTimeMin(v === "none" ? "" : v)
+                        }
+                      >
+                        <SelectTrigger className="mt-1">
+                          <SelectValue placeholder="Выберите" />
                         </SelectTrigger>
                         <SelectContent>
-                          {categories.map((category) => (
-                            <SelectItem key={category.id} value={category.id}>
-                              {category.name}
+                          <SelectItem value="none">—</SelectItem>
+                          {DELIVERY_TIME_OPTIONS.map((opt) => (
+                            <SelectItem
+                              key={opt.value}
+                              value={String(opt.value)}
+                            >
+                              {opt.label}
                             </SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
                     </div>
-                    <div className="space-y-2">
-                      <Label>Общие изображения (до 5)</Label>
-                      <p className="text-xs text-muted-foreground">
-                        Для всех цветов
-                      </p>
-                      <FileInput
-                        multiple
-                        accept="image/*"
-                        onFilesChange={(files) => handleGeneralImages(files)}
-                        selectedFileNames={generalImageFiles.map((f) => f.name)}
-                        className="mt-1"
-                      />
-                      <div className="mt-2 flex flex-wrap gap-2">
-                        {generalImages.map((url, i) => (
-                          <div key={i} className="relative">
-                            <img
-                              src={url}
-                              alt=""
-                              className="w-20 h-20 object-cover rounded-md"
-                            />
-                            <button
-                              type="button"
-                              className="absolute -top-2 -right-2 h-4 w-4 text-red-500"
-                              onClick={() => removeGeneralImage(i)}
-                            >
-                              <XCircle className="h-4 w-4" />
-                            </button>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                    {/* Sizing table image */}
-                    <div className="space-y-2">
-                      <Label>Таблица размеров</Label>
-                      <p className="text-xs text-muted-foreground">
-                        Изображение с таблицей размеров для покупателей
-                      </p>
-                      <FileInput
-                        accept="image/*"
-                        onFilesChange={(files) => {
-                          if (files[0]) {
-                            setSizingTableFile(files[0]);
-                            setSizingTableImage(URL.createObjectURL(files[0]));
-                          }
-                        }}
-                        selectedFileNames={
-                          sizingTableFile ? [sizingTableFile.name] : []
+                    <div>
+                      <Label>Максимальный срок</Label>
+                      <Select
+                        value={deliveryTimeMax || "none"}
+                        onValueChange={(v) =>
+                          setDeliveryTimeMax(v === "none" ? "" : v)
                         }
-                        className="mt-1"
-                      />
-                      {sizingTableImage && (
-                        <div className="relative mt-2 inline-block">
-                          <img
-                            src={sizingTableImage}
-                            alt="Таблица размеров"
-                            className="h-24 object-contain rounded-md border border-border/30"
-                          />
-                          <button
-                            type="button"
-                            className="absolute -top-2 -right-2 h-4 w-4 text-red-500"
-                            onClick={() => {
-                              setSizingTableImage(null);
-                              setSizingTableFile(null);
-                            }}
-                          >
-                            <XCircle className="h-4 w-4" />
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                    <div className="space-y-3">
-                      <div className="flex items-center justify-between">
-                        <Label>Варианты по цветам</Label>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={handleAddColorVariation}
-                        >
-                          <PlusCircle className="h-4 w-4 mr-1" /> Добавить цвет
-                        </Button>
-                      </div>
-                      {colorVariations.map((cv, colorIndex) => (
-                        <Card
-                          key={colorIndex}
-                          className="p-3 border border-border/50"
-                        >
-                          <div className="flex items-center justify-between gap-2 mb-2">
-                            <div className="flex items-center gap-2">
-                              <Select
-                                value={cv.color_name || ""}
-                                onValueChange={(v) =>
-                                  handleColorSelect(colorIndex, v)
-                                }
-                              >
-                                <SelectTrigger className="w-[140px] h-8">
-                                  <SelectValue placeholder="Цвет" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  {colors.map((c) => (
-                                    <SelectItem
-                                      key={c.name}
-                                      value={c.name}
-                                      textValue={c.russian}
-                                    >
-                                      <div className="flex items-center gap-2">
-                                        <div
-                                          className="w-4 h-4 min-w-4 min-h-4 shrink-0 rounded-full border"
-                                          style={{
-                                            background: c.hex || "#808080",
-                                          }}
-                                        />
-                                        {c.russian}
-                                      </div>
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                            </div>
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8"
-                              onClick={() =>
-                                handleRemoveColorVariation(colorIndex)
-                              }
-                              disabled={colorVariations.length <= 1}
+                      >
+                        <SelectTrigger className="mt-1">
+                          <SelectValue placeholder="Выберите" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">—</SelectItem>
+                          {DELIVERY_TIME_OPTIONS.map((opt) => (
+                            <SelectItem
+                              key={opt.value}
+                              value={String(opt.value)}
                             >
-                              <XCircle className="h-4 w-4 text-muted-foreground" />
-                            </Button>
-                          </div>
-                          <div className="space-y-2">
-                            <Label className="text-xs">
-                              Изображения (до 5)
-                            </Label>
-                            <FileInput
-                              multiple
-                              accept="image/*"
-                              onFilesChange={(files) =>
-                                handleColorVariationImages(colorIndex, files)
-                              }
-                              selectedFileNames={(
-                                colorVariationFiles[colorIndex] || []
-                              ).map((f) => f.name)}
-                              className="mt-1"
-                            />
-                            <div className="mt-2 flex flex-wrap gap-2">
-                              {(cv.images || []).map((url, imgIdx) => (
-                                <div key={imgIdx} className="relative">
-                                  <img
-                                    src={url}
-                                    alt=""
-                                    className="w-20 h-20 object-cover rounded-md"
-                                  />
-                                  <button
-                                    type="button"
-                                    className="absolute -top-2 -right-2 h-4 w-4 text-red-500"
-                                    onClick={() =>
-                                      removeColorVariationImage(
-                                        colorIndex,
-                                        imgIdx,
-                                      )
-                                    }
-                                  >
-                                    <XCircle className="h-4 w-4" />
-                                  </button>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                          <div>
-                            <Label className="text-xs">
-                              Размеры и инвентарь
-                            </Label>
-                            {(cv.variants || []).map((v, vIdx) => (
-                              <div
-                                key={vIdx}
-                                className="flex gap-2 mt-1 items-center"
-                              >
-                                <Select
-                                  value={v.size}
-                                  onValueChange={(val) =>
-                                    handleVariantChange(
-                                      colorIndex,
-                                      vIdx,
-                                      "size",
-                                      val,
-                                    )
-                                  }
-                                >
-                                  <SelectTrigger className="flex-1 h-9">
-                                    <SelectValue placeholder="Размер" />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    {getAvailableSizes(cv.variants || []).map((s) => (
-                                      <SelectItem key={s.name} value={s.name}>
-                                        {s.russian}
-                                      </SelectItem>
-                                    ))}
-                                  </SelectContent>
-                                </Select>
-                                <Input
-                                  type="number"
-                                  min={0}
-                                  value={v.stock_quantity}
-                                  className="w-20"
-                                  onChange={(e) =>
-                                    handleVariantChange(
-                                      colorIndex,
-                                      vIdx,
-                                      "stock_quantity",
-                                      parseInt(e.target.value) || 0,
-                                    )
-                                  }
-                                />
-                                <Button
-                                  type="button"
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-9 w-9"
-                                  onClick={() =>
-                                    handleRemoveVariant(colorIndex, vIdx)
-                                  }
-                                >
-                                  <XCircle className="h-4 w-4" />
-                                </Button>
-                              </div>
-                            ))}
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="sm"
-                              className="mt-2"
-                              onClick={() => handleAddVariant(colorIndex)}
-                              disabled={!canAddVariant(cv.variants || [])}
-                            >
-                              <PlusCircle className="h-4 w-4 mr-1" /> Размер
-                            </Button>
-                          </div>
-                        </Card>
-                      ))}
+                              {opt.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </div>
                   </div>
-                </div>
-                {/* Delivery time override */}
-                <div className="border border-border/30 rounded-lg p-4 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h3 className="font-medium text-sm">
-                        Срок доставки для этого товара
-                      </h3>
-                      <p className="text-xs text-muted-foreground">
-                        Переопределяет настройки бренда
-                      </p>
-                    </div>
+                )}
+              </div>
+            </TabsContent>
+
+            <TabsContent value="sale" className="space-y-4">
+              <div className="border border-border/30 rounded-lg p-4 space-y-3">
+                <h3 className="font-medium text-sm">Скидка</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <Label>Тип скидки</Label>
                     <Select
-                      value={deliveryOverride ? "custom" : "default"}
-                      onValueChange={(v) => {
-                        const on = v === "custom";
-                        setDeliveryOverride(on);
-                        if (!on) {
-                          setDeliveryTimeMin("");
-                          setDeliveryTimeMax("");
-                        }
-                      }}
+                      value={saleType}
+                      onValueChange={(v) =>
+                        setSaleType(v as "percent" | "exact" | "none")
+                      }
                     >
-                      <SelectTrigger className="w-44">
-                        <SelectValue />
+                      <SelectTrigger className="mt-1">
+                        <SelectValue placeholder="Без скидки" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="default">
-                          По умолчанию бренда
-                        </SelectItem>
-                        <SelectItem value="custom">
-                          Указать для товара
+                        <SelectItem value="none">Без скидки</SelectItem>
+                        <SelectItem value="percent">Процент (%)</SelectItem>
+                        <SelectItem value="exact">
+                          Фиксированная цена (₽)
                         </SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
-                  {deliveryOverride && (
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <Label>Минимальный срок</Label>
-                        <Select
-                          value={deliveryTimeMin || "none"}
-                          onValueChange={(v) =>
-                            setDeliveryTimeMin(v === "none" ? "" : v)
-                          }
-                        >
-                          <SelectTrigger className="mt-1">
-                            <SelectValue placeholder="Выберите" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="none">—</SelectItem>
-                            {DELIVERY_TIME_OPTIONS.map((opt) => (
-                              <SelectItem
-                                key={opt.value}
-                                value={String(opt.value)}
-                              >
-                                {opt.label}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div>
-                        <Label>Максимальный срок</Label>
-                        <Select
-                          value={deliveryTimeMax || "none"}
-                          onValueChange={(v) =>
-                            setDeliveryTimeMax(v === "none" ? "" : v)
-                          }
-                        >
-                          <SelectTrigger className="mt-1">
-                            <SelectValue placeholder="Выберите" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="none">—</SelectItem>
-                            {DELIVERY_TIME_OPTIONS.map((opt) => (
-                              <SelectItem
-                                key={opt.value}
-                                value={String(opt.value)}
-                              >
-                                {opt.label}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
+                  {saleType !== "none" && (
+                    <div>
+                      <Label>
+                        {saleType === "percent"
+                          ? "Скидка (%)"
+                          : "Цена со скидкой (₽)"}
+                      </Label>
+                      <Input
+                        inputMode="decimal"
+                        placeholder={
+                          saleType === "percent" ? "напр., 20" : "напр., 1990"
+                        }
+                        className="mt-1"
+                        value={salePrice}
+                        onChange={(e) => setSalePrice(e.target.value)}
+                      />
+                      {saleType === "percent" && (
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Покупатели увидят цену{" "}
+                          {salePrice && price > 0
+                            ? formatCurrency(
+                                Math.round(
+                                  price *
+                                    (1 -
+                                      parseFloat(salePrice.replace(",", ".")) /
+                                        100),
+                                ),
+                              )
+                            : "—"}
+                        </p>
+                      )}
+                      {saleType === "exact" && salePrice !== "" && (
+                        <p className="text-xs text-muted-foreground mt-1">
+                          {parseFloat(salePrice.replace(",", ".")) >= price
+                            ? "Цена со скидкой должна быть меньше обычной"
+                            : `Покупатели увидят цену ${formatCurrency(parseFloat(salePrice.replace(",", ".")))}`}
+                        </p>
+                      )}
                     </div>
                   )}
                 </div>
-              </TabsContent>
+              </div>
+            </TabsContent>
+          </Tabs>
 
-              <TabsContent value="sale" className="space-y-4">
-                <div className="border border-border/30 rounded-lg p-4 space-y-3">
-                  <h3 className="font-medium text-sm">Скидка</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <Label>Тип скидки</Label>
-                      <Select
-                        value={saleType}
-                        onValueChange={(v) =>
-                          setSaleType(v as "percent" | "exact" | "none")
-                        }
-                      >
-                        <SelectTrigger className="mt-1">
-                          <SelectValue placeholder="Без скидки" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="none">Без скидки</SelectItem>
-                          <SelectItem value="percent">Процент (%)</SelectItem>
-                          <SelectItem value="exact">
-                            Фиксированная цена (₽)
-                          </SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    {saleType !== "none" && (
-                      <div>
-                        <Label>
-                          {saleType === "percent"
-                            ? "Скидка (%)"
-                            : "Цена со скидкой (₽)"}
-                        </Label>
-                        <Input
-                          inputMode="decimal"
-                          placeholder={
-                            saleType === "percent" ? "напр., 20" : "напр., 1990"
-                          }
-                          className="mt-1"
-                          value={salePrice}
-                          onChange={(e) => setSalePrice(e.target.value)}
-                        />
-                        {saleType === "percent" && (
-                          <p className="text-xs text-muted-foreground mt-1">
-                            Покупатели увидят цену{" "}
-                            {salePrice && price > 0
-                              ? formatCurrency(Math.round(
-                                  price *
-                                    (1 - parseFloat(salePrice.replace(",", ".")) / 100),
-                                ))
-                              : "—"}
-                          </p>
-                        )}
-                        {saleType === "exact" && salePrice !== "" && (
-                          <p className="text-xs text-muted-foreground mt-1">
-                            {parseFloat(salePrice.replace(",", ".")) >= price
-                              ? "Цена со скидкой должна быть меньше обычной"
-                              : `Покупатели увидят цену ${formatCurrency(parseFloat(salePrice.replace(",", ".")))}`}
-                          </p>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </TabsContent>
-            </Tabs>
-
-            <div className="flex justify-end space-x-2 pt-4">
-              <Button variant="outline" onClick={onClose}>
-                Отмена
-              </Button>
-              <Button
-                size="lg"
-                onClick={handleSave}
-                disabled={isLoading}
-                className="bg-primary hover:bg-primary/90 text-primary-foreground border-0"
-              >
-                {isLoading ? "Сохранение..." : "Сохранить изменения"}
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+          <div className="flex justify-end space-x-2 pt-4">
+            <Button variant="outline" onClick={onClose}>
+              Отмена
+            </Button>
+            <Button
+              size="lg"
+              onClick={handleSave}
+              disabled={isLoading}
+              className="bg-primary hover:bg-primary/90 text-primary-foreground border-0"
+            >
+              {isLoading ? "Сохранение..." : "Сохранить изменения"}
+            </Button>
+          </div>
+        </div>
       </DialogContent>
     </Dialog>
   );

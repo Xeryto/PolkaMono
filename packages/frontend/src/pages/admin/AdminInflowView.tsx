@@ -19,10 +19,10 @@ export function AdminInflowView() {
         dateTo || undefined,
       );
       const rows = orders.map((o) => ({
-        "№ Заказа": o.number,
-        "Дата": new Date(o.date).toLocaleDateString(),
-        "Бренд": o.brand_name,
-        "Статус": getOrderStatusLabel(o.status),
+        "№ заказа": o.number,
+        "дата": new Date(o.date).toLocaleDateString(),
+        "бренд": o.brand_name,
+        "статус": getOrderStatusLabel(o.status),
         "Цена товаров": o.total_amount - (o.shipping_cost ?? 0),
         "Сумма доставки": o.shipping_cost ?? 0,
         "Итого": o.total_amount,

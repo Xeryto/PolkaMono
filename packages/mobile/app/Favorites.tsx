@@ -845,7 +845,7 @@ const Favorites = ({ navigation }: FavoritesProps) => {
           <View
             style={[styles.productItemImage, styles.noProductImagePlaceholder]}
           >
-            <Text style={styles.noProductImageText}>Нет изображения</Text>
+            <Text style={styles.noProductImageText}>нет изображения</Text>
           </View>
         )}
         <View style={styles.productItemInfo}>
@@ -853,7 +853,11 @@ const Favorites = ({ navigation }: FavoritesProps) => {
             {item.brand_name}
           </Text>
         </View>
-        <PriceTag price={item.price} sale_price={item.sale_price} sale_type={item.sale_type} />
+        <PriceTag
+          price={item.price}
+          sale_price={item.sale_price}
+          sale_type={item.sale_type}
+        />
       </Pressable>
     </Animated.View>
   );
@@ -870,7 +874,7 @@ const Favorites = ({ navigation }: FavoritesProps) => {
           <View style={styles.itemContainer}>
             <View style={styles.confirmationContainer}>
               <Text style={styles.confirmationText}>
-                Подтвердить удаление из друзей?
+                подтвердить удаление из друзей?
               </Text>
               <View style={styles.confirmationButtons}>
                 <TouchableOpacity
@@ -884,7 +888,7 @@ const Favorites = ({ navigation }: FavoritesProps) => {
                     setMainPendingRemoval(null);
                   }}
                 >
-                  <Text style={styles.confirmButtonText}>Да</Text>
+                  <Text style={styles.confirmButtonText}>да</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={[styles.confirmButton, styles.confirmNoButton]}
@@ -894,7 +898,7 @@ const Favorites = ({ navigation }: FavoritesProps) => {
                     setMainPendingRemoval(null);
                   }}
                 >
-                  <Text style={styles.confirmButtonText}>Нет</Text>
+                  <Text style={styles.confirmButtonText}>нет</Text>
                 </TouchableOpacity>
               </View>
             </View>
@@ -969,7 +973,7 @@ const Favorites = ({ navigation }: FavoritesProps) => {
               <View
                 style={[styles.itemImage, styles.noProductImagePlaceholder]}
               >
-                <Text style={styles.noProductImageText}>Нет изображения</Text>
+                <Text style={styles.noProductImageText}>нет изображения</Text>
               </View>
             )}
             <View style={styles.itemInfo}>
@@ -977,7 +981,11 @@ const Favorites = ({ navigation }: FavoritesProps) => {
                 {item.brand_name}
               </Text>
             </View>
-            <PriceTag price={item.price} sale_price={item.sale_price} sale_type={item.sale_type} />
+            <PriceTag
+              price={item.price}
+              sale_price={item.sale_price}
+              sale_type={item.sale_type}
+            />
           </Pressable>
         </View>
       </View>
@@ -999,7 +1007,7 @@ const Favorites = ({ navigation }: FavoritesProps) => {
           <View style={styles.itemContainer}>
             <View style={styles.confirmationContainer}>
               <Text style={styles.confirmationText}>
-                Подтвердить удаление из друзей?
+                подтвердить удаление из друзей?
               </Text>
               <View style={styles.confirmationButtons}>
                 <TouchableOpacity
@@ -1013,7 +1021,7 @@ const Favorites = ({ navigation }: FavoritesProps) => {
                     setSearchPendingRemoval(null);
                   }}
                 >
-                  <Text style={styles.confirmButtonText}>Да</Text>
+                  <Text style={styles.confirmButtonText}>да</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={[styles.confirmButton, styles.confirmNoButton]}
@@ -1023,7 +1031,7 @@ const Favorites = ({ navigation }: FavoritesProps) => {
                     setSearchPendingRemoval(null);
                   }}
                 >
-                  <Text style={styles.confirmButtonText}>Нет</Text>
+                  <Text style={styles.confirmButtonText}>нет</Text>
                 </TouchableOpacity>
               </View>
             </View>
@@ -1133,7 +1141,7 @@ const Favorites = ({ navigation }: FavoritesProps) => {
                   ]}
                   onPress={handleCancelRequest}
                 >
-                  <Text style={styles.cancelRequestText}>Отменить заявку</Text>
+                  <Text style={styles.cancelRequestText}>отменить заявку</Text>
                 </TouchableOpacity>
               </Animated.View>
             </View>
@@ -2117,13 +2125,13 @@ const FriendRequestItemComponent: React.FC<FriendRequestItemProps> = ({
               style={[styles.requestButton, styles.acceptButton]}
               onPress={() => onAccept(request.requestId)}
             >
-              <Text style={styles.requestButtonText}>Принять</Text>
+              <Text style={styles.requestButtonText}>принять</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={[styles.requestButton, styles.rejectButton]}
               onPress={() => onReject(request.requestId)}
             >
-              <Text style={styles.requestButtonText}>Отклонить</Text>
+              <Text style={styles.requestButtonText}>отклонить</Text>
             </TouchableOpacity>
           </View>
         </View>

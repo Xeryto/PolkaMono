@@ -50,12 +50,15 @@ const productSchema = z.object({
     .string()
     .min(1, "Цена обязательна")
     .refine(
-      (v) => !isNaN(Number(v.replace(",", "."))) && Number(v.replace(",", ".")) > 0,
+      (v) =>
+        !isNaN(Number(v.replace(",", "."))) && Number(v.replace(",", ".")) > 0,
       "Цена должна быть больше нуля",
     ),
   description: z.string().max(1000, "Не более 1000 символов").optional(),
   selectedCategory: z.string().min(1, "Выберите категорию"),
-  selectedMaterials: z.array(z.string()).min(1, "Выберите хотя бы один материал"),
+  selectedMaterials: z
+    .array(z.string())
+    .min(1, "Выберите хотя бы один материал"),
   countryOfManufacture: z.string().min(1, "Укажите страну производства"),
   selectedStyle: z.string().min(1, "Выберите стиль"),
 });
@@ -128,7 +131,7 @@ export function AddNewItemPage() {
       } catch (error) {
         console.error("Failed to fetch data:", error);
         toast({
-          title: "Ошибка",
+          title: "ошибка",
           description: "Не удалось загрузить стили и категории.",
           variant: "destructive",
         });
@@ -154,7 +157,7 @@ export function AddNewItemPage() {
     const prev = colorVariations[index];
     if (prev.images.length + newUrls.length > 5) {
       toast({
-        title: "Ошибка",
+        title: "ошибка",
         description: "Максимум 5 изображений на цвет.",
         variant: "destructive",
       });
@@ -183,7 +186,7 @@ export function AddNewItemPage() {
     const newUrls = files.map((f) => URL.createObjectURL(f));
     if (generalImages.length + newUrls.length > 5) {
       toast({
-        title: "Ошибка",
+        title: "ошибка",
         description: "Максимум 5 общих изображений.",
         variant: "destructive",
       });
@@ -215,7 +218,9 @@ export function AddNewItemPage() {
     });
   };
 
-  const getAvailableSizes = (variants: { size: string; stock_quantity: number }[]) => {
+  const getAvailableSizes = (
+    variants: { size: string; stock_quantity: number }[],
+  ) => {
     const selected = variants.map((v) => v.size.trim()).filter(Boolean);
     const hasOneSize = selected.includes("One Size");
     const hasOther = selected.some((s) => s !== "One Size");
@@ -226,7 +231,9 @@ export function AddNewItemPage() {
     });
   };
 
-  const canAddVariant = (variants: { size: string; stock_quantity: number }[]) => {
+  const canAddVariant = (
+    variants: { size: string; stock_quantity: number }[],
+  ) => {
     return !variants.some((v) => v.size === "One Size");
   };
 
@@ -264,7 +271,7 @@ export function AddNewItemPage() {
   const removeColorVariation = (index: number) => {
     if (colorVariations.length <= 1) {
       toast({
-        title: "Ошибка",
+        title: "ошибка",
         description: "Должен остаться хотя бы один цвет.",
         variant: "destructive",
       });
@@ -308,7 +315,7 @@ export function AddNewItemPage() {
       const cv = colorVariations[i];
       if (!cv.colorName.trim()) {
         toast({
-          title: "Ошибка",
+          title: "ошибка",
           description: `Выберите цвет для варианта ${i + 1}.`,
           variant: "destructive",
         });
@@ -316,7 +323,7 @@ export function AddNewItemPage() {
       }
       if (hasDuplicateSizes(cv.variants)) {
         toast({
-          title: "Ошибка",
+          title: "ошибка",
           description: `Дублирующиеся размеры в варианте цвета "${cv.colorName}".`,
           variant: "destructive",
         });
@@ -325,7 +332,7 @@ export function AddNewItemPage() {
       const filledSizes = cv.variants.filter((v) => v.size.trim());
       if (filledSizes.length === 0) {
         toast({
-          title: "Ошибка",
+          title: "ошибка",
           description: `Добавьте хотя бы один размер для цвета "${cv.colorName}".`,
           variant: "destructive",
         });
@@ -337,7 +344,7 @@ export function AddNewItemPage() {
           (v.stock_quantity < 0 || !Number.isInteger(v.stock_quantity))
         ) {
           toast({
-            title: "Ошибка",
+            title: "ошибка",
             description: `Количество по размеру не может быть отрицательным (цвет "${cv.colorName}").`,
             variant: "destructive",
           });
@@ -348,7 +355,7 @@ export function AddNewItemPage() {
 
     if (!sizingTableFile) {
       toast({
-        title: "Ошибка",
+        title: "ошибка",
         description: "Загрузите таблицу размеров.",
         variant: "destructive",
       });
@@ -357,7 +364,7 @@ export function AddNewItemPage() {
 
     if (!token) {
       toast({
-        title: "Ошибка",
+        title: "ошибка",
         description: "Токен не найден. Войдите в систему.",
         variant: "destructive",
       });
@@ -370,7 +377,7 @@ export function AddNewItemPage() {
     );
     if (!hasGeneralImages && !hasOnePerColor) {
       toast({
-        title: "Ошибка",
+        title: "ошибка",
         description:
           "Добавьте хотя бы одно общее изображение или хотя бы одно изображение в каждом цвете.",
         variant: "destructive",
@@ -438,7 +445,7 @@ export function AddNewItemPage() {
 
       await api.createProduct(productData, token);
       toast({
-        title: "Успех",
+        title: "успех",
         description: "Товар успешно добавлен!",
       });
       setName("");
@@ -465,7 +472,7 @@ export function AddNewItemPage() {
         setFieldErrors(err.fieldErrors);
       }
       toast({
-        title: "Ошибка",
+        title: "ошибка",
         description: err.message || "Не удалось добавить товар.",
         variant: "destructive",
       });

@@ -50,7 +50,7 @@ const VerificationCodeScreen: React.FC<VerificationCodeScreenProps> = ({
 
   const handleVerifyPress = async () => {
     if (!code || code.length !== 6) {
-      setError("Please enter a valid 6-digit code.");
+      setError("пожалуйста, введите корректный 6-значный код.");
       return;
     }
     setIsLoading(true);
@@ -62,7 +62,7 @@ const VerificationCodeScreen: React.FC<VerificationCodeScreenProps> = ({
     } catch (err) {
       setIsLoading(false);
       const message =
-        err instanceof Error ? err.message : "An unknown error occurred.";
+        err instanceof Error ? err.message : "произошла неизвестная ошибка.";
       setError(message);
     }
   };
@@ -76,11 +76,11 @@ const VerificationCodeScreen: React.FC<VerificationCodeScreenProps> = ({
       setResendCooldown(60); // Start the 60-second cooldown
       Alert.alert(
         "код отправлен повторно",
-        "новый код подтверждения был отправлен на ваш email."
+        "новый код подтверждения был отправлен на ваш email.",
       );
     } catch (err) {
       const message =
-        err instanceof Error ? err.message : "An unknown error occurred.";
+        err instanceof Error ? err.message : "произошла неизвестная ошибка.";
       Alert.alert("ошибка", `не удалось отправить код повторно: ${message}`);
     }
     setResendLoading(false);
@@ -162,7 +162,7 @@ const VerificationCodeScreen: React.FC<VerificationCodeScreenProps> = ({
                   <Animated.View
                     style={styles.codeContainer}
                     entering={FadeInDown.duration(
-                      ANIMATION_DURATIONS.MEDIUM
+                      ANIMATION_DURATIONS.MEDIUM,
                     ).delay(ANIMATION_DELAYS.STANDARD)}
                   >
                     {[0, 1, 2, 3, 4, 5].map((index) => (

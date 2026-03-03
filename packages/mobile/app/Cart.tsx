@@ -282,7 +282,7 @@ const CartItemImage = ({ item }: { item: CartItem }) => {
         <View
           style={[imageStyles.itemImage, imageStyles.noProductImagePlaceholder]}
         >
-          <Text style={imageStyles.noProductImageText}>Нет изображения</Text>
+          <Text style={imageStyles.noProductImageText}>нет изображения</Text>
         </View>
       )}
     </View>
@@ -334,12 +334,12 @@ const Cart = ({ navigation }: CartProps) => {
           if (paymentStatusResponse.status === "succeeded") {
             setShowConfirmation(true);
           } else if (paymentStatusResponse.status === "canceled") {
-            setPaymentError("Payment was canceled.");
+            setPaymentError("оплата была отменена.");
           } else {
-            setPaymentError("Payment status is unknown or pending.");
+            setPaymentError("статус оплаты неизвестен или в обработке.");
           }
         } catch (error) {
-          setPaymentError("Failed to verify payment status.");
+          setPaymentError("не удалось проверить статус оплаты.");
         }
       }
     };
@@ -502,7 +502,7 @@ const Cart = ({ navigation }: CartProps) => {
     try {
       const totalAmount = calculateRawTotal();
       if (totalAmount <= 0) {
-        setPaymentError("Cannot proceed with an empty cart.");
+        setPaymentError("нельзя оформить заказ с пустой корзиной.");
         setIsSubmitting(false);
         return;
       }
@@ -526,7 +526,7 @@ const Cart = ({ navigation }: CartProps) => {
           quantity: item.quantity ?? 1,
         }));
       if (receiptItems.length === 0) {
-        setPaymentError("Нет товаров с выбранным размером для оплаты.");
+        setPaymentError("нет товаров с выбранным размером для оплаты.");
         setIsSubmitting(false);
         return;
       }
@@ -550,7 +550,9 @@ const Cart = ({ navigation }: CartProps) => {
       // await WebBrowser.openBrowserAsync(confirmation_url);
     } catch (error) {
       setPaymentError(
-        error instanceof Error ? error.message : "An unknown error occurred.",
+        error instanceof Error
+          ? error.message
+          : "произошла неизвестная ошибка.",
       );
     } finally {
       setIsSubmitting(false);
@@ -582,13 +584,13 @@ const Cart = ({ navigation }: CartProps) => {
       entering={FadeIn.duration(ANIMATION_DURATIONS.STANDARD)}
       style={styles.confirmationContainer}
     >
-      <Text style={styles.confirmationTitle}>Заказ оформлен!</Text>
-      <Text style={styles.confirmationText}>Спасибо за покупку</Text>
+      <Text style={styles.confirmationTitle}>заказ оформлен!</Text>
+      <Text style={styles.confirmationText}>спасибо, что листаете Поток!</Text>
       <TouchableOpacity
         style={styles.confirmationButton}
         onPress={handleConfirmationClose}
       >
-        <Text style={styles.confirmationButtonText}>Вернуться к покупкам</Text>
+        <Text style={styles.confirmationButtonText}>вернуться к покупкам</Text>
       </TouchableOpacity>
     </Animated.View>
   );
@@ -638,7 +640,10 @@ const Cart = ({ navigation }: CartProps) => {
             <>
               <ScrollView
                 style={styles.itemsContainer}
-                contentContainerStyle={[styles.scrollContent, isScrollable && { paddingBottom: 20 }]}
+                contentContainerStyle={[
+                  styles.scrollContent,
+                  isScrollable && { paddingBottom: 20 },
+                ]}
                 showsVerticalScrollIndicator={false}
                 scrollEnabled={isScrollable}
                 onLayout={(e) => {
@@ -752,11 +757,11 @@ const Cart = ({ navigation }: CartProps) => {
                   <View style={styles.horizontalLine} />
                   <View style={styles.totalContainer}>
                     <Text style={styles.totalText}>
-                      ИТОГО {calculateTotal()}
+                      итого {calculateTotal()}
                     </Text>
                   </View>
                   <View style={styles.deliverySummaryContainer}>
-                    <Text style={styles.deliverySummaryLabel}>ДОСТАВКА</Text>
+                    <Text style={styles.deliverySummaryLabel}>доставка</Text>
                     {brandSummaries.map((summary) => (
                       <View
                         key={summary.brandName}
@@ -811,7 +816,7 @@ const Cart = ({ navigation }: CartProps) => {
                           onPress={() => navigation.navigate("Settings")}
                         >
                           <Text style={styles.settingsButtonText}>
-                            Перейти в настройки
+                            перейти в настройки
                           </Text>
                         </TouchableOpacity>
                       )}
@@ -832,7 +837,7 @@ const Cart = ({ navigation }: CartProps) => {
                       disabled={isSubmitting}
                     >
                       <Text style={styles.checkoutButtonText}>
-                        {isSubmitting ? "ОБРАБОТКА..." : "ОФОРМИТЬ ЗАКАЗ"}
+                        {isSubmitting ? "обработка..." : "оформить заказ"}
                       </Text>
                     </TouchableOpacity>
                   </Animated.View>

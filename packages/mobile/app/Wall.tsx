@@ -401,7 +401,7 @@ const Wall = ({ navigation, onLogout, openOrderId }: WallProps) => {
       Alert.alert(
         "ошибка обновления",
         "не удалось обновить любимые бренды. попробуйте позже.",
-        [{ text: "OK" }],
+        [{ text: "ок" }],
       );
     }
   };
@@ -732,7 +732,7 @@ const Wall = ({ navigation, onLogout, openOrderId }: WallProps) => {
           {selectedBrands.length > 0 ? (
             selectedBrands.map(renderBrandBubble)
           ) : (
-            <Text style={styles.emptyBrandsText}>Выберите бренды</Text>
+            <Text style={styles.emptyBrandsText}>выберите бренды</Text>
           )}
         </ScrollView>
       </Animated.View>
@@ -779,7 +779,7 @@ const Wall = ({ navigation, onLogout, openOrderId }: WallProps) => {
         const cardItem: CardItem = {
           id: item.id,
           name: item.name,
-          brand_name: item.brand_name || "Unknown Brand",
+          brand_name: item.brand_name || "неизвестный бренд",
           price: item.price,
           images: item.images
             ? item.images.map((img) => ({ uri: img }))
@@ -791,7 +791,7 @@ const Wall = ({ navigation, onLogout, openOrderId }: WallProps) => {
           quantity: 1,
           color_variants: [
             {
-              color_name: item.color || "Unknown",
+              color_name: item.color || "неизвестно",
               color_hex: "#888888",
               images: item.images || (item.image ? [item.image] : []),
               variants: [{ size: item.size, stock_quantity: 1 }],
@@ -799,10 +799,10 @@ const Wall = ({ navigation, onLogout, openOrderId }: WallProps) => {
           ],
           selected_color_index: 0,
           variants: [{ size: item.size, stock_quantity: 1 }],
-          description: item.description || "No description available.",
-          color: item.color || "Unknown",
-          materials: item.materials || "Unknown",
-          brand_return_policy: item.return_policy || "Unknown",
+          description: item.description || "описание отсутствует.",
+          color: item.color || "неизвестно",
+          materials: item.materials || "неизвестно",
+          brand_return_policy: item.return_policy || "неизвестно",
         };
         navigation.navigate("Home", { addCardItem: cardItem });
       }
@@ -946,13 +946,13 @@ const Wall = ({ navigation, onLogout, openOrderId }: WallProps) => {
               style={styles.orderTotalContainer}
             >
               <Text style={styles.orderTotalText}>
-                ИТОГО {formatPrice(orderDetail.total_amount)} ₽
+                итого {formatPrice(orderDetail.total_amount)} ₽
               </Text>
               <Text style={styles.orderDeliveryText}>
-                ДОСТАВКА{" "}
+                доставка{" "}
                 {(orderDetail.shipping_cost ?? 0) > 0
                   ? `${formatPrice(orderDetail.shipping_cost!)} ₽`
-                  : "БЕСПЛАТНО"}
+                  : "бесплатно"}
               </Text>
             </Animated.View>
             <Animated.View
@@ -1077,7 +1077,7 @@ const Wall = ({ navigation, onLogout, openOrderId }: WallProps) => {
                           `Return Request - Order #${order.number}`,
                         );
                         const body = encodeURIComponent(
-                          `Здравствуйте,\n\nХочу инициировать возврат по заказу №${order.number}.\n\nID заказа: ${order.id}\nДата: ${orderDate}\nСумма: ${formatPrice(order.total_amount)} ₽\n\nС уважением`,
+                          `здравствуйте,\n\nхочу инициировать возврат по заказу №${order.number}.\n\nid заказа: ${order.id}\nдата: ${orderDate}\nсумма: ${formatPrice(order.total_amount)} ₽\n\nс уважением`,
                         );
                         Linking.openURL(
                           `mailto:support@polkamarket.ru?subject=${subject}&body=${body}`,
@@ -1120,7 +1120,7 @@ const Wall = ({ navigation, onLogout, openOrderId }: WallProps) => {
           setCurrentView("settings");
         }}
       >
-        <Text style={styles.settingsButtonText}>настройки</Text>
+        <Text style={styles.settingsButtonText}>НАСТРОЙКИ</Text>
       </Pressable>
     </Animated.View>
   );
@@ -1293,9 +1293,9 @@ const Wall = ({ navigation, onLogout, openOrderId }: WallProps) => {
             } catch (err: any) {
               log.error("Avatar upload failed:", err);
               Alert.alert(
-                "Ошибка",
+                "ошибка",
                 err?.message ||
-                  "Не удалось загрузить фото. Проверьте настройки сервера.",
+                  "не удалось загрузить фото. проверьте настройки сервера.",
               );
               throw err;
             }

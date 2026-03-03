@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
@@ -20,8 +20,8 @@ const NetworkLoadingIndicator: React.FC<NetworkLoadingIndicatorProps> = ({
   onRetry,
   timeout = 10000,
   showTimeoutWarning = true,
-  message = 'Загрузка...',
-  className = ''
+  message = "загрузка...",
+  className = "",
 }) => {
   const [showTimeoutMessage, setShowTimeoutMessage] = useState(false);
   const [elapsedTime, setElapsedTime] = useState(0);
@@ -33,13 +33,17 @@ const NetworkLoadingIndicator: React.FC<NetworkLoadingIndicatorProps> = ({
     if (isLoading) {
       setElapsedTime(0);
       setShowTimeoutMessage(false);
-      
+
       // Start timer
       interval = setInterval(() => {
-        setElapsedTime(prev => {
+        setElapsedTime((prev) => {
           const newTime = prev + 100;
           // Show timeout warning at 70% of timeout
-          if (showTimeoutWarning && newTime >= timeout * 0.7 && !showTimeoutMessage) {
+          if (
+            showTimeoutWarning &&
+            newTime >= timeout * 0.7 &&
+            !showTimeoutMessage
+          ) {
             setShowTimeoutMessage(true);
           }
           return newTime;
@@ -76,13 +80,15 @@ const NetworkLoadingIndicator: React.FC<NetworkLoadingIndicatorProps> = ({
               <RefreshCw className="h-4 w-4 animate-spin text-brand" />
               <span className="text-sm text-foreground">{message}</span>
             </div>
-            
+
             {/* Progress bar */}
             <div className="space-y-2">
               <Progress value={progress} className="h-2" />
               <div className="flex justify-between text-xs">
-                <span className="text-muted-foreground">Прогресс</span>
-                <span className="text-muted-foreground">{Math.round(progress)}%</span>
+                <span className="text-muted-foreground">прогресс</span>
+                <span className="text-muted-foreground">
+                  {Math.round(progress)}%
+                </span>
               </div>
             </div>
 
@@ -108,15 +114,15 @@ const NetworkLoadingIndicator: React.FC<NetworkLoadingIndicatorProps> = ({
             <div className="flex items-start space-x-2">
               <AlertTriangle className="h-4 w-4 text-red-400 mt-0.5 flex-shrink-0" />
               <div className="text-sm">
-                <p className="text-red-400 font-medium">Ошибка загрузки</p>
+                <p className="text-red-400 font-medium">ошибка загрузки</p>
                 <p className="text-red-400/80 mt-1">
-                  {error.message || 'Произошла неизвестная ошибка'}
+                  {error.message || "произошла неизвестная ошибка"}
                 </p>
               </div>
             </div>
-            
+
             {onRetry && (
-              <Button 
+              <Button
                 onClick={onRetry}
                 variant="outline"
                 size="sm"

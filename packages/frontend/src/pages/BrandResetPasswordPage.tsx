@@ -15,8 +15,8 @@ import * as api from "@/services/api";
 
 const BrandResetPasswordPage = () => {
   useEffect(() => {
-    document.documentElement.classList.add('dark');
-    return () => document.documentElement.classList.remove('dark');
+    document.documentElement.classList.add("dark");
+    return () => document.documentElement.classList.remove("dark");
   }, []);
   const [code, setCode] = useState("");
   const [password, setPassword] = useState("");
@@ -310,6 +310,3 @@ const BrandResetPasswordPage = () => {
 };
 
 export default BrandResetPasswordPage;
-
-
-

@@ -30,8 +30,8 @@ export const formatDeliveryTime = (
 
 export const createLoadingCard = (): CardItem => ({
   id: LOADING_CARD_ID,
-  name: "Загрузка...",
-  brand_name: "Загрузка...",
+  name: "загрузка...",
+  brand_name: "загрузка...",
   price: 0,
   images: [fallbackImage],
   isLiked: false,
@@ -45,7 +45,8 @@ export const createLoadingCard = (): CardItem => ({
 });
 
 /** Format a number as a Russian-locale price string (comma decimal separator). */
-export const formatPrice = (n: number): string => n.toFixed(2).replace(".", ",");
+export const formatPrice = (n: number): string =>
+  n.toFixed(2).replace(".", ",");
 
 export const toggleLikeApi = async (
   productId: string,

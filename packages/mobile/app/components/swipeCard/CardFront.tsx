@@ -157,7 +157,7 @@ const CardFront: React.FC<CardFrontProps> = ({
             </View>
           ) : (
             <View style={[styles.imagePressable, styles.imagePlaceholder]}>
-              <Text style={styles.imagePlaceholderText}>Нет изображения</Text>
+              <Text style={styles.imagePlaceholderText}>нет изображения</Text>
             </View>
           )}
         </View>

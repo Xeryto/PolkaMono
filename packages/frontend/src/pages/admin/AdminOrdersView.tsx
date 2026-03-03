@@ -34,10 +34,14 @@ export function AdminOrdersView() {
 
   // Log return form state
   const [orderIdInput, setOrderIdInput] = useState("");
-  const [lookupResult, setLookupResult] = useState<AdminOrderLookup | null>(null);
+  const [lookupResult, setLookupResult] = useState<AdminOrderLookup | null>(
+    null,
+  );
   const [lookupLoading, setLookupLoading] = useState(false);
   const [lookupError, setLookupError] = useState<string | null>(null);
-  const [selectedItemIds, setSelectedItemIds] = useState<Set<string>>(new Set());
+  const [selectedItemIds, setSelectedItemIds] = useState<Set<string>>(
+    new Set(),
+  );
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitSuccess, setSubmitSuccess] = useState(false);
@@ -46,7 +50,10 @@ export function AdminOrdersView() {
     setLoadingReturns(true);
     setReturnsError(null);
     try {
-      const data = await getAdminReturns(dateFrom || undefined, dateTo || undefined);
+      const data = await getAdminReturns(
+        dateFrom || undefined,
+        dateTo || undefined,
+      );
       setReturns(data);
     } catch {
       setReturnsError("Не удалось загрузить возвраты");
@@ -72,7 +79,7 @@ export function AdminOrdersView() {
       const data = await lookupAdminOrder(orderIdInput.trim());
       setLookupResult(data);
     } catch (e: unknown) {
-      setLookupError(e instanceof Error ? e.message : "Ошибка поиска");
+      setLookupError(e instanceof Error ? e.message : "ошибка поиска");
     } finally {
       setLookupLoading(false);
     }
@@ -103,7 +110,9 @@ export function AdminOrdersView() {
       setSelectedItemIds(new Set());
       await fetchReturns();
     } catch (e: unknown) {
-      setSubmitError(e instanceof Error ? e.message : "Ошибка при сохранении возврата");
+      setSubmitError(
+        e instanceof Error ? e.message : "ошибка при сохранении возврата",
+      );
     } finally {
       setSubmitting(false);
     }
@@ -121,16 +130,21 @@ export function AdminOrdersView() {
         dateTo={dateTo}
         onDateFromChange={setDateFrom}
         onDateToChange={setDateTo}
-        onClear={() => { setDateFrom(""); setDateTo(""); }}
+        onClear={() => {
+          setDateFrom("");
+          setDateTo("");
+        }}
       />
 
       {/* Returns log table */}
       <div className="bg-card rounded-xl border border-border/30 overflow-hidden">
         <div className="px-4 py-3 border-b border-border/30">
-          <span className="text-sm font-semibold text-foreground">Журнал возвратов</span>
+          <span className="text-sm font-semibold text-foreground">
+            Журнал возвратов
+          </span>
         </div>
         {loadingReturns ? (
-          <div className="p-4 text-sm text-muted-foreground">Загрузка...</div>
+          <div className="p-4 text-sm text-muted-foreground">загрузка...</div>
         ) : returnsError ? (
           <div className="p-4 text-sm text-red-500">{returnsError}</div>
         ) : returns.length === 0 ? (
@@ -147,13 +161,22 @@ export function AdminOrdersView() {
             </thead>
             <tbody>
               {returns.map((row) => (
-                <tr key={row.item_id} className="border-b border-border/20 last:border-0">
+                <tr
+                  key={row.item_id}
+                  className="border-b border-border/20 last:border-0"
+                >
                   <td className="px-4 py-2 font-mono text-xs text-foreground">
                     {row.order_id.slice(0, 8)}
                   </td>
-                  <td className="px-4 py-2 text-foreground">{row.product_name}</td>
-                  <td className="px-4 py-2 text-foreground">{row.brand_name}</td>
-                  <td className="px-4 py-2 text-muted-foreground">{formatDate(row.returned_at)}</td>
+                  <td className="px-4 py-2 text-foreground">
+                    {row.product_name}
+                  </td>
+                  <td className="px-4 py-2 text-foreground">
+                    {row.brand_name}
+                  </td>
+                  <td className="px-4 py-2 text-muted-foreground">
+                    {formatDate(row.returned_at)}
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -163,11 +186,16 @@ export function AdminOrdersView() {
 
       {/* Log a return form */}
       <div className="bg-card rounded-xl border border-border/30 p-5 space-y-4">
-        <span className="text-sm font-semibold text-foreground block">Зафиксировать возврат</span>
+        <span className="text-sm font-semibold text-foreground block">
+          Зафиксировать возврат
+        </span>
 
         <div className="flex gap-2 items-end">
           <div className="flex-1 space-y-1">
-            <Label htmlFor="order-id-input" className="text-xs text-muted-foreground">
+            <Label
+              htmlFor="order-id-input"
+              className="text-xs text-muted-foreground"
+            >
               Номер заказа (ID)
             </Label>
             <Input
@@ -193,7 +221,10 @@ export function AdminOrdersView() {
         {lookupResult && (
           <div className="space-y-3">
             <p className="text-xs text-muted-foreground">
-              Бренд: <span className="text-foreground font-medium">{lookupResult.brand_name}</span>
+              Бренд:{" "}
+              <span className="text-foreground font-medium">
+                {lookupResult.brand_name}
+              </span>
               {" · "}Заказ №{lookupResult.order_id.slice(0, 8)}
             </p>
             <div className="space-y-2">
@@ -207,19 +238,25 @@ export function AdminOrdersView() {
                       alreadyReturned
                         ? "border-border/20 opacity-50 cursor-not-allowed"
                         : checked
-                        ? "border-foreground/40 bg-foreground/5"
-                        : "border-border/30 hover:border-border/50"
+                          ? "border-foreground/40 bg-foreground/5"
+                          : "border-border/30 hover:border-border/50"
                     }`}
                   >
                     <input
                       type="checkbox"
                       checked={checked}
                       disabled={alreadyReturned}
-                      onChange={() => !alreadyReturned && toggleItem(item.item_id)}
+                      onChange={() =>
+                        !alreadyReturned && toggleItem(item.item_id)
+                      }
                       className="accent-foreground"
                     />
-                    <span className="text-sm text-foreground flex-1">{item.product_name}</span>
-                    <span className="text-xs text-muted-foreground">×{item.quantity}</span>
+                    <span className="text-sm text-foreground flex-1">
+                      {item.product_name}
+                    </span>
+                    <span className="text-xs text-muted-foreground">
+                      ×{item.quantity}
+                    </span>
                     <span
                       className={`text-xs px-2 py-0.5 rounded-full font-medium ${
                         alreadyReturned
@@ -233,7 +270,9 @@ export function AdminOrdersView() {
                 );
               })}
             </div>
-            {submitError && <p className="text-sm text-red-500">{submitError}</p>}
+            {submitError && (
+              <p className="text-sm text-red-500">{submitError}</p>
+            )}
             {submitSuccess && (
               <p className="text-sm text-green-500">Возврат зафиксирован</p>
             )}

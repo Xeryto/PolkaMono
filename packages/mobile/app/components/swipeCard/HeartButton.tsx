@@ -1,40 +1,40 @@
-import React, { useRef, useState } from "react";
-import { Pressable, Animated as RNAnimated } from "react-native";
+import React, { useState } from "react";
+import { Pressable } from "react-native";
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withSpring,
+  withSequence,
+  runOnJS,
+} from "react-native-reanimated";
 import * as Haptics from "expo-haptics";
 import Heart2 from "../svg/Heart2";
 import HeartFilled from "../svg/HeartFilled";
-import {
-  ANIMATION_DURATIONS,
-  ANIMATION_EASING,
-} from "../../lib/animations";
 
 interface HeartButtonProps {
   isLiked: boolean;
   onToggleLike: () => void;
 }
 
+const SPRING_CONFIG = { mass: 0.2, damping: 12, stiffness: 600 };
+
 const HeartButton: React.FC<HeartButtonProps> = ({ isLiked, onToggleLike }) => {
-  const heartScale = useRef(new RNAnimated.Value(1)).current;
-  const pressScale = useRef(new RNAnimated.Value(1)).current;
+  const heartScale = useSharedValue(1);
+  const pressScale = useSharedValue(1);
   const [isAnimating, setIsAnimating] = useState(false);
 
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [
+      { scale: pressScale.value * heartScale.value },
+    ],
+  }));
+
   const handlePressIn = () => {
-    RNAnimated.timing(pressScale, {
-      toValue: 0.85,
-      duration: ANIMATION_DURATIONS.MICRO,
-      useNativeDriver: true,
-      easing: ANIMATION_EASING.QUICK,
-    }).start();
+    pressScale.value = withSpring(0.85, { mass: 0.3, damping: 15, stiffness: 500 });
   };
 
   const handlePressOut = () => {
-    RNAnimated.timing(pressScale, {
-      toValue: 1,
-      duration: ANIMATION_DURATIONS.FAST,
-      useNativeDriver: true,
-      easing: ANIMATION_EASING.QUICK,
-    }).start();
-
+    pressScale.value = withSpring(1, { mass: 0.3, damping: 15, stiffness: 500 });
     handlePress();
   };
 
@@ -50,24 +50,13 @@ const HeartButton: React.FC<HeartButtonProps> = ({ isLiked, onToggleLike }) => {
         : Haptics.ImpactFeedbackStyle.Medium,
     );
 
-    RNAnimated.sequence([
-      RNAnimated.spring(heartScale, {
-        toValue: 1.3,
-        useNativeDriver: true,
-        speed: 300,
-        bounciness: 12,
+    heartScale.value = withSequence(
+      withSpring(1.3, SPRING_CONFIG),
+      withSpring(1, SPRING_CONFIG, () => {
+        "worklet";
+        runOnJS(setIsAnimating)(false);
       }),
-      RNAnimated.spring(heartScale, {
-        toValue: 1,
-        useNativeDriver: true,
-        speed: 300,
-        bounciness: 12,
-      }),
-    ]).start(() => {
-      requestAnimationFrame(() => {
-        setIsAnimating(false);
-      });
-    });
+    );
   };
 
   return (
@@ -82,15 +71,13 @@ const HeartButton: React.FC<HeartButtonProps> = ({ isLiked, onToggleLike }) => {
       }}
       hitSlop={{ top: 25, bottom: 25, left: 25, right: 25 }}
     >
-      <RNAnimated.View style={{ transform: [{ scale: pressScale }] }}>
-        <RNAnimated.View style={{ transform: [{ scale: heartScale }] }}>
-          {isLiked ? (
-            <HeartFilled width={33} height={33} />
-          ) : (
-            <Heart2 width={33} height={33} />
-          )}
-        </RNAnimated.View>
-      </RNAnimated.View>
+      <Animated.View style={animatedStyle}>
+        {isLiked ? (
+          <HeartFilled width={33} height={33} />
+        ) : (
+          <Heart2 width={33} height={33} />
+        )}
+      </Animated.View>
     </Pressable>
   );
 };
