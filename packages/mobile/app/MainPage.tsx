@@ -398,6 +398,13 @@ const MainPage = ({ navigation, route }: MainPageProps) => {
           style={styles.gradientBackground}
         />
 
+        {/* Refreshing overlay — shows skeleton behind the fading card */}
+        {deck.isRefreshing && (
+          <View style={[cardStyles.whiteBox, { position: "absolute", zIndex: 0, overflow: "hidden" }]}>
+            <SkeletonSwipeCard />
+          </View>
+        )}
+
         {deck.cards.length > 0 ? (
           <SwipeCard
             card={deck.cards[deck.currentCardIndex]}
@@ -455,36 +462,45 @@ const MainPage = ({ navigation, route }: MainPageProps) => {
           renderEmptyState()
         )}
 
-        <RNAnimated.View style={{ opacity: deck.refreshAnim, width: "100%", height: "100%" }}>
-          <RNAnimated.View style={[cardStyles.text, { opacity: deck.fadeAnim }]}>
-            {deck.cards.length > 0 ? (
-              <>
-                <Text style={cardStyles.brandName} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.5}>
-                  {currentCard?.brand_name || "бренд не указан"}
-                </Text>
-                {hasSale ? (
-                  <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-                    <Text style={[cardStyles.price, cardStyles.priceStrikethrough]}>
-                      {`${formatPrice(currentCard!.price)} ₽`}
-                    </Text>
-                    <Text style={[cardStyles.price, cardStyles.priceSale]}>
-                      {`${formatPrice(displaySalePrice!)} ₽`}
-                    </Text>
-                  </View>
-                ) : (
-                  <Text style={cardStyles.price}>
-                    {`${currentCard ? formatPrice(currentCard.price) : "0,00"} ₽`}
+        {deck.isRefreshing ? (
+          <View style={{ width: "100%", height: "100%" }}>
+            <View style={cardStyles.text}>
+              <Text style={cardStyles.brandName}>обновляем...</Text>
+              <Text style={cardStyles.price}> </Text>
+            </View>
+          </View>
+        ) : (
+          <RNAnimated.View style={{ opacity: deck.refreshAnim, width: "100%", height: "100%" }}>
+            <RNAnimated.View style={[cardStyles.text, { opacity: deck.fadeAnim }]}>
+              {deck.cards.length > 0 ? (
+                <>
+                  <Text style={cardStyles.brandName} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.5}>
+                    {currentCard?.brand_name || "бренд не указан"}
                   </Text>
-                )}
-              </>
-            ) : (
-              <>
-                <Text style={cardStyles.name} numberOfLines={1}>Загрузка...</Text>
-                <Text style={cardStyles.price}>Пожалуйста, подождите</Text>
-              </>
-            )}
+                  {hasSale ? (
+                    <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                      <Text style={[cardStyles.price, cardStyles.priceStrikethrough]}>
+                        {`${formatPrice(currentCard!.price)} ₽`}
+                      </Text>
+                      <Text style={[cardStyles.price, cardStyles.priceSale]}>
+                        {`${formatPrice(displaySalePrice!)} ₽`}
+                      </Text>
+                    </View>
+                  ) : (
+                    <Text style={cardStyles.price}>
+                      {`${currentCard ? formatPrice(currentCard.price) : "0,00"} ₽`}
+                    </Text>
+                  )}
+                </>
+              ) : (
+                <>
+                  <Text style={cardStyles.name} numberOfLines={1}>Загрузка...</Text>
+                  <Text style={cardStyles.price}>Пожалуйста, подождите</Text>
+                </>
+              )}
+            </RNAnimated.View>
           </RNAnimated.View>
-        </RNAnimated.View>
+        )}
       </View>
     </Animated.View>
   );

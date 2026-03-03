@@ -140,6 +140,8 @@ const Wall = ({ navigation, onLogout, openOrderId }: WallProps) => {
   const [selectedSize, setSelectedSize] = useState("M");
   const [hasSavedSize, setHasSavedSize] = useState(false);
   const [showSizeSelection, setShowSizeSelection] = useState(false);
+  const [sizeAnimating, setSizeAnimating] = useState(false);
+  const sizeContainerRef = useRef<View>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [isSearchActive, setIsSearchActive] = useState(false);
   const [selectedBrands, setSelectedBrands] = useState<string[]>([]);
@@ -298,8 +300,6 @@ const Wall = ({ navigation, onLogout, openOrderId }: WallProps) => {
           setSelectedSize(profile.profile.selected_size);
           setHasSavedSize(true);
           sizeContainerWidth.setValue(height * 0.1);
-        } else {
-          sizeContainerWidth.setValue(width * 0.3);
         }
 
         // Set selected brands from profile
@@ -493,26 +493,39 @@ const Wall = ({ navigation, onLogout, openOrderId }: WallProps) => {
 
   const handleSizePress = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    RNAnimated.parallel([
-      RNAnimated.timing(sizeContainerWidth, {
-        toValue: width * 0.5,
-        duration: ANIMATION_DURATIONS.STANDARD,
-        easing: ANIMATION_EASING.STANDARD,
-        useNativeDriver: false,
-      }),
-      RNAnimated.timing(sizeTextOpacity, {
-        toValue: 1,
-        duration: ANIMATION_DURATIONS.SHORT,
-        useNativeDriver: true,
-      }),
-      RNAnimated.timing(sizeIndicatorOpacity, {
-        toValue: 0,
-        duration: ANIMATION_DURATIONS.FAST,
-        useNativeDriver: true,
-      }),
-    ]).start(() => {
-      setShowSizeSelection(true);
-    });
+
+    const animate = (fromWidth: number) => {
+      sizeContainerWidth.setValue(fromWidth);
+      setSizeAnimating(true);
+      RNAnimated.parallel([
+        RNAnimated.timing(sizeContainerWidth, {
+          toValue: width * 0.5,
+          duration: ANIMATION_DURATIONS.STANDARD,
+          easing: ANIMATION_EASING.STANDARD,
+          useNativeDriver: false,
+        }),
+        RNAnimated.timing(sizeTextOpacity, {
+          toValue: 1,
+          duration: ANIMATION_DURATIONS.SHORT,
+          useNativeDriver: true,
+        }),
+        RNAnimated.timing(sizeIndicatorOpacity, {
+          toValue: 0,
+          duration: ANIMATION_DURATIONS.FAST,
+          useNativeDriver: true,
+        }),
+      ]).start(() => {
+        setShowSizeSelection(true);
+      });
+    };
+
+    if (!hasSavedSize && sizeContainerRef.current) {
+      sizeContainerRef.current.measure((_x, _y, w) => {
+        animate(w || height * 0.1);
+      });
+    } else {
+      animate(height * 0.1);
+    }
   };
 
   const handleSizeSelect = (size: string) => {
@@ -539,6 +552,7 @@ const Wall = ({ navigation, onLogout, openOrderId }: WallProps) => {
       }),
     ]).start(() => {
       setShowSizeSelection(false);
+      setSizeAnimating(false);
     });
   };
 
@@ -611,10 +625,16 @@ const Wall = ({ navigation, onLogout, openOrderId }: WallProps) => {
     );
   };
 
+  const useFixedWidth = hasSavedSize || showSizeSelection || sizeAnimating;
+
   const renderSizeSelection = () => (
     <View style={styles.sizeSelectionWrapper}>
       <RNAnimated.View
-        style={[styles.sizeSelectionContainer, { width: sizeContainerWidth }]}
+        ref={sizeContainerRef}
+        style={[
+          styles.sizeSelectionContainer,
+          useFixedWidth && { width: sizeContainerWidth },
+        ]}
       >
         <RNAnimated.View
           style={[styles.sizeTextContainer, { opacity: sizeTextOpacity }]}

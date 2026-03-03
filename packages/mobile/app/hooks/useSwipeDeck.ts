@@ -567,33 +567,37 @@ export function useSwipeDeck(config: SwipeDeckConfig) {
     if (isRefreshing) return;
     setIsRefreshing(true);
     lastEmptyFetchTime.current = 0;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
 
-    RNAnimated.sequence([
-      RNAnimated.timing(refreshAnim, {
-        toValue: 0.7,
-        duration: 200,
-        useNativeDriver: false,
-        easing: Easing.out(Easing.ease),
-      }),
-      RNAnimated.timing(refreshAnim, {
-        toValue: 1,
-        duration: 300,
-        useNativeDriver: false,
-        easing: Easing.inOut(Easing.ease),
-      }),
-    ]).start();
+    // Dramatic fade-out
+    RNAnimated.timing(refreshAnim, {
+      toValue: 0,
+      duration: 250,
+      useNativeDriver: false,
+      easing: Easing.out(Easing.ease),
+    }).start();
 
     try {
       const newCards = await fetchCards(MIN_CARDS_THRESHOLD + 1);
-      await new Promise((resolve) => setTimeout(resolve, 300));
+      await new Promise((resolve) => setTimeout(resolve, 250));
       setCards(newCards);
       setCurrentCardIndex(0);
       resetVisualState();
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      // Fade back in, then clear refreshing state
+      RNAnimated.timing(refreshAnim, {
+        toValue: 1,
+        duration: 350,
+        useNativeDriver: false,
+        easing: Easing.out(Easing.ease),
+      }).start(() => setIsRefreshing(false));
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     } catch (error) {
       log.error("Error hard refreshing cards:", error);
-    } finally {
-      setIsRefreshing(false);
+      RNAnimated.timing(refreshAnim, {
+        toValue: 1,
+        duration: 200,
+        useNativeDriver: false,
+      }).start(() => setIsRefreshing(false));
     }
   }, [isRefreshing, fetchCards]);
 

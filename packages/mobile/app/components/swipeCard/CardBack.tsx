@@ -20,6 +20,7 @@ import Animated, {
 import * as Clipboard from "expo-clipboard";
 import * as Haptics from "expo-haptics";
 import Cancel from "../svg/Cancel";
+import Maximize from "../svg/Maximize";
 import ExpandableSection from "./ExpandableSection";
 import { CardItem } from "../../types/product";
 import { formatDeliveryTime } from "../../lib/swipeCardUtils";
@@ -120,13 +121,33 @@ const SizingTableZoomable: React.FC<{ imageUri: string }> = ({ imageUri }) => {
     <>
       <Pressable
         onPress={handleOpen}
-        style={{ marginTop: 12, marginBottom: 4, borderRadius: 8 }}
+        style={{
+          marginTop: 12,
+          marginBottom: 4,
+          borderRadius: 8,
+          alignSelf: "center",
+        }}
       >
         <Image
           source={{ uri: imageUri }}
           style={{ width: 280, height: 160, borderRadius: 8 }}
           contentFit="contain"
         />
+        <View
+          style={{
+            position: "absolute",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            borderRadius: 8,
+            backgroundColor: "rgba(0,0,0,0.35)",
+            justifyContent: "center",
+            alignItems: "center",
+          }}
+        >
+          <Maximize width={32} height={32} color="#fff" />
+        </View>
       </Pressable>
       <Modal visible={open} transparent animationType="fade" statusBarTranslucent>
         <ZoomableImage
