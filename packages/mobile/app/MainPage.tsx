@@ -401,13 +401,51 @@ const MainPage = ({ navigation, route }: MainPageProps) => {
         {deck.cards.length > 0 ? (
           <SwipeCard
             card={deck.cards[deck.currentCardIndex]}
+            nextCard={deck.cards[deck.currentCardIndex + 1] || null}
             styles={cardStyles}
-            pan={deck.pan}
-            refreshAnim={deck.refreshAnim}
-            flipAnimation={deck.flipAnimation}
+            cardAnimatedStyle={deck.cardAnimatedStyle}
+            refreshAnimatedStyle={deck.refreshAnimatedStyle}
+            frontFlipStyle={deck.frontFlipStyle}
+            backFlipStyle={deck.backFlipStyle}
             isFlipped={deck.isFlipped}
-            panResponder={deck.panResponder}
+            panGesture={deck.panGesture}
             renderEmpty={renderEmptyState}
+            renderNextCardFront={() => {
+              const next = deck.cards[deck.currentCardIndex + 1];
+              if (!next) return null;
+              return (
+                <CardFront
+                  card={next}
+                  index={deck.currentCardIndex + 1}
+                  styles={cardStyles}
+                  imageCarouselWidth={deck.imageCarouselWidth}
+                  screenWidth={deck.screenWidth}
+                  cardWidthFraction={0.88}
+                  onImageLayout={() => {}}
+                  imageScrollViewRef={{ current: null }}
+                  onImageScroll={() => {}}
+                  currentImageIndex={0}
+                  onScrollToImage={() => {}}
+                  onFlip={() => {}}
+                  showSizeSelection={false}
+                  sizePanelAnimatedStyle={deck.sizePanelAnimatedStyle}
+                  cartButtonScale={deck.cartButtonScale}
+                  onCartPressIn={() => {}}
+                  onCartPressOut={() => {}}
+                  onCartPress={() => {}}
+                  onCancelSizeSelection={() => {}}
+                  onSizeSelect={() => {}}
+                  userSelectedSize={deck.userSelectedSize}
+                  colorSelectorOpen={false}
+                  colorDropdownAnimatedStyle={deck.colorDropdownAnimatedStyle}
+                  onColorSelect={() => {}}
+                  onOpenColorSelector={() => {}}
+                  onCloseColorSelector={() => {}}
+                  onToggleLike={() => {}}
+                  onLongPress={() => {}}
+                />
+              );
+            }}
             renderFront={() => (
               <CardFront
                 card={deck.cards[deck.currentCardIndex]}
@@ -445,7 +483,7 @@ const MainPage = ({ navigation, route }: MainPageProps) => {
                 card={deck.cards[deck.currentCardIndex]}
                 styles={cardStyles}
                 onFlip={deck.handleFlip}
-                headerPanResponder={deck.headerPanResponder}
+                headerPanGesture={deck.headerPanGesture}
                 scrollViewRef={deck.scrollViewRef}
                 bottomStrip={renderBackBottomStrip(deck.cards[deck.currentCardIndex], deck.currentCardIndex)}
               />
@@ -455,7 +493,7 @@ const MainPage = ({ navigation, route }: MainPageProps) => {
           renderEmptyState()
         )}
 
-        <RNAnimated.View style={{ opacity: deck.refreshAnim, width: "100%", height: "100%" }}>
+        <Animated.View style={[{ width: "100%", height: "100%" }, deck.refreshAnimatedStyle]}>
           <RNAnimated.View style={[cardStyles.text, { opacity: deck.fadeAnim }]}>
             {deck.cards.length > 0 ? (
               <>
@@ -484,7 +522,7 @@ const MainPage = ({ navigation, route }: MainPageProps) => {
               </>
             )}
           </RNAnimated.View>
-        </RNAnimated.View>
+        </Animated.View>
       </View>
     </Animated.View>
   );
