@@ -1,8 +1,7 @@
 import React from "react";
 import { View, Text, Pressable, ScrollView } from "react-native";
 import { Image } from "expo-image";
-import { PanResponderInstance } from "react-native";
-import { Gesture, GestureDetector } from "react-native-gesture-handler";
+import { Gesture, GestureDetector, GestureType } from "react-native-gesture-handler";
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -21,7 +20,7 @@ interface CardBackProps {
   card: CardItem;
   styles: any;
   onFlip: () => void;
-  headerPanResponder: PanResponderInstance;
+  headerPanGesture: GestureType;
   scrollViewRef: React.RefObject<ScrollView | null>;
   bottomStrip?: React.ReactNode;
 }
@@ -101,7 +100,7 @@ const CardBack: React.FC<CardBackProps> = ({
   card,
   styles,
   onFlip,
-  headerPanResponder,
+  headerPanGesture,
   scrollViewRef,
   bottomStrip,
 }) => {
@@ -110,7 +109,8 @@ const CardBack: React.FC<CardBackProps> = ({
       <Pressable style={styles.removeButton} onPress={onFlip}>
         <Cancel width={27} height={27} />
       </Pressable>
-      <View style={styles.cardBackHeader} {...headerPanResponder.panHandlers}>
+      <GestureDetector gesture={headerPanGesture}>
+        <Animated.View style={styles.cardBackHeader}>
         {card.images.length > 0 ? (
           <Image
             source={card.images[0]}
@@ -123,7 +123,8 @@ const CardBack: React.FC<CardBackProps> = ({
           </View>
         )}
         <Text style={styles.cardBackName}>{card.name}</Text>
-      </View>
+        </Animated.View>
+      </GestureDetector>
       <ScrollView
         ref={scrollViewRef as any}
         style={styles.expandableSectionsContainer}

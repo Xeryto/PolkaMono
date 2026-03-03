@@ -7,7 +7,6 @@ import {
 import {
   Dimensions,
   Animated as RNAnimated,
-  PanResponder,
   Easing,
   ScrollView,
   NativeSyntheticEvent,
@@ -16,10 +15,13 @@ import {
 import {
   useSharedValue,
   withTiming,
+  withSpring,
   runOnJS,
   useAnimatedStyle,
   interpolate,
+  cancelAnimation,
 } from "react-native-reanimated";
+import { Gesture } from "react-native-gesture-handler";
 import * as Haptics from "expo-haptics";
 import { ANIMATION_DURATIONS, ANIMATION_EASING } from "../lib/animations";
 import { CardItem } from "../types/product";
@@ -72,7 +74,7 @@ export function useSwipeDeck(config: SwipeDeckConfig) {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [userSelectedSize, setUserSelectedSize] = useState<string | null>(null);
 
-  // Refs for PanResponder (can't read state in static gesture handlers)
+  // Refs for reading state in callbacks
   const isAnimatingRef = useRef(false);
   const isRefreshingRef = useRef(false);
   const isFlippedRef = useRef(false);
@@ -81,10 +83,22 @@ export function useSwipeDeck(config: SwipeDeckConfig) {
   const currentImageIndexRef = useRef(0);
   const isFetchingMore = useRef(false);
 
-  // ─── Animation values ────────────────────────────────────────────────
-  const pan = useRef(new RNAnimated.ValueXY()).current;
+  // ─── Reanimated shared values (run on UI thread) ───────────────────
+  const translateX = useSharedValue(0);
+  const translateY = useSharedValue(0);
+  const flipProgress = useSharedValue(0);
+  const refreshOpacity = useSharedValue(1);
+
+  // Shared value mirrors of boolean state (readable in worklets)
+  const isAnimatingSV = useSharedValue(false);
+  const isFlippedSV = useSharedValue(false);
+  const isRefreshingSV = useSharedValue(false);
+
+  // Cancel zone flag for header gesture
+  const cancelZoneActive = useSharedValue(false);
+
+  // ─── Old Animated values (stay for independent animations) ─────────
   const fadeAnim = useRef(new RNAnimated.Value(1)).current;
-  const refreshAnim = useRef(new RNAnimated.Value(1)).current;
   const heartScale = useRef(new RNAnimated.Value(1)).current;
   const longPressScale = useRef(new RNAnimated.Value(1)).current;
   const heartAnimationRef = useRef<RNAnimated.CompositeAnimation | null>(null);
@@ -93,7 +107,6 @@ export function useSwipeDeck(config: SwipeDeckConfig) {
 
   // ─── Flip state ──────────────────────────────────────────────────────
   const [isFlipped, setIsFlipped] = useState(false);
-  const flipAnimation = useRef(new RNAnimated.Value(0)).current;
 
   // ─── Image carousel ──────────────────────────────────────────────────
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
@@ -111,10 +124,30 @@ export function useSwipeDeck(config: SwipeDeckConfig) {
   const [dropdownContentHeight, setDropdownContentHeight] = useState(0);
   const colorDropdownHeight = useSharedValue(COLOR_CORNER_CLOSED_HEIGHT);
 
-  // ─── Sync refs ───────────────────────────────────────────────────────
-  useEffect(() => { isAnimatingRef.current = isAnimating; }, [isAnimating]);
-  useEffect(() => { isRefreshingRef.current = isRefreshing; }, [isRefreshing]);
-  useEffect(() => { isFlippedRef.current = isFlipped; }, [isFlipped]);
+  // ─── Animated styles (all run on UI thread) ────────────────────────
+  const cardAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [
+      { translateX: translateX.value },
+      { translateY: translateY.value },
+    ],
+  }));
+
+  const frontFlipStyle = useAnimatedStyle(() => ({
+    transform: [{ rotateY: `${flipProgress.value}deg` }],
+  }));
+
+  const backFlipStyle = useAnimatedStyle(() => ({
+    transform: [{ rotateY: `${flipProgress.value + 180}deg` }],
+  }));
+
+  const refreshAnimatedStyle = useAnimatedStyle(() => ({
+    opacity: refreshOpacity.value,
+  }));
+
+  // ─── Sync refs & shared values ─────────────────────────────────────
+  useEffect(() => { isAnimatingRef.current = isAnimating; isAnimatingSV.value = isAnimating; }, [isAnimating]);
+  useEffect(() => { isRefreshingRef.current = isRefreshing; isRefreshingSV.value = isRefreshing; }, [isRefreshing]);
+  useEffect(() => { isFlippedRef.current = isFlipped; isFlippedSV.value = isFlipped; }, [isFlipped]);
   useEffect(() => { cardsRef.current = cards; }, [cards]);
   useEffect(() => { currentCardIndexRef.current = currentCardIndex; }, [currentCardIndex]);
   useEffect(() => { currentImageIndexRef.current = currentImageIndex; }, [currentImageIndex]);
@@ -311,17 +344,15 @@ export function useSwipeDeck(config: SwipeDeckConfig) {
 
   // ─── Flip ────────────────────────────────────────────────────────────
   const handleFlip = useCallback(() => {
-    RNAnimated.timing(flipAnimation, {
-      toValue: isFlipped ? 0 : 180,
+    flipProgress.value = withTiming(isFlipped ? 0 : 180, {
       duration: ANIMATION_DURATIONS.EXTENDED,
-      useNativeDriver: true,
       easing: ANIMATION_EASING.CUBIC,
-    }).start();
+    });
     setIsFlipped((prev) => !prev);
     // Reset size panel when flipping
     sizePanelWidth.set(SIZE_PANEL_CLOSED_WIDTH);
     setShowSizeSelection(false);
-  }, [isFlipped, flipAnimation]);
+  }, [isFlipped]);
 
   // ─── Like/unlike ─────────────────────────────────────────────────────
   const toggleLike = useCallback(
@@ -403,9 +434,11 @@ export function useSwipeDeck(config: SwipeDeckConfig) {
 
   // ─── Full visual reset (for external card injection) ───────────────
   const resetVisualState = () => {
-    pan.stopAnimation();
-    pan.setValue({ x: 0, y: 0 });
-    flipAnimation.setValue(0);
+    cancelAnimation(translateX);
+    cancelAnimation(translateY);
+    translateX.value = 0;
+    translateY.value = 0;
+    flipProgress.value = 0;
     setIsFlipped(false);
     setIsAnimating(false);
     resetToButtons();
@@ -413,29 +446,72 @@ export function useSwipeDeck(config: SwipeDeckConfig) {
     closeColorSelector();
   };
 
-  // ─── Swipe card ──────────────────────────────────────────────────────
-  const swipeCard = (direction: "up" | "right" = "up", cardToSwipe?: CardItem) => {
+  // ─── Swipe complete handler (called from gesture worklet via runOnJS) ─
+  const handleSwipeComplete = useCallback((direction: "up" | "right") => {
+    setIsAnimating(false);
+
+    setCards((prevCards) => {
+      if (prevCards.length === 0) return [];
+      const idx = currentCardIndexRef.current;
+      const card = prevCards[idx];
+      const newCards = [...prevCards];
+      newCards.splice(idx, 1);
+
+      if (card?.id) trackSwipe(card.id, direction);
+
+      const newIndex =
+        idx >= newCards.length
+          ? Math.max(0, newCards.length - 1)
+          : idx;
+      setTimeout(() => setCurrentCardIndex(newIndex), 0);
+
+      // Fetch more if running low
+      const cardsWithoutLoading = newCards.filter((c) => c.id !== LOADING_CARD_ID);
+      if (cardsWithoutLoading.length < MIN_CARDS_THRESHOLD) {
+        const hasLoadingCard = newCards.some((c) => c.id === LOADING_CARD_ID);
+        if (!hasLoadingCard) newCards.push(createLoadingCard());
+        fetchCards(MIN_CARDS_THRESHOLD - cardsWithoutLoading.length + 1).then((apiCards) => {
+          if (apiCards.length > 0) {
+            setCards((latestCards) => {
+              const filtered = latestCards.filter((c) => c.id !== LOADING_CARD_ID);
+              return [...filtered, ...apiCards];
+            });
+          }
+        });
+      }
+      return newCards;
+    });
+
+    // Reset for next card (no spring-from-below needed — next card already visible)
+    flipProgress.value = 0;
+    setIsFlipped(false);
+    resetToButtons();
+    translateX.value = 0;
+    translateY.value = 0;
+
+    fadeOutIn();
+  }, [fetchCards, fadeOutIn]);
+
+  // Stable reference for runOnJS (avoids stale closure in worklets)
+  const handleSwipeCompleteRef = useRef(handleSwipeComplete);
+  handleSwipeCompleteRef.current = handleSwipeComplete;
+  const triggerSwipeComplete = useCallback((direction: "up" | "right") => {
+    handleSwipeCompleteRef.current(direction);
+  }, []);
+
+  // ─── Swipe card (programmatic trigger) ─────────────────────────────
+  const swipeCard = (direction: "up" | "right" = "up", _cardToSwipe?: CardItem) => {
     if (isAnimating) return;
 
-    const currentCard = cardToSwipe || cards[currentCardIndex];
+    const currentCard = _cardToSwipe || cards[currentCardIndex];
     if (currentCard?.id === LOADING_CARD_ID) return;
 
     const realCards = cards.filter((c) => c.id !== LOADING_CARD_ID);
     if (realCards.length === 1) {
-      RNAnimated.sequence([
-        RNAnimated.timing(pan, {
-          toValue: { x: 0, y: -50 },
-          duration: 100,
-          easing: Easing.out(Easing.ease),
-          useNativeDriver: false,
-        }),
-        RNAnimated.spring(pan, {
-          toValue: { x: 0, y: 0 },
-          friction: 4,
-          tension: 40,
-          useNativeDriver: false,
-        }),
-      ]).start();
+      // Bounce effect — can't swipe the last card
+      translateY.value = withTiming(-50, { duration: 100 }, () => {
+        translateY.value = withSpring(0, { damping: 10, stiffness: 100 });
+      });
       if (!isRefreshing) refreshCards();
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
       return;
@@ -446,62 +522,23 @@ export function useSwipeDeck(config: SwipeDeckConfig) {
 
     const animationSafetyTimeout = setTimeout(() => {
       setIsAnimating(false);
-      pan.setValue({ x: 0, y: 0 });
+      translateX.value = 0;
+      translateY.value = 0;
     }, 300);
 
-    RNAnimated.timing(pan, {
-      toValue: {
-        x: direction === "right" ? screenWidth : 0,
-        y: -screenHeight,
-      },
-      duration: 100,
-      easing: Easing.ease,
-      useNativeDriver: false,
-    }).start(() => {
-      clearTimeout(animationSafetyTimeout);
-      setIsAnimating(false);
-
-      setCards((prevCards) => {
-        if (prevCards.length === 0) return [];
-        const newCards = [...prevCards];
-        newCards.splice(currentCardIndex, 1);
-
-        if (currentCard?.id) trackSwipe(currentCard.id, direction);
-
-        const newIndex =
-          currentCardIndex >= newCards.length
-            ? Math.max(0, newCards.length - 1)
-            : currentCardIndex;
-        setTimeout(() => setCurrentCardIndex(newIndex), 0);
-
-        // Fetch more if running low
-        const cardsWithoutLoading = newCards.filter((c) => c.id !== LOADING_CARD_ID);
-        if (cardsWithoutLoading.length < MIN_CARDS_THRESHOLD) {
-          const hasLoadingCard = newCards.some((c) => c.id === LOADING_CARD_ID);
-          if (!hasLoadingCard) newCards.push(createLoadingCard());
-          fetchCards(MIN_CARDS_THRESHOLD - cardsWithoutLoading.length + 1).then((apiCards) => {
-            if (apiCards.length > 0) {
-              setCards((latestCards) => {
-                const filtered = latestCards.filter((c) => c.id !== LOADING_CARD_ID);
-                return [...filtered, ...apiCards];
-              });
-            }
-          });
+    if (direction === "right") {
+      translateX.value = withTiming(screenWidth, { duration: 100 });
+    }
+    translateY.value = withTiming(
+      -screenHeight,
+      { duration: 100 },
+      (finished) => {
+        if (finished) {
+          runOnJS(clearTimeout)(animationSafetyTimeout);
+          runOnJS(triggerSwipeComplete)(direction);
         }
-        return newCards;
-      });
-
-      flipAnimation.setValue(0);
-      setIsFlipped(false);
-      resetToButtons();
-      pan.setValue({ x: 0, y: screenHeight });
-      RNAnimated.spring(pan, {
-        toValue: { x: 0, y: 0 },
-        friction: 6,
-        tension: 40,
-        useNativeDriver: false,
-      }).start();
-    });
+      },
+    );
 
     fadeOutIn();
   };
@@ -511,20 +548,9 @@ export function useSwipeDeck(config: SwipeDeckConfig) {
     if (isRefreshing) return;
     setIsRefreshing(true);
 
-    RNAnimated.sequence([
-      RNAnimated.timing(refreshAnim, {
-        toValue: 0.7,
-        duration: 200,
-        useNativeDriver: false,
-        easing: Easing.out(Easing.ease),
-      }),
-      RNAnimated.timing(refreshAnim, {
-        toValue: 1,
-        duration: 300,
-        useNativeDriver: false,
-        easing: Easing.inOut(Easing.ease),
-      }),
-    ]).start();
+    refreshOpacity.value = withTiming(0.7, { duration: 200 }, () => {
+      refreshOpacity.value = withTiming(1, { duration: 300 });
+    });
 
     try {
       const newCards = await fetchCards(2);
@@ -599,83 +625,84 @@ export function useSwipeDeck(config: SwipeDeckConfig) {
     resetToButtons();
   };
 
-  // ─── Pan responders ──────────────────────────────────────────────────
-  const headerPanResponder = useRef(
-    PanResponder.create({
-      onStartShouldSetPanResponder: () => false,
-      onMoveShouldSetPanResponder: (evt, gestureState) => {
-        if (!isFlippedRef.current || isAnimatingRef.current || isRefreshingRef.current) return false;
+  // ─── Gesture handlers (run on UI thread) ──────────────────────────
+  const panGesture = Gesture.Pan()
+    .activeOffsetY([-5, 5])
+    .onUpdate((event) => {
+      "worklet";
+      if (isFlippedSV.value || isAnimatingSV.value || isRefreshingSV.value) return;
+      if (event.translationY <= 0) {
+        translateY.value = event.translationY;
+      }
+    })
+    .onEnd((event) => {
+      "worklet";
+      if (isFlippedSV.value || isAnimatingSV.value || isRefreshingSV.value) {
+        translateY.value = withSpring(0, { damping: 15, stiffness: 150 });
+        return;
+      }
+      if (event.translationY < -SWIPE_THRESHOLD) {
+        isAnimatingSV.value = true;
+        translateY.value = withTiming(
+          -screenHeight,
+          { duration: 100 },
+          (finished) => {
+            if (finished) {
+              runOnJS(triggerSwipeComplete)("up");
+            }
+          },
+        );
+      } else {
+        translateY.value = withSpring(0, { damping: 15, stiffness: 150 });
+      }
+    });
 
-        const { pageX, pageY } = evt.nativeEvent;
-        const windowWidth = Dimensions.get("window").width;
-        const cw = windowWidth * cardWidthFraction;
-        const cardLeft = windowWidth * ((1 - cardWidthFraction) / 2);
-        const cardRight = cardLeft + cw;
-        const cancelRight = cardRight - 20 - 25;
-        const cancelLeft = cancelRight - 25;
-        const cancelTop = 12;
-        const cancelBottom = cancelTop + 25;
-        const pad = 15;
-        if (
-          pageX >= cancelLeft - pad && pageX <= cancelRight + pad &&
-          pageY >= cancelTop - pad && pageY <= cancelBottom + pad
-        ) return false;
-
-        return Math.abs(gestureState.dy) > 5;
-      },
-      onPanResponderMove: (_, gestureState) => {
-        if (gestureState.dy <= 0) pan.setValue({ x: 0, y: gestureState.dy });
-      },
-      onPanResponderRelease: (_, gestureState) => {
-        if (isAnimatingRef.current || isRefreshingRef.current) {
-          RNAnimated.spring(pan, { toValue: { x: 0, y: 0 }, friction: 5, useNativeDriver: false }).start();
-          return;
-        }
-        if (gestureState.dy < -SWIPE_THRESHOLD) {
-          setCards((curr) => {
-            const card = curr[currentCardIndex];
-            if (card) swipeCard("up", card);
-            return curr;
-          });
-        } else {
-          RNAnimated.spring(pan, { toValue: { x: 0, y: 0 }, friction: 5, useNativeDriver: false }).start();
-        }
-      },
-      onPanResponderTerminate: () => {
-        RNAnimated.spring(pan, { toValue: { x: 0, y: 0 }, friction: 5, useNativeDriver: false }).start();
-      },
-    }),
-  ).current;
-
-  const panResponder = useRef(
-    PanResponder.create({
-      onMoveShouldSetPanResponder: (_, gestureState) => {
-        if (isFlippedRef.current) return false;
-        return !isAnimatingRef.current && !isRefreshingRef.current && Math.abs(gestureState.dy) > 5;
-      },
-      onPanResponderMove: (_, gestureState) => {
-        if (gestureState.dy <= 0) pan.setValue({ x: 0, y: gestureState.dy });
-      },
-      onPanResponderRelease: (_, gestureState) => {
-        if (isAnimatingRef.current || isRefreshingRef.current) {
-          RNAnimated.spring(pan, { toValue: { x: 0, y: 0 }, friction: 5, useNativeDriver: false }).start();
-          return;
-        }
-        if (gestureState.dy < -SWIPE_THRESHOLD) {
-          setCards((curr) => {
-            const card = curr[currentCardIndex];
-            if (card) swipeCard("up", card);
-            return curr;
-          });
-        } else {
-          RNAnimated.spring(pan, { toValue: { x: 0, y: 0 }, friction: 5, useNativeDriver: false }).start();
-        }
-      },
-      onPanResponderTerminate: () => {
-        RNAnimated.spring(pan, { toValue: { x: 0, y: 0 }, friction: 5, useNativeDriver: false }).start();
-      },
-    }),
-  ).current;
+  const headerPanGesture = Gesture.Pan()
+    .activeOffsetY([-5, 5])
+    .onStart((event) => {
+      "worklet";
+      // Cancel zone exclusion (cancel button area on back face header)
+      const cardLeft = screenWidth * ((1 - cardWidthFraction) / 2);
+      const cardRight = cardLeft + cardWidth;
+      const cancelRight = cardRight - 20 - 25;
+      const cancelLeft = cancelRight - 25;
+      const cancelTop = 12;
+      const cancelBottom = cancelTop + 25;
+      const pad = 15;
+      cancelZoneActive.value =
+        event.absoluteX >= cancelLeft - pad && event.absoluteX <= cancelRight + pad &&
+        event.absoluteY >= cancelTop - pad && event.absoluteY <= cancelBottom + pad;
+    })
+    .onUpdate((event) => {
+      "worklet";
+      if (cancelZoneActive.value) return;
+      if (!isFlippedSV.value || isAnimatingSV.value || isRefreshingSV.value) return;
+      if (event.translationY <= 0) {
+        translateY.value = event.translationY;
+      }
+    })
+    .onEnd((event) => {
+      "worklet";
+      if (cancelZoneActive.value) return;
+      if (!isFlippedSV.value || isAnimatingSV.value || isRefreshingSV.value) {
+        translateY.value = withSpring(0, { damping: 15, stiffness: 150 });
+        return;
+      }
+      if (event.translationY < -SWIPE_THRESHOLD) {
+        isAnimatingSV.value = true;
+        translateY.value = withTiming(
+          -screenHeight,
+          { duration: 100 },
+          (finished) => {
+            if (finished) {
+              runOnJS(triggerSwipeComplete)("up");
+            }
+          },
+        );
+      } else {
+        translateY.value = withSpring(0, { damping: 15, stiffness: 150 });
+      }
+    });
 
   // ─── Keep currentCardIndex in bounds ─────────────────────────────────
   useEffect(() => {
@@ -704,7 +731,8 @@ export function useSwipeDeck(config: SwipeDeckConfig) {
                 if (filtered.length >= MIN_CARDS_THRESHOLD) return prevCards;
                 const updated = [...filtered, ...apiCards];
                 setIsAnimating(false);
-                pan.setValue({ x: 0, y: 0 });
+                translateX.value = 0;
+                translateY.value = 0;
                 return updated;
               });
             }
@@ -712,7 +740,8 @@ export function useSwipeDeck(config: SwipeDeckConfig) {
           .catch((error) => {
             log.error("Error fetching cards:", error);
             setIsAnimating(false);
-            pan.setValue({ x: 0, y: 0 });
+            translateX.value = 0;
+            translateY.value = 0;
           })
           .finally(() => {
             isFetchingMore.current = false;
@@ -737,16 +766,21 @@ export function useSwipeDeck(config: SwipeDeckConfig) {
     userSelectedSize,
     colorSelectorOpen,
 
-    // Animation values
-    pan,
+    // Animation values (old Animated — kept for independent animations)
     fadeAnim,
-    refreshAnim,
-    flipAnimation,
     cartButtonScale,
 
-    // Animated styles
+    // Reanimated animated styles
+    cardAnimatedStyle,
+    frontFlipStyle,
+    backFlipStyle,
+    refreshAnimatedStyle,
     sizePanelAnimatedStyle,
     colorDropdownAnimatedStyle,
+
+    // Gesture objects
+    panGesture,
+    headerPanGesture,
 
     // Refs
     imageScrollViewRef,
@@ -754,10 +788,6 @@ export function useSwipeDeck(config: SwipeDeckConfig) {
     imageCarouselWidth,
     screenWidth,
     screenHeight,
-
-    // Pan responders
-    panResponder,
-    headerPanResponder,
 
     // Handlers
     handleFlip,
