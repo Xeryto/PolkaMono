@@ -199,10 +199,10 @@ const MainPage = ({ navigation, route }: MainPageProps) => {
     }
   }, [route?.params?.addCardItem]);
 
-  // Route params: refresh
+  // Route params: refresh (hard refresh — clears deck, fetches new)
   useEffect(() => {
     if (route?.params?.refreshCards && route?.params?.refreshTimestamp) {
-      deck.refreshCards();
+      deck.hardRefresh();
       setTimeout(() => {
         navigation.setParams?.({ refreshCards: undefined, refreshTimestamp: undefined });
       }, 100);
@@ -304,56 +304,6 @@ const MainPage = ({ navigation, route }: MainPageProps) => {
                 <Cart2 width={33} height={33} />
               </RNAnimated.View>
             </Pressable>
-            <Animated.View
-              style={[
-                cardStyles.backSizePanelTail,
-                backSizePanelTailAnimatedStyle,
-                { zIndex: 1001, elevation: 1002 },
-              ]}
-              pointerEvents={showBackSizeSelection ? "auto" : "none"}
-            >
-              <View style={cardStyles.sizePanelRow}>
-                <ScrollView
-                  horizontal
-                  showsHorizontalScrollIndicator={false}
-                  contentContainerStyle={cardStyles.sizeScrollContent}
-                  style={cardStyles.sizePanelScrollView}
-                >
-                  {card?.variants?.map((variant, vi) => {
-                    const isAvail = variant.stock_quantity > 0;
-                    const isUserSize = variant.size === deck.userSelectedSize;
-                    const isOneSize = variant.size === "One Size";
-                    return (
-                      <Pressable
-                        key={variant.size}
-                        style={[
-                          isOneSize ? cardStyles.sizeOval : cardStyles.sizeCircle,
-                          isAvail ? cardStyles.sizeCircleAvailable : cardStyles.sizeCircleUnavailable,
-                          isUserSize && isAvail ? cardStyles.sizeCircleUserSize : null,
-                          vi > 0 ? { marginLeft: 10 } : null,
-                        ]}
-                        onPress={() => {
-                          if (isAvail) {
-                            deck.handleSizeSelect(variant.size);
-                            resetToBackButtons();
-                          } else {
-                            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                          }
-                        }}
-                        disabled={!isAvail}
-                      >
-                        <Text style={isOneSize ? cardStyles.sizeOvalText : cardStyles.sizeText}>
-                          {variant.size}
-                        </Text>
-                      </Pressable>
-                    );
-                  })}
-                </ScrollView>
-                <Pressable onPress={handleCancelBackSizeSelection} style={cardStyles.sizePanelCancelButton}>
-                  <Cancel width={27} height={27} />
-                </Pressable>
-              </View>
-            </Animated.View>
           </View>
           <View style={cardStyles.backIconSpacer} />
           <Pressable style={cardStyles.backIconBox} {...backLinkHandlers} onPress={handleLinkPress}>
@@ -368,7 +318,7 @@ const MainPage = ({ navigation, route }: MainPageProps) => {
             </RNAnimated.View>
           </Pressable>
           <View style={cardStyles.backIconSpacer} />
-          <View style={cardStyles.backIconBoxWrapper}>
+          <View style={cardStyles.backIconBoxWrapper} pointerEvents={showBackSizeSelection ? "none" : "auto"}>
             <View style={cardStyles.backIconBox}>
               <HeartButton isLiked={isLiked} onToggleLike={() => deck.toggleLike(index)} />
             </View>
@@ -379,6 +329,56 @@ const MainPage = ({ navigation, route }: MainPageProps) => {
             />
           </View>
         </View>
+        <Animated.View
+          style={[
+            cardStyles.backSizePanelTail,
+            backSizePanelTailAnimatedStyle,
+            { zIndex: 1001, elevation: 1002 },
+          ]}
+          pointerEvents={showBackSizeSelection ? "auto" : "none"}
+        >
+          <View style={cardStyles.sizePanelRow}>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={cardStyles.sizeScrollContent}
+              style={cardStyles.sizePanelScrollView}
+            >
+              {card?.variants?.map((variant, vi) => {
+                const isAvail = variant.stock_quantity > 0;
+                const isUserSize = variant.size === deck.userSelectedSize;
+                const isOneSize = variant.size === "One Size";
+                return (
+                  <Pressable
+                    key={variant.size}
+                    style={[
+                      isOneSize ? cardStyles.sizeOval : cardStyles.sizeCircle,
+                      isAvail ? cardStyles.sizeCircleAvailable : cardStyles.sizeCircleUnavailable,
+                      isUserSize && isAvail ? cardStyles.sizeCircleUserSize : null,
+                      vi > 0 ? { marginLeft: 10 } : null,
+                    ]}
+                    onPress={() => {
+                      if (isAvail) {
+                        deck.handleSizeSelect(variant.size);
+                        resetToBackButtons();
+                      } else {
+                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                      }
+                    }}
+                    disabled={!isAvail}
+                  >
+                    <Text style={isOneSize ? cardStyles.sizeOvalText : cardStyles.sizeText}>
+                      {variant.size}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </ScrollView>
+            <Pressable onPress={handleCancelBackSizeSelection} style={cardStyles.sizePanelCancelButton} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+              <Cancel width={27} height={27} />
+            </Pressable>
+          </View>
+        </Animated.View>
       </View>
     );
   };

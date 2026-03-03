@@ -80,6 +80,8 @@ export function useSwipeDeck(config: SwipeDeckConfig) {
   const currentCardIndexRef = useRef(0);
   const currentImageIndexRef = useRef(0);
   const isFetchingMore = useRef(false);
+  const lastEmptyFetchTime = useRef(0);
+  const EMPTY_FETCH_BACKOFF_MS = 30_000;
 
   // ─── Animation values ────────────────────────────────────────────────
   const pan = useRef(new RNAnimated.ValueXY()).current;
@@ -149,7 +151,16 @@ export function useSwipeDeck(config: SwipeDeckConfig) {
       setIsLoadingInitialCards(true);
       const starterCards = await fetchCards(MIN_CARDS_THRESHOLD + 1);
       if (isMounted) {
-        setCards(starterCards);
+        setCards((prev) => {
+          // Merge with any cards injected while loading (e.g. from search/deep-link)
+          if (prev.length > 0) {
+            const prevIds = new Set(prev.map((c) => c.id));
+            const deduped = starterCards.filter((c) => !prevIds.has(c.id));
+            return [...prev, ...deduped];
+          }
+          return starterCards;
+        });
+        if (starterCards.length === 0) lastEmptyFetchTime.current = Date.now();
         setIsLoadingInitialCards(false);
       }
     };
@@ -474,17 +485,23 @@ export function useSwipeDeck(config: SwipeDeckConfig) {
             : currentCardIndex;
         setTimeout(() => setCurrentCardIndex(newIndex), 0);
 
-        // Fetch more if running low
+        // Fetch more if running low (skip if API recently returned empty)
         const cardsWithoutLoading = newCards.filter((c) => c.id !== LOADING_CARD_ID);
-        if (cardsWithoutLoading.length < MIN_CARDS_THRESHOLD) {
+        const recentlyEmpty = Date.now() - lastEmptyFetchTime.current < EMPTY_FETCH_BACKOFF_MS;
+        if (cardsWithoutLoading.length < MIN_CARDS_THRESHOLD && !recentlyEmpty) {
           const hasLoadingCard = newCards.some((c) => c.id === LOADING_CARD_ID);
           if (!hasLoadingCard) newCards.push(createLoadingCard());
           fetchCards(MIN_CARDS_THRESHOLD - cardsWithoutLoading.length + 1).then((apiCards) => {
             if (apiCards.length > 0) {
+              lastEmptyFetchTime.current = 0;
               setCards((latestCards) => {
                 const filtered = latestCards.filter((c) => c.id !== LOADING_CARD_ID);
                 return [...filtered, ...apiCards];
               });
+            } else {
+              lastEmptyFetchTime.current = Date.now();
+              // Remove loading card placeholder since nothing to show
+              setCards((latestCards) => latestCards.filter((c) => c.id !== LOADING_CARD_ID));
             }
           });
         }
@@ -506,10 +523,11 @@ export function useSwipeDeck(config: SwipeDeckConfig) {
     fadeOutIn();
   };
 
-  // ─── Refresh cards ───────────────────────────────────────────────────
+  // ─── Refresh cards (soft — keeps existing, appends new) ─────────────
   const refreshCards = useCallback(async () => {
     if (isRefreshing) return;
     setIsRefreshing(true);
+    lastEmptyFetchTime.current = 0;
 
     RNAnimated.sequence([
       RNAnimated.timing(refreshAnim, {
@@ -539,6 +557,41 @@ export function useSwipeDeck(config: SwipeDeckConfig) {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     } catch (error) {
       log.error("Error refreshing cards:", error);
+    } finally {
+      setIsRefreshing(false);
+    }
+  }, [isRefreshing, fetchCards]);
+
+  // ─── Hard refresh (clears deck, fetches entirely new cards) ────────
+  const hardRefresh = useCallback(async () => {
+    if (isRefreshing) return;
+    setIsRefreshing(true);
+    lastEmptyFetchTime.current = 0;
+
+    RNAnimated.sequence([
+      RNAnimated.timing(refreshAnim, {
+        toValue: 0.7,
+        duration: 200,
+        useNativeDriver: false,
+        easing: Easing.out(Easing.ease),
+      }),
+      RNAnimated.timing(refreshAnim, {
+        toValue: 1,
+        duration: 300,
+        useNativeDriver: false,
+        easing: Easing.inOut(Easing.ease),
+      }),
+    ]).start();
+
+    try {
+      const newCards = await fetchCards(MIN_CARDS_THRESHOLD + 1);
+      await new Promise((resolve) => setTimeout(resolve, 300));
+      setCards(newCards);
+      setCurrentCardIndex(0);
+      resetVisualState();
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    } catch (error) {
+      log.error("Error hard refreshing cards:", error);
     } finally {
       setIsRefreshing(false);
     }
@@ -688,10 +741,12 @@ export function useSwipeDeck(config: SwipeDeckConfig) {
   useEffect(() => {
     let fetchTimer: NodeJS.Timeout;
     const cardsWithoutLoading = cards.filter((c) => c.id !== LOADING_CARD_ID);
+    const timeSinceEmptyFetch = Date.now() - lastEmptyFetchTime.current;
     if (
       cardsWithoutLoading.length < MIN_CARDS_THRESHOLD &&
       !isRefreshing &&
-      !isFetchingMore.current
+      !isFetchingMore.current &&
+      timeSinceEmptyFetch > EMPTY_FETCH_BACKOFF_MS
     ) {
       fetchTimer = setTimeout(() => {
         if (isFetchingMore.current) return;
@@ -699,6 +754,7 @@ export function useSwipeDeck(config: SwipeDeckConfig) {
         fetchCards(MIN_CARDS_THRESHOLD - cardsWithoutLoading.length + 1)
           .then((apiCards) => {
             if (apiCards.length > 0) {
+              lastEmptyFetchTime.current = 0;
               setCards((prevCards) => {
                 const filtered = prevCards.filter((c) => c.id !== LOADING_CARD_ID);
                 if (filtered.length >= MIN_CARDS_THRESHOLD) return prevCards;
@@ -707,6 +763,8 @@ export function useSwipeDeck(config: SwipeDeckConfig) {
                 pan.setValue({ x: 0, y: 0 });
                 return updated;
               });
+            } else {
+              lastEmptyFetchTime.current = Date.now();
             }
           })
           .catch((error) => {
@@ -776,6 +834,7 @@ export function useSwipeDeck(config: SwipeDeckConfig) {
     handleLongPress,
     swipeCard,
     refreshCards,
+    hardRefresh,
     resetToButtons,
     resetVisualState,
     sizePanelMaxWidth,

@@ -207,6 +207,38 @@ def _fetch_candidates(
 
     rows = q.limit(pool_size).all()
 
+    # If everything was swiped, retry without the swipe exclusion
+    if not rows:
+        logger.info("[reco] all candidates swiped — bypassing swipe filter for user=%s", exclude_user_id[:8])
+        q_all = (
+            db.query(
+                Product.id,
+                Product.brand_id,
+                Product.category_id,
+                Product.price,
+                Product.purchase_count,
+                Product.created_at,
+            )
+            .join(Brand, Brand.id == Product.brand_id)
+            .filter(Brand.is_inactive == False)  # noqa: E712
+        )
+        if user_size:
+            size_exists = (
+                exists()
+                .where(
+                    and_(
+                        ProductColorVariant.product_id == Product.id,
+                        ProductVariant.product_color_variant_id == ProductColorVariant.id,
+                        ProductVariant.size == user_size,
+                        ProductVariant.stock_quantity > 0,
+                    )
+                )
+            )
+            q_all = q_all.order_by(size_exists.desc(), func.random())
+        else:
+            q_all = q_all.order_by(func.random())
+        rows = q_all.limit(pool_size).all()
+
     if not rows:
         return []
 

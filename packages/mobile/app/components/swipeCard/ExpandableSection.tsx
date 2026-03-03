@@ -6,11 +6,13 @@ import { ANIMATION_DURATIONS } from "../../lib/animations";
 interface ExpandableSectionProps {
   title: string;
   content: string;
+  onContentPress?: () => void;
 }
 
 const ExpandableSection: React.FC<ExpandableSectionProps> = ({
   title,
   content,
+  onContentPress,
 }) => {
   const { theme } = useTheme();
   const [isExpanded, setIsExpanded] = useState(false);
@@ -74,16 +76,19 @@ const ExpandableSection: React.FC<ExpandableSectionProps> = ({
           paddingBottom: 10,
         }}
       >
-        <Text
-          style={{
-            fontFamily: "IgraSans",
-            fontSize: 12,
-            color: theme.text.primary,
-            lineHeight: 18,
-          }}
-        >
-          {content}
-        </Text>
+        <Pressable onPress={onContentPress} disabled={!onContentPress}>
+          <Text
+            style={{
+              fontFamily: "IgraSans",
+              fontSize: 12,
+              color: onContentPress ? theme.button.primary : theme.text.primary,
+              lineHeight: 18,
+              textDecorationLine: onContentPress ? "underline" : "none",
+            }}
+          >
+            {content}
+          </Text>
+        </Pressable>
       </RNAnimated.View>
     </View>
   );

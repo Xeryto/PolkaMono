@@ -17,7 +17,7 @@ import {
   SafeAreaView,
   useSafeAreaInsets,
 } from "react-native-safe-area-context";
-import { NavigationContainer, useFocusEffect } from "@react-navigation/native";
+import { NavigationContainer, useFocusEffect, CommonActions } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { LinearGradient } from "expo-linear-gradient";
 import MainPage from "./app/MainPage";
@@ -407,7 +407,6 @@ function MainNavigator({
         {({ navigation: nav, route }) => (
           <ScreenWrapper screenName="home">
             <MainPage
-              key={`home-${route.params?.refreshTimestamp || 0}`}
               navigation={createNavigationAdapter(nav, route)}
               route={route}
             />
@@ -532,6 +531,7 @@ function MainAppNavigator({
   const internalNavigationRef = React.useRef<any>(null);
   const navigationRef = externalNavigationRef ?? internalNavigationRef;
   const [currentRoute, setCurrentRoute] = React.useState<string>("Home");
+  const lastHomeTapRef = React.useRef<number>(0);
   const insets = useSafeAreaInsets();
 
   return (
@@ -606,7 +606,20 @@ function MainAppNavigator({
 
               <NavButton
                 onPress={() => {
-                  navigationRef.current?.navigate("Home");
+                  const now = Date.now();
+                  if (currentRoute === "Home" && now - lastHomeTapRef.current < 400) {
+                    // Double-tap while on Home → refresh recommendations
+                    navigationRef.current?.dispatch(
+                      CommonActions.setParams({
+                        refreshCards: true,
+                        refreshTimestamp: now,
+                      })
+                    );
+                    lastHomeTapRef.current = 0;
+                  } else {
+                    navigationRef.current?.navigate("Home");
+                    lastHomeTapRef.current = now;
+                  }
                 }}
                 isActive={currentRoute === "Home"}
               >

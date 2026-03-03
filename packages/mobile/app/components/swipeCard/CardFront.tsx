@@ -185,67 +185,68 @@ const CardFront: React.FC<CardFrontProps> = ({
         </View>
       )}
 
-      {/* Bottom-left: size panel */}
-      <View style={styles.cornerOverlayBottomLeft} pointerEvents="box-none">
-        <View style={styles.sizePanelPosition}>
-          <Animated.View style={[styles.sizePanelOuter, sizePanelAnimatedStyle]}>
-            <View style={styles.sizePanelRow}>
-              <Pressable
-                style={styles.cornerOverlayBottomLeftInner}
-                onPressIn={onCartPressIn}
-                onPressOut={onCartPressOut}
-                onPress={onCartPress}
-              >
-                <RNAnimated.View style={{ transform: [{ scale: cartButtonScale }] }}>
-                  <Cart2 width={33} height={33} />
-                </RNAnimated.View>
-              </Pressable>
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={styles.sizeScrollContent}
-                style={styles.sizePanelScrollView}
-                pointerEvents={showSizeSelection ? "auto" : "none"}
-              >
-                {card?.variants?.map((variant, variantIndex) => {
-                  const isAvailable = variant.stock_quantity > 0;
-                  const isUserSize = variant.size === userSelectedSize;
-                  const isOneSize = variant.size === "One Size";
-                  return (
-                    <Pressable
-                      key={variant.size}
-                      style={[
-                        isOneSize ? styles.sizeOval : styles.sizeCircle,
-                        isAvailable ? styles.sizeCircleAvailable : styles.sizeCircleUnavailable,
-                        isUserSize && isAvailable ? styles.sizeCircleUserSize : null,
-                        variantIndex > 0 ? { marginLeft: 10 } : null,
-                      ]}
-                      onPress={() => {
-                        if (isAvailable) {
-                          onSizeSelect(variant.size);
-                        } else {
-                          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                        }
-                      }}
-                      disabled={!isAvailable}
-                    >
-                      <Text style={isOneSize ? styles.sizeOvalText : styles.sizeText}>
-                        {variant.size}
-                      </Text>
-                    </Pressable>
-                  );
-                })}
-              </ScrollView>
-              <Pressable onPress={onCancelSizeSelection} style={styles.sizePanelCancelButton}>
-                <Cancel width={27} height={27} />
-              </Pressable>
-            </View>
-          </Animated.View>
-        </View>
+      {/* Bottom-left: cart icon background */}
+      <View style={styles.cornerOverlayBottomLeft} pointerEvents="box-none" />
+
+      {/* Size panel — outside overlay to avoid iOS touch clipping */}
+      <View style={[styles.sizePanelPosition, { zIndex: 30, elevation: 31 }]} pointerEvents="box-none">
+        <Animated.View style={[styles.sizePanelOuter, sizePanelAnimatedStyle]}>
+          <View style={styles.sizePanelRow}>
+            <Pressable
+              style={styles.cornerOverlayBottomLeftInner}
+              onPressIn={onCartPressIn}
+              onPressOut={onCartPressOut}
+              onPress={onCartPress}
+            >
+              <RNAnimated.View style={{ transform: [{ scale: cartButtonScale }] }}>
+                <Cart2 width={33} height={33} />
+              </RNAnimated.View>
+            </Pressable>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.sizeScrollContent}
+              style={styles.sizePanelScrollView}
+              pointerEvents={showSizeSelection ? "auto" : "none"}
+            >
+              {card?.variants?.map((variant, variantIndex) => {
+                const isAvailable = variant.stock_quantity > 0;
+                const isUserSize = variant.size === userSelectedSize;
+                const isOneSize = variant.size === "One Size";
+                return (
+                  <Pressable
+                    key={variant.size}
+                    style={[
+                      isOneSize ? styles.sizeOval : styles.sizeCircle,
+                      isAvailable ? styles.sizeCircleAvailable : styles.sizeCircleUnavailable,
+                      isUserSize && isAvailable ? styles.sizeCircleUserSize : null,
+                      variantIndex > 0 ? { marginLeft: 10 } : null,
+                    ]}
+                    onPress={() => {
+                      if (isAvailable) {
+                        onSizeSelect(variant.size);
+                      } else {
+                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                      }
+                    }}
+                    disabled={!isAvailable}
+                  >
+                    <Text style={isOneSize ? styles.sizeOvalText : styles.sizeText}>
+                      {variant.size}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </ScrollView>
+            <Pressable onPress={onCancelSizeSelection} style={styles.sizePanelCancelButton} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+              <Cancel width={27} height={27} />
+            </Pressable>
+          </View>
+        </Animated.View>
       </View>
 
-      {/* Bottom-right: heart */}
-      <View style={styles.cornerOverlayBottomRight} pointerEvents="box-none">
+      {/* Bottom-right: heart — disabled when size panel is open */}
+      <View style={styles.cornerOverlayBottomRight} pointerEvents={showSizeSelection ? "none" : "box-none"}>
         <View style={styles.cornerInnerBottomRight}>
           <View style={[styles.cornerOverlayBottomRightInner, { position: "relative" }]}>
             <View style={{ zIndex: 999 }}>

@@ -1,5 +1,12 @@
-import React from "react";
-import { View, Text, Pressable, ScrollView } from "react-native";
+import React, { useCallback, useState } from "react";
+import {
+  View,
+  Text,
+  Pressable,
+  ScrollView,
+  Modal,
+  Dimensions,
+} from "react-native";
 import { Image } from "expo-image";
 import { PanResponderInstance } from "react-native";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
@@ -7,7 +14,11 @@ import Animated, {
   useSharedValue,
   useAnimatedStyle,
   withTiming,
+  FadeInDown,
+  FadeOutDown,
 } from "react-native-reanimated";
+import * as Clipboard from "expo-clipboard";
+import * as Haptics from "expo-haptics";
 import Cancel from "../svg/Cancel";
 import ExpandableSection from "./ExpandableSection";
 import { CardItem } from "../../types/product";
@@ -26,53 +37,44 @@ interface CardBackProps {
   bottomStrip?: React.ReactNode;
 }
 
-const SizingTableZoomable: React.FC<{ imageUri: string }> = ({ imageUri }) => {
+const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get("window");
+
+const ZoomableImage: React.FC<{ imageUri: string; onClose: () => void }> = ({
+  imageUri,
+  onClose,
+}) => {
   const scale = useSharedValue(1);
   const savedScale = useSharedValue(1);
   const translateX = useSharedValue(0);
   const translateY = useSharedValue(0);
-  const savedTranslateX = useSharedValue(0);
-  const savedTranslateY = useSharedValue(0);
+  const savedTX = useSharedValue(0);
+  const savedTY = useSharedValue(0);
 
   const pinch = Gesture.Pinch()
     .onUpdate((e) => {
-      scale.value = Math.min(Math.max(savedScale.value * e.scale, 1), 4);
+      scale.value = savedScale.value * e.scale;
     })
     .onEnd(() => {
-      savedScale.value = scale.value;
-      if (scale.value <= 1) {
-        translateX.value = withTiming(0);
-        translateY.value = withTiming(0);
-        savedTranslateX.value = 0;
-        savedTranslateY.value = 0;
-      }
+      scale.value = withTiming(1, { duration: 200 });
+      translateX.value = withTiming(0, { duration: 200 });
+      translateY.value = withTiming(0, { duration: 200 });
+      savedScale.value = 1;
+      savedTX.value = 0;
+      savedTY.value = 0;
     });
 
   const pan = Gesture.Pan()
+    .minPointers(2)
     .onUpdate((e) => {
-      if (savedScale.value > 1) {
-        translateX.value = savedTranslateX.value + e.translationX;
-        translateY.value = savedTranslateY.value + e.translationY;
-      }
+      translateX.value = savedTX.value + e.translationX;
+      translateY.value = savedTY.value + e.translationY;
     })
     .onEnd(() => {
-      savedTranslateX.value = translateX.value;
-      savedTranslateY.value = translateY.value;
+      savedTX.value = translateX.value;
+      savedTY.value = translateY.value;
     });
 
-  const doubleTap = Gesture.Tap()
-    .numberOfTaps(2)
-    .onEnd(() => {
-      scale.value = withTiming(1);
-      savedScale.value = 1;
-      translateX.value = withTiming(0);
-      translateY.value = withTiming(0);
-      savedTranslateX.value = 0;
-      savedTranslateY.value = 0;
-    });
-
-  const composed = Gesture.Simultaneous(pinch, pan);
-  const gesture = Gesture.Exclusive(doubleTap, composed);
+  const gesture = Gesture.Simultaneous(pinch, pan);
 
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [
@@ -83,17 +85,57 @@ const SizingTableZoomable: React.FC<{ imageUri: string }> = ({ imageUri }) => {
   }));
 
   return (
-    <View style={{ marginTop: 12, marginBottom: 4, overflow: "hidden", borderRadius: 8 }}>
+    <Pressable
+      onPress={onClose}
+      style={{
+        flex: 1,
+        backgroundColor: "rgba(0,0,0,0.85)",
+        justifyContent: "center",
+        alignItems: "center",
+      }}
+    >
       <GestureDetector gesture={gesture}>
         <Animated.View style={animatedStyle}>
           <Image
             source={{ uri: imageUri }}
-            style={{ width: 280, height: 160, borderRadius: 8 }}
+            style={{ width: SCREEN_W, height: SCREEN_H * 0.7 }}
             contentFit="contain"
           />
         </Animated.View>
       </GestureDetector>
-    </View>
+    </Pressable>
+  );
+};
+
+const SizingTableZoomable: React.FC<{ imageUri: string }> = ({ imageUri }) => {
+  const [open, setOpen] = useState(false);
+  const [key, setKey] = useState(0);
+
+  const handleOpen = () => {
+    setKey((k) => k + 1);
+    setOpen(true);
+  };
+
+  return (
+    <>
+      <Pressable
+        onPress={handleOpen}
+        style={{ marginTop: 12, marginBottom: 4, borderRadius: 8 }}
+      >
+        <Image
+          source={{ uri: imageUri }}
+          style={{ width: 280, height: 160, borderRadius: 8 }}
+          contentFit="contain"
+        />
+      </Pressable>
+      <Modal visible={open} transparent animationType="fade" statusBarTranslucent>
+        <ZoomableImage
+          key={key}
+          imageUri={imageUri}
+          onClose={() => setOpen(false)}
+        />
+      </Modal>
+    </>
   );
 };
 
@@ -105,8 +147,28 @@ const CardBack: React.FC<CardBackProps> = ({
   scrollViewRef,
   bottomStrip,
 }) => {
+  const [showCopiedToast, setShowCopiedToast] = useState(false);
+
+  const handleArticlePress = useCallback(async () => {
+    try {
+      await Clipboard.setStringAsync(`polka://product/${card.id}`);
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      setShowCopiedToast(true);
+      setTimeout(() => setShowCopiedToast(false), 2000);
+    } catch {}
+  }, [card.id]);
+
   return (
     <View style={styles.cardBackContainer}>
+      {showCopiedToast && (
+        <Animated.View
+          entering={FadeInDown.duration(200)}
+          exiting={FadeOutDown.duration(200)}
+          style={[styles.linkCopiedPopup, { top: -30 }]}
+        >
+          <Text style={styles.linkCopiedText}>Ссылка скопирована</Text>
+        </Animated.View>
+      )}
       <Pressable style={styles.removeButton} onPress={onFlip}>
         <Cancel width={27} height={27} />
       </Pressable>
@@ -132,7 +194,11 @@ const CardBack: React.FC<CardBackProps> = ({
         bounces={true}
       >
         {card.article_number && (
-          <ExpandableSection title="артикул" content={card.article_number} />
+          <ExpandableSection
+            title="артикул"
+            content={card.article_number}
+            onContentPress={handleArticlePress}
+          />
         )}
         <ExpandableSection title="описание" content={card.description} />
         <ExpandableSection

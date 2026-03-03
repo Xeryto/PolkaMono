@@ -362,7 +362,6 @@ const Favorites = ({ navigation }: FavoritesProps) => {
 
   // Create animated style for bottom box press animation only
   const bottomBoxAnimatedStyle = useAnimatedStyle(() => ({
-    opacity: 1,
     transform: [{ scale: pressAnimationScale.value }],
   }));
 
