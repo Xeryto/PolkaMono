@@ -1120,7 +1120,7 @@ const Wall = ({ navigation, onLogout, openOrderId }: WallProps) => {
           setCurrentView("settings");
         }}
       >
-        <Text style={styles.settingsButtonText}>настройки</Text>
+        <Text style={styles.settingsButtonText}>НАСТРОЙКИ</Text>
       </Pressable>
     </Animated.View>
   );
