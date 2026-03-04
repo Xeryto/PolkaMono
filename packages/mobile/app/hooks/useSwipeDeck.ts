@@ -28,7 +28,6 @@ import { toggleLikeApi, createLoadingCard } from "../lib/swipeCardUtils";
 import {
   CARD_CORNER_INSET,
   CORNER_BOX_SIZE,
-  SIZE_PANEL_CLOSED_WIDTH,
   MIN_CARDS_THRESHOLD,
   LOADING_CARD_ID,
   COLOR_CORNER_CLOSED_HEIGHT,
@@ -62,7 +61,6 @@ export function useSwipeDeck(config: SwipeDeckConfig) {
   const screenWidth = Dimensions.get("window").width;
   const SWIPE_THRESHOLD = screenHeight * 0.1;
   const cardWidth = screenWidth * cardWidthFraction;
-  const sizePanelMaxWidth = cardWidth - CARD_CORNER_INSET * 2;
 
   // ─── Core state ──────────────────────────────────────────────────────
   const [cards, setCards] = useState<CardItem[]>(initialCards || []);
@@ -76,6 +74,9 @@ export function useSwipeDeck(config: SwipeDeckConfig) {
   const isAnimatingRef = useRef(false);
   const isRefreshingRef = useRef(false);
   const isFlippedRef = useRef(false);
+  const heartPressActiveRef = useRef(false);
+  const heartRecentlyReleasedRef = useRef(false);
+  const gestureStartedOnHeartRef = useRef(false);
   const cardsRef = useRef<CardItem[]>([]);
   const currentCardIndexRef = useRef(0);
   const currentImageIndexRef = useRef(0);
@@ -106,7 +107,7 @@ export function useSwipeDeck(config: SwipeDeckConfig) {
 
   // ─── Size panel ──────────────────────────────────────────────────────
   const [showSizeSelection, setShowSizeSelection] = useState(false);
-  const sizePanelWidth = useSharedValue(SIZE_PANEL_CLOSED_WIDTH);
+  const sizePanelProgress = useSharedValue(0);
 
   // ─── Color selector ──────────────────────────────────────────────────
   const [colorSelectorOpen, setColorSelectorOpen] = useState(false);
@@ -330,7 +331,7 @@ export function useSwipeDeck(config: SwipeDeckConfig) {
     }).start();
     setIsFlipped((prev) => !prev);
     // Reset size panel when flipping
-    sizePanelWidth.set(SIZE_PANEL_CLOSED_WIDTH);
+    sizePanelProgress.set(0);
     setShowSizeSelection(false);
   }, [isFlipped, flipAnimation]);
 
@@ -408,7 +409,7 @@ export function useSwipeDeck(config: SwipeDeckConfig) {
 
   // ─── Reset size panel helpers ────────────────────────────────────────
   const resetToButtons = () => {
-    sizePanelWidth.set(SIZE_PANEL_CLOSED_WIDTH);
+    sizePanelProgress.set(0);
     setShowSizeSelection(false);
   };
 
@@ -621,26 +622,30 @@ export function useSwipeDeck(config: SwipeDeckConfig) {
   };
 
   const handleCartPress = () => {
-    setShowSizeSelection(true);
-    sizePanelWidth.value = withTiming(sizePanelMaxWidth, { duration: 280 });
+    if (showSizeSelection) {
+      sizePanelProgress.value = withTiming(0, { duration: 180 });
+      requestAnimationFrame(() => {
+        setTimeout(() => setShowSizeSelection(false), 180);
+      });
+    } else {
+      setShowSizeSelection(true);
+      sizePanelProgress.value = withTiming(1, { duration: 220 });
+    }
   };
 
   const handleCancelSizeSelection = () => {
-    sizePanelWidth.value = withTiming(SIZE_PANEL_CLOSED_WIDTH, { duration: 220 });
+    sizePanelProgress.value = withTiming(0, { duration: 180 });
     requestAnimationFrame(() => {
-      setTimeout(() => setShowSizeSelection(false), 220);
+      setTimeout(() => setShowSizeSelection(false), 180);
     });
   };
 
   const sizePanelAnimatedStyle = useAnimatedStyle(() => {
-    const radius = interpolate(
-      sizePanelWidth.value,
-      [SIZE_PANEL_CLOSED_WIDTH, sizePanelMaxWidth],
-      [16, 0],
-    );
     return {
-      width: sizePanelWidth.value,
-      borderTopRightRadius: radius,
+      opacity: sizePanelProgress.value,
+      transform: [
+        { translateX: interpolate(sizePanelProgress.value, [0, 1], [-12, 0]) },
+      ],
     };
   });
 
@@ -705,14 +710,42 @@ export function useSwipeDeck(config: SwipeDeckConfig) {
 
   const panResponder = useRef(
     PanResponder.create({
+      onStartShouldSetPanResponder: () => false,
+      onStartShouldSetPanResponderCapture: () => false,
+      onMoveShouldSetPanResponderCapture: () => false,
       onMoveShouldSetPanResponder: (_, gestureState) => {
         if (isFlippedRef.current) return false;
-        return !isAnimatingRef.current && !isRefreshingRef.current && Math.abs(gestureState.dy) > 5;
+        // If heart was active at any point during this gesture, lock it out
+        if (heartPressActiveRef.current || heartRecentlyReleasedRef.current) {
+          gestureStartedOnHeartRef.current = true;
+          console.log("[PanResponder] onMoveShouldSet BLOCKED — heart (locking gesture)");
+          return false;
+        }
+        const shouldSet = !isAnimatingRef.current && !isRefreshingRef.current && Math.abs(gestureState.dy) > 5;
+        if (shouldSet) console.log("[PanResponder] onMoveShouldSet → true, dy:", gestureState.dy);
+        return shouldSet;
+      },
+      onPanResponderGrant: () => {
+        // Reset per-gesture flag when pan actually starts
+        if (heartPressActiveRef.current) {
+          gestureStartedOnHeartRef.current = true;
+        }
       },
       onPanResponderMove: (_, gestureState) => {
+        if (gestureStartedOnHeartRef.current) {
+          console.log("[PanResponder] onPanResponderMove BLOCKED — gesture started on heart");
+          return;
+        }
         if (gestureState.dy <= 0) pan.setValue({ x: 0, y: gestureState.dy });
       },
       onPanResponderRelease: (_, gestureState) => {
+        if (gestureStartedOnHeartRef.current) {
+          console.log("[PanResponder] onPanResponderRelease BLOCKED — gesture started on heart");
+          gestureStartedOnHeartRef.current = false;
+          pan.setValue({ x: 0, y: 0 });
+          return;
+        }
+        gestureStartedOnHeartRef.current = false;
         if (isAnimatingRef.current || isRefreshingRef.current) {
           RNAnimated.spring(pan, { toValue: { x: 0, y: 0 }, friction: 5, useNativeDriver: false }).start();
           return;
@@ -728,6 +761,7 @@ export function useSwipeDeck(config: SwipeDeckConfig) {
         }
       },
       onPanResponderTerminate: () => {
+        gestureStartedOnHeartRef.current = false;
         RNAnimated.spring(pan, { toValue: { x: 0, y: 0 }, friction: 5, useNativeDriver: false }).start();
       },
     }),
@@ -810,6 +844,8 @@ export function useSwipeDeck(config: SwipeDeckConfig) {
     colorDropdownAnimatedStyle,
 
     // Refs
+    heartPressActiveRef,
+    heartRecentlyReleasedRef,
     imageScrollViewRef,
     scrollViewRef,
     imageCarouselWidth,
@@ -840,6 +876,5 @@ export function useSwipeDeck(config: SwipeDeckConfig) {
     hardRefresh,
     resetToButtons,
     resetVisualState,
-    sizePanelMaxWidth,
   };
 }

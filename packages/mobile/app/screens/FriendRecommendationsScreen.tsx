@@ -131,6 +131,10 @@ const FriendRecommendationsScreen = ({
         ANIMATION_DELAYS.LARGE,
       )}
       exiting={FadeOutDown.duration(ANIMATION_DURATIONS.MICRO)}
+      onStartShouldSetResponder={() => deck.showSizeSelection}
+      onResponderRelease={() => {
+        if (deck.showSizeSelection) deck.handleCancelSizeSelection();
+      }}
     >
       {/* Friend Header */}
       <View style={styles.friendHeader}>
@@ -218,6 +222,8 @@ const FriendRecommendationsScreen = ({
                 onCloseColorSelector={deck.closeColorSelector}
                 onToggleLike={() => deck.toggleLike(deck.currentCardIndex)}
                 onLongPress={() => deck.handleLongPress(deck.currentCardIndex)}
+                heartPressActiveRef={deck.heartPressActiveRef}
+                heartRecentlyReleasedRef={deck.heartRecentlyReleasedRef}
               />
             )}
             renderBack={() => (

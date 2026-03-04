@@ -4,14 +4,21 @@ import {
   Text,
   Pressable,
   ScrollView,
-  StyleSheet,
   Animated as RNAnimated,
   NativeSyntheticEvent,
   NativeScrollEvent,
 } from "react-native";
 import { Image } from "expo-image";
-import { TouchableOpacity } from "react-native-gesture-handler";
-import Animated from "react-native-reanimated";
+import { TouchableOpacity, Gesture, GestureDetector } from "react-native-gesture-handler";
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withSequence,
+  withSpring,
+  withTiming,
+  withDelay,
+  runOnJS,
+} from "react-native-reanimated";
 import * as Haptics from "expo-haptics";
 import { LinearGradient } from "expo-linear-gradient";
 import { useTheme } from "../../lib/ThemeContext";
@@ -19,6 +26,7 @@ import { SkeletonSwipeCard } from "../SkeletonCard";
 import Cart2 from "../svg/Cart2";
 import More from "../svg/More";
 import Cancel from "../svg/Cancel";
+import Svg, { Path } from "react-native-svg";
 import HeartButton from "./HeartButton";
 import { CardItem } from "../../types/product";
 import { LOADING_CARD_ID } from "../../lib/swipeCardConstants";
@@ -74,6 +82,10 @@ interface CardFrontProps {
   // Like
   onToggleLike: () => void;
   onLongPress: () => void;
+  heartPressActiveRef: React.MutableRefObject<boolean>;
+  heartRecentlyReleasedRef: React.MutableRefObject<boolean>;
+  // Double-tap like
+  onDoubleTapLike?: () => void;
 }
 
 const CardFront: React.FC<CardFrontProps> = ({
@@ -105,8 +117,44 @@ const CardFront: React.FC<CardFrontProps> = ({
   onCloseColorSelector,
   onToggleLike,
   onLongPress,
+  heartPressActiveRef,
+  heartRecentlyReleasedRef,
+  onDoubleTapLike,
 }) => {
   const { theme } = useTheme();
+
+  // Double-tap heart overlay animation
+  const heartOverlayScale = useSharedValue(0);
+  const heartOverlayOpacity = useSharedValue(0);
+  const heartOverlayX = useSharedValue(0);
+  const heartOverlayY = useSharedValue(0);
+
+  const heartOverlayAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [
+      { translateX: heartOverlayX.value },
+      { translateY: heartOverlayY.value },
+      { scale: heartOverlayScale.value },
+    ],
+    opacity: heartOverlayOpacity.value,
+  }));
+
+  const fireDoubleTapLike = () => {
+    onDoubleTapLike?.();
+  };
+
+  const doubleTapGesture = Gesture.Tap()
+    .numberOfTaps(2)
+    .onEnd((e) => {
+      heartOverlayX.value = e.x;
+      heartOverlayY.value = e.y;
+      heartOverlayScale.value = withSequence(
+        withSpring(1.2, { damping: 8, stiffness: 200 }),
+        withSpring(1, { damping: 10, stiffness: 150 }),
+      );
+      heartOverlayOpacity.value = 1;
+      heartOverlayOpacity.value = withDelay(400, withTiming(0, { duration: 300 }));
+      runOnJS(fireDoubleTapLike)();
+    });
 
   if (card.id === LOADING_CARD_ID) {
     return (
@@ -122,46 +170,65 @@ const CardFront: React.FC<CardFrontProps> = ({
   return (
     <>
       {/* Image area */}
-      <View style={styles.imageHolder} pointerEvents="box-none">
-        <View
-          style={styles.imageFullBleed}
-          onLayout={(event: any) => onImageLayout(event.nativeEvent.layout.width)}
-        >
-          {card.images.length > 1 ? (
-            <ScrollView
-              ref={imageScrollViewRef as any}
-              horizontal
-              pagingEnabled
-              showsHorizontalScrollIndicator={false}
-              decelerationRate="fast"
-              onMomentumScrollEnd={onImageScroll}
-              style={styles.imageCarousel}
-            >
-              {card.images.map((imageSource, imgIndex) => (
-                <View
-                  key={`${card.id}-image-${imgIndex}`}
-                  style={[styles.imageContainer, { width: fallbackContainerWidth }]}
-                >
-                  <Image source={imageSource} style={styles.image} contentFit="contain" />
-                </View>
-              ))}
-            </ScrollView>
-          ) : card.images.length > 0 ? (
-            <View style={styles.imagePressable}>
-              <Image
-                key={card.id + "-" + currentImageIndex}
-                source={card.images[0]}
-                style={styles.image}
-                contentFit="contain"
+      <GestureDetector gesture={doubleTapGesture}>
+        <View style={styles.imageHolder} pointerEvents="box-none">
+          <View
+            style={styles.imageFullBleed}
+            onLayout={(event: any) => onImageLayout(event.nativeEvent.layout.width)}
+          >
+            {card.images.length > 1 ? (
+              <ScrollView
+                ref={imageScrollViewRef as any}
+                horizontal
+                pagingEnabled
+                showsHorizontalScrollIndicator={false}
+                decelerationRate="fast"
+                onMomentumScrollEnd={onImageScroll}
+                style={styles.imageCarousel}
+              >
+                {card.images.map((imageSource, imgIndex) => (
+                  <View
+                    key={`${card.id}-image-${imgIndex}`}
+                    style={[styles.imageContainer, { width: fallbackContainerWidth }]}
+                  >
+                    <Image source={imageSource} style={styles.image} contentFit="contain" />
+                  </View>
+                ))}
+              </ScrollView>
+            ) : card.images.length > 0 ? (
+              <View style={styles.imagePressable}>
+                <Image
+                  key={card.id + "-" + currentImageIndex}
+                  source={card.images[0]}
+                  style={styles.image}
+                  contentFit="contain"
+                />
+              </View>
+            ) : (
+              <View style={[styles.imagePressable, styles.imagePlaceholder]}>
+                <Text style={styles.imagePlaceholderText}>нет изображения</Text>
+              </View>
+            )}
+          </View>
+
+          {/* Double-tap heart overlay */}
+          <Animated.View
+            style={[styles.doubleTapHeartOverlay, heartOverlayAnimatedStyle]}
+            pointerEvents="none"
+          >
+            <Svg width={60} height={60} viewBox="0 0 33 30" fill="none">
+              <Path
+                d="M28.655 4.3387C27.9527 3.63608 27.1189 3.07871 26.2011 2.69844C25.2834 2.31816 24.2997 2.12244 23.3062 2.12244C22.3128 2.12244 21.3291 2.31816 20.4114 2.69844C19.4936 3.07871 18.6598 3.63608 17.9575 4.3387L16.5 5.7962L15.0425 4.3387C13.6239 2.92012 11.6999 2.12317 9.69375 2.12317C7.68758 2.12317 5.76357 2.92012 4.345 4.3387C2.92642 5.75727 2.12947 7.68128 2.12947 9.68745C2.12947 11.6936 2.92642 13.6176 4.345 15.0362L16.5 27.1912L28.655 15.0362C29.3576 14.3339 29.915 13.5001 30.2953 12.5823C30.6755 11.6646 30.8713 10.6809 30.8713 9.68745C30.8713 8.69403 30.6755 7.71034 30.2953 6.79258C29.915 5.87483 29.3576 5.04099 28.655 4.3387Z"
+                fill="white"
+                stroke="white"
+                strokeWidth={2}
+                strokeLinecap="round"
+                strokeLinejoin="round"
               />
-            </View>
-          ) : (
-            <View style={[styles.imagePressable, styles.imagePlaceholder]}>
-              <Text style={styles.imagePlaceholderText}>нет изображения</Text>
-            </View>
-          )}
+            </Svg>
+          </Animated.View>
         </View>
-      </View>
+      </GestureDetector>
 
       {/* Top-right: flip/more */}
       <View style={styles.cornerOverlayTopRight} pointerEvents="box-none">
@@ -188,28 +255,34 @@ const CardFront: React.FC<CardFrontProps> = ({
       {/* Bottom-left: cart icon background */}
       <View style={styles.cornerOverlayBottomLeft} pointerEvents="box-none" />
 
-      {/* Size panel — outside overlay to avoid iOS touch clipping */}
-      <View style={[styles.sizePanelPosition, { zIndex: 30, elevation: 31 }]} pointerEvents="box-none">
-        <Animated.View style={[styles.sizePanelOuter, sizePanelAnimatedStyle]}>
-          <View style={styles.sizePanelRow}>
-            <Pressable
-              style={styles.cornerOverlayBottomLeftInner}
-              onPressIn={onCartPressIn}
-              onPressOut={onCartPressOut}
-              onPress={onCartPress}
-            >
-              <RNAnimated.View style={{ transform: [{ scale: cartButtonScale }] }}>
-                <Cart2 width={33} height={33} />
-              </RNAnimated.View>
-            </Pressable>
+      {/* Cart button — fixed in bottom-left corner */}
+      <View style={[styles.sizePanelCartPosition, { zIndex: 30, elevation: 31 }]} pointerEvents="box-none">
+        <Pressable
+          style={styles.cornerOverlayBottomLeftInner}
+          onPressIn={onCartPressIn}
+          onPressOut={onCartPressOut}
+          onPress={onCartPress}
+        >
+          <RNAnimated.View style={{ transform: [{ scale: cartButtonScale }] }}>
+            <Cart2 width={33} height={33} />
+          </RNAnimated.View>
+        </Pressable>
+      </View>
+
+      {/* Floating size pill — to the right of cart */}
+      {showSizeSelection && (
+        <Animated.View
+          style={[styles.sizePillPosition, { zIndex: 35, elevation: 36, padding: 6, margin: -6 }, sizePanelAnimatedStyle]}
+          onStartShouldSetResponder={() => true}
+        >
+          <View style={styles.sizePill}>
             <ScrollView
               horizontal
               showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.sizeScrollContent}
-              style={styles.sizePanelScrollView}
-              pointerEvents={showSizeSelection ? "auto" : "none"}
+              contentContainerStyle={styles.sizePillScrollContent}
+              style={styles.sizePillScrollView}
             >
-              {card?.variants?.map((variant, variantIndex) => {
+              {card?.variants?.map((variant) => {
                 const isAvailable = variant.stock_quantity > 0;
                 const isUserSize = variant.size === userSelectedSize;
                 const isOneSize = variant.size === "One Size";
@@ -220,7 +293,6 @@ const CardFront: React.FC<CardFrontProps> = ({
                       isOneSize ? styles.sizeOval : styles.sizeCircle,
                       isAvailable ? styles.sizeCircleAvailable : styles.sizeCircleUnavailable,
                       isUserSize && isAvailable ? styles.sizeCircleUserSize : null,
-                      variantIndex > 0 ? { marginLeft: 10 } : null,
                     ]}
                     onPress={() => {
                       if (isAvailable) {
@@ -238,24 +310,20 @@ const CardFront: React.FC<CardFrontProps> = ({
                 );
               })}
             </ScrollView>
-            <Pressable onPress={onCancelSizeSelection} style={styles.sizePanelCancelButton} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-              <Cancel width={27} height={27} />
-            </Pressable>
           </View>
         </Animated.View>
-      </View>
+      )}
 
       {/* Bottom-right: heart — disabled when size panel is open */}
       <View style={styles.cornerOverlayBottomRight} pointerEvents={showSizeSelection ? "none" : "box-none"}>
         <View style={styles.cornerInnerBottomRight}>
-          <View style={[styles.cornerOverlayBottomRightInner, { position: "relative" }]}>
-            <View style={{ zIndex: 999 }}>
-              <HeartButton isLiked={isLiked} onToggleLike={onToggleLike} />
-            </View>
-            <Pressable
-              style={[StyleSheet.absoluteFill, { zIndex: 998 }]}
+          <View style={styles.cornerOverlayBottomRightInner}>
+            <HeartButton
+              isLiked={isLiked}
+              onToggleLike={onToggleLike}
               onLongPress={onLongPress}
-              delayLongPress={300}
+              heartPressActiveRef={heartPressActiveRef}
+              heartRecentlyReleasedRef={heartRecentlyReleasedRef}
             />
           </View>
         </View>

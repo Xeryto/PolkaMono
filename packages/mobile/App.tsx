@@ -257,10 +257,13 @@ SplashScreen.preventAutoHideAsync();
 function ScreenWrapper({
   children,
   screenName,
+  skipSafeAreaTop = false,
 }: {
   children: React.ReactNode;
   screenName: string;
+  skipSafeAreaTop?: boolean;
 }) {
+  const insets = useSafeAreaInsets();
   const [renderKey, setRenderKey] = React.useState(0);
   const [isVisible, setIsVisible] = React.useState(true);
   const isMountedRef = React.useRef(false);
@@ -332,9 +335,12 @@ function ScreenWrapper({
 
   // Use key prop to force remount when renderKey changes
   return (
-    <React.Fragment key={`${screenName}-${renderKey}`}>
+    <View
+      key={`${screenName}-${renderKey}`}
+      style={{ flex: 1, paddingTop: skipSafeAreaTop ? 0 : insets.top }}
+    >
       {children}
-    </React.Fragment>
+    </View>
   );
 }
 
@@ -409,7 +415,7 @@ function MainNavigator({
         }}
       >
         {({ navigation: nav, route }) => (
-          <ScreenWrapper screenName="home">
+          <ScreenWrapper screenName="home" skipSafeAreaTop>
             <MainPage
               navigation={createNavigationAdapter(nav, route)}
               route={route}
@@ -570,7 +576,7 @@ function MainAppNavigator({
           start={{ x: 0, y: 0.2 }}
           end={{ x: 1, y: 0.8 }}
         >
-          <SafeAreaView style={styles.container} edges={["top"]}>
+          <View style={styles.container}>
             <View style={styles.screenContainer}>
               <MainNavigator
                 onLogout={onLogout}
@@ -651,7 +657,7 @@ function MainAppNavigator({
                 <Me width={30.25} height={30.25} />
               </NavButton>
             </View>
-          </SafeAreaView>
+          </View>
         </LinearGradient>
       </NavigationContainer>
     </>

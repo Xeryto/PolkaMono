@@ -51,7 +51,7 @@ const SwipeCard: React.FC<SwipeCardProps> = ({
       {
         rotateY: flipAnimation.interpolate({
           inputRange: [0, 180],
-          outputRange: ["180deg", "360deg"],
+          outputRange: ["-180deg", "0deg"],
         }),
       },
     ],

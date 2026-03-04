@@ -170,12 +170,18 @@ export const createSwipeCardStyles = (
       height: CORNER_BOX_SIZE,
     },
 
-    // Bottom-left cart/size panel
+    // Bottom-left cart button (standalone)
+    sizePanelCartPosition: {
+      position: "absolute",
+      left: CARD_CORNER_INSET,
+      bottom: CARD_CORNER_INSET,
+    },
     cornerOverlayBottomLeftInner: {
       backgroundColor: theme.background.primary,
       width: CORNER_BOX_SIZE,
       height: CORNER_BOX_SIZE,
       padding: 10,
+      borderTopRightRadius: 16,
       justifyContent: "center",
       alignItems: "center",
     },
@@ -187,43 +193,36 @@ export const createSwipeCardStyles = (
       borderTopLeftRadius: 16,
       justifyContent: "center",
       alignItems: "center",
+      overflow: "visible",
     },
-    sizePanelPosition: {
+    sizePillPosition: {
       position: "absolute",
-      left: CARD_CORNER_INSET,
-      bottom: CARD_CORNER_INSET - 4,
+      left: CARD_CORNER_INSET + CORNER_BOX_SIZE + 6,
+      right: CARD_CORNER_INSET,
+      bottom: CARD_CORNER_INSET,
     },
-    sizePanelOuter: {
+    sizePill: {
       backgroundColor: theme.background.primary,
-      paddingVertical: 4,
+      borderRadius: CORNER_BOX_SIZE / 2,
+      height: CORNER_BOX_SIZE,
       justifyContent: "center",
+      shadowColor: theme.shadow.default,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.15,
+      shadowRadius: 12,
+      elevation: 8,
     },
-    sizePanelRow: {
-      flexDirection: "row",
-      alignItems: "center",
-      minHeight: CORNER_BOX_SIZE,
+    sizePillScrollView: {
+      borderRadius: CORNER_BOX_SIZE / 2,
+      overflow: "hidden",
     },
-    sizePanelScrollView: {
-      flex: 1,
-      height: 60,
-      minWidth: 0,
-    },
-    sizePanelCancelButton: {
-      width: 41,
-      height: 41,
-      borderRadius: 20.5,
-      justifyContent: "center",
-      alignItems: "center",
-      backgroundColor: theme.interactive.remove,
-      marginLeft: 8,
-      marginRight: 6,
-    },
-    sizeScrollContent: {
-      width: "100%",
+    sizePillScrollContent: {
       flexDirection: "row",
       alignItems: "center",
       justifyContent: "center",
-      minHeight: 60,
+      gap: 10,
+      paddingHorizontal: 14,
+      height: CORNER_BOX_SIZE,
     },
 
     // Size circles — unified to theme.size.* tokens
@@ -234,12 +233,11 @@ export const createSwipeCardStyles = (
       backgroundColor: theme.size.available,
       justifyContent: "center",
       alignItems: "center",
-      shadowColor: theme.shadow.default,
+      shadowColor: "#000",
       shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.25,
-      shadowRadius: 3.84,
-      elevation: 5,
-      marginVertical: 9.5,
+      shadowOpacity: 0.15,
+      shadowRadius: 3,
+      elevation: 3,
     },
     sizeCircleAvailable: {
       backgroundColor: theme.size.available,
@@ -262,12 +260,11 @@ export const createSwipeCardStyles = (
       backgroundColor: theme.size.available,
       justifyContent: "center",
       alignItems: "center",
-      shadowColor: theme.shadow.default,
+      shadowColor: "#000",
       shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.25,
-      shadowRadius: 3.84,
-      elevation: 5,
-      marginVertical: 9.5,
+      shadowOpacity: 0.15,
+      shadowRadius: 3,
+      elevation: 3,
     },
     sizeOvalText: {
       color: theme.text.primary,
@@ -402,11 +399,13 @@ export const createSwipeCardStyles = (
       borderTopRightRadius: 16,
       justifyContent: "center",
       position: "relative",
+      overflow: "visible",
     },
     backIconSlotsRow: {
       flexDirection: "row",
       alignItems: "center",
       width: "100%",
+      overflow: "visible",
     },
     backIconSpacer: {
       flex: 1,
@@ -416,13 +415,12 @@ export const createSwipeCardStyles = (
       width: CORNER_BOX_SIZE,
       position: "relative",
     },
-    backSizePanelTail: {
+    backSizePillPosition: {
       position: "absolute",
-      left: CORNER_BOX_SIZE,
-      top: 0,
-      bottom: 0,
-      backgroundColor: theme.background.primary,
-      justifyContent: "center",
+      left: CORNER_BOX_SIZE + 6,
+      right: 0,
+      top: CARD_BACK_BOTTOM_INSET / 2,
+      height: CORNER_BOX_SIZE,
     },
     backIconBoxWrapper: {
       width: CORNER_BOX_SIZE,
@@ -506,5 +504,26 @@ export const createSwipeCardStyles = (
       fontFamily: "REM",
       fontSize: 14,
       textAlign: "center",
+    },
+
+    // Double-tap heart overlay — positioned at tap point via translateX/Y
+    doubleTapHeartOverlay: {
+      position: "absolute",
+      top: -30,
+      left: -30,
+      width: 60,
+      height: 60,
+      justifyContent: "center",
+      alignItems: "center",
+      zIndex: 50,
+      ...Platform.select({
+        ios: {
+          shadowColor: "#000",
+          shadowOffset: { width: 0, height: 4 },
+          shadowOpacity: 0.3,
+          shadowRadius: 8,
+        },
+        android: { elevation: 8 },
+      }),
     },
   });

@@ -19,6 +19,7 @@ import {
   Alert,
 } from "react-native";
 import * as Clipboard from "expo-clipboard";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 import * as Haptics from "expo-haptics";
 import { SkeletonSwipeCard } from "./components/SkeletonCard";
@@ -28,6 +29,7 @@ import Animated, {
   useSharedValue,
   withTiming,
   useAnimatedStyle,
+  interpolate,
 } from "react-native-reanimated";
 import { ANIMATION_DURATIONS, ANIMATION_DELAYS } from "./lib/animations";
 import { useTheme } from "./lib/ThemeContext";
@@ -52,9 +54,8 @@ import {
 } from "./components/swipeCard";
 import { useSwipeDeck } from "./hooks/useSwipeDeck";
 import {
-  CORNER_BOX_SIZE,
-  SIZE_PANEL_CLOSED_WIDTH,
   CARD_BACK_BOTTOM_INSET,
+  CORNER_BOX_SIZE,
 } from "./lib/swipeCardConstants";
 import { getEffectivePrice, formatPrice } from "./lib/swipeCardUtils";
 
@@ -105,6 +106,7 @@ const fetchMoreCards = async (count: number = 2): Promise<CardItem[]> => {
 
 const MainPage = ({ navigation, route }: MainPageProps) => {
   const { theme } = useTheme();
+  const insets = useSafeAreaInsets();
   const cardStyles = useMemo(() => createSwipeCardStyles(theme, 41), [theme]);
   const styles = useMemo(() => createScreenStyles(theme), [theme]);
   const screenWidth = Dimensions.get("window").width;
@@ -143,17 +145,16 @@ const MainPage = ({ navigation, route }: MainPageProps) => {
 
   // Back-of-card size panel state
   const [showBackSizeSelection, setShowBackSizeSelection] = useState(false);
-  const backSizePanelWidth = useSharedValue(SIZE_PANEL_CLOSED_WIDTH);
-  const backCartButtonScale = useRef(new RNAnimated.Value(1)).current;
-  const backLinkButtonScale = useRef(new RNAnimated.Value(1)).current;
-  const backShareButtonScale = useRef(new RNAnimated.Value(1)).current;
+  const backSizePanelProgress = useSharedValue(0);
+  const backCartButtonScale = useSharedValue(1);
+  const backLinkButtonScale = useSharedValue(1);
+  const backShareButtonScale = useSharedValue(1);
 
-  const cardWidth = screenWidth * 0.88;
-  const sizePanelMaxWidth = cardWidth - 20 * 2;
-
-  const backSizePanelTailAnimatedStyle = useAnimatedStyle(() => ({
-    width: Math.max(0, backSizePanelWidth.value - CORNER_BOX_SIZE),
-    overflow: "hidden" as const,
+  const backSizePillAnimatedStyle = useAnimatedStyle(() => ({
+    opacity: backSizePanelProgress.value,
+    transform: [
+      { translateX: interpolate(backSizePanelProgress.value, [0, 1], [-12, 0]) },
+    ],
   }));
 
   // ─── Deep linking ────────────────────────────────────────────────────
@@ -216,49 +217,43 @@ const MainPage = ({ navigation, route }: MainPageProps) => {
   }, [route?.params?.refreshTimestamp]);
 
   // ─── Back-side button handlers ───────────────────────────────────────
-  const makePressHandlers = (scale: RNAnimated.Value) => ({
+  const makePressHandlers = (scale: { value: number }) => ({
     onPressIn: () => {
-      RNAnimated.timing(scale, {
-        toValue: 0.85,
-        duration: 80,
-        useNativeDriver: true,
-        easing: require("react-native").Easing.inOut(
-          require("react-native").Easing.ease,
-        ),
-      }).start();
+      scale.value = withTiming(0.85, { duration: 80 });
     },
     onPressOut: () => {
-      RNAnimated.timing(scale, {
-        toValue: 1,
-        duration: 150,
-        useNativeDriver: true,
-        easing: require("react-native").Easing.inOut(
-          require("react-native").Easing.ease,
-        ),
-      }).start();
+      scale.value = withTiming(1, { duration: 150 });
     },
   });
+
+  const backCartAnimStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: backCartButtonScale.value }],
+  }));
+  const backLinkAnimStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: backLinkButtonScale.value }],
+  }));
+  const backShareAnimStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: backShareButtonScale.value }],
+  }));
 
   const backCartHandlers = makePressHandlers(backCartButtonScale);
   const backLinkHandlers = makePressHandlers(backLinkButtonScale);
   const backShareHandlers = makePressHandlers(backShareButtonScale);
 
   const handleBackCartPress = () => {
-    setShowBackSizeSelection(true);
-    backSizePanelWidth.value = withTiming(sizePanelMaxWidth, { duration: 280 });
-  };
-
-  const handleCancelBackSizeSelection = () => {
-    backSizePanelWidth.value = withTiming(SIZE_PANEL_CLOSED_WIDTH, {
-      duration: 220,
-    });
-    requestAnimationFrame(() =>
-      setTimeout(() => setShowBackSizeSelection(false), 220),
-    );
+    if (showBackSizeSelection) {
+      backSizePanelProgress.value = withTiming(0, { duration: 180 });
+      requestAnimationFrame(() =>
+        setTimeout(() => setShowBackSizeSelection(false), 180),
+      );
+    } else {
+      setShowBackSizeSelection(true);
+      backSizePanelProgress.value = withTiming(1, { duration: 220 });
+    }
   };
 
   const resetToBackButtons = () => {
-    backSizePanelWidth.set(SIZE_PANEL_CLOSED_WIDTH);
+    backSizePanelProgress.set(0);
     setShowBackSizeSelection(false);
   };
 
@@ -277,6 +272,14 @@ const MainPage = ({ navigation, route }: MainPageProps) => {
       }, 2000);
     } catch (error) {
       log.error("Error copying link:", error);
+    }
+  }, [deck.cards, deck.currentCardIndex]);
+
+  const handleDoubleTapLike = useCallback(() => {
+    const card = deck.cards[deck.currentCardIndex];
+    if (card && !card.isLiked) {
+      deck.toggleLike(deck.currentCardIndex);
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     }
   }, [deck.cards, deck.currentCardIndex]);
 
@@ -327,11 +330,9 @@ const MainPage = ({ navigation, route }: MainPageProps) => {
               {...backCartHandlers}
               onPress={handleBackCartPress}
             >
-              <RNAnimated.View
-                style={{ transform: [{ scale: backCartButtonScale }] }}
-              >
+              <Animated.View style={backCartAnimStyle}>
                 <Cart2 width={33} height={33} />
-              </RNAnimated.View>
+              </Animated.View>
             </Pressable>
           </View>
           <View style={cardStyles.backIconSpacer} />
@@ -340,15 +341,13 @@ const MainPage = ({ navigation, route }: MainPageProps) => {
             {...backLinkHandlers}
             onPress={handleLinkPress}
           >
-            <RNAnimated.View
-              style={{ transform: [{ scale: backLinkButtonScale }] }}
-            >
+            <Animated.View style={backLinkAnimStyle}>
               {isLinkCopied ? (
                 <LinkPressed width={33} height={33} />
               ) : (
                 <Link width={33} height={33} />
               )}
-            </RNAnimated.View>
+            </Animated.View>
           </Pressable>
           <View style={cardStyles.backIconSpacer} />
           <Pressable
@@ -356,105 +355,106 @@ const MainPage = ({ navigation, route }: MainPageProps) => {
             {...backShareHandlers}
             onPress={handleSharePress}
           >
-            <RNAnimated.View
-              style={{ transform: [{ scale: backShareButtonScale }] }}
-            >
+            <Animated.View style={backShareAnimStyle}>
               <ShareIcon width={33} height={33} />
-            </RNAnimated.View>
+            </Animated.View>
           </Pressable>
           <View style={cardStyles.backIconSpacer} />
           <View
-            style={cardStyles.backIconBoxWrapper}
+            style={{
+              width: CORNER_BOX_SIZE,
+              height: CORNER_BOX_SIZE,
+              justifyContent: "center",
+              alignItems: "center",
+              overflow: "visible",
+            }}
             pointerEvents={showBackSizeSelection ? "none" : "auto"}
           >
-            <View style={cardStyles.backIconBox}>
-              <HeartButton
-                isLiked={isLiked}
-                onToggleLike={() => deck.toggleLike(index)}
-              />
-            </View>
-            <Pressable
-              style={StyleSheet.absoluteFill}
+            <HeartButton
+              isLiked={isLiked}
+              onToggleLike={() => deck.toggleLike(index)}
               onLongPress={() => deck.handleLongPress(index)}
-              delayLongPress={300}
+              heartPressActiveRef={deck.heartPressActiveRef}
+              heartRecentlyReleasedRef={deck.heartRecentlyReleasedRef}
             />
           </View>
         </View>
-        <Animated.View
-          style={[
-            cardStyles.backSizePanelTail,
-            backSizePanelTailAnimatedStyle,
-            { zIndex: 1001, elevation: 1002 },
-          ]}
-          pointerEvents={showBackSizeSelection ? "auto" : "none"}
-        >
-          <View style={cardStyles.sizePanelRow}>
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={cardStyles.sizeScrollContent}
-              style={cardStyles.sizePanelScrollView}
-            >
-              {card?.variants?.map((variant, vi) => {
-                const isAvail = variant.stock_quantity > 0;
-                const isUserSize = variant.size === deck.userSelectedSize;
-                const isOneSize = variant.size === "One Size";
-                return (
-                  <Pressable
-                    key={variant.size}
-                    style={[
-                      isOneSize ? cardStyles.sizeOval : cardStyles.sizeCircle,
-                      isAvail
-                        ? cardStyles.sizeCircleAvailable
-                        : cardStyles.sizeCircleUnavailable,
-                      isUserSize && isAvail
-                        ? cardStyles.sizeCircleUserSize
-                        : null,
-                      vi > 0 ? { marginLeft: 10 } : null,
-                    ]}
-                    onPress={() => {
-                      if (isAvail) {
-                        deck.handleSizeSelect(variant.size);
-                        resetToBackButtons();
-                      } else {
-                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                      }
-                    }}
-                    disabled={!isAvail}
-                  >
-                    <Text
-                      style={
-                        isOneSize
-                          ? cardStyles.sizeOvalText
-                          : cardStyles.sizeText
-                      }
+        {showBackSizeSelection && (
+          <Animated.View
+            style={[
+              cardStyles.backSizePillPosition,
+              { zIndex: 1001, elevation: 1002, padding: 6, margin: -6 },
+              backSizePillAnimatedStyle,
+            ]}
+            onStartShouldSetResponder={() => true}
+          >
+            <View style={cardStyles.sizePill}>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={cardStyles.sizePillScrollContent}
+                style={cardStyles.sizePillScrollView}
+              >
+                {card?.variants?.map((variant) => {
+                  const isAvail = variant.stock_quantity > 0;
+                  const isUserSize = variant.size === deck.userSelectedSize;
+                  const isOneSize = variant.size === "One Size";
+                  return (
+                    <Pressable
+                      key={variant.size}
+                      style={[
+                        isOneSize ? cardStyles.sizeOval : cardStyles.sizeCircle,
+                        isAvail
+                          ? cardStyles.sizeCircleAvailable
+                          : cardStyles.sizeCircleUnavailable,
+                        isUserSize && isAvail
+                          ? cardStyles.sizeCircleUserSize
+                          : null,
+                      ]}
+                      onPress={() => {
+                        if (isAvail) {
+                          deck.handleSizeSelect(variant.size);
+                          resetToBackButtons();
+                        } else {
+                          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                        }
+                      }}
+                      disabled={!isAvail}
                     >
-                      {variant.size}
-                    </Text>
-                  </Pressable>
-                );
-              })}
-            </ScrollView>
-            <Pressable
-              onPress={handleCancelBackSizeSelection}
-              style={cardStyles.sizePanelCancelButton}
-              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-            >
-              <Cancel width={27} height={27} />
-            </Pressable>
-          </View>
-        </Animated.View>
+                      <Text
+                        style={
+                          isOneSize
+                            ? cardStyles.sizeOvalText
+                            : cardStyles.sizeText
+                        }
+                      >
+                        {variant.size}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </ScrollView>
+            </View>
+          </Animated.View>
+        )}
       </View>
     );
   };
 
   return (
     <Animated.View
-      style={styles.container}
+      style={[styles.container, { paddingTop: insets.top }]}
       entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
         ANIMATION_DELAYS.LARGE,
       )}
       exiting={FadeOutDown.duration(ANIMATION_DURATIONS.MICRO)}
+      onStartShouldSetResponder={() =>
+        deck.showSizeSelection || showBackSizeSelection
+      }
+      onResponderRelease={() => {
+        if (deck.showSizeSelection) deck.handleCancelSizeSelection();
+        if (showBackSizeSelection) resetToBackButtons();
+      }}
     >
       <View style={styles.roundedBox}>
         <LinearGradient
@@ -517,6 +517,9 @@ const MainPage = ({ navigation, route }: MainPageProps) => {
                 onCloseColorSelector={deck.closeColorSelector}
                 onToggleLike={() => deck.toggleLike(deck.currentCardIndex)}
                 onLongPress={() => deck.handleLongPress(deck.currentCardIndex)}
+                heartPressActiveRef={deck.heartPressActiveRef}
+                heartRecentlyReleasedRef={deck.heartRecentlyReleasedRef}
+                onDoubleTapLike={handleDoubleTapLike}
               />
             )}
             renderBack={() => (
@@ -627,6 +630,7 @@ const createScreenStyles = (theme: ThemeColors) =>
       borderWidth: 3,
       borderColor: theme.primary + "66",
       zIndex: 900,
+      overflow: "visible",
     },
   });
 
