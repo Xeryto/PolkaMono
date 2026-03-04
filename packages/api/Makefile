@@ -16,8 +16,8 @@ run: ## Run the development server
 run-dev: ## Run the development server with auto-reload
 	uvicorn main:app --reload --host 0.0.0.0 --port 8000
 
-test: ## Run the API test script
-	python test_api.py
+test: ## Run the API test suite
+	python -m pytest tests/ -v
 
 clean: ## Clean up generated files
 	find . -type f -name "*.pyc" -delete

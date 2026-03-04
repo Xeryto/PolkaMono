@@ -310,7 +310,7 @@ export const createSwipeCardStyles = (
       height: 26 + 4 * 2 + 4 * 2,
       borderRadius: 21,
       borderWidth: 4,
-      borderColor: theme.button.primary,
+      borderColor: theme.icon.primary,
       backgroundColor: theme.background.primary,
       justifyContent: "center",
       alignItems: "center",

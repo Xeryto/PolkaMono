@@ -115,21 +115,39 @@ def create_payment(
     if not user:
         raise Exception(f"User with id {user_id} not found")
 
+    profile = (
+        db.query(models.UserProfile)
+        .filter(models.UserProfile.user_id == user_id)
+        .first()
+    )
+    shipping_info = (
+        db.query(models.UserShippingInfo)
+        .filter(models.UserShippingInfo.user_id == user_id)
+        .first()
+    )
+
+    delivery_full_name = profile.full_name if profile else None
+    delivery_email = shipping_info.delivery_email if shipping_info else None
+    if not delivery_email and user.auth_account and user.auth_account.email:
+        delivery_email = user.auth_account.email
+    delivery_phone = shipping_info.phone if shipping_info else None
+    delivery_address = _build_delivery_address(shipping_info)
+    delivery_city = shipping_info.city if shipping_info else None
+    delivery_postal_code = shipping_info.postal_code if shipping_info else None
+
     order = Order(
         user_id=user_id,
         order_number=order_number,
         total_amount=str(amount),
-        currency=currency,
         status=OrderStatus.CREATED,
         expires_at=datetime.now(timezone.utc)
         + timedelta(hours=settings.ORDER_PENDING_EXPIRY_HOURS),
-        # Store delivery information at order creation time
-        delivery_full_name=user.full_name,
-        delivery_email=user.delivery_email,
-        delivery_phone=user.phone,
-        delivery_address=user.address,
-        delivery_city=user.city,
-        delivery_postal_code=user.postal_code,
+        delivery_full_name=delivery_full_name,
+        delivery_email=delivery_email,
+        delivery_phone=delivery_phone,
+        delivery_address=delivery_address,
+        delivery_city=delivery_city,
+        delivery_postal_code=delivery_postal_code,
     )
     db.add(order)
     db.commit()
@@ -149,6 +167,12 @@ def create_payment(
         product = variant.product
         if not product:
             raise Exception(f"Product not found for variant {item.product_variant_id}")
+
+        brand = product.brand
+        if brand and brand.is_inactive:
+            raise Exception(
+                f"Brand '{brand.name}' is currently inactive and cannot accept orders"
+            )
 
         if variant.stock_quantity < item.quantity:
             raise Exception(
@@ -280,6 +304,13 @@ def create_order_test(
         product = variant.product
         if not product:
             raise Exception(f"Product not found for variant {item.product_variant_id}")
+
+        brand = product.brand
+        if brand and brand.is_inactive:
+            raise Exception(
+                f"Brand '{brand.name}' is currently inactive and cannot accept orders"
+            )
+
         if variant.stock_quantity < item.quantity:
             raise Exception(
                 f"Insufficient stock for product {product.name} in size {variant.size}. "
@@ -375,8 +406,6 @@ def create_order_test(
             )
             db.add(order_item)
 
-        update_order_status(db, order.id, OrderStatus.PAID)
-
     payment_model = PaymentModel(
         id=str(uuid.uuid4()),
         checkout_id=checkout.id,
@@ -453,7 +482,11 @@ def update_order_status(
                                 f"Incremented purchase_count for product {product.id} by {quantity} (new count: {product.purchase_count})"
                             )
 
-            elif old_status == OrderStatus.PAID and status != OrderStatus.PAID:
+            elif old_status == OrderStatus.PAID and status not in (
+                OrderStatus.PAID,
+                OrderStatus.RETURNED,
+                OrderStatus.PARTIALLY_RETURNED,
+            ):
                 # Order was PAID but is now being changed to non-PAID (canceled, etc.) - decrement purchase_count
                 print(
                     f"Decrementing purchase_count for products in order {order_id} (was PAID, now {status.value})"
@@ -471,13 +504,10 @@ def update_order_status(
                                 f"Decremented purchase_count for product {product.id} by {quantity} (new count: {product.purchase_count})"
                             )
 
-        # If order is being cancelled or returned, restore stock quantities
-        if status in (
-            OrderStatus.CANCELED,
-            OrderStatus.RETURNED,
-        ) and old_status not in (OrderStatus.CANCELED, OrderStatus.RETURNED):
-            action = "cancelled" if status == OrderStatus.CANCELED else "returned"
-            print(f"Restoring stock for {action} order {order_id}")
+        # If order is being cancelled, restore stock quantities
+        # (RETURNED stock is handled per-item in admin_log_return)
+        if status == OrderStatus.CANCELED and old_status != OrderStatus.CANCELED:
+            print(f"Restoring stock for cancelled order {order_id}")
             for item in order.items:
                 variant = variant_map.get(item.product_variant_id)
                 if variant:

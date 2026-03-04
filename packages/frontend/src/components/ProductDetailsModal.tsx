@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
@@ -23,6 +23,7 @@ import { FileInput } from "@/components/ui/file-input";
 import { sizes } from "@/lib/sizes";
 import { useAuth } from "@/context/AuthContext"; // Import useAuth
 import { formatCurrency } from "@/lib/currency";
+import { ImageCropModal } from "@/components/ImageCropModal";
 
 const DELIVERY_TIME_OPTIONS = [
   { label: "1 день", value: 1 },
@@ -106,6 +107,73 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({
     product.country_of_manufacture || "",
   );
   const [activeTab, setActiveTab] = useState<string>("info");
+
+  // Crop modal state
+  const [cropItem, setCropItem] = useState<{
+    file: File;
+    objectUrl: string;
+    target: "general" | { color: number };
+  } | null>(null);
+  const pendingCropQueue = useRef<
+    { file: File; target: "general" | { color: number } }[]
+  >([]);
+
+  const startCropQueue = useCallback(
+    (files: File[], target: "general" | { color: number }) => {
+      if (files.length === 0) return;
+      const [first, ...rest] = files;
+      pendingCropQueue.current = rest.map((f) => ({ file: f, target }));
+      setCropItem({
+        file: first,
+        objectUrl: URL.createObjectURL(first),
+        target,
+      });
+    },
+    [],
+  );
+
+  const advanceCropQueue = useCallback(() => {
+    if (cropItem?.objectUrl) URL.revokeObjectURL(cropItem.objectUrl);
+    const next = pendingCropQueue.current.shift();
+    if (next) {
+      setCropItem({
+        file: next.file,
+        objectUrl: URL.createObjectURL(next.file),
+        target: next.target,
+      });
+    } else {
+      setCropItem(null);
+    }
+  }, [cropItem]);
+
+  const handleCropConfirm = useCallback(
+    (croppedFile: File) => {
+      if (!cropItem) return;
+      const url = URL.createObjectURL(croppedFile);
+      if (cropItem.target === "general") {
+        setGeneralImages((prev) => [...prev, url]);
+        setGeneralImageFiles((prev) => [...prev, croppedFile]);
+      } else {
+        const idx = cropItem.target.color;
+        updateColorVariation(idx, {
+          images: [...(colorVariations[idx]?.images || []), url],
+        });
+        setColorVariationFiles((prev) => {
+          const next = [...prev];
+          next[idx] = [...(next[idx] || []), croppedFile];
+          return next;
+        });
+      }
+      advanceCropQueue();
+    },
+    [cropItem, advanceCropQueue, colorVariations],
+  );
+
+  const handleCropCancel = useCallback(() => {
+    if (cropItem?.objectUrl) URL.revokeObjectURL(cropItem.objectUrl);
+    pendingCropQueue.current = [];
+    setCropItem(null);
+  }, [cropItem]);
 
   const hasDuplicateSizes = (
     variants: { size: string; stock_quantity: number }[],
@@ -274,15 +342,6 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({
       });
       return;
     }
-    if (!sizingTableImage && !sizingTableFile) {
-      toast({
-        title: "ошибка",
-        description: "Загрузите таблицу размеров.",
-        variant: "destructive",
-      });
-      return;
-    }
-
     if (saleType !== "none" && salePrice !== "") {
       const salePriceNum = parseFloat(salePrice.replace(",", "."));
       if (!isFinite(salePriceNum)) {
@@ -544,9 +603,8 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({
   };
 
   const handleColorVariationImages = (colorIndex: number, files: File[]) => {
-    const newUrls = files.map((f) => URL.createObjectURL(f));
     const prev = colorVariations[colorIndex];
-    if ((prev.images?.length || 0) + newUrls.length > 5) {
+    if ((prev.images?.length || 0) + files.length > 5) {
       toast({
         title: "ошибка",
         description: "Максимум 5 изображений на цвет.",
@@ -554,14 +612,7 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({
       });
       return;
     }
-    updateColorVariation(colorIndex, {
-      images: [...(prev.images || []), ...newUrls],
-    });
-    setColorVariationFiles((prev) => {
-      const next = [...prev];
-      next[colorIndex] = [...(next[colorIndex] || []), ...files];
-      return next;
-    });
+    startCropQueue(files, { color: colorIndex });
   };
 
   const removeColorVariationImage = (
@@ -581,8 +632,7 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({
   };
 
   const handleGeneralImages = (files: File[]) => {
-    const newUrls = files.map((f) => URL.createObjectURL(f));
-    if (generalImages.length + newUrls.length > 5) {
+    if (generalImages.length + files.length > 5) {
       toast({
         title: "ошибка",
         description: "Максимум 5 общих изображений.",
@@ -590,8 +640,7 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({
       });
       return;
     }
-    setGeneralImages((prev) => [...prev, ...newUrls]);
-    setGeneralImageFiles((prev) => [...prev, ...files]);
+    startCropQueue(files, "general");
   };
 
   const removeGeneralImage = (index: number) => {
@@ -1129,6 +1178,13 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({
           </div>
         </div>
       </DialogContent>
+
+      <ImageCropModal
+        imageSrc={cropItem?.objectUrl ?? null}
+        originalFile={cropItem?.file ?? null}
+        onConfirm={handleCropConfirm}
+        onCancel={handleCropCancel}
+      />
     </Dialog>
   );
 };

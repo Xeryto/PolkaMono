@@ -2433,7 +2433,7 @@ const createStyles = (theme: ThemeColors) =>
     favoritesCancelButtonText: {
       fontFamily: "IgraSans",
       fontSize: 18,
-      color: theme.button.primary,
+      color: theme.text.primary,
     },
     searchResultsBox: {
       position: "absolute",
@@ -2714,7 +2714,7 @@ const createStyles = (theme: ThemeColors) =>
     requestButtonText: {
       fontFamily: "IgraSans",
       fontSize: 15,
-      color: theme.text.inverse,
+      color: theme.text.primary,
     },
     confirmationContainer: {
       height: "88%",
@@ -2722,15 +2722,14 @@ const createStyles = (theme: ThemeColors) =>
       justifyContent: "space-between",
       alignItems: "center",
       padding: 14,
-      backgroundColor: theme.status.error,
+      backgroundColor: theme.surface.item,
       borderRadius: 30,
     },
     confirmationText: {
       fontFamily: "IgraSans",
-      fontSize: 15,
-      color: theme.text.secondary,
-      lineHeight: 20,
-      opacity: 0.8,
+      fontSize: 14,
+      color: theme.text.primary,
+      lineHeight: 18,
       textAlign: "center",
     },
     confirmationButtons: {
@@ -2760,8 +2759,7 @@ const createStyles = (theme: ThemeColors) =>
     confirmButtonText: {
       fontFamily: "IgraSans",
       fontSize: 15,
-      color: theme.text.secondary,
-      opacity: 0.8,
+      color: theme.text.inverse,
     },
     removeFriendButton: {
       position: "absolute",
@@ -2833,7 +2831,7 @@ const createStyles = (theme: ThemeColors) =>
       height: width * 0.15,
     },
     cancelRequestText: {
-      color: theme.text.secondary,
+      color: theme.text.primary,
       fontFamily: "IgraSans",
       fontSize: 10,
       textAlign: "center",

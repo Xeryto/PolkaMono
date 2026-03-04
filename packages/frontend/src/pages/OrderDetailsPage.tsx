@@ -143,48 +143,55 @@ export function OrderDetailsPage({ order, onBack, onOrderUpdated }: OrderDetails
           <p className="text-muted-foreground">
             Details for order {order.number}
           </p>
-          <div className="mt-4">
-            <Label htmlFor="trackingNumber">tracking number</Label>
-            <div className="flex items-center space-x-2 mt-1">
-              <Input
-                id="trackingNumber"
-                value={trackingNumberInput}
-                onChange={(e) => setTrackingNumberInput(e.target.value)}
-                placeholder="enter tracking number"
-                className="flex-1"
-              />
-              <Button
-                onClick={handleSaveTrackingNumber}
-                disabled={isSavingTracking}
-              >
-                {isSavingTracking ? "saving..." : "save"}
-              </Button>
-            </div>
+          {(() => {
+            const canEditTracking = orderStatus === ORDER_STATUS.PAID || orderStatus === ORDER_STATUS.SHIPPED;
+            return (
             <div className="mt-4">
-              <Label htmlFor="trackingLink" className="mt-2">
-                tracking link
-              </Label>
-              <Input
-                id="trackingLink"
-                value={trackingLinkInput}
-                onChange={(e) => setTrackingLinkInput(e.target.value)}
-                placeholder="enter full tracking URL"
-                className="mt-1"
-              />
-              {order.tracking_number && order.tracking_link && (
-                <p className="text-sm text-muted-foreground mt-1">
-                  <a
-                    href={order.tracking_link}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-blue-400 hover:underline"
-                  >
-                    Track: {order.tracking_number}
-                  </a>
-                </p>
-              )}
+              <Label htmlFor="trackingNumber">tracking number</Label>
+              <div className="flex items-center space-x-2 mt-1">
+                <Input
+                  id="trackingNumber"
+                  value={trackingNumberInput}
+                  onChange={(e) => setTrackingNumberInput(e.target.value)}
+                  placeholder="enter tracking number"
+                  className="flex-1"
+                  disabled={!canEditTracking}
+                />
+                <Button
+                  onClick={handleSaveTrackingNumber}
+                  disabled={isSavingTracking || !canEditTracking}
+                >
+                  {isSavingTracking ? "saving..." : "save"}
+                </Button>
+              </div>
+              <div className="mt-4">
+                <Label htmlFor="trackingLink" className="mt-2">
+                  tracking link
+                </Label>
+                <Input
+                  id="trackingLink"
+                  value={trackingLinkInput}
+                  onChange={(e) => setTrackingLinkInput(e.target.value)}
+                  placeholder="enter full tracking URL"
+                  className="mt-1"
+                  disabled={!canEditTracking}
+                />
+                {order.tracking_number && order.tracking_link && (
+                  <p className="text-sm text-muted-foreground mt-1">
+                    <a
+                      href={order.tracking_link}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-blue-400 hover:underline"
+                    >
+                      Track: {order.tracking_number}
+                    </a>
+                  </p>
+                )}
+              </div>
             </div>
-          </div>
+            );
+          })()}
         </div>
       </div>
       {/* Shopping Information Display */}

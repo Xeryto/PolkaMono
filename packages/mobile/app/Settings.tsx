@@ -2730,7 +2730,7 @@ const Settings = ({
                       setMyInfo((prev) => ({ ...prev, gender: "male" }));
                     }}
                   >
-                    <Text style={[styles.genderCircleText]}>м</Text>
+                    <Text style={[styles.genderCircleText]}>М</Text>
                   </TouchableOpacity>
                   <TouchableOpacity
                     style={[
@@ -2743,7 +2743,7 @@ const Settings = ({
                       setMyInfo((prev) => ({ ...prev, gender: "female" }));
                     }}
                   >
-                    <Text style={[styles.genderCircleText]}>ж</Text>
+                    <Text style={[styles.genderCircleText]}>Ж</Text>
                   </TouchableOpacity>
                 </View>
               </View>

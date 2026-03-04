@@ -17,7 +17,13 @@ import {
   NotificationItem,
 } from "@/services/api";
 
-type DashboardView = "stats" | "orders" | "products" | "add-item" | "profile" | "security";
+type DashboardView =
+  | "stats"
+  | "orders"
+  | "products"
+  | "add-item"
+  | "profile"
+  | "security";
 
 interface DashboardHeaderProps {
   onViewChange: (view: DashboardView) => void;
@@ -25,8 +31,10 @@ interface DashboardHeaderProps {
 }
 
 function notifIcon(type: string) {
-  if (type === "new_order") return <ShoppingBag className="h-4 w-4 text-brand shrink-0" />;
-  if (type === "return_logged") return <Package className="h-4 w-4 text-orange-400 shrink-0" />;
+  if (type === "new_order")
+    return <ShoppingBag className="h-4 w-4 text-brand shrink-0" />;
+  if (type === "return_logged")
+    return <Package className="h-4 w-4 text-orange-400 shrink-0" />;
   return <AlertCircle className="h-4 w-4 text-muted-foreground shrink-0" />;
 }
 
@@ -43,16 +51,19 @@ function formatRelativeTime(isoString: string): string {
   return `${Math.floor(hours / 24)} дн назад`;
 }
 
-export function DashboardHeader({ onViewChange, onTargetOrder }: DashboardHeaderProps) {
+export function DashboardHeader({
+  onViewChange,
+  onTargetOrder,
+}: DashboardHeaderProps) {
   const { logout, token } = useAuth();
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [bellOpen, setBellOpen] = useState(false);
   const [, tick] = useState(0);
-  const unreadCount = notifications.filter(n => !n.is_read).length;
+  const unreadCount = notifications.filter((n) => !n.is_read).length;
 
   // Re-render every 60s so relative timestamps stay fresh
   useEffect(() => {
-    const id = setInterval(() => tick(n => n + 1), 60_000);
+    const id = setInterval(() => tick((n) => n + 1), 60_000);
     return () => clearInterval(id);
   }, []);
 
@@ -72,18 +83,26 @@ export function DashboardHeader({ onViewChange, onTargetOrder }: DashboardHeader
     const interval = setInterval(() => {
       if (!document.hidden) loadNotifications();
     }, 30_000);
-    const onVisible = () => { if (!document.hidden) loadNotifications(); };
+    const onVisible = () => {
+      if (!document.hidden) loadNotifications();
+    };
     document.addEventListener("visibilitychange", onVisible);
-    return () => { clearInterval(interval); document.removeEventListener("visibilitychange", onVisible); };
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
   }, [loadNotifications]);
 
-  const handleBellOpen = useCallback((open: boolean) => {
-    setBellOpen(open);
-    if (open && unreadCount > 0 && token) {
-      setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
-      markNotificationsRead(token).catch(() => {});
-    }
-  }, [unreadCount, token]);
+  const handleBellOpen = useCallback(
+    (open: boolean) => {
+      setBellOpen(open);
+      if (open && unreadCount > 0 && token) {
+        setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })));
+        markNotificationsRead(token).catch(() => {});
+      }
+    },
+    [unreadCount, token],
+  );
 
   return (
     <header className="relative h-16 bg-card/50 border-b border-border/30 flex items-center justify-between px-4 sm:px-6 gap-2 before:absolute before:inset-y-0 before:right-full before:w-[--sidebar-width] before:bg-card/50 before:border-b before:border-border/30">
@@ -93,7 +112,7 @@ export function DashboardHeader({ onViewChange, onTargetOrder }: DashboardHeader
           aria-label="Открыть меню"
         />
         <h1 className="text-lg sm:text-xl font-bold text-foreground truncate">
-          панель управления Polka
+          Панель управления Polka
         </h1>
       </div>
 
@@ -109,7 +128,10 @@ export function DashboardHeader({ onViewChange, onTargetOrder }: DashboardHeader
               )}
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-80 bg-card border-border text-card-foreground shadow-lg">
+          <DropdownMenuContent
+            align="end"
+            className="w-80 bg-card border-border text-card-foreground shadow-lg"
+          >
             <DropdownMenuLabel className="flex items-center gap-2">
               <Bell className="h-4 w-4" /> Уведомления
             </DropdownMenuLabel>
@@ -131,7 +153,9 @@ export function DashboardHeader({ onViewChange, onTargetOrder }: DashboardHeader
                   {notifIcon(notif.type)}
                   <div className="flex-1 min-w-0">
                     <p className="text-sm leading-snug">{notif.message}</p>
-                    <p className="text-xs text-muted-foreground mt-0.5">{formatRelativeTime(notif.created_at)}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      {formatRelativeTime(notif.created_at)}
+                    </p>
                   </div>
                 </DropdownMenuItem>
               ))
@@ -151,8 +175,12 @@ export function DashboardHeader({ onViewChange, onTargetOrder }: DashboardHeader
           >
             <DropdownMenuLabel>Аккаунт бренда</DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <DropdownMenuItem onSelect={() => onViewChange("profile")}>Настройки профиля</DropdownMenuItem>
-            <DropdownMenuItem onSelect={() => onViewChange("security")}>Безопасность</DropdownMenuItem>
+            <DropdownMenuItem onSelect={() => onViewChange("profile")}>
+              Настройки профиля
+            </DropdownMenuItem>
+            <DropdownMenuItem onSelect={() => onViewChange("security")}>
+              Безопасность
+            </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem className="text-destructive" onSelect={logout}>
               Выйти

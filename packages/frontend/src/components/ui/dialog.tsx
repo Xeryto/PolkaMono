@@ -45,7 +45,7 @@ const DialogContent = React.forwardRef<
         <X className="h-4 w-4" />
         <span className="sr-only">Close</span>
       </DialogPrimitive.Close>
-      <div className="overflow-y-auto p-6 gap-4 grid">
+      <div className="overflow-y-auto max-h-[inherit] p-6 gap-4 grid">
         {children}
       </div>
     </DialogPrimitive.Content>

@@ -40,6 +40,7 @@ from models import (
     Order,
     OrderItem,
     OrderStatus,
+    OrderStatusEvent,
     PrivacyOption,
     Product,
     ProductColorVariant,
@@ -62,7 +63,7 @@ from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.util import get_remote_address
 from sqlalchemy import case, func, or_, text
-from sqlalchemy.orm import Session, joinedload
+from sqlalchemy.orm import Session, joinedload, subqueryload
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import Response
 from storage_service import generate_key, generate_presigned_upload_url
@@ -633,11 +634,7 @@ async def get_brand_profile(
     db: Session = Depends(get_db),
 ):
     """Get the authenticated brand user's profile"""
-    brand = db.query(Brand).filter(Brand.id == str(current_brand_user.id)).first()  # type: ignore
-    if not brand:
-        raise HTTPException(
-            status_code=404, detail="Бренд не найден. Проверьте правильность данных."
-        )
+    brand = current_brand_user
 
     return schemas.BrandResponse(
         id=str(brand.id),
@@ -826,9 +823,8 @@ async def track_user_swipe(
 ):
     """Track user swipe on a product"""
 
-    # Verify product exists
-    product = db.query(Product).filter(Product.id == swipe_data.product_id).first()
-    if not product:
+    # Verify product exists (ID-only check)
+    if not db.query(Product.id).filter(Product.id == swipe_data.product_id).first():
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Product not found"
         )
@@ -854,11 +850,7 @@ async def update_brand_profile(
     db: Session = Depends(get_db),
 ):
     """Update the authenticated brand user's profile"""
-    brand = db.query(Brand).filter(Brand.id == str(current_brand_user.id)).first()  # type: ignore
-    if not brand:
-        raise HTTPException(
-            status_code=404, detail="Бренд не найден. Проверьте правильность данных."
-        )
+    brand = current_brand_user
 
     # Update fields
     if brand_data.name is not None:
@@ -2310,25 +2302,25 @@ async def get_user_profile(
     db: Session = Depends(get_db),
 ):
     """Get current user's complete profile (users only)"""
-    # Ensure user_id is treated as a string for database comparison
     user_id = str(current_user.id)
 
-    # Get favorite brands and styles
-    favorite_brands = (
-        db.query(Brand).join(UserBrand).filter(UserBrand.user_id == user_id).all()
-    )
-    favorite_styles = (
-        db.query(Style).join(UserStyle).filter(UserStyle.user_id == user_id).all()
+    # Single query with eager loading instead of 5 separate queries
+    user = (
+        db.query(User)
+        .options(
+            joinedload(User.profile),
+            joinedload(User.shipping_info),
+            joinedload(User.preferences),
+            subqueryload(User.favorite_brands).joinedload(UserBrand.brand),
+            subqueryload(User.favorite_styles).joinedload(UserStyle.style),
+        )
+        .filter(User.id == user_id)
+        .first()
     )
 
-    # Get domain-specific data
-    profile = db.query(UserProfile).filter(UserProfile.user_id == user_id).first()
-    shipping_info = (
-        db.query(UserShippingInfo).filter(UserShippingInfo.user_id == user_id).first()
-    )
-    preferences = (
-        db.query(UserPreferences).filter(UserPreferences.user_id == user_id).first()
-    )
+    profile = user.profile if user else None
+    shipping_info = user.shipping_info if user else None
+    preferences = user.preferences if user else None
 
     return schemas.UserProfileResponse(
         id=current_user.id,
@@ -2336,24 +2328,24 @@ async def get_user_profile(
         email=current_user.auth_account.email,
         is_active=current_user.is_active,
         is_email_verified=current_user.auth_account.is_email_verified,
-        is_brand=False,  # Mark as regular user
+        is_brand=False,
         created_at=current_user.created_at,
         updated_at=current_user.updated_at,
         favorite_brands=[
             schemas.UserBrandResponse(
-                id=str(brand.id),
-                name=str(brand.name),  # type: ignore
-                slug=str(brand.slug),  # type: ignore
-                logo=str(brand.logo) if brand.logo else None,  # type: ignore
-                description=str(brand.description) if brand.description else None,  # type: ignore
+                id=str(ub.brand.id),
+                name=str(ub.brand.name),  # type: ignore
+                slug=str(ub.brand.slug),  # type: ignore
+                logo=str(ub.brand.logo) if ub.brand.logo else None,  # type: ignore
+                description=str(ub.brand.description) if ub.brand.description else None,  # type: ignore
             )
-            for brand in favorite_brands
+            for ub in (user.favorite_brands if user else [])
         ],
         favorite_styles=[
             schemas.StyleResponse(
-                id=style.id, name=style.name, description=style.description
+                id=us.style.id, name=us.style.name, description=us.style.description
             )
-            for style in favorite_styles
+            for us in (user.favorite_styles if user else [])
         ],
         profile=schemas.ProfileResponse(
             full_name=profile.full_name,
@@ -2914,6 +2906,12 @@ async def update_order_tracking(
             status_code=403, detail="Order does not belong to your brand"
         )
 
+    if order.status not in (OrderStatus.PAID, OrderStatus.SHIPPED):
+        raise HTTPException(
+            status_code=400,
+            detail=f"Tracking can only be updated for paid or shipped orders. Current status: {order.status.value}",
+        )
+
     if tracking_data.tracking_number is not None:
         order.tracking_number = tracking_data.tracking_number.strip() or None
     if tracking_data.tracking_link is not None:
@@ -2935,48 +2933,6 @@ async def update_order_tracking(
 
     db.commit()
     return {"message": "Tracking information updated successfully"}
-
-
-@app.put("/api/v1/brands/orders/{order_id}/return", response_model=MessageResponse)
-@limiter.limit("30/minute")
-async def mark_order_returned(
-    request: Request,
-    order_id: str,
-    current_user: Brand = Depends(get_current_brand_user),
-    db: Session = Depends(get_db),
-):
-    """Mark an order as RETURNED after the brand has received the returned item. Only SHIPPED orders can be returned."""
-    order = db.query(Order).filter(Order.id == order_id).first()
-    if not order:
-        raise HTTPException(status_code=404, detail="Заказ не найден.")
-
-    brand_id_filter = str(current_user.id)
-    order_belongs_to_brand = (
-        db.query(OrderItem)
-        .join(ProductVariant, OrderItem.product_variant_id == ProductVariant.id)
-        .join(
-            ProductColorVariant,
-            ProductVariant.product_color_variant_id == ProductColorVariant.id,
-        )
-        .join(Product, ProductColorVariant.product_id == Product.id)
-        .filter(OrderItem.order_id == order_id, Product.brand_id == brand_id_filter)
-        .first()
-    )
-
-    if not order_belongs_to_brand:
-        raise HTTPException(
-            status_code=403, detail="Order does not belong to your brand"
-        )
-
-    if order.status == OrderStatus.CANCELED:  # type: ignore
-        raise HTTPException(
-            status_code=400,
-            detail=f"Only SHIPPED orders can be marked as returned. Current status: {order.status.value}",
-        )
-
-    payment_service.update_order_status(str(order.id), OrderStatus.RETURNED.value)  # type: ignore
-    db.commit()
-    return {"message": "Order marked as returned. Stock has been restored."}
 
 
 class UpdateOrderItemSKURequest(BaseModel):
@@ -3125,7 +3081,7 @@ async def update_user_profile(
     db.refresh(current_user)
 
     # Return updated profile using get_user_profile logic
-    return await get_user_profile(current_user, db)
+    return await get_user_profile(request, current_user, db)
 
 
 @app.put("/api/v1/user/profile/data", response_model=schemas.ProfileResponse)
@@ -3355,22 +3311,22 @@ async def update_user_brands(
     db: Session = Depends(get_db),
 ):
     """Update user's favorite brands"""
-    # Remove existing brand associations
     user_id = str(current_user.id)
+
+    # Batch-validate all brand IDs
+    found = db.query(Brand.id).filter(Brand.id.in_(brands_data.brand_ids)).all()
+    found_ids = {r[0] for r in found}
+    missing = set(brands_data.brand_ids) - found_ids
+    if missing:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Brands not found: {missing}",
+        )
+
+    # Remove existing and add new
     db.query(UserBrand).filter(UserBrand.user_id == user_id).delete()
-
-    # Add new brand associations
     for brand_id in brands_data.brand_ids:
-        # Verify brand exists
-        brand = db.query(Brand).filter(Brand.id == brand_id).first()
-        if not brand:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Brand with ID {brand_id} not found",
-            )
-
-        user_brand = UserBrand(user_id=user_id, brand_id=brand_id)
-        db.add(user_brand)
+        db.add(UserBrand(user_id=user_id, brand_id=brand_id))
 
     db.commit()
     return {"message": "Favorite brands updated successfully"}
@@ -3399,22 +3355,22 @@ async def update_user_styles(
     db: Session = Depends(get_db),
 ):
     """Update user's favorite styles"""
-    # Remove existing style associations
     user_id = str(current_user.id)
+
+    # Batch-validate all style IDs
+    found = db.query(Style.id).filter(Style.id.in_(styles_data.style_ids)).all()
+    found_ids = {r[0] for r in found}
+    missing = set(styles_data.style_ids) - found_ids
+    if missing:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Styles not found: {missing}",
+        )
+
+    # Remove existing and add new
     db.query(UserStyle).filter(UserStyle.user_id == user_id).delete()
-
-    # Add new style associations
     for style_id in styles_data.style_ids:
-        # Verify style exists
-        style = db.query(Style).filter(Style.id == style_id).first()
-        if not style:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Style with ID {style_id} not found",
-            )
-
-        user_style = UserStyle(user_id=user_id, style_id=style_id)
-        db.add(user_style)
+        db.add(UserStyle(user_id=user_id, style_id=style_id))
 
     db.commit()
     return {"message": "Favorite styles updated successfully"}
@@ -3491,6 +3447,7 @@ async def get_user_favorites(
     """Get all products liked by the current user"""
     liked_products = (
         db.query(Product)
+        .options(*_product_eager_options())
         .join(UserLikedProduct)
         .join(Brand)
         .filter(
@@ -3672,24 +3629,53 @@ async def search_products(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """Search for products based on query and filters. Supports multiple values per filter (OR logic)."""
-    products_query = (
-        db.query(Product)
-        .join(Brand)
-        .options(*_product_eager_options())
-        .filter(Brand.is_inactive == False)
-    )
+    """Search with hybrid FTS + trigram scoring (>= 3 chars) or ILIKE fallback."""
+    use_hybrid = query and len(query.strip()) >= 3
+    query_stripped = query.strip() if query else ""
 
-    # Apply search query
-    if query:
-        search_pattern = f"%{query}%"
-        products_query = products_query.filter(
-            (Product.name.ilike(search_pattern))
-            | (Product.description.ilike(search_pattern))
-            | (Product.article_number.ilike(search_pattern))  # Search by article number
+    if use_hybrid:
+        # FTS tsquery: Russian for product text, English for brand names
+        ts_ru = func.plainto_tsquery(text("'russian'"), query_stripped)
+        ts_en = func.plainto_tsquery(text("'english'"), query_stripped)
+        ts_combined = ts_ru.op('||')(ts_en)
+
+        # Hybrid relevance: FTS rank * 2 + name similarity + description similarity * 0.5
+        relevance = (
+            func.ts_rank(Product.search_vector, ts_combined) * 2
+            + func.similarity(Product.name, query_stripped)
+            + func.similarity(Product.description, query_stripped) * 0.5
+        ).label("relevance")
+
+        search_filter = or_(
+            Product.search_vector.op('@@')(ts_combined),
+            func.similarity(Product.name, query_stripped) > 0.15,
+            func.similarity(Product.description, query_stripped) > 0.15,
+            Product.article_number.ilike(f"%{query_stripped}%"),
         )
 
-    # Apply filters - support both legacy single values and new multiple values
+        products_query = (
+            db.query(Product, relevance)
+            .join(Brand)
+            .options(*_product_eager_options())
+            .filter(Brand.is_inactive == False)
+            .filter(search_filter)
+        )
+    else:
+        products_query = (
+            db.query(Product)
+            .join(Brand)
+            .options(*_product_eager_options())
+            .filter(Brand.is_inactive == False)
+        )
+        if query:
+            search_pattern = f"%{query}%"
+            products_query = products_query.filter(
+                (Product.name.ilike(search_pattern))
+                | (Product.description.ilike(search_pattern))
+                | (Product.article_number.ilike(search_pattern))
+            )
+
+    # Apply filters
     cat_values = (
         categories
         if categories
@@ -3712,13 +3698,18 @@ async def search_products(
             .filter(or_(*[Style.name.ilike(f"%{s}%") for s in style_values]))
         )
 
-    # Apply pagination - use distinct() to prevent duplicate products when filtering by style
-    products_query = products_query.distinct().offset(offset).limit(limit)
+    # Pagination + ordering
+    products_query = products_query.distinct()
+    if use_hybrid:
+        products_query = products_query.order_by(text("relevance DESC"))
+    products_query = products_query.offset(offset).limit(limit)
 
-    products = products_query.all()
+    rows = products_query.all()
     liked_product_ids = {ulp.product_id for ulp in current_user.liked_products}
 
-    return [product_to_schema(p, is_liked=p.id in liked_product_ids) for p in products]
+    if use_hybrid:
+        return [product_to_schema(r[0], is_liked=r[0].id in liked_product_ids) for r in rows]
+    return [product_to_schema(p, is_liked=p.id in liked_product_ids) for p in rows]
 
 
 @app.get("/api/v1/products/{product_id}", response_model=schemas.Product)
@@ -3851,7 +3842,10 @@ async def get_sent_friend_requests(
 ):
     """Get sent friend requests"""
     requests = (
-        db.query(FriendRequest).filter(FriendRequest.sender_id == current_user.id).all()
+        db.query(FriendRequest)
+        .options(joinedload(FriendRequest.recipient))
+        .filter(FriendRequest.sender_id == current_user.id)
+        .all()
     )
 
     return [
@@ -3877,6 +3871,7 @@ async def get_received_friend_requests(
     """Get received friend requests"""
     requests = (
         db.query(FriendRequest)
+        .options(joinedload(FriendRequest.sender))
         .filter(
             FriendRequest.recipient_id == current_user.id,
             FriendRequest.status == FriendRequestStatus.PENDING,
@@ -4018,6 +4013,10 @@ async def get_friends_list(
     # Get friendships where current user is either user or friend
     friendships = (
         db.query(Friendship)
+        .options(
+            joinedload(Friendship.user).joinedload(User.profile),
+            joinedload(Friendship.friend).joinedload(User.profile),
+        )
         .filter(
             (Friendship.user_id == current_user.id)
             | (Friendship.friend_id == current_user.id)
@@ -4027,11 +4026,11 @@ async def get_friends_list(
 
     friends = []
     for friendship in friendships:
-        if friendship.user_id == current_user.id:  # type: ignore
-            friend_user = db.query(User).filter(User.id == friendship.friend_id).first()
-        else:
-            friend_user = db.query(User).filter(User.id == friendship.user_id).first()
-
+        friend_user = (
+            friendship.friend
+            if friendship.user_id == current_user.id  # type: ignore
+            else friendship.user
+        )
         if friend_user:
             avatar_url = friend_user.profile.avatar_url if friend_user.profile else None
             friends.append(
@@ -4099,6 +4098,7 @@ async def search_users(
     # Search by username or email (case insensitive)
     users = (
         db.query(User)
+        .options(joinedload(User.profile))
         .join(AuthAccount)
         .filter(
             (User.username.ilike(f"%{query}%") | AuthAccount.email.ilike(f"%{query}%"))
@@ -4108,54 +4108,61 @@ async def search_users(
         .all()
     )
 
+    user_ids = [u.id for u in users]
+
+    # Batch-fetch friendships
+    friend_rows = (
+        db.query(Friendship)
+        .filter(
+            (
+                (Friendship.user_id == current_user.id)
+                & (Friendship.friend_id.in_(user_ids))
+            )
+            | (
+                (Friendship.user_id.in_(user_ids))
+                & (Friendship.friend_id == current_user.id)
+            )
+        )
+        .all()
+    )
+    friend_ids = set()
+    for f in friend_rows:
+        friend_ids.add(f.friend_id if f.user_id == current_user.id else f.user_id)
+
+    # Batch-fetch pending sent requests
+    sent_rows = (
+        db.query(FriendRequest.recipient_id)
+        .filter(
+            FriendRequest.sender_id == current_user.id,
+            FriendRequest.recipient_id.in_(user_ids),
+            FriendRequest.status == FriendRequestStatus.PENDING,
+        )
+        .all()
+    )
+    sent_to = {r[0] for r in sent_rows}
+
+    # Batch-fetch pending received requests
+    recv_rows = (
+        db.query(FriendRequest.sender_id)
+        .filter(
+            FriendRequest.sender_id.in_(user_ids),
+            FriendRequest.recipient_id == current_user.id,
+            FriendRequest.status == FriendRequestStatus.PENDING,
+        )
+        .all()
+    )
+    received_from = {r[0] for r in recv_rows}
+
     result = []
     for user in users:
-        friend_status = "not_friend"
-
-        # Check if already friends
-        existing_friendship = (
-            db.query(Friendship)
-            .filter(
-                (
-                    (Friendship.user_id == current_user.id)
-                    & (Friendship.friend_id == user.id)
-                )
-                | (
-                    (Friendship.user_id == user.id)
-                    & (Friendship.friend_id == current_user.id)
-                )
-            )
-            .first()
-        )
-
-        if existing_friendship:
+        if user.id in friend_ids:
             friend_status = "friend"
+        elif user.id in sent_to:
+            friend_status = "request_sent"
+        elif user.id in received_from:
+            friend_status = "request_received"
         else:
-            # Check for pending friend requests
-            sent_request = (
-                db.query(FriendRequest)
-                .filter(
-                    FriendRequest.sender_id == current_user.id,
-                    FriendRequest.recipient_id == user.id,
-                    FriendRequest.status == FriendRequestStatus.PENDING,
-                )
-                .first()
-            )
-
-            received_request = (
-                db.query(FriendRequest)
-                .filter(
-                    FriendRequest.sender_id == user.id,
-                    FriendRequest.recipient_id == current_user.id,
-                    FriendRequest.status == FriendRequestStatus.PENDING,
-                )
-                .first()
-            )
-
-            if sent_request:
-                friend_status = "request_sent"
-            elif received_request:
-                friend_status = "request_received"
+            friend_status = "not_friend"
 
         avatar_url = user.profile.avatar_url if user.profile else None
         result.append(
@@ -4439,14 +4446,6 @@ async def create_order_test_endpoint(
             description=order_data.description,
             items=order_data.items,
         )
-        # Fire new_order notifications for each brand order in the checkout
-        paid_orders = db.query(Order).filter(Order.checkout_id == checkout_id).all()
-        for _ord in paid_orders:
-            notification_service.send_brand_new_order_notification(
-                db=db,
-                brand_id=_ord.brand_id,
-                order_id=str(_ord.id),
-            )
         return schemas.OrderTestCreateResponse(order_id=checkout_id)
     except Exception as e:
         logger.exception("Test order creation failed")
@@ -4454,6 +4453,41 @@ async def create_order_test_endpoint(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Order creation failed. Please try again.",
         )
+
+
+@app.post("/api/v1/orders/{order_id}/confirm-test", response_model=MessageResponse)
+@limiter.limit("10/minute")
+async def confirm_test_order(
+    request: Request,
+    order_id: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Simulate payment confirmation for dev/test. Disabled in production."""
+    if settings.ENVIRONMENT == "production":
+        raise HTTPException(status_code=404, detail="Not found")
+    if isinstance(current_user, Brand):
+        raise HTTPException(status_code=403, detail="Brands cannot confirm orders")
+    order = (
+        db.query(Order)
+        .filter(Order.id == order_id, Order.user_id == str(current_user.id))
+        .first()
+    )
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+    if order.status != OrderStatus.CREATED:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Only CREATED orders can be confirmed. Status: {order.status.value}",
+        )
+    payment_service.update_order_status(db, order_id, OrderStatus.PAID)
+    db.commit()
+    notification_service.send_brand_new_order_notification(
+        db=db,
+        brand_id=order.brand_id,
+        order_id=str(order.id),
+    )
+    return {"message": "Order confirmed"}
 
 
 @app.get("/api/v1/orders", response_model=List[schemas.OrderSummaryResponse])
@@ -4469,16 +4503,8 @@ async def get_orders(
     if is_brand:
         orders = (
             db.query(Order)
-            .options(joinedload(Order.items).joinedload(OrderItem.product_variant))
-            .join(OrderItem)
-            .join(ProductVariant, OrderItem.product_variant_id == ProductVariant.id)
-            .join(
-                ProductColorVariant,
-                ProductVariant.product_color_variant_id == ProductColorVariant.id,
-            )
-            .join(Product, ProductColorVariant.product_id == Product.id)
-            .filter(Product.brand_id == current_user.id)
-            .distinct()
+            .filter(Order.brand_id == current_user.id)
+            .order_by(Order.created_at.desc())
             .all()
         )
         return [_order_to_summary(o) for o in orders]
@@ -4599,32 +4625,6 @@ async def buyer_cancel_order(
     return {"message": "Заказ успешно отменён"}
 
 
-@app.post("/api/v1/admin/orders/{order_id}/cancel", response_model=MessageResponse)
-@limiter.limit("30/minute")
-async def admin_cancel_order(
-    request: Request,
-    order_id: str,
-    admin: AuthAccount = Depends(get_current_admin),
-    db: Session = Depends(get_db),
-):
-    """Admin cancels any order regardless of status."""
-    order = db.query(Order).filter(Order.id == order_id).first()
-    if not order:
-        raise HTTPException(status_code=404, detail="Заказ не найден")
-    if order.status == OrderStatus.CANCELED:
-        raise HTTPException(status_code=400, detail="Заказ уже отменён")
-    payment_service.update_order_status(
-        db,
-        order_id,
-        OrderStatus.CANCELED,
-        actor_type="admin",
-        actor_id=str(admin.id),
-        note="admin cancelled",
-    )
-    db.commit()
-    return {"message": "Заказ отменён администратором"}
-
-
 class AdminNotificationSend(BaseModel):
     message: str = Field(..., min_length=1, max_length=500)
 
@@ -4652,13 +4652,13 @@ def admin_get_returns(
     db: Session = Depends(get_db),
 ):
     """Admin: list all returned order items across all brands."""
-    from models import Brand, Order, OrderItem, OrderStatusEvent, ProductVariant
-
     q = (
-        db.query(OrderItem, Order, Brand, ProductVariant)
+        db.query(OrderItem, Order, Brand, ProductVariant, Product)
         .join(Order, OrderItem.order_id == Order.id)
         .join(Brand, Order.brand_id == Brand.id)
         .join(ProductVariant, OrderItem.product_variant_id == ProductVariant.id)
+        .join(ProductColorVariant, ProductVariant.product_color_variant_id == ProductColorVariant.id)
+        .join(Product, ProductColorVariant.product_id == Product.id)
         .filter(OrderItem.status == "returned")
     )
     if date_from:
@@ -4674,29 +4674,46 @@ def admin_get_returns(
         except ValueError:
             pass
     rows = q.all()
-    result = []
-    for item, order, brand, pv in rows:
-        # Try to find most recent RETURNED status event for this order as returned_at
-        event = (
-            db.query(OrderStatusEvent)
+
+    # Batch-fetch most recent "returned" status event per order
+    order_ids = list({order.id for _, order, *_ in rows})
+    if order_ids:
+        from sqlalchemy import func as sa_func
+
+        subq = (
+            db.query(
+                OrderStatusEvent.order_id,
+                sa_func.max(OrderStatusEvent.created_at).label("max_created"),
+            )
             .filter(
-                OrderStatusEvent.order_id == order.id,
+                OrderStatusEvent.order_id.in_(order_ids),
                 OrderStatusEvent.to_status == "returned",
             )
-            .order_by(OrderStatusEvent.created_at.desc())
-            .first()
+            .group_by(OrderStatusEvent.order_id)
+            .subquery()
         )
+        events = (
+            db.query(OrderStatusEvent)
+            .join(
+                subq,
+                (OrderStatusEvent.order_id == subq.c.order_id)
+                & (OrderStatusEvent.created_at == subq.c.max_created),
+            )
+            .all()
+        )
+        event_map = {e.order_id: e for e in events}
+    else:
+        event_map = {}
+
+    result = []
+    for item, order, brand, _pv, product in rows:
+        event = event_map.get(order.id)
         returned_at = event.created_at if event else order.updated_at
-        product_name = (
-            pv.color_variant.product.name
-            if pv.color_variant and pv.color_variant.product
-            else "—"
-        )
         result.append(
             schemas.AdminReturnItem(
                 item_id=item.id,
                 order_id=order.id,
-                product_name=product_name,
+                product_name=product.name if product else "—",
                 brand_name=brand.name,
                 returned_at=returned_at,
             )
@@ -4761,11 +4778,18 @@ def admin_log_return(
     db: Session = Depends(get_db),
 ):
     """Admin: mark order items as returned, update order status, notify brand."""
-    from models import OrderItem
+    from models import OrderItem, ProductVariant
 
     order = db.query(Order).filter(Order.id == body.order_id).first()
     if not order:
         raise HTTPException(status_code=404, detail="Заказ не найден")
+
+    if order.status not in (OrderStatus.SHIPPED, OrderStatus.PARTIALLY_RETURNED):
+        raise HTTPException(
+            status_code=400,
+            detail=f"Returns can only be logged for shipped orders. Current status: {order.status.value}",
+        )
+
     updated_count = 0
     for item_id in body.item_ids:
         item = (
@@ -4784,6 +4808,20 @@ def admin_log_return(
             continue  # already returned — skip silently
         item.status = "returned"
         updated_count += 1
+        # Restore stock for this item
+        variant = (
+            db.query(ProductVariant)
+            .with_for_update()
+            .filter(ProductVariant.id == item.product_variant_id)
+            .first()
+        )
+        if variant:
+            variant.stock_quantity += item.quantity
+            product = variant.product
+            if product:
+                product.purchase_count = max(
+                    0, product.purchase_count - item.quantity
+                )
     # Determine new order status
     all_items = db.query(OrderItem).filter(OrderItem.order_id == body.order_id).all()
     all_returned = all(i.status == "returned" for i in all_items)
@@ -4797,10 +4835,9 @@ def admin_log_return(
             note="admin logged return",
         )
     else:
-        order.status = OrderStatus.PARTIALLY_RETURNED
-        payment_service.record_status_event(
+        payment_service.update_order_status(
             db,
-            order,
+            body.order_id,
             OrderStatus.PARTIALLY_RETURNED,
             actor_type="admin",
             actor_id=str(admin.id),

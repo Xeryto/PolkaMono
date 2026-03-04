@@ -1,8 +1,8 @@
 """
 Database models for PolkaAPI
 """
-from sqlalchemy import Column, String, Boolean, DateTime, Text, ForeignKey, Integer, Enum as SQLEnum, UniqueConstraint, Float, Index, TypeDecorator
-from sqlalchemy.dialects.postgresql import ARRAY
+from sqlalchemy import Column, String, Boolean, DateTime, Text, ForeignKey, Integer, Enum as SQLEnum, UniqueConstraint, Float, Index, TypeDecorator, Computed
+from sqlalchemy.dialects.postgresql import ARRAY, TSVECTOR
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
 import uuid
@@ -299,6 +299,15 @@ class Product(Base):
     created_at = Column(DateTime(timezone=True), default=_utcnow)
     updated_at = Column(DateTime(timezone=True), default=_utcnow, onupdate=_utcnow)
 
+    search_vector = Column(
+        TSVECTOR,
+        Computed(
+            "setweight(to_tsvector('russian', coalesce(name, '')), 'A') || "
+            "setweight(to_tsvector('russian', coalesce(description, '')), 'B')",
+            persisted=True,
+        ),
+    )
+
     brand = relationship("Brand")
     category = relationship("Category")
     styles = relationship("ProductStyle", back_populates="product", cascade="all, delete-orphan")
@@ -308,6 +317,9 @@ class Product(Base):
         Index('idx_product_purchase_count', 'purchase_count'),
         Index('idx_product_article_number', 'article_number'),
         UniqueConstraint('article_number', name='uq_product_article_number'),
+        Index('idx_products_search_vector', 'search_vector', postgresql_using='gin'),
+        Index('idx_products_name_trgm', 'name', postgresql_using='gin', postgresql_ops={'name': 'gin_trgm_ops'}),
+        Index('idx_products_description_trgm', 'description', postgresql_using='gin', postgresql_ops={'description': 'gin_trgm_ops'}),
     )
 
 
@@ -419,8 +431,8 @@ class Friendship(Base):
     )
 
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
-    user_id = Column(String, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
-    friend_id = Column(String, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    user_id = Column(String, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    friend_id = Column(String, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
     created_at = Column(DateTime(timezone=True), default=_utcnow)
 
     user = relationship("User", foreign_keys=[user_id], back_populates="friendships")
@@ -463,21 +475,8 @@ class OrderStatus(str, Enum):
     CANCELED = "canceled"
 
 
-# PostgreSQL orderstatus enum has mixed values: PENDING, PAID, CANCELED (uppercase)
-# and shipped, returned, created, partially_returned (lowercase, added by migration). Map accordingly.
-_ORDER_STATUS_TO_DB = {
-    OrderStatus.CREATED: "created",
-    OrderStatus.PENDING: "PENDING",
-    OrderStatus.PAID: "PAID",
-    OrderStatus.SHIPPED: "shipped",
-    OrderStatus.RETURNED: "returned",
-    OrderStatus.PARTIALLY_RETURNED: "partially_returned",
-    OrderStatus.CANCELED: "CANCELED",
-}
-
-
 class OrderStatusType(TypeDecorator):
-    """Binds OrderStatus to PostgreSQL orderstatus enum (mixed case: see _ORDER_STATUS_TO_DB)."""
+    """Binds OrderStatus enum to lowercase PostgreSQL orderstatus enum values."""
     impl = String(20)
     cache_ok = True
 
@@ -485,17 +484,13 @@ class OrderStatusType(TypeDecorator):
         if value is None:
             return None
         if isinstance(value, OrderStatus):
-            return _ORDER_STATUS_TO_DB[value]
+            return value.value
         return value
 
     def process_result_value(self, value, dialect):
         if value is None:
             return None
-        s = str(value)
-        try:
-            return OrderStatus[s]  # uppercase e.g. PAID
-        except KeyError:
-            return OrderStatus(s.lower())  # lowercase e.g. shipped
+        return OrderStatus(str(value).lower())
 
 
 class Order(Base):

@@ -714,7 +714,7 @@ const ThemeTransitionScreen: React.FC = () => {
           paddingHorizontal: 20,
         }}
       >
-        Полка
+        ПОЛКА
       </Text>
     </Animated.View>
   );

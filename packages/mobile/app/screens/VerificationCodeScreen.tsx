@@ -14,7 +14,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
-import * as Clipboard from "expo-clipboard";
+
 import Animated, { FadeInDown } from "react-native-reanimated";
 import BackIcon from "../components/svg/BackIcon";
 import * as api from "../services/api";
@@ -25,7 +25,7 @@ import {
 } from "../lib/animations";
 import { useTheme } from "../lib/ThemeContext";
 import type { ThemeColors } from "../lib/theme";
-import { log } from "../services/config";
+
 
 interface VerificationCodeScreenProps {
   onVerificationSuccess: () => void;
@@ -96,23 +96,6 @@ const VerificationCodeScreen: React.FC<VerificationCodeScreenProps> = ({
     }
   }, [resendCooldown]);
 
-  const handleLongPress = async () => {
-    try {
-      const clipboardText = await Clipboard.getStringAsync();
-      // Extract only numbers from clipboard text
-      const numbersOnly = clipboardText.replace(/\D/g, "");
-      if (numbersOnly.length > 0) {
-        // Limit to 6 digits
-        const codeToSet = numbersOnly.slice(0, 6);
-        setCode(codeToSet);
-        inputRef.current?.focus();
-      }
-    } catch (err) {
-      // Silently fail if clipboard access fails
-      log.warn("Failed to access clipboard:", err);
-    }
-  };
-
   return (
     <LinearGradient
       colors={theme.gradients.main as any}
@@ -156,7 +139,6 @@ const VerificationCodeScreen: React.FC<VerificationCodeScreenProps> = ({
               <View style={styles.codeContainerWrapper}>
                 <Pressable
                   style={styles.codePressable}
-                  onLongPress={handleLongPress}
                   onPress={() => inputRef.current?.focus()}
                 >
                   <Animated.View
@@ -178,16 +160,18 @@ const VerificationCodeScreen: React.FC<VerificationCodeScreenProps> = ({
                       </View>
                     ))}
                   </Animated.View>
+                  <TextInput
+                    ref={inputRef}
+                    style={styles.hiddenInput}
+                    value={code}
+                    onChangeText={setCode}
+                    keyboardType="number-pad"
+                    maxLength={6}
+                    autoFocus
+                    textContentType="oneTimeCode"
+                    autoComplete="one-time-code"
+                  />
                 </Pressable>
-                <TextInput
-                  ref={inputRef}
-                  style={styles.hiddenInput}
-                  value={code}
-                  onChangeText={setCode}
-                  keyboardType="number-pad"
-                  maxLength={6}
-                  autoFocus
-                />
               </View>
 
               <TouchableOpacity
@@ -321,10 +305,14 @@ const createStyles = (theme: ThemeColors) =>
     },
     hiddenInput: {
       position: "absolute",
-      left: -9999,
-      opacity: 0,
-      width: 1,
-      height: 1,
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      opacity: 0.011,
+      color: "transparent",
+      backgroundColor: "transparent",
+      fontSize: 1,
     },
     verifyButton: {
       backgroundColor: theme.button.primary,

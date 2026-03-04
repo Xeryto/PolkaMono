@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { z } from "zod";
 import {
   Card,
@@ -28,6 +28,7 @@ import {
 import { FileInput } from "@/components/ui/file-input";
 import { sizes } from "@/lib/sizes";
 import { useAuth } from "@/context/AuthContext";
+import { ImageCropModal } from "@/components/ImageCropModal";
 
 const DELIVERY_TIME_OPTIONS = [
   { value: 1, label: "1 день" },
@@ -119,6 +120,16 @@ export function AddNewItemPage() {
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
 
+  // Crop modal state
+  const [cropItem, setCropItem] = useState<{
+    file: File;
+    objectUrl: string;
+    target: "general" | { color: number };
+  } | null>(null);
+  const pendingCropQueue = useRef<
+    { file: File; target: "general" | { color: number } }[]
+  >([]);
+
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -152,10 +163,67 @@ export function AddNewItemPage() {
     });
   };
 
+  const startCropQueue = useCallback(
+    (files: File[], target: "general" | { color: number }) => {
+      if (files.length === 0) return;
+      const [first, ...rest] = files;
+      pendingCropQueue.current = rest.map((f) => ({ file: f, target }));
+      setCropItem({
+        file: first,
+        objectUrl: URL.createObjectURL(first),
+        target,
+      });
+    },
+    [],
+  );
+
+  const advanceCropQueue = useCallback(() => {
+    if (cropItem?.objectUrl) URL.revokeObjectURL(cropItem.objectUrl);
+    const next = pendingCropQueue.current.shift();
+    if (next) {
+      setCropItem({
+        file: next.file,
+        objectUrl: URL.createObjectURL(next.file),
+        target: next.target,
+      });
+    } else {
+      setCropItem(null);
+    }
+  }, [cropItem]);
+
+  const handleCropConfirm = useCallback(
+    (croppedFile: File) => {
+      if (!cropItem) return;
+      const url = URL.createObjectURL(croppedFile);
+      if (cropItem.target === "general") {
+        setGeneralImages((prev) => [...prev, url]);
+        setGeneralImageFiles((prev) => [...prev, croppedFile]);
+      } else {
+        const idx = cropItem.target.color;
+        setColorVariations((prev) => {
+          const next = [...prev];
+          next[idx] = {
+            ...next[idx],
+            images: [...next[idx].images, url],
+            imageFiles: [...next[idx].imageFiles, croppedFile],
+          };
+          return next;
+        });
+      }
+      advanceCropQueue();
+    },
+    [cropItem, advanceCropQueue],
+  );
+
+  const handleCropCancel = useCallback(() => {
+    if (cropItem?.objectUrl) URL.revokeObjectURL(cropItem.objectUrl);
+    pendingCropQueue.current = [];
+    setCropItem(null);
+  }, [cropItem]);
+
   const handleColorVariationImages = (index: number, files: File[]) => {
-    const newUrls = files.map((f) => URL.createObjectURL(f));
     const prev = colorVariations[index];
-    if (prev.images.length + newUrls.length > 5) {
+    if (prev.images.length + files.length > 5) {
       toast({
         title: "ошибка",
         description: "Максимум 5 изображений на цвет.",
@@ -163,10 +231,7 @@ export function AddNewItemPage() {
       });
       return;
     }
-    updateColorVariation(index, {
-      images: [...prev.images, ...newUrls],
-      imageFiles: [...prev.imageFiles, ...files],
-    });
+    startCropQueue(files, { color: index });
   };
 
   const removeColorVariationImage = (
@@ -183,8 +248,7 @@ export function AddNewItemPage() {
   };
 
   const handleGeneralImages = (files: File[]) => {
-    const newUrls = files.map((f) => URL.createObjectURL(f));
-    if (generalImages.length + newUrls.length > 5) {
+    if (generalImages.length + files.length > 5) {
       toast({
         title: "ошибка",
         description: "Максимум 5 общих изображений.",
@@ -192,8 +256,7 @@ export function AddNewItemPage() {
       });
       return;
     }
-    setGeneralImages((prev) => [...prev, ...newUrls]);
-    setGeneralImageFiles((prev) => [...prev, ...files]);
+    startCropQueue(files, "general");
   };
 
   const removeGeneralImage = (index: number) => {
@@ -351,15 +414,6 @@ export function AddNewItemPage() {
           return;
         }
       }
-    }
-
-    if (!sizingTableFile) {
-      toast({
-        title: "ошибка",
-        description: "Загрузите таблицу размеров.",
-        variant: "destructive",
-      });
-      return;
     }
 
     if (!token) {
@@ -917,6 +971,13 @@ export function AddNewItemPage() {
           </Button>
         </CardContent>
       </Card>
+
+      <ImageCropModal
+        imageSrc={cropItem?.objectUrl ?? null}
+        originalFile={cropItem?.file ?? null}
+        onConfirm={handleCropConfirm}
+        onCancel={handleCropCancel}
+      />
     </div>
   );
 }

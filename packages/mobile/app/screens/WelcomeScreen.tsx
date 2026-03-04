@@ -144,7 +144,7 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
   const handleSuccessfulSignup = async (
     username: string,
     email: string,
-    password: string
+    password: string,
   ) => {
     // setShowSignupScreen(false); // This will be handled by the parent component
     await onRegister(username, email, password);
@@ -187,12 +187,12 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
               style={styles.logoContainer}
             >
               <Logo width={LOGO_SIZE} height={LOGO_SIZE} />
-              <Text style={styles.logoText}>Полка</Text>
+              <Text style={styles.logoText}>ПОЛКА</Text>
             </Animated.View>
 
             <Animated.View
               entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
-                ANIMATION_DELAYS.SMALL
+                ANIMATION_DELAYS.SMALL,
               )}
               style={styles.shadowWrap}
             >
@@ -240,7 +240,7 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
             </Animated.View>
             <Animated.View
               entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
-                ANIMATION_DELAYS.STANDARD
+                ANIMATION_DELAYS.STANDARD,
               )}
               style={{ justifyContent: "flex-end" }}
             >

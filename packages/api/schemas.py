@@ -35,6 +35,12 @@ class Amount(BaseModel):
     value: float
     currency: str
 
+    @validator("value")
+    def validate_value(cls, v):
+        if v <= 0:
+            raise ValueError("Amount must be positive")
+        return v
+
 
 class Customer(BaseModel):
     email: Optional[EmailStr] = None
@@ -53,6 +59,12 @@ class CartItem(BaseModel):
     product_variant_id: str  # Identifies color + size (ProductVariant.id)
     quantity: int = 1
 
+    @validator("quantity")
+    def validate_quantity(cls, v):
+        if v < 1:
+            raise ValueError("Quantity must be at least 1")
+        return v
+
 
 class PaymentCreate(BaseModel):
     amount: Amount
@@ -62,7 +74,7 @@ class PaymentCreate(BaseModel):
 
     @validator("returnUrl")
     def validate_return_url(cls, v):
-        if ":://" not in v:
+        if "://" not in v:
             raise ValueError("returnUrl must be a valid URL containing ://")
         return v
 
