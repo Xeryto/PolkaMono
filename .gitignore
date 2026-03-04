@@ -1,5 +1,7 @@
 node_modules/
 .ruff_cache/
+htmlcov/
+.coverage
 generate_migration.sh
 run_migration.sh
 package-lock.json

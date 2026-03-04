@@ -640,7 +640,6 @@ export function useSwipeDeck(config: SwipeDeckConfig) {
     );
     return {
       width: sizePanelWidth.value,
-      overflow: "hidden" as const,
       borderTopRightRadius: radius,
     };
   });

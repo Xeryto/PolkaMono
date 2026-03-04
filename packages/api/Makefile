@@ -19,6 +19,12 @@ run-dev: ## Run the development server with auto-reload
 test: ## Run the API test suite
 	python -m pytest tests/ -v
 
+coverage: ## Run tests with coverage report (terminal + HTML)
+	python -m pytest tests/ --cov=. --cov-report=term-missing --cov-report=html
+	@echo ""
+	@echo "HTML report: open htmlcov/index.html"
+	open htmlcov/index.html
+
 clean: ## Clean up generated files
 	find . -type f -name "*.pyc" -delete
 	find . -type d -name "__pycache__" -delete

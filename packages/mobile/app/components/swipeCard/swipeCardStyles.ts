@@ -176,7 +176,6 @@ export const createSwipeCardStyles = (
       width: CORNER_BOX_SIZE,
       height: CORNER_BOX_SIZE,
       padding: 10,
-      borderTopRightRadius: 16,
       justifyContent: "center",
       alignItems: "center",
     },
@@ -192,11 +191,11 @@ export const createSwipeCardStyles = (
     sizePanelPosition: {
       position: "absolute",
       left: CARD_CORNER_INSET,
-      bottom: CARD_CORNER_INSET,
+      bottom: CARD_CORNER_INSET - 4,
     },
     sizePanelOuter: {
       backgroundColor: theme.background.primary,
-      height: CORNER_BOX_SIZE,
+      paddingVertical: 4,
       justifyContent: "center",
     },
     sizePanelRow: {
@@ -216,6 +215,8 @@ export const createSwipeCardStyles = (
       justifyContent: "center",
       alignItems: "center",
       backgroundColor: theme.interactive.remove,
+      marginLeft: 8,
+      marginRight: 6,
     },
     sizeScrollContent: {
       width: "100%",
