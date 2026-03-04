@@ -121,6 +121,7 @@ export interface ThemeColors {
     userSize: string;
     selected: string;
     text: string;
+    pillBackground: string;
   };
 
   // Gender Selection
@@ -286,6 +287,7 @@ const lightColors: ThemeColors = {
     userSize: "#CDA67A",
     selected: "#4A3120",
     text: "#000000",
+    pillBackground: "#F2ECE7",
   },
 
   // Gender Selection
@@ -447,11 +449,12 @@ const darkColors: ThemeColors = {
 
   // Size Selection
   size: {
-    available: "#3D3028",
-    unavailable: "#BFBBB8",
-    userSize: "#806B59",
+    available: "#4A3D33",
+    unavailable: "#2A231E",
+    userSize: "#8B7260",
     selected: "#806B59",
     text: "#FFFFFF",
+    pillBackground: "#352A23",
   },
 
   // Gender Selection

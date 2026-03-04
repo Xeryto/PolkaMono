@@ -718,12 +718,9 @@ export function useSwipeDeck(config: SwipeDeckConfig) {
         // If heart was active at any point during this gesture, lock it out
         if (heartPressActiveRef.current || heartRecentlyReleasedRef.current) {
           gestureStartedOnHeartRef.current = true;
-          console.log("[PanResponder] onMoveShouldSet BLOCKED — heart (locking gesture)");
           return false;
         }
-        const shouldSet = !isAnimatingRef.current && !isRefreshingRef.current && Math.abs(gestureState.dy) > 5;
-        if (shouldSet) console.log("[PanResponder] onMoveShouldSet → true, dy:", gestureState.dy);
-        return shouldSet;
+        return !isAnimatingRef.current && !isRefreshingRef.current && Math.abs(gestureState.dy) > 5;
       },
       onPanResponderGrant: () => {
         // Reset per-gesture flag when pan actually starts
@@ -733,14 +730,12 @@ export function useSwipeDeck(config: SwipeDeckConfig) {
       },
       onPanResponderMove: (_, gestureState) => {
         if (gestureStartedOnHeartRef.current) {
-          console.log("[PanResponder] onPanResponderMove BLOCKED — gesture started on heart");
           return;
         }
         if (gestureState.dy <= 0) pan.setValue({ x: 0, y: gestureState.dy });
       },
       onPanResponderRelease: (_, gestureState) => {
         if (gestureStartedOnHeartRef.current) {
-          console.log("[PanResponder] onPanResponderRelease BLOCKED — gesture started on heart");
           gestureStartedOnHeartRef.current = false;
           pan.setValue({ x: 0, y: 0 });
           return;

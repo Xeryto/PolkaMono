@@ -202,7 +202,7 @@ export const createSwipeCardStyles = (
       bottom: CARD_CORNER_INSET,
     },
     sizePill: {
-      backgroundColor: theme.background.primary,
+      backgroundColor: theme.size.pillBackground,
       borderRadius: CORNER_BOX_SIZE / 2,
       height: CORNER_BOX_SIZE,
       justifyContent: "center",
@@ -221,7 +221,7 @@ export const createSwipeCardStyles = (
       alignItems: "center",
       justifyContent: "center",
       gap: 10,
-      paddingHorizontal: 14,
+      paddingHorizontal: 6,
       height: CORNER_BOX_SIZE,
     },
 

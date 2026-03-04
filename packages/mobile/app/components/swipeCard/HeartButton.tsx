@@ -39,14 +39,12 @@ const HeartButton: React.FC<HeartButtonProps> = ({
   }));
 
   const handlePressIn = (e: GestureResponderEvent) => {
-    console.log("[HeartButton] onPressIn");
     pressOrigin.current = { x: e.nativeEvent.pageX, y: e.nativeEvent.pageY };
     heartPressActiveRef.current = true;
     pressScale.value = withSpring(0.85, { mass: 0.3, damping: 15, stiffness: 500 });
   };
 
   const handlePressOut = (e: GestureResponderEvent) => {
-    console.log("[HeartButton] onPressOut");
     heartPressActiveRef.current = false;
     heartRecentlyReleasedRef.current = true;
     setTimeout(() => { heartRecentlyReleasedRef.current = false; }, 150);
