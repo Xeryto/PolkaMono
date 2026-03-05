@@ -153,7 +153,9 @@ const MainPage = ({ navigation, route }: MainPageProps) => {
   const backSizePillAnimatedStyle = useAnimatedStyle(() => ({
     opacity: backSizePanelProgress.value,
     transform: [
-      { translateX: interpolate(backSizePanelProgress.value, [0, 1], [-12, 0]) },
+      {
+        translateX: interpolate(backSizePanelProgress.value, [0, 1], [-12, 0]),
+      },
     ],
   }));
 
@@ -416,7 +418,9 @@ const MainPage = ({ navigation, route }: MainPageProps) => {
                           deck.handleSizeSelect(variant.size);
                           resetToBackButtons();
                         } else {
-                          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                          Haptics.impactAsync(
+                            Haptics.ImpactFeedbackStyle.Light,
+                          );
                         }
                       }}
                       disabled={!isAvail}

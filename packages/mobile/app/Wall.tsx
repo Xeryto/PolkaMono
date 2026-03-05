@@ -74,6 +74,7 @@ interface WallProps {
   navigation: SimpleNavigation;
   onLogout?: () => void;
   openOrderId?: string;
+  initialView?: "wall" | "settings" | "orders";
 }
 
 const CartItemImage = ({ item }: { item: api.OrderItem }) => {
@@ -118,7 +119,7 @@ const CartItemImage = ({ item }: { item: api.OrderItem }) => {
   );
 };
 
-const Wall = ({ navigation, onLogout, openOrderId }: WallProps) => {
+const Wall = ({ navigation, onLogout, openOrderId, initialView: initialViewProp }: WallProps) => {
   const { theme } = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
 
@@ -249,6 +250,12 @@ const Wall = ({ navigation, onLogout, openOrderId }: WallProps) => {
       setSelectedOrderId(openOrderId);
     }
   }, [openOrderId]);
+
+  useEffect(() => {
+    if (initialViewProp) {
+      setCurrentView(initialViewProp);
+    }
+  }, [initialViewProp]);
 
   // Load orders when orders view is shown
   useEffect(() => {

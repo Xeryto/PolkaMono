@@ -9,7 +9,20 @@ import {
   Alert,
 } from "react-native";
 import { TouchableOpacity } from "react-native";
+import { UIManager } from "react-native";
+let ProgressiveBlurView: React.ComponentType<any> | null = null;
+try {
+  const hasNative =
+    UIManager.getViewManagerConfig("ReactNativeProgressiveBlurView") != null;
+  if (hasNative) {
+    ProgressiveBlurView =
+      require("@sbaiahmed1/react-native-blur").ProgressiveBlurView;
+  }
+} catch {
+  // fallback: no blur if package unavailable
+}
 import { LinearGradient } from "expo-linear-gradient";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
 import Animated, { FadeInDown, FadeOutDown } from "react-native-reanimated";
 import { ANIMATION_DURATIONS, ANIMATION_DELAYS } from "../lib/animations";
@@ -60,8 +73,12 @@ const FriendRecommendationsScreen = ({
   route,
 }: FriendRecommendationsScreenProps) => {
   const { theme } = useTheme();
+  const insets = useSafeAreaInsets();
   const cardStyles = useMemo(() => createSwipeCardStyles(theme, 35), [theme]);
-  const styles = useMemo(() => createScreenStyles(theme), [theme]);
+  const styles = useMemo(
+    () => createScreenStyles(theme, insets.top),
+    [theme, insets.top],
+  );
 
   const friendId = route?.params?.friendId || "";
   const friendUsername = route?.params?.friendUsername || "";
@@ -136,6 +153,18 @@ const FriendRecommendationsScreen = ({
         if (deck.showSizeSelection) deck.handleCancelSizeSelection();
       }}
     >
+      {/* Progressive blur overlay under header */}
+      {ProgressiveBlurView && (
+        <ProgressiveBlurView
+          style={styles.headerBlur}
+          blurType="light"
+          blurAmount={20}
+          direction="blurredTopClearBottom"
+          startOffset={0}
+          pointerEvents="none"
+        />
+      )}
+
       {/* Friend Header */}
       <View style={styles.friendHeader}>
         <View style={styles.friendInfoContainer}>
@@ -294,13 +323,21 @@ const FriendRecommendationsScreen = ({
   );
 };
 
-const createScreenStyles = (theme: ThemeColors) =>
+const createScreenStyles = (theme: ThemeColors, safeTop: number) =>
   StyleSheet.create({
     container: {
       flex: 1,
       justifyContent: "space-evenly",
       alignItems: "center",
       backgroundColor: "transparent",
+    },
+    headerBlur: {
+      position: "absolute",
+      top: -safeTop,
+      left: 0,
+      right: 0,
+      height: safeTop + height * 0.11,
+      zIndex: 950,
     },
     friendHeader: {
       width: "100%",

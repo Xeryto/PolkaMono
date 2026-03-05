@@ -677,9 +677,9 @@ const Cart = ({ navigation }: CartProps) => {
                         <View style={styles.itemDetails}>
                           <Text
                             style={styles.itemName}
-                            numberOfLines={1}
+                            numberOfLines={2}
                             adjustsFontSizeToFit
-                            minimumFontScale={0.5}
+                            minimumFontScale={0.75}
                           >
                             {item.brand_name}
                           </Text>
@@ -813,7 +813,7 @@ const Cart = ({ navigation }: CartProps) => {
                       {paymentError.includes("информацию о доставке") && (
                         <TouchableOpacity
                           style={styles.settingsButton}
-                          onPress={() => navigation.navigate("Settings")}
+                          onPress={() => navigation.navigate("Wall", { initialView: "settings" })}
                         >
                           <Text style={styles.settingsButtonText}>
                             перейти в настройки

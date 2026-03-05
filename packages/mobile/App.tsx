@@ -475,6 +475,7 @@ function MainNavigator({
               navigation={createNavigationAdapter(nav, route)}
               onLogout={onLogout}
               openOrderId={route.params?.openOrderId}
+              initialView={route.params?.initialView}
             />
           </ScreenWrapper>
         )}

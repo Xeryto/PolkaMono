@@ -23,6 +23,7 @@ import {
   Platform,
   Linking,
   Alert,
+  Modal,
   NativeSyntheticEvent,
   NativeScrollEvent,
   Switch,
@@ -332,6 +333,9 @@ const Settings = ({
   const [showThankYou, setShowThankYou] = useState(false);
   const [isSending, setIsSending] = useState(false);
   const [showScrollHint, setShowScrollHint] = useState(true);
+  const [documentsModal, setDocumentsModal] = useState<
+    "usage" | "privacy" | null
+  >(null);
 
   // NEW: User profile state
   const [userProfile, setUserProfile] = useState<api.UserProfile | null>(null);
@@ -3387,8 +3391,7 @@ const Settings = ({
       case "theme":
         return renderThemeContent();
       case "payment":
-      case "documents":
-        // TODO: Implement these sections
+        // TODO: Implement payment section
         return (
           <View style={styles.contentContainer}>
             <Animated.View
@@ -3402,12 +3405,84 @@ const Settings = ({
               </TouchableOpacity>
             </Animated.View>
             <View style={styles.placeholderContainer}>
-              <Text style={styles.placeholderText}>
-                {activeSection === "payment" && "оплата"}
-                {activeSection === "documents" && "документы"}
-              </Text>
+              <Text style={styles.placeholderText}>оплата</Text>
               <Text style={styles.placeholderSubtext}>раздел в разработке</Text>
             </View>
+          </View>
+        );
+      case "documents":
+        return (
+          <View style={styles.contentContainer}>
+            <Animated.View
+              style={styles.backButton}
+              entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
+                ANIMATION_DELAYS.LARGE,
+              )}
+            >
+              <TouchableOpacity onPress={() => setActiveSection(null)}>
+                <BackIcon width={22} height={22} />
+              </TouchableOpacity>
+            </Animated.View>
+            <View style={styles.documentsContainer}>
+              <Animated.View
+                entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
+                  ANIMATION_DELAYS.VERY_LARGE + ANIMATION_DELAYS.SMALL,
+                )}
+                style={styles.myInfoInputContainer}
+              >
+                <TouchableOpacity
+                  style={styles.myInfoOvalInput}
+                  onPress={() => setDocumentsModal("usage")}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.mainButtonText}>
+                    правила использования
+                  </Text>
+                </TouchableOpacity>
+              </Animated.View>
+              <Animated.View
+                entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
+                  ANIMATION_DELAYS.VERY_LARGE + ANIMATION_DELAYS.STANDARD,
+                )}
+                style={styles.myInfoInputContainer}
+              >
+                <TouchableOpacity
+                  style={styles.myInfoOvalInput}
+                  onPress={() => setDocumentsModal("privacy")}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.mainButtonText}>
+                    политика конфиденциальности
+                  </Text>
+                </TouchableOpacity>
+              </Animated.View>
+            </View>
+            <Modal
+              visible={documentsModal !== null}
+              animationType="slide"
+              presentationStyle="pageSheet"
+              onRequestClose={() => setDocumentsModal(null)}
+            >
+              <View style={styles.documentsModalContainer}>
+                <View style={styles.documentsModalHeader}>
+                  <Text style={styles.documentsModalTitle}>
+                    {documentsModal === "usage"
+                      ? "правила использования"
+                      : "политика конфиденциальности"}
+                  </Text>
+                  <TouchableOpacity onPress={() => setDocumentsModal(null)}>
+                    <Text style={styles.documentsModalClose}>закрыть</Text>
+                  </TouchableOpacity>
+                </View>
+                <ScrollView style={styles.documentsModalScroll}>
+                  <Text style={styles.documentsModalText}>
+                    {documentsModal === "usage"
+                      ? "Добро пожаловать в Polka! Используя наше приложение, вы соглашаетесь с настоящими правилами.\n\n1. Общие положения\nПриложение Polka предоставляет платформу для покупки одежды и аксессуаров от различных брендов. Все пользователи обязуются соблюдать данные правила.\n\n2. Учётная запись\nВы несёте ответственность за сохранность данных своей учётной записи. Запрещено передавать доступ к аккаунту третьим лицам.\n\n3. Заказы и оплата\nВсе цены указаны в рублях и включают НДС. Оплата производится через защищённый платёжный шлюз. Отмена заказа возможна до момента отправки.\n\n4. Возврат и обмен\nВозврат товара возможен в течение 14 дней с момента получения при сохранении товарного вида и упаковки.\n\n5. Ограничения\nЗапрещено использовать приложение для незаконной деятельности, рассылки спама или нарушения прав других пользователей."
+                      : "Настоящая политика описывает, как Polka собирает, использует и защищает ваши персональные данные.\n\n1. Сбор данных\nМы собираем информацию, которую вы предоставляете при регистрации: имя, email, размер одежды. Также автоматически собираются данные об использовании приложения.\n\n2. Использование данных\nВаши данные используются для персонализации рекомендаций, обработки заказов и улучшения работы приложения.\n\n3. Хранение данных\nПерсональные данные хранятся на защищённых серверах с использованием шифрования. Доступ к данным имеют только уполномоченные сотрудники.\n\n4. Передача данных\nМы не передаём ваши персональные данные третьим лицам без вашего согласия, за исключением случаев, предусмотренных законодательством.\n\n5. Ваши права\nВы имеете право запросить доступ к своим данным, их исправление или удаление. Для этого обратитесь в службу поддержки."}
+                  </Text>
+                </ScrollView>
+              </View>
+            </Modal>
           </View>
         );
       default:
@@ -3784,6 +3859,44 @@ const createStyles = (theme: ThemeColors) =>
       fontSize: 18,
       color: theme.text.grey,
       textAlign: "center",
+    },
+    documentsContainer: {
+      flex: 1,
+      justifyContent: "flex-start",
+      width: "100%",
+    },
+    documentsModalContainer: {
+      flex: 1,
+      backgroundColor: theme.surface.cartItem,
+      paddingTop: 20,
+      paddingHorizontal: 24,
+    },
+    documentsModalHeader: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      marginBottom: 24,
+    },
+    documentsModalTitle: {
+      fontFamily: "IgraSans",
+      fontSize: 20,
+      color: theme.text.primary,
+      flex: 1,
+    },
+    documentsModalClose: {
+      fontFamily: "IgraSans",
+      fontSize: 16,
+      color: theme.text.grey,
+    },
+    documentsModalScroll: {
+      flex: 1,
+    },
+    documentsModalText: {
+      fontFamily: "IgraSans",
+      fontSize: 15,
+      color: theme.text.primary,
+      lineHeight: 22,
+      paddingBottom: 40,
     },
     contentContainer: {
       width: "100%",
