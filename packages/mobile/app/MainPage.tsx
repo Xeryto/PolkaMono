@@ -19,7 +19,19 @@ import {
   Alert,
 } from "react-native";
 import * as Clipboard from "expo-clipboard";
+import { UIManager } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+let ProgressiveBlurView: React.ComponentType<any> | null = null;
+try {
+  const hasNative =
+    UIManager.getViewManagerConfig("ReactNativeProgressiveBlurView") != null;
+  if (hasNative) {
+    ProgressiveBlurView =
+      require("@sbaiahmed1/react-native-blur").ProgressiveBlurView;
+  }
+} catch {
+  // fallback: no blur
+}
 import { LinearGradient } from "expo-linear-gradient";
 import * as Haptics from "expo-haptics";
 import { SkeletonSwipeCard } from "./components/SkeletonCard";
@@ -149,6 +161,8 @@ const MainPage = ({ navigation, route }: MainPageProps) => {
   const backCartButtonScale = useSharedValue(1);
   const backLinkButtonScale = useSharedValue(1);
   const backShareButtonScale = useSharedValue(1);
+
+  const height = Dimensions.get("window").height;
 
   const backSizePillAnimatedStyle = useAnimatedStyle(() => ({
     opacity: backSizePanelProgress.value,
@@ -460,6 +474,25 @@ const MainPage = ({ navigation, route }: MainPageProps) => {
         if (showBackSizeSelection) resetToBackButtons();
       }}
     >
+      {/* Progressive blur over dynamic island area */}
+      {ProgressiveBlurView && insets.top >= 51 && (
+        <ProgressiveBlurView
+          style={{
+            position: "absolute",
+            top: 0,
+            left: 0,
+            right: 0,
+            height: insets.top + 20,
+            zIndex: 950,
+          }}
+          blurType="light"
+          blurAmount={20}
+          direction="blurredTopClearBottom"
+          startOffset={0}
+          pointerEvents="none"
+        />
+      )}
+
       <View style={styles.roundedBox}>
         <LinearGradient
           colors={theme.gradients.overlay as any}

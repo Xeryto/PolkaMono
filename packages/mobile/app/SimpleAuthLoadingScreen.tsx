@@ -26,8 +26,12 @@ const SimpleAuthLoadingScreen: React.FC<SimpleAuthLoadingScreenProps> = () => {
       </Text>
 
 
-      <Text style={[styles.poweredByText, styles.bottomText, { position: 'absolute', bottom: height*0.05 }]}>
-        ПОЛКА
+      <Text
+        style={styles.brandText}
+        adjustsFontSizeToFit
+        numberOfLines={1}
+      >
+        ПОТОК
       </Text>
     </View>
   );
@@ -61,6 +65,15 @@ const createStyles = (theme: ThemeColors) => StyleSheet.create({
     paddingHorizontal: 20,
     left: 0,
     right: 0,
+  },
+  brandText: {
+    fontFamily: 'IgraSans',
+    fontSize: 200,
+    color: theme.text.secondary,
+    textAlign: 'center',
+    width: LOGO_SIZE * 0.75,
+    position: 'absolute',
+    bottom: height * 0.05,
   },
   loadingText: {
     fontFamily: 'REM',

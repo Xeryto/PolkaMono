@@ -123,8 +123,12 @@ const LoadingScreen: React.FC<LoadingScreenProps> = ({ onFinish }) => {
         Powered by AI
       </Animated.Text>
 
-      <Animated.Text style={[styles.poweredByText, styles.bottomText, { opacity: fadeAnim, position: 'absolute', bottom: height*0.05 }]}>
-        ПОЛКА
+      <Animated.Text
+        style={[styles.brandText, { opacity: fadeAnim }]}
+        adjustsFontSizeToFit
+        numberOfLines={1}
+      >
+        ПОТОК
       </Animated.Text>
     </Animated.View>
   );
@@ -157,6 +161,15 @@ const createStyles = (theme: ThemeColors) => StyleSheet.create({
     paddingHorizontal: 20,
     left: 0,
     right: 0,
+  },
+  brandText: {
+    fontFamily: 'IgraSans',
+    fontSize: 200,
+    color: theme.text.secondary,
+    textAlign: 'center',
+    width: LOGO_SIZE_LARGE * 0.75,
+    position: 'absolute',
+    bottom: height * 0.05,
   },
 });
 

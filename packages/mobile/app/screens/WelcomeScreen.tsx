@@ -5,21 +5,14 @@ import {
   StyleSheet,
   Pressable,
   Dimensions,
-  Platform,
   Animated as RNAnimated,
-  Easing,
-  TouchableOpacity,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
-import Animated, { FadeIn, FadeInDown } from "react-native-reanimated";
+import Animated, { FadeInDown } from "react-native-reanimated";
 import Logo from "../components/svg/Logo";
 import LoginScreen from "./LoginScreen";
 import SignupScreen from "./SignupScreen";
-import ConfirmationScreen from "./ConfirmationScreen";
-import BrandSearchScreen from "./BrandSearchScreen";
-import StylesSelectionScreen from "./StylesSelectionScreen";
-import ForgotPasswordScreen from "./ForgotPasswordScreen";
 import {
   ANIMATION_DURATIONS,
   ANIMATION_DELAYS,
@@ -56,7 +49,6 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
 
   // Animated values for button spinning effect
   const borderSpinValue = useRef(new RNAnimated.Value(0)).current;
-  const buttonScaleValue = useRef(new RNAnimated.Value(1)).current;
 
   // After initial mount, set ready state to true
   useEffect(() => {
@@ -87,30 +79,13 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
     // Reset spin value to 0
     borderSpinValue.setValue(0);
 
-    // Create scale down/up sequence with spinning border
-    RNAnimated.sequence([
-      // Scale down button slightly
-      RNAnimated.timing(buttonScaleValue, {
-        toValue: 0.95,
-        duration: ANIMATION_DURATIONS.FAST,
-        useNativeDriver: true,
-        easing: ANIMATION_EASING.CUBIC,
-      }),
-      // Spin border with acceleration and deceleration
-      RNAnimated.timing(borderSpinValue, {
-        toValue: 1,
-        duration: ANIMATION_DURATIONS.VERY_LONG,
-        useNativeDriver: true,
-        easing: ANIMATION_EASING.CUBIC, // Accelerate and decelerate smoothly
-      }),
-      // Scale back up
-      RNAnimated.timing(buttonScaleValue, {
-        toValue: 1,
-        duration: ANIMATION_DURATIONS.FAST,
-        useNativeDriver: true,
-        easing: ANIMATION_EASING.CUBIC,
-      }),
-    ]).start(() => {
+    // Spin border with acceleration and deceleration
+    RNAnimated.timing(borderSpinValue, {
+      toValue: 1,
+      duration: ANIMATION_DURATIONS.VERY_LONG * 2,
+      useNativeDriver: true,
+      easing: ANIMATION_EASING.CUBIC,
+    }).start(() => {
       // Animation completed
       setIsSpinning(false);
       setShowSignupScreen(true);
@@ -187,43 +162,61 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
               style={styles.logoContainer}
             >
               <Logo width={LOGO_SIZE} height={LOGO_SIZE} />
-              <Text style={styles.logoText}>ПОЛКА</Text>
+              <Text
+                style={[styles.logoText, {}]}
+                adjustsFontSizeToFit
+                numberOfLines={1}
+              >
+                ПОТОК
+              </Text>
             </Animated.View>
+
+            <View style={{ flex: 1 }} />
+
+            <Animated.View
+              entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
+                ANIMATION_DELAYS.SMALL * 0.5,
+              )}
+            >
+              <Text style={styles.taglineText}>твой стиль, подобранный AI</Text>
+            </Animated.View>
+
+            <View style={{ flex: 1 }} />
 
             <Animated.View
               entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
                 ANIMATION_DELAYS.SMALL,
               )}
-              style={styles.shadowWrap}
+              style={styles.bottomSection}
             >
               {/* Container for the button - this stays still */}
               <View style={styles.registerButtonContainer}>
                 {/* Spinning border gradient */}
                 <RNAnimated.View
                   style={{
-                    width: "100%",
-                    height: "100%",
+                    width: width * 0.75,
+                    height: width * 0.75,
                     position: "absolute",
-                    borderRadius: 41,
+                    alignSelf: "center",
+                    top: -(width * 0.75 - height * 0.09) / 2,
                     transform: [{ rotate: borderSpin }],
                   }}
                 >
                   <LinearGradient
                     colors={theme.gradients.registerButton as any}
-                    start={{ x: 0.49, y: 0 }}
-                    end={{ x: 0.51, y: 1 }}
-                    locations={[0.55, 0.77, 1]}
-                    style={styles.registerButtonBorder}
+                    start={{ x: 0, y: 0.5 }}
+                    end={{ x: 1, y: 0.5 }}
+                    locations={[0, 1]}
+                    style={{ flex: 1 }}
                   />
                 </RNAnimated.View>
 
-                {/* Button itself - scales but doesn't spin */}
-                <RNAnimated.View
+                {/* Button itself - doesn't spin */}
+                <View
                   style={{
                     width: "100%",
                     height: "100%",
-                    padding: 3, // Match border thickness
-                    transform: [{ scale: buttonScaleValue }],
+                    padding: 3,
                   }}
                 >
                   <Pressable
@@ -235,24 +228,17 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
                       прикоснись к AI
                     </Text>
                   </Pressable>
-                </RNAnimated.View>
+                </View>
               </View>
-            </Animated.View>
-            <Animated.View
-              entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
-                ANIMATION_DELAYS.STANDARD,
-              )}
-              style={{ justifyContent: "flex-end" }}
-            >
-              <View style={styles.loginContainer}>
-                <Text style={styles.loginText}>есть аккаунт?</Text>
-                <TouchableOpacity
-                  style={styles.loginButton}
-                  onPress={handleLoginPress}
-                >
-                  <Text style={styles.loginButtonText}>войти</Text>
-                </TouchableOpacity>
-              </View>
+
+              <Pressable
+                onPress={handleLoginPress}
+                style={styles.loginContainer}
+              >
+                <Text style={styles.loginText}>
+                  есть аккаунт? <Text style={styles.loginTextBold}>войти</Text>
+                </Text>
+              </Pressable>
             </Animated.View>
           </View>
         )}
@@ -276,7 +262,6 @@ const createStyles = (theme: ThemeColors) =>
       borderRadius: 41,
       height: "95%",
       width: "88%",
-      justifyContent: "space-between",
       alignItems: "center",
       paddingVertical: 30,
       shadowColor: theme.shadow.default,
@@ -288,6 +273,12 @@ const createStyles = (theme: ThemeColors) =>
     logoContainer: {
       alignItems: "center",
       justifyContent: "flex-start",
+    },
+    taglineText: {
+      fontFamily: "IgraSans",
+      fontSize: 15,
+      color: theme.text.secondary,
+      textAlign: "center",
     },
     registerButtonContainer: {
       width: width * 0.75, // Fixed width to ensure consistent size
@@ -305,56 +296,37 @@ const createStyles = (theme: ThemeColors) =>
       height: "100%",
       borderRadius: 38,
       overflow: "hidden",
-      alignItems: "center",
       justifyContent: "center",
+      alignItems: "center",
       backgroundColor: theme.button.registerBackground,
-    },
-    registerButtonGradient: {
-      flex: 1,
-      borderRadius: 38, // Slightly smaller to create border effect
-      alignItems: "center",
-      justifyContent: "center",
-      opacity: 0.8,
     },
     registerButtonText: {
       fontFamily: "IgraSans",
       fontSize: 15,
-      color: theme.button.registerText,
+      color: theme.text.secondary,
     },
     loginContainer: {
       alignItems: "center",
+      marginTop: 16,
     },
     loginText: {
       fontFamily: "IgraSans",
-      fontSize: 15,
-      color: theme.text.tertiary,
-      marginBottom: 10,
+      fontSize: 14,
+      color: theme.text.welcome,
     },
-    loginButton: {
-      backgroundColor: theme.button.primary,
-      borderRadius: 41,
-      paddingVertical: 27,
-      paddingHorizontal: 45,
+    loginTextBold: {
+      textDecorationLine: "underline" as const,
+    },
+    bottomSection: {
       alignItems: "center",
-      shadowColor: theme.shadow.default,
-      shadowOffset: { width: 0, height: 4 },
-      shadowOpacity: 0.25,
-      shadowRadius: 4,
-      elevation: 5,
-    },
-    loginButtonText: {
-      fontFamily: "IgraSans",
-      fontSize: 15,
-      color: theme.button.primaryText,
-    },
-    shadowWrap: {
-      justifyContent: "center",
     },
     logoText: {
       fontFamily: "IgraSans",
-      fontSize: 22,
       color: theme.text.primary,
       marginTop: 15,
+      width: LOGO_SIZE * 0.75,
+      fontSize: 200,
+      textAlign: "center",
     },
   });
 

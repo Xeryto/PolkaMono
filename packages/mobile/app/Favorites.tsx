@@ -1772,7 +1772,6 @@ const FriendProfileView = React.memo(
     // Animated values for button spinning effect
     const [isSpinning, setIsSpinning] = useState(false);
     const borderSpinValue = useRef(new RNAnimated.Value(0)).current;
-    const buttonScaleValue = useRef(new RNAnimated.Value(1)).current;
 
     // Map 0-1 animation value to a full 720 degree rotation (two spins)
     const borderSpin = borderSpinValue.interpolate({
@@ -1822,32 +1821,13 @@ const FriendProfileView = React.memo(
       // Reset spin value to 0
       borderSpinValue.setValue(0);
 
-      // Create scale down/up sequence with spinning border
-      RNAnimated.sequence([
-        // Scale down button slightly
-        RNAnimated.timing(buttonScaleValue, {
-          toValue: 0.95,
-          duration: 150,
-          useNativeDriver: true,
-          easing: RNEasing.out(RNEasing.cubic),
-        }),
-        // Spin border with acceleration and deceleration
-        RNAnimated.timing(borderSpinValue, {
-          toValue: 1,
-          duration: 1200,
-          useNativeDriver: true,
-          easing: RNEasing.inOut(RNEasing.cubic), // Accelerate and decelerate smoothly
-        }),
-        // Scale back up
-        RNAnimated.timing(buttonScaleValue, {
-          toValue: 1,
-          duration: 150,
-          useNativeDriver: true,
-          easing: RNEasing.out(RNEasing.cubic),
-        }),
-      ]).start(() => {
-        // Animation completed - just clear spinning flag
-        // but don't trigger onRegenerate again as we've already called it
+      // Spin border with acceleration and deceleration
+      RNAnimated.timing(borderSpinValue, {
+        toValue: 1,
+        duration: ANIMATION_DURATIONS.VERY_LONG * 2,
+        useNativeDriver: true,
+        easing: RNEasing.inOut(RNEasing.cubic),
+      }).start(() => {
         setIsSpinning(false);
       });
     };
@@ -1967,13 +1947,14 @@ const FriendProfileView = React.memo(
         >
           {/* Container for the button - this stays still */}
           <View style={styles.regenerateButtonContainer}>
-            {/* Spinning border gradient */}
+            {/* Spinning border gradient — square so no gaps on rotation */}
             <RNAnimated.View
               style={{
-                width: "100%",
-                height: "100%",
+                width: 280,
+                height: 280,
                 position: "absolute",
-                borderRadius: 30,
+                alignSelf: "center",
+                top: -(280 - 65) / 2,
                 transform: [{ rotate: borderSpin }],
               }}
             >
@@ -1986,42 +1967,32 @@ const FriendProfileView = React.memo(
                   ]
                 }
                 start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={styles.regenerateButtonBorder}
+                end={{ x: 0.85, y: 1 }}
+                style={{ flex: 1 }}
+                locations={[0.3, 0.52, 0.8]}
               />
             </RNAnimated.View>
 
-            {/* Button itself - scales but doesn't spin */}
-            <RNAnimated.View
+            {/* Button itself - doesn't spin */}
+            <View
               style={{
                 width: "100%",
                 height: "100%",
-                padding: 3, // Match border thickness
-                transform: [{ scale: buttonScaleValue }],
+                padding: 3,
               }}
             >
-              <TouchableOpacity
+              <Pressable
                 onPress={handleRegeneratePress}
                 disabled={isSpinning || isRegenerating}
                 style={styles.pressableContainer}
               >
-                <LinearGradient
-                  colors={
-                    theme.gradients.regenerateButton as [string, string, string]
-                  }
-                  locations={[0.15, 0.56, 1]}
-                  start={{ x: 0.48, y: 1 }}
-                  end={{ x: 0.52, y: 0 }}
-                  style={styles.regenerateButtonGradient}
-                >
-                  <Text style={styles.regenerateButtonText}>
-                    {isRegenerating || isSpinning
-                      ? "загрузка..."
-                      : "сделать ai подборку"}
-                  </Text>
-                </LinearGradient>
-              </TouchableOpacity>
-            </RNAnimated.View>
+                <Text style={styles.regenerateButtonText}>
+                  {isRegenerating || isSpinning
+                    ? "загрузка..."
+                    : "сделать ai подборку"}
+                </Text>
+              </Pressable>
+            </View>
           </View>
         </Animated.View>
 
@@ -2652,6 +2623,9 @@ const createStyles = (theme: ThemeColors) =>
       height: "100%",
       borderRadius: 27,
       overflow: "hidden",
+      backgroundColor: theme.button.registerBackground,
+      justifyContent: "center",
+      alignItems: "center",
     },
     regenerateButtonGradient: {
       flex: 1,
@@ -2664,7 +2638,7 @@ const createStyles = (theme: ThemeColors) =>
     regenerateButtonText: {
       fontFamily: "IgraSans",
       fontSize: 15,
-      color: theme.text.inverse,
+      color: theme.text.primary,
     },
     regenerateButtonDisabled: {
       backgroundColor: theme.surface.selection,

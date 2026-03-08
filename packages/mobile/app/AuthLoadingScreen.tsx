@@ -1,16 +1,23 @@
-import React, { useRef, useEffect, useMemo } from 'react';
-import { View, Text, StyleSheet, Animated, Dimensions, Easing } from 'react-native';
-import Logo from './components/svg/Logo';
-import { useTheme } from './lib/ThemeContext';
-import type { ThemeColors } from './lib/theme';
+import React, { useRef, useEffect, useMemo } from "react";
+import {
+  View,
+  Text,
+  StyleSheet,
+  Animated,
+  Dimensions,
+  Easing,
+} from "react-native";
+import Logo from "./components/svg/Logo";
+import { useTheme } from "./lib/ThemeContext";
+import type { ThemeColors } from "./lib/theme";
 
 interface LoadingScreenProps {
   onFinish: () => void;
 }
 
-const { width, height } = Dimensions.get('window');
+const { width, height } = Dimensions.get("window");
 const LOGO_SIZE_LARGE = Math.min(width, height) * 0.3; // 30% of the smallest dimension
-const LOGO_SIZE_SMALL = LOGO_SIZE_LARGE*0.86; // Size in the navbar
+const LOGO_SIZE_SMALL = LOGO_SIZE_LARGE * 0.86; // Size in the navbar
 
 const AuthLoadingScreen: React.FC<LoadingScreenProps> = ({ onFinish }) => {
   const { theme } = useTheme();
@@ -43,7 +50,7 @@ const AuthLoadingScreen: React.FC<LoadingScreenProps> = ({ onFinish }) => {
     });
 
     // Calculate the position to move the logo all the way to the navbar
-    const navbarPosition = -height*0.4;
+    const navbarPosition = -height * 0.4;
 
     // Keep the background visible but fade the logo
     const fadeOutLogo = Animated.timing(fadeAnim, {
@@ -80,7 +87,7 @@ const AuthLoadingScreen: React.FC<LoadingScreenProps> = ({ onFinish }) => {
     Animated.sequence([
       initialDelay,
       jumpUp,
-      Animated.parallel([fadeOutLogo, shrink, moveUp, fadeOutBg])
+      Animated.parallel([fadeOutLogo, shrink, moveUp, fadeOutBg]),
     ]).start(() => {
       // Wait for the animation to complete before calling onFinish
       // This is important so the Welcome screen is fully visible
@@ -103,8 +110,8 @@ const AuthLoadingScreen: React.FC<LoadingScreenProps> = ({ onFinish }) => {
         {
           opacity: bgFadeAnim,
           // Make sure background color has alpha for smooth transitions
-          backgroundColor: theme.background.loading
-        }
+          backgroundColor: theme.background.loading,
+        },
       ]}
     >
       <Animated.View
@@ -112,61 +119,67 @@ const AuthLoadingScreen: React.FC<LoadingScreenProps> = ({ onFinish }) => {
           styles.logoContainer,
           {
             opacity: fadeAnim,
-            transform: [
-              { scale: scaleAnim },
-              { translateY: positionY }
-            ]
-          }
+            transform: [{ scale: scaleAnim }, { translateY: positionY }],
+          },
         ]}
       >
         <Logo width={LOGO_SIZE_LARGE} height={LOGO_SIZE_LARGE} />
       </Animated.View>
 
-      <Animated.Text
-        style={[
-          styles.poweredByText,
-          { opacity: fadeAnim }
-        ]}
-      >
+      <Animated.Text style={[styles.poweredByText, { opacity: fadeAnim }]}>
         Powered by AI
       </Animated.Text>
 
-      <Animated.Text style={[styles.poweredByText, styles.bottomText, { opacity: fadeAnim, position: 'absolute', bottom: height*0.05 }]}>
-        ПОЛКА
+      <Animated.Text
+        style={[styles.brandText, { opacity: fadeAnim }]}
+        adjustsFontSizeToFit
+        numberOfLines={1}
+      >
+        ПОТОК
       </Animated.Text>
     </Animated.View>
   );
 };
 
-const createStyles = (theme: ThemeColors) => StyleSheet.create({
-  container: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: theme.background.loading,
-    justifyContent: 'center',
-    alignItems: 'center',
-    zIndex: 1000,
-    position: 'absolute',
-  },
-  logoContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  poweredByText: {
-    fontFamily: 'IgraSans',
-    fontSize: 13,
-    color: theme.text.secondary,
-    marginTop: 20,
-    textAlign: 'center',
-    width: '100%',
-    paddingHorizontal: 20,
-  },
-  bottomText: {
-    textAlign: 'center',
-    width: '100%',
-    paddingHorizontal: 20,
-    left: 0,
-    right: 0,
-  },
-});
+const createStyles = (theme: ThemeColors) =>
+  StyleSheet.create({
+    container: {
+      ...StyleSheet.absoluteFillObject,
+      backgroundColor: theme.background.loading,
+      justifyContent: "center",
+      alignItems: "center",
+      zIndex: 1000,
+      position: "absolute",
+    },
+    logoContainer: {
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    poweredByText: {
+      fontFamily: "IgraSans",
+      fontSize: 13,
+      color: theme.text.secondary,
+      marginTop: 20,
+      textAlign: "center",
+      width: "100%",
+      paddingHorizontal: 20,
+    },
+    bottomText: {
+      textAlign: "center",
+      width: "100%",
+      paddingHorizontal: 20,
+      left: 0,
+      right: 0,
+    },
+    brandText: {
+      fontFamily: 'IgraSans',
+      fontSize: 200,
+      color: theme.text.secondary,
+      textAlign: 'center',
+      width: LOGO_SIZE_LARGE * 0.75,
+      position: 'absolute',
+      bottom: height * 0.05,
+    },
+  });
 
 export default AuthLoadingScreen;

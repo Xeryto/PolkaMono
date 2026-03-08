@@ -127,7 +127,7 @@ export type RootStackParamList = {
   Cart: undefined;
   Search: undefined;
   Favorites: undefined;
-  Wall: { openOrderId?: string } | undefined;
+  Wall: { openOrderId?: string; initialView?: "wall" | "settings" | "orders" } | undefined;
   RecentPieces: undefined;
   FriendRecommendations: {
     friendId?: string;
@@ -721,7 +721,7 @@ const ThemeTransitionScreen: React.FC = () => {
           paddingHorizontal: 20,
         }}
       >
-        ПОЛКА
+        ПОТОК
       </Text>
     </Animated.View>
   );

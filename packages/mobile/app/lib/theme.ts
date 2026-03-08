@@ -49,6 +49,7 @@ export interface ThemeColors {
     inverse: string; // Text on dark backgrounds
     grey: string; // Grey text for icons/muted elements
     coldgrey: string; // Cold grey text for icons/muted elements
+    welcome: string; // Welcome text
   };
 
   // Button Colors
@@ -215,6 +216,7 @@ const lightColors: ThemeColors = {
     inverse: "#FFFFFF",
     grey: "#808080",
     coldgrey: "#73706D",
+    welcome: "#A88664",
   },
 
   // Button Colors
@@ -229,8 +231,8 @@ const lightColors: ThemeColors = {
     checkoutText: "#FFFFF5",
     delete: "#C0392B",
     cancel: "#C8A688",
-    registerBackground: "#DCD3DE",
-    registerText: "#A000B0",
+    registerBackground: "#F3E6D6",
+    registerText: "#6A462F",
   },
 
   // Interactive/Action Colors
@@ -333,9 +335,9 @@ const lightColors: ThemeColors = {
     mainLocations: [0, 0.34, 0.5, 0.87],
     overlay: ["rgba(205, 166, 122, 0.5)", "transparent"],
     overlayLocations: [0.2, 1],
-    regenerateButtonBorder: ["#FC8CAF", "#9EA7FF", "#A3FFD0"],
+    regenerateButtonBorder: ["#FFFFFF8F", "#FF10FB59", "#0341EA6B"],
     regenerateButton: ["#E222F0", "#4747E4", "#E66D7B"],
-    registerButton: ["#DCD3DE", "#9535EA", "#E222F0"],
+    registerButton: ["#4A312040", "#C48A5A"],
     friendUsername: ["#FFFFFF8F", "#FF10FB59", "#0341EA6B"],
     titleOval: ["#F5ECE14D", "#F5ECE1"],
     titleOvalContainer: ["#F5ECE1", "#DFCAB5"],
@@ -382,6 +384,7 @@ const darkColors: ThemeColors = {
     inverse: "#F5EDE4",
     grey: "#9A8878",
     coldgrey: "#F5EDE4",
+    welcome: "#A88664",
   },
 
   // Button Colors
@@ -396,8 +399,8 @@ const darkColors: ThemeColors = {
     checkoutText: "#F5EDE4",
     delete: "#C0392B",
     cancel: "#1F1713",
-    registerBackground: "#DCD3DE",
-    registerText: "#A000B0",
+    registerBackground: "#3D3028",
+    registerText: "#C4A882",
   },
 
   // Interactive/Action Colors
@@ -500,9 +503,9 @@ const darkColors: ThemeColors = {
     mainLocations: [0, 0.34, 0.5, 0.87],
     overlay: ["rgba(128, 107, 89, 0.25)", "transparent"],
     overlayLocations: [0.2, 1],
-    regenerateButtonBorder: ["#FC8CAF", "#9EA7FF", "#A3FFD0"],
+    regenerateButtonBorder: ["#FFFFFF8F", "#FF10FB59", "#0341EA6B"],
     regenerateButton: ["#E222F0", "#4747E4", "#E66D7B"],
-    registerButton: ["#DCD3DE", "#9535EA", "#E222F0"],
+    registerButton: ["#4A312040", "#C48A5A"],
     friendUsername: ["#FFFFFF8F", "#FF10FB59", "#0341EA6B"],
     titleOval: ["#3D30284D", "#3D3028"],
     titleOvalContainer: ["#3D3028", "#261E1A"],

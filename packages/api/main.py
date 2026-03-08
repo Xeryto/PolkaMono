@@ -4881,7 +4881,7 @@ def admin_send_buyer_push(
     for user in eligible_users:
         notification_service.send_expo_push_notification(
             push_token=user.expo_push_token,
-            title="Полка",
+            title="Поток",
             body=body.message,
         )
     return None
