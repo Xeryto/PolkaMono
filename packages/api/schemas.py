@@ -162,6 +162,7 @@ class OrderResponse(BaseModel):
     shipping_cost: float = (
         0.0  # Order-level shipping (per brand); do not sum item delivery.cost
     )
+    brand_is_inactive: bool = False
     items: List[OrderItemResponse]
     delivery_full_name: Optional[str] = None
     delivery_email: Optional[str] = None

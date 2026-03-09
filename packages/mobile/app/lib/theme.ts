@@ -170,7 +170,8 @@ export interface ThemeColors {
     regenerateButtonBorder: string[];
     regenerateButton: string[];
     registerButton: string[];
-    friendUsername: string[];
+    FRSUsername: string[];
+    FLISUsername: string[];
     titleOval: string[];
     titleOvalContainer: string[];
   };
@@ -338,7 +339,8 @@ const lightColors: ThemeColors = {
     regenerateButtonBorder: ["#FFFFFF8F", "#FF10FB59", "#0341EA6B"],
     regenerateButton: ["#E222F0", "#4747E4", "#E66D7B"],
     registerButton: ["#4A312040", "#C48A5A"],
-    friendUsername: ["#FFFFFF8F", "#FF10FB59", "#0341EA6B"],
+    FRSUsername: ["#FFFFFF8F", "#FF10FB59", "#0341EA6B"],
+    FLISUsername: ["#DC3D7D", "#6A462F"],
     titleOval: ["#F5ECE14D", "#F5ECE1"],
     titleOvalContainer: ["#F5ECE1", "#DFCAB5"],
   },
@@ -506,7 +508,8 @@ const darkColors: ThemeColors = {
     regenerateButtonBorder: ["#FFFFFF8F", "#FF10FB59", "#0341EA6B"],
     regenerateButton: ["#E222F0", "#4747E4", "#E66D7B"],
     registerButton: ["#4A312040", "#C48A5A"],
-    friendUsername: ["#FFFFFF8F", "#FF10FB59", "#0341EA6B"],
+    FRSUsername: ["#FFFFFF8F", "#FF10FB59", "#0341EA6B"],
+    FLISUsername: ["#DC3D7D", "#6A462F"],
     titleOval: ["#3D30284D", "#3D3028"],
     titleOvalContainer: ["#3D3028", "#261E1A"],
   },

@@ -197,6 +197,22 @@ export class ApiWrapper {
     );
   }
 
+  async getFriendLikedItems(
+    userId: string,
+    pageName: string = 'FavoritesPage'
+  ): Promise<api.Product[] | null> {
+    return this.call(
+      () => api.getFriendLikedItems(userId),
+      {
+        pageName,
+        operation: 'getFriendLikedItems',
+        isCritical: false,
+        hasFallback: true
+      },
+      () => this.getFriendLikedItems(userId, pageName)
+    );
+  }
+
   // Settings page API calls
   async getUserStats(pageName: string = 'SettingsPage'): Promise<api.UserStats | null> {
     return this.call(
@@ -249,6 +265,7 @@ export const {
   getReceivedFriendRequests,
   getUserFavorites,
   getFriendRecommendations,
+  getFriendLikedItems,
   getUserStats,
   wrapApiCall
 } = apiWrapper;

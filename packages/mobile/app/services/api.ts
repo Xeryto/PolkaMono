@@ -1219,6 +1219,8 @@ export interface Friend {
   first_name?: string | null;
   last_name?: string | null;
   avatar_url?: string | null;
+  can_view_recommendations?: boolean;
+  can_view_likes?: boolean;
 }
 
 export interface SearchUser {
@@ -1227,6 +1229,8 @@ export interface SearchUser {
   email: string;
   avatar_url?: string | null;
   friend_status?: "friend" | "request_received" | "request_sent" | "not_friend";
+  can_view_recommendations?: boolean;
+  can_view_likes?: boolean;
 }
 
 export interface FriendRequestResponse {
@@ -1329,6 +1333,8 @@ export interface PublicUserProfile {
   username: string;
   gender: "male" | "female" | null;
   avatar_url?: string | null;
+  can_view_recommendations?: boolean;
+  can_view_likes?: boolean;
 }
 
 // Get public profile of another user
@@ -1526,15 +1532,22 @@ export const getPaymentStatus = async (
 export const createOrderTest = async (
   amount: number,
   items: ReceiptItem[],
+  requestOptions: RequestOptions = {},
 ): Promise<{ order_id: string }> => {
-  return await apiRequest("/api/v1/orders/test", "POST", {
-    amount: { value: amount, currency: "RUB" },
-    description: `Order #${Math.floor(Math.random() * 1000)}`,
-    items: items.map((it) => ({
-      product_variant_id: it.product_variant_id,
-      quantity: it.quantity,
-    })),
-  });
+  return await apiRequest(
+    "/api/v1/orders/test",
+    "POST",
+    {
+      amount: { value: amount, currency: "RUB" },
+      description: `Order #${Math.floor(Math.random() * 1000)}`,
+      items: items.map((it) => ({
+        product_variant_id: it.product_variant_id,
+        quantity: it.quantity,
+      })),
+    },
+    true,
+    requestOptions,
+  );
 };
 
 // Order History
@@ -1582,6 +1595,13 @@ export const getFriendRecommendations = async (
   );
   friendRecommendationsCache.set(friendId, result);
   return result;
+};
+
+// Get liked items for a friend
+export const getFriendLikedItems = async (
+  userId: string,
+): Promise<Product[]> => {
+  return await apiRequest(`/api/v1/users/${userId}/likes`, "GET");
 };
 
 // Get recommendations for the current user
@@ -1657,6 +1677,7 @@ export interface OrderSummary {
 export interface Order extends OrderSummary {
   /** Order-level shipping (per brand). Item delivery.cost is allocated share; sum equals this. */
   shipping_cost?: number;
+  brand_is_inactive?: boolean;
   items: OrderItem[];
   delivery_full_name?: string;
   delivery_email?: string;
@@ -1705,6 +1726,7 @@ export function isCheckoutResponse(r: OrderOrCheckout): r is CheckoutResponse {
 
 /** Order status values (API returns lowercase). See packages/api/models.py OrderStatus. */
 export const ORDER_STATUS = {
+  CREATED: "created",
   PENDING: "pending",
   PAID: "paid",
   SHIPPED: "shipped",
@@ -1716,6 +1738,8 @@ export function getOrderStatusLabel(status: string | undefined): string {
   if (!status) return "неизвестно";
   const s = String(status).toLowerCase();
   switch (s) {
+    case "created":
+      return "создан";
     case "pending":
       return "ожидание";
     case "paid":

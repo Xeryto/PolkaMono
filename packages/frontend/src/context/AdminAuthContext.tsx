@@ -11,6 +11,7 @@ import {
   adminLogin as apiAdminLogin,
   adminVerifyOtp as apiAdminVerifyOtp,
   adminResendOtp as apiAdminResendOtp,
+  adminVerifyToken,
   AdminOtpResponse,
 } from "@/services/adminApi";
 
@@ -43,10 +44,18 @@ export const AdminAuthProvider: React.FC<{ children: ReactNode }> = ({ children 
 
   useEffect(() => {
     const stored = localStorage.getItem("adminToken");
-    if (stored) {
-      setIsAuthenticated(true);
+    if (!stored) {
+      setLoading(false);
+      return;
     }
-    setLoading(false);
+    adminVerifyToken().then((valid) => {
+      if (valid) {
+        setIsAuthenticated(true);
+      } else {
+        localStorage.removeItem("adminToken");
+      }
+      setLoading(false);
+    });
   }, []);
 
   // Auto-logout on 401 from any admin API call

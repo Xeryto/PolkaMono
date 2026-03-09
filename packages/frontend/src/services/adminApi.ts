@@ -16,6 +16,17 @@ async function adminApiRequest(path: string, options: RequestInit = {}): Promise
   return res;
 }
 
+export async function adminVerifyToken(): Promise<boolean> {
+  const token = localStorage.getItem("adminToken");
+  if (!token) return false;
+  try {
+    const res = await adminApiRequest("/api/v1/admin/auth/verify");
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+
 export interface AdminLoginResponse {
   token: string;
   expires_at: string;

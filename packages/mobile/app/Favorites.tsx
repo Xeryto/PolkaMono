@@ -57,7 +57,6 @@ import { apiWrapper } from "./services/apiWrapper";
 import {
   CardItem,
   FavoriteItem,
-  RecommendedItem,
   FriendItem,
   FriendRequestItem,
 } from "./types/product";
@@ -70,8 +69,10 @@ import { mapProductToCardItem } from "./lib/productMapper";
 import { useTheme } from "./lib/ThemeContext";
 import type { ThemeColors } from "./lib/theme";
 import { useStaleFocusEffect } from "./lib/useStaleFocusEffect";
+import LockIcon from "./assets/Lock.svg";
 import PriceTag from "./components/PriceTag";
 import { SkeletonGrid } from "./components/SkeletonCard";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 // Define a simpler navigation type that our custom navigation can satisfy
 interface SimpleNavigation {
@@ -82,6 +83,7 @@ interface SimpleNavigation {
 
 interface FavoritesProps {
   navigation: SimpleNavigation;
+  returnToFriendId?: string;
 }
 
 interface UserActionButtonProps {
@@ -188,7 +190,7 @@ const UserActionButton = memo(
   },
 );
 
-const Favorites = ({ navigation }: FavoritesProps) => {
+const Favorites = ({ navigation, returnToFriendId }: FavoritesProps) => {
   const { theme } = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
 
@@ -199,10 +201,6 @@ const Favorites = ({ navigation }: FavoritesProps) => {
   const [isMounted, setIsMounted] = useState(true);
   const [isReady, setIsReady] = useState(true); // Always ready for smooth transitions
   const [selectedFriend, setSelectedFriend] = useState<FriendItem | null>(null);
-  const [isRegenerating, setIsRegenerating] = useState(false);
-  const [customRecommendations, setCustomRecommendations] = useState<{
-    [key: string]: CardItem[];
-  }>({});
 
   // Friend data state
   const [friendItems, setFriendItems] = useState<FriendItem[]>([]);
@@ -233,13 +231,6 @@ const Favorites = ({ navigation }: FavoritesProps) => {
   const [savedItems, setSavedItems] = useState<CardItem[]>([]);
   const [isLoadingSaved, setIsLoadingSaved] = useState(true);
 
-  const [friendRecommendations, setFriendRecommendations] = useState<{
-    [key: string]: CardItem[];
-  }>({});
-  const [isLoadingFriendRecs, setIsLoadingFriendRecs] = useState<{
-    [key: string]: boolean;
-  }>({});
-
   // Refresh friends data when tab gains focus (if stale >30s)
   useStaleFocusEffect(
     useCallback(() => {
@@ -264,6 +255,8 @@ const Favorites = ({ navigation }: FavoritesProps) => {
       const friendsList: FriendItem[] = (friends || []).map((friend) => ({
         ...friend,
         status: "friend" as const,
+        can_view_recommendations: friend.can_view_recommendations ?? true,
+        can_view_likes: friend.can_view_likes ?? true,
       }));
 
       // Convert sent requests to FriendItem format - handle null values
@@ -328,6 +321,19 @@ const Favorites = ({ navigation }: FavoritesProps) => {
     }
   }, []);
   useStaleFocusEffect(loadSavedItems, 30_000);
+
+  // Re-select friend when returning from FRS/FLIS
+  useEffect(() => {
+    if (returnToFriendId && friendItems.length > 0) {
+      const friend = friendItems.find((f) => f.id === returnToFriendId);
+      if (friend) {
+        setSelectedFriend(friend);
+        setActiveView("friends");
+      }
+      // Clear param so future visits remount normally
+      navigation.setParams?.({ returnToFriendId: undefined });
+    }
+  }, [returnToFriendId, friendItems]);
 
   // Note: Friend recommendations are now loaded in FriendProfileView component
 
@@ -482,6 +488,8 @@ const Favorites = ({ navigation }: FavoritesProps) => {
             email: user.email,
             avatar_url: user.avatar_url,
             status: user.friend_status || "not_friend",
+            can_view_recommendations: user.can_view_recommendations,
+            can_view_likes: user.can_view_likes,
           }));
 
           setSearchResults(searchUsersList);
@@ -542,46 +550,6 @@ const Favorites = ({ navigation }: FavoritesProps) => {
   // Handle back from friend profile
   const handleBackFromProfile = () => {
     setSelectedFriend(null);
-  };
-
-  // Handle regenerate recommendations
-  const handleRegenerateRecommendations = () => {
-    // Only proceed if a friend is selected
-    if (!selectedFriend) return;
-
-    // Show loading indicator
-    setIsRegenerating(true);
-
-    // Simulate API call with a delay
-    setTimeout(() => {
-      // Generate new recommendations (in a real app, this would be from an API)
-      const shuffledItems = [...customRecommendations[selectedFriend.id]];
-
-      // Shuffle the array to simulate new recommendations
-      for (let i = shuffledItems.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [shuffledItems[i], shuffledItems[j]] = [
-          shuffledItems[j],
-          shuffledItems[i],
-        ];
-      }
-
-      // Add some randomness to the prices to make them look different
-      const newRecommendations = shuffledItems.map((item: CardItem) => ({
-        ...item,
-        id: item.id + 1000, // Make sure IDs are unique
-        price: Math.floor(Math.random() * 30 + 15) * 1000,
-      }));
-
-      // Update the recommendations
-      setCustomRecommendations({
-        ...customRecommendations,
-        [selectedFriend.id]: newRecommendations,
-      });
-
-      // Hide loading indicator
-      setIsRegenerating(false);
-    }, 1000); // 1 second delay to simulate network request
   };
 
   // Improved navigation handler with animation cleanup - now with item data passing
@@ -931,65 +899,20 @@ const Favorites = ({ navigation }: FavoritesProps) => {
           setMainShowConfirmDialog(true);
         }}
         onPress={() => {
-          // Only allow viewing profile if user is an accepted friend
-          if (item.status === "friend") {
-            handleFriendSelect(item);
+          if (
+            item.can_view_recommendations === false &&
+            item.can_view_likes === false
+          ) {
+            Alert.alert("", "профиль закрыт");
+            return;
           }
+          handleFriendSelect(item);
         }}
         styles={styles}
         width={width}
       />
     );
   };
-
-  // Render a recommended item - now accepts friend data for navigation
-  const renderRecommendedItem =
-    (
-      friend: FriendItem,
-      recommendedItems: CardItem[],
-    ): ListRenderItem<CardItem> =>
-    ({ item, index, separators }) => (
-      <View style={styles.recommendationItemWrapper}>
-        <View style={styles.itemContainer}>
-          <Pressable
-            style={styles.itemImageContainer}
-            onPress={() => {
-              navigation.navigate("FriendRecommendations", {
-                friendId: friend.id,
-                friendUsername: friend.username,
-                friendAvatarUrl: friend.avatar_url ?? undefined,
-                initialItems: recommendedItems,
-                clickedItemIndex: index,
-              });
-            }}
-          >
-            {item.images && item.images.length > 0 ? (
-              <Image
-                source={item.images[0]}
-                style={styles.itemImage}
-                contentFit="contain"
-              />
-            ) : (
-              <View
-                style={[styles.itemImage, styles.noProductImagePlaceholder]}
-              >
-                <Text style={styles.noProductImageText}>нет изображения</Text>
-              </View>
-            )}
-            <View style={styles.itemInfo}>
-              <Text style={styles.itemName} numberOfLines={1}>
-                {item.brand_name}
-              </Text>
-            </View>
-            <PriceTag
-              price={item.price}
-              sale_price={item.sale_price}
-              sale_type={item.sale_type}
-            />
-          </Pressable>
-        </View>
-      </View>
-    );
 
   // Custom render function for search results that includes user status
   const renderSearchUser: ListRenderItem<FriendItem> = ({
@@ -1078,12 +1001,15 @@ const Favorites = ({ navigation }: FavoritesProps) => {
           <Pressable
             style={styles.userImageContainer}
             onPress={() => {
-              // Only allow viewing profile if user is an accepted friend
-              if (item.status === "friend") {
-                handleFriendSelect(item);
+              if (
+                item.can_view_recommendations === false &&
+                item.can_view_likes === false
+              ) {
+                Alert.alert("", "профиль закрыт");
+                return;
               }
+              handleFriendSelect(item);
             }}
-            disabled={item.status !== "friend"}
           >
             <View style={styles.imageContainer}>
               <AvatarImage avatarUrl={item.avatar_url} size={width * 0.2} />
@@ -1171,17 +1097,6 @@ const Favorites = ({ navigation }: FavoritesProps) => {
     toggleView();
   };
 
-  // Get the recommendations for the selected friend, preferring custom recommendations if available
-  const getRecommendationsForFriend = (friendId: string): RecommendedItem[] => {
-    if (
-      customRecommendations[friendId] &&
-      customRecommendations[friendId].length > 0
-    ) {
-      return customRecommendations[friendId];
-    }
-    return [];
-  };
-
   // Helper function to update user status in search results
   const setSearchUserStatus = (
     userId: string,
@@ -1266,16 +1181,7 @@ const Favorites = ({ navigation }: FavoritesProps) => {
               key={`friend-profile-${selectedFriend.id}`}
               friend={selectedFriend}
               onBack={handleBackFromProfile}
-              recommendedItems={getRecommendationsForFriend(selectedFriend.id)}
-              renderRecommendedItem={renderRecommendedItem(
-                selectedFriend,
-                getRecommendationsForFriend(selectedFriend.id),
-              )}
-              onRegenerate={handleRegenerateRecommendations}
-              isRegenerating={isRegenerating}
-              setCustomRecommendations={setCustomRecommendations}
-              isLoadingFriendRecs={isLoadingFriendRecs[selectedFriend?.id]}
-              setIsLoadingFriendRecs={setIsLoadingFriendRecs}
+              navigation={navigation}
             />
           )}
         </Animated.View>
@@ -1728,46 +1634,26 @@ const SearchContent = ({
 interface FriendProfileViewProps {
   friend: FriendItem;
   onBack: () => void;
-  recommendedItems: CardItem[];
-  renderRecommendedItem: ListRenderItem<CardItem>;
-  onRegenerate: () => void;
-  isRegenerating: boolean;
-  setCustomRecommendations: React.Dispatch<
-    React.SetStateAction<{ [key: string]: CardItem[] }>
-  >;
-  isLoadingFriendRecs: boolean;
-  setIsLoadingFriendRecs: React.Dispatch<
-    React.SetStateAction<{ [key: string]: boolean }>
-  >;
+  navigation: SimpleNavigation;
 }
 
 // Friend Profile View Component
 const FriendProfileView = React.memo(
-  ({
-    friend,
-    onBack,
-    recommendedItems,
-    renderRecommendedItem,
-    onRegenerate,
-    isRegenerating,
-    setCustomRecommendations,
-    isLoadingFriendRecs,
-    setIsLoadingFriendRecs,
-  }: FriendProfileViewProps) => {
+  ({ friend, onBack, navigation }: FriendProfileViewProps) => {
     const { theme } = useTheme();
     const styles = useMemo(() => createStyles(theme), [theme]);
 
-    // Track whether recommendations have been regenerated for animation purposes
-    const [isNewRecommendation, setIsNewRecommendation] = useState(false);
-
-    // Store the recommendedItems in a ref to avoid unnecessary effect triggers
-    const prevItemsRef = useRef<CardItem[]>([]);
+    const insets = useSafeAreaInsets();
 
     // State for friend's public profile
     const [friendProfile, setFriendProfile] =
       useState<api.PublicUserProfile | null>(null);
     const [isLoadingProfile, setIsLoadingProfile] = useState(true);
     const [profileError, setProfileError] = useState<string | null>(null);
+
+    // Friend liked items state
+    const [friendLikedItems, setFriendLikedItems] = useState<CardItem[]>([]);
+    const [isLoadingLikes, setIsLoadingLikes] = useState(true);
 
     // Animated values for button spinning effect
     const [isSpinning, setIsSpinning] = useState(false);
@@ -1779,12 +1665,12 @@ const FriendProfileView = React.memo(
       outputRange: ["0deg", "720deg"],
     });
 
-    // Check if user is actually a friend - kick them out if not
-    useEffect(() => {
-      if (friend.status !== "friend") {
-        onBack();
-      }
-    }, [friend.status, onBack]);
+    const canViewRecs =
+      friendProfile?.can_view_recommendations ??
+      friend.can_view_recommendations ??
+      true;
+    const canViewLikes =
+      friendProfile?.can_view_likes ?? friend.can_view_likes ?? true;
 
     // Load friend's public profile when component mounts
     useEffect(() => {
@@ -1792,7 +1678,6 @@ const FriendProfileView = React.memo(
         try {
           setIsLoadingProfile(true);
           setProfileError(null);
-
           const profile = await api.getUserPublicProfile(friend.id);
           setFriendProfile(profile);
         } catch (error) {
@@ -1803,25 +1688,48 @@ const FriendProfileView = React.memo(
         }
       };
 
-      if (friend.id && friend.status === "friend") {
+      if (friend.id) {
         loadFriendProfile();
       }
     }, [friend.id, friend.status]);
 
-    // Handle regenerate button press with spinning border animation
+    // Load friend's liked items
+    useEffect(() => {
+      const loadLikedItems = async () => {
+        if (!friend.id || !canViewLikes) {
+          setIsLoadingLikes(false);
+          return;
+        }
+        try {
+          setIsLoadingLikes(true);
+          const items = await apiWrapper.getFriendLikedItems(
+            friend.id,
+            "FavoritesPage",
+          );
+          setFriendLikedItems(
+            (items || []).map((item: api.Product, i: number) =>
+              mapProductToCardItem(item, i),
+            ),
+          );
+        } catch (error: any) {
+          log.error("Error loading friend liked items:", error);
+          if (error.status !== 401) {
+            setFriendLikedItems([]);
+          }
+        } finally {
+          setIsLoadingLikes(false);
+        }
+      };
+      loadLikedItems();
+    }, [friend.id, canViewLikes]);
+
+    // Handle AI button press — spin then navigate to FRS
     const handleRegeneratePress = () => {
-      if (isSpinning || isRegenerating) return; // Prevent multiple presses during animation
+      if (isSpinning || !canViewRecs) return;
 
-      // Start spinning and regeneration process immediately
       setIsSpinning(true);
-
-      // Start regeneration process immediately rather than waiting for animation to complete
-      onRegenerate();
-
-      // Reset spin value to 0
       borderSpinValue.setValue(0);
 
-      // Spin border with acceleration and deceleration
       RNAnimated.timing(borderSpinValue, {
         toValue: 1,
         duration: ANIMATION_DURATIONS.VERY_LONG * 2,
@@ -1829,113 +1737,91 @@ const FriendProfileView = React.memo(
         easing: RNEasing.inOut(RNEasing.cubic),
       }).start(() => {
         setIsSpinning(false);
+        navigation.navigate("FriendRecommendations", {
+          friendId: friend.id,
+          friendUsername: friend.username,
+          friendAvatarUrl: friend.avatar_url ?? undefined,
+          initialItems: [],
+          clickedItemIndex: 0,
+        });
       });
     };
 
-    // Reset the new recommendation flag when items change
-    useEffect(() => {
-      // Only trigger the animation when items actually change (not on initial render)
-      const itemsChanged =
-        prevItemsRef.current.length > 0 &&
-        JSON.stringify(prevItemsRef.current) !==
-          JSON.stringify(recommendedItems);
-
-      if (recommendedItems.length > 0 && itemsChanged) {
-        setIsNewRecommendation(true);
-
-        // Reset the flag after animation duration
-        const timer = setTimeout(() => {
-          setIsNewRecommendation(false);
-        }, 1500);
-
-        // Update the ref
-        prevItemsRef.current = [...recommendedItems];
-
-        return () => clearTimeout(timer);
-      } else if (recommendedItems.length > 0) {
-        // Initial store
-        prevItemsRef.current = [...recommendedItems];
-      }
-    }, [recommendedItems]);
-
-    // Create a memoized render function to avoid unnecessary re-renders
-    const renderItem = React.useCallback(renderRecommendedItem, [
-      renderRecommendedItem,
-    ]); // renderRecommendedItem already returns a ListRenderItem function
-
-    // In FriendProfileView, fetch recommendations from the real API
-    useEffect(() => {
-      const loadFriendRecommendations = async () => {
-        if (!friend.id) return;
-        try {
-          setIsLoadingFriendRecs((prev) => ({ ...prev, [friend.id]: true }));
-          const recs = await apiWrapper.getFriendRecommendations(
-            friend.id,
-            "FavoritesPage",
-          );
-          // Use utility function to ensure consistent mapping with article_number preservation
-          const recommendedItems = (recs || []).map(
-            (item: api.Product, index: number) =>
-              mapProductToCardItem(item, index),
-          );
-          setCustomRecommendations(
-            (prev: { [key: string]: RecommendedItem[] }) => ({
-              ...prev,
-              [friend.id]: recommendedItems,
-            }),
-          );
-        } catch (error: any) {
-          log.error("Error loading friend recommendations:", error);
-          setCustomRecommendations(
-            (prev: { [key: string]: RecommendedItem[] }) => ({
-              ...prev,
-              [friend.id]: [],
-            }),
-          );
-
-          // Show appropriate error message based on error type
-          if (error.status === 401) {
-            // Don't show alert for authentication errors, just log them
-            log.error("Authentication error loading friend recommendations");
-          } else if (error.status === 404) {
-            Alert.alert("ошибка", "друг не найден");
-          } else if (error.status >= 500) {
-            Alert.alert("ошибка", "проблема с сервером. попробуйте позже");
-          } else {
-            Alert.alert(
-              "ошибка",
-              "не удалось загрузить рекомендации для друга",
-            );
-          }
-        } finally {
-          setIsLoadingFriendRecs((prev) => ({ ...prev, [friend.id]: false }));
-        }
-      };
-      loadFriendRecommendations();
-    }, [friend.id, setCustomRecommendations]);
+    // Render a liked item in the grid
+    const renderLikedItem: ListRenderItem<CardItem> = ({ item, index }) => (
+      <View style={styles.recommendationItemWrapper}>
+        <View style={styles.itemContainer}>
+          <Pressable
+            style={styles.itemImageContainer}
+            onPress={() => {
+              navigation.navigate("FriendLikedItems", {
+                friendId: friend.id,
+                friendUsername: friend.username,
+                friendAvatarUrl: friend.avatar_url ?? undefined,
+                initialItems: friendLikedItems,
+                clickedItemIndex: index,
+              });
+            }}
+          >
+            {item.images && item.images.length > 0 ? (
+              <Image
+                source={item.images[0]}
+                style={styles.itemImage}
+                contentFit="contain"
+              />
+            ) : (
+              <View
+                style={[styles.itemImage, styles.noProductImagePlaceholder]}
+              >
+                <Text style={styles.noProductImageText}>нет изображения</Text>
+              </View>
+            )}
+            <View style={styles.itemInfo}>
+              <Text style={styles.itemName} numberOfLines={1}>
+                {item.brand_name}
+              </Text>
+            </View>
+            <PriceTag
+              price={item.price}
+              sale_price={item.sale_price}
+              sale_type={item.sale_type}
+            />
+          </Pressable>
+        </View>
+      </View>
+    );
 
     return (
       <Animated.View
-        style={styles.profileContainer}
+        style={[styles.profileContainer]}
         entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM)}
         exiting={FadeOutDown.duration(ANIMATION_DURATIONS.MICRO)}
       >
-        {/* Header with back button */}
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={onBack}
-          activeOpacity={0.7}
-        >
-          <BackIcon width={22} height={22} />
-        </TouchableOpacity>
-
-        {/* Profile info */}
-        <View style={styles.profileInfo}>
-          <View style={styles.profileImageContainer}>
-            <AvatarImage
-              avatarUrl={friend.avatar_url ?? friendProfile?.avatar_url}
-              size={width * 0.25}
-            />
+        {/* FRS-style header */}
+        <View style={styles.friendHeader}>
+          <View style={styles.friendInfoContainer}>
+            <View style={styles.backButtonContainer}>
+              <TouchableOpacity
+                style={styles.backButton}
+                onPress={onBack}
+                activeOpacity={0.7}
+              >
+                <BackIcon width={22} height={22} />
+              </TouchableOpacity>
+            </View>
+            <View style={styles.friendUsernameShadowWrapper}>
+              <View style={styles.friendUsernameContainer}>
+                <Text style={styles.friendUsername}>
+                  {friendProfile?.username || friend.username}
+                </Text>
+              </View>
+            </View>
+            <View style={styles.friendIconContainer}>
+              <AvatarImage
+                avatarUrl={friend.avatar_url ?? friendProfile?.avatar_url}
+                size={Math.round(height * 0.065)}
+              />
+            </View>
           </View>
         </View>
 
@@ -1983,14 +1869,20 @@ const FriendProfileView = React.memo(
             >
               <Pressable
                 onPress={handleRegeneratePress}
-                disabled={isSpinning || isRegenerating}
+                disabled={isSpinning || !canViewRecs}
                 style={styles.pressableContainer}
               >
-                <Text style={styles.regenerateButtonText}>
-                  {isRegenerating || isSpinning
-                    ? "загрузка..."
-                    : "сделать ai подборку"}
-                </Text>
+                {canViewRecs ? (
+                  <Text style={styles.regenerateButtonText}>
+                    {isSpinning ? "загрузка..." : "сделать ai подборку"}
+                  </Text>
+                ) : (
+                  <LockIcon
+                    width={28}
+                    height={28}
+                    color={theme.text.tertiary}
+                  />
+                )}
               </Pressable>
             </View>
           </View>
@@ -2010,28 +1902,30 @@ const FriendProfileView = React.memo(
             locations={theme.gradients.overlayLocations as any}
             style={styles.gradientBackground}
           />
-          {/* Recommendations section */}
+          {/* Liked items section */}
           <Animated.View
             style={styles.recommendationsContainer}
             entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
               ANIMATION_DELAYS.MEDIUM,
             )}
           >
-            {isRegenerating ? (
+            {!canViewLikes ? (
               <View style={styles.loadingContainer}>
-                <Text style={styles.loadingText}>
-                  подбираем новые рекомендации...
-                </Text>
+                <LockIcon width={48} height={48} color={theme.text.tertiary} />
               </View>
-            ) : isLoadingFriendRecs ? (
+            ) : isLoadingLikes ? (
               <View style={[styles.recommendationsList, { flex: 1 }]}>
                 <SkeletonGrid count={4} />
               </View>
+            ) : friendLikedItems.length === 0 ? (
+              <View style={styles.loadingContainer}>
+                <Text style={styles.loadingText}>пока тут пусто</Text>
+              </View>
             ) : (
-              <FlatList<RecommendedItem>
+              <FlatList<CardItem>
                 style={styles.recommendationsList}
-                data={recommendedItems}
-                renderItem={renderItem}
+                data={friendLikedItems}
+                renderItem={renderLikedItem}
                 keyExtractor={(item) => item.id.toString()}
                 showsVerticalScrollIndicator={false}
                 numColumns={2}
@@ -2045,13 +1939,7 @@ const FriendProfileView = React.memo(
             )}
           </Animated.View>
           <Animated.View style={styles.textContainer}>
-            <Text style={styles.text}>
-              {isLoadingProfile
-                ? "загрузка..."
-                : profileError
-                  ? friend.username
-                  : friendProfile?.username || friend.username}
-            </Text>
+            <Text style={styles.text}>СОХРАНЁНКИ</Text>
           </Animated.View>
         </Animated.View>
       </Animated.View>
@@ -2514,40 +2402,78 @@ const createStyles = (theme: ThemeColors) =>
     profileContainer: {
       width: "88%",
       height: "92%",
+      justifyContent: "space-between",
+      alignItems: "center",
       backgroundColor: "transparent",
+    },
+    friendHeader: {
+      width: "100%",
+      height: height * 0.065,
+      flexDirection: "row",
+      alignItems: "center",
+      zIndex: 1000,
+    },
+    friendInfoContainer: {
+      flex: 1,
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+    },
+    backButtonContainer: {
+      width: height * 0.065,
+      height: height * 0.065,
+      borderRadius: height * 0.065 * 0.5,
+      backgroundColor: theme.surface.friend,
       justifyContent: "center",
       alignItems: "center",
-    },
-    backButton: {
-      position: "absolute",
-      top: 0,
-      left: 10,
-      zIndex: 10,
-      width: 33,
-      height: 33,
-    },
-    profileInfo: {
-      alignItems: "center",
-      marginBottom: 25,
       shadowColor: theme.shadow.default,
       shadowOffset: { width: 0, height: 4 },
       shadowOpacity: 0.25,
       shadowRadius: 4,
-      elevation: 6,
+      elevation: 5,
     },
-    profileImageContainer: {
-      width: width * 0.3,
-      height: width * 0.3,
-      borderRadius: width * 0.15,
-      overflow: "hidden",
-      backgroundColor: theme.surface.item,
-      alignItems: "center",
+    backButton: {
+      width: height * 0.05,
+      height: height * 0.05,
       justifyContent: "center",
+      alignItems: "center",
     },
-    profileImage: {
-      width: "75%",
-      height: "75%",
-      borderRadius: width * 0.1125,
+    friendUsernameShadowWrapper: {
+      height: height * 0.065,
+      borderRadius: height * 0.065 * 0.5,
+      minWidth: width * 0.5,
+      shadowColor: theme.shadow.default,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.25,
+      shadowRadius: 4,
+      elevation: 5,
+    },
+    friendUsernameContainer: {
+      width: "100%",
+      height: "100%",
+      borderRadius: height * 0.065 * 0.5,
+      backgroundColor: theme.surface.friend,
+      justifyContent: "center",
+      alignItems: "center",
+      paddingHorizontal: width * 0.06,
+    },
+    friendUsername: {
+      fontFamily: "IgraSans",
+      fontSize: 22,
+      color: theme.text.primary,
+    },
+    friendIconContainer: {
+      width: height * 0.065,
+      height: height * 0.065,
+      borderRadius: height * 0.065 * 0.5,
+      backgroundColor: theme.surface.friend,
+      justifyContent: "center",
+      alignItems: "center",
+      shadowColor: theme.shadow.default,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.25,
+      shadowRadius: 4,
+      elevation: 5,
     },
     roundedBox: {
       width: "100%",
@@ -2599,7 +2525,6 @@ const createStyles = (theme: ThemeColors) =>
       shadowOpacity: 0.25,
       shadowRadius: 4,
       elevation: 5,
-      marginBottom: 20,
     },
     regenerateButtonContainer: {
       width: 280, // Fixed width to ensure consistent size

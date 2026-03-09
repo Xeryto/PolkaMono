@@ -43,6 +43,7 @@ import VerificationCodeScreen from "./app/screens/VerificationCodeScreen";
 import PasswordResetVerificationScreen from "./app/screens/PasswordResetVerificationScreen";
 import RecentPiecesScreen from "./app/screens/RecentPiecesScreen";
 import FriendRecommendationsScreen from "./app/screens/FriendRecommendationsScreen";
+import FriendLikedItemsScreen from "./app/screens/FriendLikedItemsScreen";
 
 import * as SplashScreen from "expo-splash-screen";
 import * as Notifications from "expo-notifications";
@@ -107,7 +108,8 @@ type ScreenName =
   | "Wall"
   | "Settings"
   | "RecentPieces"
-  | "FriendRecommendations";
+  | "FriendRecommendations"
+  | "FriendLikedItems";
 type NavigationListener = () => void;
 
 interface SimpleNavigation {
@@ -126,10 +128,17 @@ export type RootStackParamList = {
   };
   Cart: undefined;
   Search: undefined;
-  Favorites: undefined;
+  Favorites: { returnToFriendId?: string } | undefined;
   Wall: { openOrderId?: string; initialView?: "wall" | "settings" | "orders" } | undefined;
   RecentPieces: undefined;
   FriendRecommendations: {
+    friendId?: string;
+    friendUsername?: string;
+    friendAvatarUrl?: string | null;
+    initialItems?: any[];
+    clickedItemIndex?: number;
+  };
+  FriendLikedItems: {
     friendId?: string;
     friendUsername?: string;
     friendAvatarUrl?: string | null;
@@ -258,17 +267,20 @@ function ScreenWrapper({
   children,
   screenName,
   skipSafeAreaTop = false,
+  preserveOnFocus = false,
 }: {
   children: React.ReactNode;
   screenName: string;
   skipSafeAreaTop?: boolean;
+  preserveOnFocus?: boolean;
 }) {
   const insets = useSafeAreaInsets();
   const [renderKey, setRenderKey] = React.useState(0);
-  const [isVisible, setIsVisible] = React.useState(true);
   const isMountedRef = React.useRef(false);
   const isFocusedRef = React.useRef(false);
   const timerRef = React.useRef<NodeJS.Timeout | null>(null);
+  const preserveRef = React.useRef(preserveOnFocus);
+  preserveRef.current = preserveOnFocus;
 
   useFocusEffect(
     React.useCallback(() => {
@@ -281,38 +293,29 @@ function ScreenWrapper({
       const wasFocused = isFocusedRef.current;
       isFocusedRef.current = true;
 
-      // Always remount when screen comes into focus (except on very first mount)
-      // This ensures entering animations always play, matching Search's behavior
+      // First mount — let initial render happen, no remount needed
       if (!isMountedRef.current) {
-        // First mount - don't remount yet, let initial render happen
         isMountedRef.current = true;
         return () => {
-          // When losing focus, immediately hide to ensure clean unmount
           isFocusedRef.current = false;
-          setIsVisible(false);
         };
       }
 
-      // Screen is coming into focus after being unfocused
-      if (!wasFocused) {
-        // Ensure old instance is hidden first (should already be hidden from cleanup)
-        setIsVisible(false);
-        // Use a delay to ensure the old component is fully unmounted
-        // before mounting the new one
+      // Screen is coming into focus after being unfocused — remount to replay
+      // entering animations. Skip remount when preserveOnFocus is set (e.g.
+      // returning from a sub-screen) to avoid replaying animations.
+      if (!wasFocused && !preserveRef.current) {
         timerRef.current = setTimeout(() => {
           setRenderKey((prev) => prev + 1);
-          setIsVisible(true);
           timerRef.current = null;
-        }, 32); // Two frame delay to ensure clean unmount
+        }, 32);
 
         return () => {
           if (timerRef.current) {
             clearTimeout(timerRef.current);
             timerRef.current = null;
           }
-          // When losing focus, immediately hide to ensure clean unmount
           isFocusedRef.current = false;
-          setIsVisible(false);
         };
       }
 
@@ -321,17 +324,10 @@ function ScreenWrapper({
           clearTimeout(timerRef.current);
           timerRef.current = null;
         }
-        // When losing focus, immediately hide to ensure clean unmount
         isFocusedRef.current = false;
-        setIsVisible(false);
       };
     }, []),
   );
-
-  // Don't render anything when hidden to ensure clean unmount
-  if (!isVisible) {
-    return null;
-  }
 
   // Use key prop to force remount when renderKey changes
   return (
@@ -457,8 +453,14 @@ function MainNavigator({
         }}
       >
         {({ navigation: nav, route }) => (
-          <ScreenWrapper screenName="favorites">
-            <FavoritesPage navigation={createNavigationAdapter(nav, route)} />
+          <ScreenWrapper
+            screenName="favorites"
+            preserveOnFocus={!!route.params?.returnToFriendId}
+          >
+            <FavoritesPage
+              navigation={createNavigationAdapter(nav, route)}
+              returnToFriendId={route.params?.returnToFriendId}
+            />
           </ScreenWrapper>
         )}
       </Stack.Screen>
@@ -509,6 +511,35 @@ function MainNavigator({
               screenName={`friend-rec-${params.friendId || "default"}`}
             >
               <FriendRecommendationsScreen
+                navigation={createNavigationAdapter(nav, route)}
+                route={{
+                  params: {
+                    friendId: params.friendId || "",
+                    friendUsername: params.friendUsername || "",
+                    friendAvatarUrl: params.friendAvatarUrl,
+                    initialItems: params.initialItems || [],
+                    clickedItemIndex: params.clickedItemIndex || 0,
+                  },
+                }}
+              />
+            </ScreenWrapper>
+          );
+        }}
+      </Stack.Screen>
+      <Stack.Screen
+        name="FriendLikedItems"
+        options={{
+          animation: "none",
+          presentation: "card",
+        }}
+      >
+        {({ navigation: nav, route }) => {
+          const params = route.params || {};
+          return (
+            <ScreenWrapper
+              screenName={`friend-likes-${params.friendId || "default"}`}
+            >
+              <FriendLikedItemsScreen
                 navigation={createNavigationAdapter(nav, route)}
                 route={{
                   params: {

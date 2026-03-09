@@ -440,6 +440,8 @@ class FriendResponse(BaseModel):
     id: str
     username: str
     avatar_url: Optional[str] = None
+    can_view_recommendations: bool = True
+    can_view_likes: bool = True
 
 
 class UserSearchResponse(BaseModel):
@@ -450,6 +452,8 @@ class UserSearchResponse(BaseModel):
     friend_status: Optional[str] = (
         None  # 'friend', 'request_received', 'request_sent', 'not_friend'
     )
+    can_view_recommendations: bool = True
+    can_view_likes: bool = True
 
 
 class PublicUserProfileResponse(BaseModel):
@@ -457,6 +461,8 @@ class PublicUserProfileResponse(BaseModel):
     username: str
     gender: Optional[Gender] = None
     avatar_url: Optional[str] = None
+    can_view_recommendations: bool = True
+    can_view_likes: bool = True
 
 
 class MessageResponse(BaseModel):
@@ -611,7 +617,9 @@ def get_current_admin(
     payload = auth_service.verify_token_payload(credentials.credentials)
     if not payload or not payload.get("is_admin"):
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required"
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Admin access required",
+            headers={"WWW-Authenticate": "Bearer"},
         )
     acc_id = payload.get("sub")
     acc = (
@@ -621,7 +629,9 @@ def get_current_admin(
     )
     if not acc:
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN, detail="Admin account not found"
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Admin account not found",
+            headers={"WWW-Authenticate": "Bearer"},
         )
     return acc
 
@@ -1407,6 +1417,16 @@ async def admin_resend_2fa(
     )
     resends_left = settings.OTP_MAX_RESENDS - acc.otp_resend_count
     return {"message": "Код отправлен повторно", "resends_remaining": resends_left}
+
+
+@app.get("/api/v1/admin/auth/verify")
+@limiter.limit("30/minute")
+async def admin_verify_token(
+    request: Request,
+    admin: AuthAccount = Depends(get_current_admin),
+):
+    """Verify admin token is still valid. Returns 200 if ok, 401 otherwise."""
+    return {"ok": True}
 
 
 @app.post("/api/v1/brands/auth/login")
@@ -3460,6 +3480,47 @@ async def get_user_favorites(
     return [product_to_schema(p, is_liked=True) for p in liked_products]
 
 
+@app.get("/api/v1/users/{user_id}/likes", response_model=List[schemas.Product])
+@limiter.limit("30/minute")
+async def get_friend_liked_items(
+    request: Request,
+    user_id: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Get liked items for a specific user (respects privacy settings)"""
+    target_user = (
+        db.query(User)
+        .options(joinedload(User.preferences))
+        .filter(User.id == user_id)
+        .first()
+    )
+    if not target_user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
+        )
+
+    if not check_privacy_access(db, current_user, target_user, "likes_privacy"):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="Access denied"
+        )
+
+    liked_products = (
+        db.query(Product)
+        .options(*_product_eager_options())
+        .join(UserLikedProduct)
+        .join(Brand)
+        .filter(
+            UserLikedProduct.user_id == target_user.id,
+            Brand.is_inactive == False,
+        )
+        .all()
+    )
+
+    viewer_liked_ids = {ulp.product_id for ulp in current_user.liked_products}
+    return [product_to_schema(p, is_liked=p.id in viewer_liked_ids) for p in liked_products]
+
+
 # Get Recent Swipes Endpoint
 @app.get("/api/v1/user/recent-swipes", response_model=List[schemas.Product])
 @limiter.limit("60/minute")
@@ -3539,10 +3600,15 @@ async def get_recommendations_for_friend(
     db: Session = Depends(get_db),
 ):
     """Provide recommended items for a specific friend"""
-    friend_user = db.query(User).filter(User.id == friend_id).first()
+    friend_user = db.query(User).options(joinedload(User.preferences)).filter(User.id == friend_id).first()
     if not friend_user:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Friend not found."
+        )
+
+    if not check_privacy_access(db, current_user, friend_user, "recommendations_privacy"):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="Access denied"
         )
 
     products = recommendation_service.get_recommendations_for_friend(
@@ -4015,7 +4081,9 @@ async def get_friends_list(
         db.query(Friendship)
         .options(
             joinedload(Friendship.user).joinedload(User.profile),
+            joinedload(Friendship.user).joinedload(User.preferences),
             joinedload(Friendship.friend).joinedload(User.profile),
+            joinedload(Friendship.friend).joinedload(User.preferences),
         )
         .filter(
             (Friendship.user_id == current_user.id)
@@ -4033,11 +4101,15 @@ async def get_friends_list(
         )
         if friend_user:
             avatar_url = friend_user.profile.avatar_url if friend_user.profile else None
+            can_view_recs = check_privacy_access(db, current_user, friend_user, "recommendations_privacy")
+            can_view_likes = check_privacy_access(db, current_user, friend_user, "likes_privacy")
             friends.append(
                 {
                     "id": friend_user.id,
                     "username": friend_user.username,
                     "avatar_url": avatar_url,
+                    "can_view_recommendations": can_view_recs,
+                    "can_view_likes": can_view_likes,
                 }
             )
 
@@ -4098,7 +4170,7 @@ async def search_users(
     # Search by username or email (case insensitive)
     users = (
         db.query(User)
-        .options(joinedload(User.profile))
+        .options(joinedload(User.profile), joinedload(User.preferences))
         .join(AuthAccount)
         .filter(
             (User.username.ilike(f"%{query}%") | AuthAccount.email.ilike(f"%{query}%"))
@@ -4165,6 +4237,9 @@ async def search_users(
             friend_status = "not_friend"
 
         avatar_url = user.profile.avatar_url if user.profile else None
+        is_friend = user.id in friend_ids
+        can_view_recs = _check_privacy_inline(user, "recommendations_privacy", is_friend)
+        can_view_likes = _check_privacy_inline(user, "likes_privacy", is_friend)
         result.append(
             {
                 "id": user.id,
@@ -4172,10 +4247,47 @@ async def search_users(
                 "email": user.auth_account.email,
                 "avatar_url": avatar_url,
                 "friend_status": friend_status,
+                "can_view_recommendations": can_view_recs,
+                "can_view_likes": can_view_likes,
             }
         )
 
     return result
+
+
+def _check_privacy_inline(target_user, privacy_field, is_friend):
+    """Fast privacy check when friendship status is already known."""
+    prefs = target_user.preferences
+    setting = getattr(prefs, privacy_field, "friends") if prefs else "friends"
+    if isinstance(setting, PrivacyOption):
+        setting = setting.value
+    if setting == "everyone":
+        return True
+    if setting == "nobody":
+        return False
+    return is_friend
+
+
+def check_privacy_access(db, viewer, target_user, privacy_field):
+    """Check if viewer can access target_user's data based on privacy setting."""
+    prefs = target_user.preferences
+    setting = getattr(prefs, privacy_field, "friends") if prefs else "friends"
+    if isinstance(setting, PrivacyOption):
+        setting = setting.value
+    if setting == "everyone":
+        return True
+    if setting == "nobody":
+        return False
+    # "friends" — check friendship
+    return (
+        db.query(Friendship)
+        .filter(
+            ((Friendship.user_id == viewer.id) & (Friendship.friend_id == target_user.id))
+            | ((Friendship.user_id == target_user.id) & (Friendship.friend_id == viewer.id))
+        )
+        .first()
+        is not None
+    )
 
 
 @app.get("/api/v1/users/{user_id}/profile", response_model=PublicUserProfileResponse)
@@ -4187,7 +4299,7 @@ async def get_public_user_profile(
     db: Session = Depends(get_db),
 ):
     """Get public profile of another user"""
-    user = db.query(User).filter(User.id == user_id).first()
+    user = db.query(User).options(joinedload(User.preferences)).filter(User.id == user_id).first()
 
     if not user:
         raise HTTPException(
@@ -4196,11 +4308,15 @@ async def get_public_user_profile(
 
     gender = user.profile.gender.value if user.profile and user.profile.gender else None
     avatar_url = user.profile.avatar_url if user.profile else None
+    can_view_recs = check_privacy_access(db, current_user, user, "recommendations_privacy")
+    can_view_likes = check_privacy_access(db, current_user, user, "likes_privacy")
     return {
         "id": user.id,
         "username": user.username,
         "gender": gender,
         "avatar_url": avatar_url,
+        "can_view_recommendations": can_view_recs,
+        "can_view_likes": can_view_likes,
     }
 
 
@@ -4416,6 +4532,7 @@ def _order_to_full_response(order: Order) -> schemas.OrderResponse:
         tracking_number=str(order.tracking_number) if order.tracking_number else None,  # type: ignore
         tracking_link=str(order.tracking_link) if order.tracking_link else None,  # type: ignore
         shipping_cost=order.shipping_cost or 0,
+        brand_is_inactive=bool(order.brand.is_inactive) if order.brand else False,
         items=order_items,
         delivery_full_name=fn,
         delivery_email=em,
@@ -4575,6 +4692,7 @@ async def get_order_by_id(
         tracking_number=str(order.tracking_number) if order.tracking_number else None,  # type: ignore
         tracking_link=str(order.tracking_link) if order.tracking_link else None,  # type: ignore
         shipping_cost=order.shipping_cost or 0,
+        brand_is_inactive=bool(order.brand.is_inactive) if order.brand else False,
         items=order_items,
         delivery_full_name=fn,
         delivery_email=em,

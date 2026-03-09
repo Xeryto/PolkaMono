@@ -848,8 +848,27 @@ const Wall = ({ navigation, onLogout, openOrderId, initialView: initialViewProp 
               style={styles.orderItemsList}
               showsVerticalScrollIndicator={false}
             >
+              {orderDetail.brand_is_inactive && (
+                <Animated.View
+                  entering={FadeInDown.duration(
+                    ANIMATION_DURATIONS.MEDIUM,
+                  ).delay(ANIMATION_DELAYS.STANDARD)}
+                  style={{ paddingHorizontal: 20, marginBottom: 8 }}
+                >
+                  <Text
+                    style={[
+                      styles.itemSize,
+                      { color: theme.text.disabled },
+                    ]}
+                  >
+                    бренд неактивен
+                  </Text>
+                </Animated.View>
+              )}
               {orderDetail.items.map((item, index) => {
                 const isReturned = item.status === "returned";
+                const isInactive = !!orderDetail.brand_is_inactive;
+                const isDisabled = isReturned || isInactive;
                 return (
                   <Animated.View
                     key={item.id}
@@ -863,13 +882,14 @@ const Wall = ({ navigation, onLogout, openOrderId, initialView: initialViewProp 
                   >
                     <Pressable
                       style={styles.itemPressable}
+                      disabled={isInactive}
                       onPress={() => handleItemPress(item)}
                     >
                       <View style={styles.itemContent}>
                         <View
                           style={[
                             styles.imageContainer,
-                            isReturned && styles.imageContainerInactive,
+                            isDisabled && styles.imageContainerInactive,
                           ]}
                         >
                           <CartItemImage item={item} />
@@ -878,7 +898,7 @@ const Wall = ({ navigation, onLogout, openOrderId, initialView: initialViewProp 
                           <Text
                             style={[
                               styles.itemName,
-                              isReturned && styles.itemTextInactive,
+                              isDisabled && styles.itemTextInactive,
                             ]}
                             numberOfLines={1}
                             adjustsFontSizeToFit
@@ -889,13 +909,13 @@ const Wall = ({ navigation, onLogout, openOrderId, initialView: initialViewProp 
                           <Text
                             style={[
                               styles.itemPrice,
-                              isReturned && styles.itemTextInactive,
+                              isDisabled && styles.itemTextInactive,
                             ]}
                           >{`${formatPrice(item.price)} ₽`}</Text>
                           <Text
                             style={[
                               styles.itemSize,
-                              isReturned && styles.itemTextInactive,
+                              isDisabled && styles.itemTextInactive,
                             ]}
                           >
                             {item.size}
@@ -2051,12 +2071,13 @@ const createStyles = (theme: ThemeColors) =>
     },
     itemPressable: {
       flexDirection: "row",
-      alignItems: "flex-start",
+      alignItems: "center",
       justifyContent: "space-between",
       paddingTop: 20,
       paddingLeft: 25,
       paddingRight: 20,
       paddingBottom: 15,
+      minHeight: 81,
     },
     itemContent: {
       flexDirection: "row",
@@ -2103,15 +2124,9 @@ const createStyles = (theme: ThemeColors) =>
     rightContainer: {
       justifyContent: "center",
       alignItems: "center",
-      height: "100%",
       width: "20%",
     },
-    circle: {
-      position: "absolute",
-      top: "30%",
-      bottom: "30%",
-      right: 0,
-    },
+    circle: {},
     orderTotalContainer: {
       justifyContent: "center",
       alignItems: "center",

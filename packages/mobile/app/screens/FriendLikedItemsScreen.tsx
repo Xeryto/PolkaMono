@@ -6,7 +6,6 @@ import {
   Dimensions,
   Platform,
   Animated as RNAnimated,
-  Alert,
 } from "react-native";
 import { TouchableOpacity } from "react-native";
 import { UIManager } from "react-native";
@@ -32,11 +31,8 @@ import { log } from "../services/config";
 
 import { SkeletonSwipeCard } from "../components/SkeletonCard";
 import BackIcon from "../components/svg/BackIcon";
-import * as api from "../services/api";
-import { apiWrapper } from "../services/apiWrapper";
 import AvatarImage from "../components/AvatarImage";
 import { CardItem, CartItem } from "../types/product";
-import { mapProductToCardItem } from "../lib/productMapper";
 import { getEffectivePrice, formatPrice } from "../lib/swipeCardUtils";
 import {
   SwipeCard,
@@ -53,7 +49,7 @@ interface SimpleNavigation {
   setParams?: (params: any) => void;
 }
 
-interface FriendRecommendationsScreenProps {
+interface FriendLikedItemsScreenProps {
   navigation: SimpleNavigation;
   route?: {
     params?: {
@@ -69,10 +65,10 @@ interface FriendRecommendationsScreenProps {
 const height = Dimensions.get("window").height;
 const width = Dimensions.get("window").width;
 
-const FriendRecommendationsScreen = ({
+const FriendLikedItemsScreen = ({
   navigation,
   route,
-}: FriendRecommendationsScreenProps) => {
+}: FriendLikedItemsScreenProps) => {
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
   const cardStyles = useMemo(() => createSwipeCardStyles(theme, 35), [theme]);
@@ -87,31 +83,12 @@ const FriendRecommendationsScreen = ({
   const initialItems = route?.params?.initialItems || [];
   const clickedItemIndex = route?.params?.clickedItemIndex || 0;
 
-  const fetchMoreFriendCards = async (
-    count: number = 2,
-  ): Promise<CardItem[]> => {
-    try {
-      const products = await apiWrapper.getFriendRecommendations(
-        friendId,
-        "FRS",
-      );
-      if (!products || !Array.isArray(products)) return [];
-      return products
-        .slice(0, count)
-        .map((p: api.Product, i: number) => mapProductToCardItem(p, i));
-    } catch (error: any) {
-      if (error?.message?.toLowerCase().includes("invalid token")) {
-        Alert.alert("сессия истекла", "пожалуйста, войдите в аккаунт снова.");
-        return [];
-      }
-      log.error("Error fetching friend recommendations:", error);
-      return [];
-    }
-  };
+  // Browse-only: no fetching of new cards, just cycle through initialItems
+  const fetchNoMore = async (): Promise<CardItem[]> => [];
 
   const deck = useSwipeDeck({
     cardWidthFraction: 0.8,
-    fetchCards: fetchMoreFriendCards,
+    fetchCards: fetchNoMore,
     onAddToCart: (card, size, variantId) => {
       const cartItem: CartItem = {
         ...card,
@@ -183,15 +160,15 @@ const FriendRecommendationsScreen = ({
           <View style={styles.friendUsernameShadowWrapper}>
             <View style={styles.friendUsernameWrapper}>
               <LinearGradient
-                colors={theme.gradients.FRSUsername as any}
-                locations={[0, 0.4, 1]}
-                start={{ x: 0.25, y: 0 }}
-                end={{ x: 0.6, y: 1.5 }}
+                colors={theme.gradients.FLISUsername as any}
+                start={{ x: 0, y: 0.5 }}
+                end={{ x: 1, y: 0.5 }}
+                locations={[0, 1]}
                 style={styles.friendUsernameBorder}
               />
               <View style={styles.friendUsernameInnerWrapper}>
                 <View style={styles.friendUsernameContainer}>
-                  <Text style={styles.friendUsername}>{friendUsername}</Text>
+                  <Text style={styles.friendUsername}>сохранёнки</Text>
                 </View>
               </View>
             </View>
@@ -465,4 +442,4 @@ const createScreenStyles = (theme: ThemeColors, safeTop: number) =>
     },
   });
 
-export default FriendRecommendationsScreen;
+export default FriendLikedItemsScreen;

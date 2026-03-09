@@ -66,7 +66,11 @@ export const SkeletonCartItem = () => {
 };
 
 /** Full-card skeleton for swipe deck loading state */
-export const SkeletonSwipeCard = () => {
+export const SkeletonSwipeCard = ({
+  borderRadius = 41,
+}: {
+  borderRadius?: number;
+}) => {
   const { theme } = useTheme();
   const pulseStyle = usePulse();
 
@@ -75,7 +79,7 @@ export const SkeletonSwipeCard = () => {
       style={[
         {
           flex: 1,
-          borderRadius: 41,
+          borderRadius,
           backgroundColor: theme.button.disabled,
         },
         pulseStyle,

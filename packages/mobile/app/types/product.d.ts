@@ -74,7 +74,9 @@ export interface FriendItem {
   email: string;
   status: 'friend' | 'request_sent' | 'request_received' | 'not_friend';
   requestId?: string;
-  avatar_url?: string | null; // Modified this
+  avatar_url?: string | null;
+  can_view_recommendations?: boolean;
+  can_view_likes?: boolean;
 }
 
 export interface FriendRequestItem { // Added this

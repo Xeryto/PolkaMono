@@ -532,7 +532,8 @@ const Cart = ({ navigation }: CartProps) => {
       }
 
       // TEST MODE: Create order in database (no payment platform)
-      await api.createOrderTest(totalAmount, receiptItems);
+      // Use retries: 0 — retrying a mutating POST risks duplicate orders.
+      await api.createOrderTest(totalAmount, receiptItems, { retries: 0 });
 
       // Clear cart immediately after successful order (in-memory + persistent storage)
       if (global.cartStorage) {
@@ -549,11 +550,33 @@ const Cart = ({ navigation }: CartProps) => {
       // const { confirmation_url } = await api.createPayment(paymentDetails);
       // await WebBrowser.openBrowserAsync(confirmation_url);
     } catch (error) {
-      setPaymentError(
-        error instanceof Error
-          ? error.message
-          : "произошла неизвестная ошибка.",
-      );
+      // Network errors after a POST likely mean the order was created but the
+      // response didn't arrive. Optimistically clear the cart and show
+      // confirmation so the user doesn't retry and create a duplicate.
+      const isNetwork =
+        error instanceof Error &&
+        (error.name === "NetworkRetryError" ||
+          error.name === "NetworkTimeoutError" ||
+          error.name === "AbortError" ||
+          (error as any)?.status === 0);
+
+      if (isNetwork) {
+        // Clear cart — the order almost certainly went through
+        if (global.cartStorage) {
+          cartItems.forEach(
+            (item) =>
+              item.cartItemId && global.cartStorage.removeItem(item.cartItemId),
+          );
+          setCartItems([]);
+        }
+        setShowConfirmation(true);
+      } else {
+        setPaymentError(
+          error instanceof Error
+            ? error.message
+            : "произошла неизвестная ошибка.",
+        );
+      }
     } finally {
       setIsSubmitting(false);
     }
