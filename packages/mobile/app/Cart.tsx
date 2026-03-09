@@ -17,7 +17,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import Animated, {
   FadeIn,
   FadeInDown,
-  FadeOutDown,
+  ReduceMotion,
 } from "react-native-reanimated";
 import * as WebBrowser from "expo-web-browser";
 import Cancel from "./components/svg/Cancel";
@@ -596,7 +596,7 @@ const Cart = ({ navigation }: CartProps) => {
 
   const LoadingScreen = () => (
     <Animated.View
-      entering={FadeIn.duration(ANIMATION_DURATIONS.STANDARD)}
+      entering={FadeIn.duration(ANIMATION_DURATIONS.STANDARD).reduceMotion(ReduceMotion.System)}
       style={styles.loadingContainer}
     >
       <Text style={styles.loadingText}>перенаправление на оплату...</Text>
@@ -604,7 +604,7 @@ const Cart = ({ navigation }: CartProps) => {
   );
   const ConfirmationScreen = () => (
     <Animated.View
-      entering={FadeIn.duration(ANIMATION_DURATIONS.STANDARD)}
+      entering={FadeIn.duration(ANIMATION_DURATIONS.STANDARD).reduceMotion(ReduceMotion.System)}
       style={styles.confirmationContainer}
     >
       <Text style={styles.confirmationTitle}>заказ оформлен!</Text>
@@ -621,13 +621,9 @@ const Cart = ({ navigation }: CartProps) => {
   return (
     <Animated.View
       style={styles.container}
-      entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
-        ANIMATION_DELAYS.LARGE,
-      )}
-      exiting={FadeOutDown.duration(ANIMATION_DURATIONS.MICRO)}
     >
       <Animated.View
-        entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM)}
+        entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).reduceMotion(ReduceMotion.System)}
         style={styles.roundedBox}
       >
         <LinearGradient
@@ -648,7 +644,7 @@ const Cart = ({ navigation }: CartProps) => {
             <Animated.View
               entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
                 ANIMATION_DELAYS.STANDARD,
-              )}
+              ).reduceMotion(ReduceMotion.System)}
               style={styles.emptyCartContainer}
             >
               <Text style={styles.emptyCartText}>ваша корзина пуста</Text>
@@ -686,7 +682,7 @@ const Cart = ({ navigation }: CartProps) => {
                     ).delay(
                       ANIMATION_DELAYS.STANDARD +
                         index * ANIMATION_DELAYS.SMALL,
-                    )}
+                    ).reduceMotion(ReduceMotion.System)}
                     style={styles.cartItem}
                   >
                     <Pressable
@@ -775,7 +771,7 @@ const Cart = ({ navigation }: CartProps) => {
                   style={styles.summaryContainer}
                   entering={FadeInDown.duration(
                     ANIMATION_DURATIONS.MEDIUM,
-                  ).delay(ANIMATION_DELAYS.LARGE)}
+                  ).delay(ANIMATION_DELAYS.LARGE).reduceMotion(ReduceMotion.System)}
                 >
                   <View style={styles.horizontalLine} />
                   <View style={styles.totalContainer}>
@@ -829,7 +825,7 @@ const Cart = ({ navigation }: CartProps) => {
                 <Animated.View style={styles.checkoutContainer}>
                   {paymentError && (
                     <Animated.View
-                      entering={FadeIn.duration(ANIMATION_DURATIONS.STANDARD)}
+                      entering={FadeIn.duration(ANIMATION_DURATIONS.STANDARD).reduceMotion(ReduceMotion.System)}
                       style={styles.errorContainer}
                     >
                       <Text style={styles.errorText}>{paymentError}</Text>
@@ -848,7 +844,7 @@ const Cart = ({ navigation }: CartProps) => {
                   <Animated.View
                     entering={FadeInDown.duration(
                       ANIMATION_DURATIONS.MEDIUM,
-                    ).delay(ANIMATION_DELAYS.EXTENDED)}
+                    ).delay(ANIMATION_DELAYS.EXTENDED).reduceMotion(ReduceMotion.System)}
                     style={{ width: "100%" }}
                   >
                     <TouchableOpacity

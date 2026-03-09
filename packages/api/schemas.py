@@ -4,7 +4,10 @@ from typing import Any, List, Optional
 
 from config import settings  # Import settings
 from models import Gender  # Import enums
+from profanity import contains_profanity
 from pydantic import BaseModel, EmailStr, Field, field_validator, model_validator, validator
+
+_USERNAME_REGEX = re.compile(r"^[a-zA-Z0-9а-яА-ЯёЁ#$_!\-]+$")
 
 
 COMMON_PASSWORDS = frozenset({
@@ -402,6 +405,22 @@ class UserProfileUpdateRequest(BaseModel):
     username: Optional[str] = Field(None, max_length=50)
     email: Optional[EmailStr] = None
 
+    @validator("username")
+    def validate_username(cls, v):
+        if v is None:
+            return v
+        if len(v) < settings.MIN_USERNAME_LENGTH:
+            raise ValueError(
+                f"Username must be at least {settings.MIN_USERNAME_LENGTH} characters"
+            )
+        if " " in v:
+            raise ValueError("Username cannot contain spaces")
+        if not _USERNAME_REGEX.match(v):
+            raise ValueError("Username contains invalid characters")
+        if contains_profanity(v):
+            raise ValueError("Username contains inappropriate language")
+        return v
+
 
 # Profile data schemas
 class ProfileUpdateRequest(BaseModel):
@@ -671,15 +690,10 @@ class UserCreate(BaseModel):
             )
         if " " in v:
             raise ValueError("Username cannot contain spaces")
-        if (
-            not v.replace("_", "")
-            .replace("-", "")
-            .replace("#", "")
-            .replace("$", "")
-            .replace("!", "")
-            .isalnum()
-        ):
+        if not _USERNAME_REGEX.match(v):
             raise ValueError("Username contains invalid characters")
+        if contains_profanity(v):
+            raise ValueError("Username contains inappropriate language")
         return v
 
     @validator("password")

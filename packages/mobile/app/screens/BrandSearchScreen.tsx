@@ -21,6 +21,7 @@ import Animated, {
   FadeIn,
   FadeInDown,
   FadeOutDown,
+  ReduceMotion,
   useAnimatedStyle,
   useSharedValue,
   withTiming,
@@ -246,7 +247,7 @@ const BrandSearchScreen: React.FC<BrandSearchScreenProps> = ({
       <SafeAreaView style={styles.safeArea}>
         <Animated.View
           style={styles.roundedBox}
-          entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM)}
+          entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).reduceMotion(ReduceMotion.System)}
         >
           <LinearGradient
             colors={[theme.surface.gradientOverlay, "transparent"]}
@@ -273,7 +274,7 @@ const BrandSearchScreen: React.FC<BrandSearchScreenProps> = ({
                 <Animated.View
                   entering={FadeInDown.duration(
                     ANIMATION_DURATIONS.MEDIUM,
-                  ).delay(ANIMATION_DELAYS.SMALL)}
+                  ).delay(ANIMATION_DELAYS.SMALL).reduceMotion(ReduceMotion.System)}
                   style={[
                     styles.searchContainer,
                     isSearchActive && styles.searchContainerActive,
@@ -293,10 +294,10 @@ const BrandSearchScreen: React.FC<BrandSearchScreenProps> = ({
                       <Animated.View
                         entering={FadeInDown.duration(
                           ANIMATION_DURATIONS.STANDARD,
-                        )}
+                        ).reduceMotion(ReduceMotion.System)}
                         exiting={FadeOutDown.duration(
                           ANIMATION_DURATIONS.MEDIUM,
-                        )}
+                        ).reduceMotion(ReduceMotion.System)}
                         style={styles.cancelButtonContainer}
                       >
                         <TouchableOpacity
@@ -346,7 +347,7 @@ const BrandSearchScreen: React.FC<BrandSearchScreenProps> = ({
                 {/* Selected brands bubbles */}
 
                 <Animated.View
-                  entering={FadeInDown.duration(ANIMATION_DURATIONS.STANDARD)}
+                  entering={FadeInDown.duration(ANIMATION_DURATIONS.STANDARD).reduceMotion(ReduceMotion.System)}
                   style={[
                     styles.selectedBubblesContainer,
                     bubblesAnimatedStyle,
@@ -371,7 +372,7 @@ const BrandSearchScreen: React.FC<BrandSearchScreenProps> = ({
               <Animated.View
                 entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
                   ANIMATION_DELAYS.STANDARD,
-                )}
+                ).reduceMotion(ReduceMotion.System)}
                 style={styles.buttonContainer}
               >
                 <TouchableOpacity

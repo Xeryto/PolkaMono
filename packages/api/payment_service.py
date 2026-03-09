@@ -530,7 +530,7 @@ def expire_pending_orders(db: Session) -> int:
         db.query(Order)
         .filter(
             Order.status == OrderStatus.CREATED,
-            Order.expires_at is not None,
+            Order.expires_at.isnot(None),
             Order.expires_at < now,
         )
         .all()

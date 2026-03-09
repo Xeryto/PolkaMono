@@ -10,6 +10,7 @@ import {
 import Logo from "./components/svg/Logo";
 import { useTheme } from "./lib/ThemeContext";
 import type { ThemeColors } from "./lib/theme";
+import { ANIMATION_DURATIONS } from "./lib/animations";
 
 interface LoadingScreenProps {
   onFinish: () => void;
@@ -38,49 +39,43 @@ const AuthLoadingScreen: React.FC<LoadingScreenProps> = ({ onFinish }) => {
   };
 
   useEffect(() => {
-    // Wait for 500ms with the logo showing
-    const initialDelay = Animated.delay(500);
+    const initialDelay = Animated.delay(ANIMATION_DURATIONS.SHORT);
 
-    // First jump up - use a specific easing function to prevent bounce
     const jumpUp = Animated.timing(positionY, {
-      toValue: height * 0.05, // Jump up by 15% of screen height
-      duration: 200,
+      toValue: height * 0.05,
+      duration: ANIMATION_DURATIONS.SHORT,
       useNativeDriver: true,
-      easing: Easing.out(Easing.cubic), // Smoother deceleration
+      easing: Easing.out(Easing.cubic),
     });
 
-    // Calculate the position to move the logo all the way to the navbar
     const navbarPosition = -height * 0.4;
 
-    // Keep the background visible but fade the logo
     const fadeOutLogo = Animated.timing(fadeAnim, {
       toValue: 0,
-      duration: 500,
+      duration: ANIMATION_DURATIONS.MEDIUM,
       useNativeDriver: true,
-      easing: Easing.linear, // Linear fade for consistency
+      easing: Easing.linear,
     });
 
-    // Important: Fade out the background completely for a smooth transition
-    // Fade out background slightly slower to ensure smooth transition
     const fadeOutBg = Animated.timing(bgFadeAnim, {
-      toValue: 0, // Completely fade out
-      duration: 600, // Slightly longer duration to ensure WelcomeScreen is visible
+      toValue: 0,
+      duration: ANIMATION_DURATIONS.EXTENDED,
       useNativeDriver: true,
       easing: Easing.linear,
     });
 
     const shrink = Animated.timing(scaleAnim, {
       toValue: LOGO_SIZE_SMALL / LOGO_SIZE_LARGE,
-      duration: 500,
+      duration: ANIMATION_DURATIONS.MEDIUM,
       useNativeDriver: true,
-      easing: Easing.linear, // Linear scaling for consistency
+      easing: Easing.linear,
     });
 
     const moveUp = Animated.timing(positionY, {
       toValue: navbarPosition,
-      duration: 500,
+      duration: ANIMATION_DURATIONS.MEDIUM,
       useNativeDriver: true,
-      easing: Easing.in(Easing.cubic), // Smooth acceleration, no bounce
+      easing: Easing.in(Easing.cubic),
     });
 
     // Run the animations in sequence with careful timing

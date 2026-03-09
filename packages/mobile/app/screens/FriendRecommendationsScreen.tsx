@@ -24,7 +24,7 @@ try {
 import { LinearGradient } from "expo-linear-gradient";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
-import Animated, { FadeInDown } from "react-native-reanimated";
+import Animated, { FadeInDown, ReduceMotion } from "react-native-reanimated";
 import { ANIMATION_DURATIONS, ANIMATION_DELAYS } from "../lib/animations";
 import { useTheme } from "../lib/ThemeContext";
 import type { ThemeColors } from "../lib/theme";
@@ -49,6 +49,7 @@ import { useSwipeDeck } from "../hooks/useSwipeDeck";
 interface SimpleNavigation {
   navigate: (screen: string, params?: any) => void;
   goBack: () => void;
+  goBackPreserving?: () => void;
   addListener?: (event: string, callback: () => void) => () => void;
   setParams?: (params: any) => void;
 }
@@ -60,6 +61,7 @@ interface FriendRecommendationsScreenProps {
       friendId: string;
       friendUsername: string;
       friendAvatarUrl?: string | null;
+      friendSelectedSize?: string | null;
       initialItems: CardItem[];
       clickedItemIndex: number;
     };
@@ -84,8 +86,11 @@ const FriendRecommendationsScreen = ({
   const friendId = route?.params?.friendId || "";
   const friendUsername = route?.params?.friendUsername || "";
   const friendAvatarUrl = route?.params?.friendAvatarUrl ?? undefined;
+  const friendSelectedSize = route?.params?.friendSelectedSize ?? null;
   const initialItems = route?.params?.initialItems || [];
   const clickedItemIndex = route?.params?.clickedItemIndex || 0;
+
+  log.info("[FRS] friendSelectedSize param:", friendSelectedSize, "raw:", route?.params?.friendSelectedSize);
 
   const fetchMoreFriendCards = async (
     count: number = 2,
@@ -146,7 +151,7 @@ const FriendRecommendationsScreen = ({
       style={styles.container}
       entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
         ANIMATION_DELAYS.LARGE,
-      )}
+      ).reduceMotion(ReduceMotion.System)}
       onStartShouldSetResponder={() => deck.showSizeSelection}
       onResponderRelease={() => {
         if (deck.showSizeSelection) deck.handleCancelSizeSelection();
@@ -170,11 +175,7 @@ const FriendRecommendationsScreen = ({
           <View style={styles.backButtonContainer}>
             <TouchableOpacity
               style={styles.backButton}
-              onPress={() =>
-                navigation.navigate("Favorites", {
-                  returnToFriendId: friendId,
-                })
-              }
+              onPress={() => navigation.goBackPreserving?.()}
               activeOpacity={0.7}
             >
               <BackIcon width={22} height={22} />
@@ -259,6 +260,7 @@ const FriendRecommendationsScreen = ({
                 onCancelSizeSelection={deck.handleCancelSizeSelection}
                 onSizeSelect={deck.handleSizeSelect}
                 userSelectedSize={deck.userSelectedSize}
+                friendSelectedSize={friendSelectedSize}
                 colorSelectorOpen={deck.colorSelectorOpen}
                 colorDropdownAnimatedStyle={deck.colorDropdownAnimatedStyle}
                 onColorSelect={deck.handleColorSelect}

@@ -299,7 +299,7 @@ const handleApiResponse = async (response: Response) => {
 const apiRequest = async (
   endpoint: string,
   method: 'GET' | 'POST' | 'PUT' | 'DELETE' = 'GET',
-  body?: Record<string, unknown>,
+  body?: Record<string, unknown> | object,
   requireAuth: boolean = true,
   token: string | null = null, // Add token parameter
   requestOptions: RequestOptions = {}

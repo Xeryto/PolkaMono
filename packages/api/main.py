@@ -9,6 +9,7 @@ from typing import List, Literal, Optional
 
 import notification_service
 import payment_service
+import profanity
 import recommendation_service
 import schemas
 from apscheduler.schedulers.background import BackgroundScheduler
@@ -442,6 +443,7 @@ class FriendResponse(BaseModel):
     avatar_url: Optional[str] = None
     can_view_recommendations: bool = True
     can_view_likes: bool = True
+    selected_size: Optional[str] = None
 
 
 class UserSearchResponse(BaseModel):
@@ -961,6 +963,8 @@ async def check_username_availability(
     request: Request, username: str, db: Session = Depends(get_db)
 ):
     """Check if username is available"""
+    if profanity.contains_profanity(username):
+        return {"available": False, "reason": "inappropriate"}
     existing_user = auth_service.get_user_by_username(db, username)
     return {"available": existing_user is None}
 
@@ -3081,6 +3085,11 @@ async def update_user_profile(
     """Update user core information (username/email only)"""
     # Update user fields only
     if profile_data.username is not None:
+        existing = auth_service.get_user_by_username(db, profile_data.username)
+        if existing and existing.id != current_user.id:
+            raise HTTPException(
+                status_code=400, detail="Username already taken"
+            )
         current_user.username = profile_data.username
     if profile_data.email is not None:
         if (
@@ -4103,6 +4112,16 @@ async def get_friends_list(
             avatar_url = friend_user.profile.avatar_url if friend_user.profile else None
             can_view_recs = check_privacy_access(db, current_user, friend_user, "recommendations_privacy")
             can_view_likes = check_privacy_access(db, current_user, friend_user, "likes_privacy")
+            can_view_size = check_privacy_access(db, current_user, friend_user, "size_privacy")
+            raw_size = friend_user.profile.selected_size if friend_user.profile else None
+            size_privacy_val = getattr(friend_user.preferences, "size_privacy", "friends") if friend_user.preferences else "friends"
+            selected_size = None
+            if can_view_size and friend_user.profile:
+                selected_size = friend_user.profile.selected_size
+            logger.info(
+                "friend_size_debug: friend=%s size_privacy=%s can_view=%s raw_size=%s returned_size=%s",
+                friend_user.username, size_privacy_val, can_view_size, raw_size, selected_size,
+            )
             friends.append(
                 {
                     "id": friend_user.id,
@@ -4110,6 +4129,7 @@ async def get_friends_list(
                     "avatar_url": avatar_url,
                     "can_view_recommendations": can_view_recs,
                     "can_view_likes": can_view_likes,
+                    "selected_size": selected_size,
                 }
             )
 

@@ -10,6 +10,7 @@ import Animated, {
 import * as Haptics from "expo-haptics";
 import Heart2 from "../svg/Heart2";
 import HeartFilled from "../svg/HeartFilled";
+import { SPRING_CONFIGS } from "../../lib/animations";
 
 interface HeartButtonProps {
   isLiked: boolean;
@@ -18,8 +19,6 @@ interface HeartButtonProps {
   heartPressActiveRef: React.MutableRefObject<boolean>;
   heartRecentlyReleasedRef: React.MutableRefObject<boolean>;
 }
-
-const SPRING_CONFIG = { mass: 0.2, damping: 12, stiffness: 600 };
 const MOVE_THRESHOLD = 10;
 
 const HeartButton: React.FC<HeartButtonProps> = ({
@@ -41,14 +40,14 @@ const HeartButton: React.FC<HeartButtonProps> = ({
   const handlePressIn = (e: GestureResponderEvent) => {
     pressOrigin.current = { x: e.nativeEvent.pageX, y: e.nativeEvent.pageY };
     heartPressActiveRef.current = true;
-    pressScale.value = withSpring(0.85, { mass: 0.3, damping: 15, stiffness: 500 });
+    pressScale.value = withSpring(0.85, SPRING_CONFIGS.PRESS_SCALE);
   };
 
   const handlePressOut = (e: GestureResponderEvent) => {
     heartPressActiveRef.current = false;
     heartRecentlyReleasedRef.current = true;
     setTimeout(() => { heartRecentlyReleasedRef.current = false; }, 150);
-    pressScale.value = withSpring(1, { mass: 0.3, damping: 15, stiffness: 500 });
+    pressScale.value = withSpring(1, SPRING_CONFIGS.PRESS_SCALE);
 
     if (pressOrigin.current) {
       const dx = Math.abs(e.nativeEvent.pageX - pressOrigin.current.x);
@@ -70,8 +69,8 @@ const HeartButton: React.FC<HeartButtonProps> = ({
       isLiked ? Haptics.ImpactFeedbackStyle.Light : Haptics.ImpactFeedbackStyle.Medium,
     );
     heartScale.value = withSequence(
-      withSpring(1.3, SPRING_CONFIG),
-      withSpring(1, SPRING_CONFIG, () => {
+      withSpring(1.3, SPRING_CONFIGS.HEART_BOUNCE),
+      withSpring(1, SPRING_CONFIGS.HEART_BOUNCE, () => {
         "worklet";
         runOnJS(setIsAnimating)(false);
       }),

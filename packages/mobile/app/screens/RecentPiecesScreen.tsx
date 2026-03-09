@@ -19,7 +19,7 @@ import {
 import { Image } from "expo-image";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
-import Animated, { FadeInDown, FadeOutDown } from "react-native-reanimated";
+import Animated, { FadeInDown, FadeOutDown, ReduceMotion } from "react-native-reanimated";
 import BackIcon from "../components/svg/BackIcon";
 import Cart2 from "../components/svg/Cart2";
 import Heart2 from "../components/svg/Heart2";
@@ -70,7 +70,7 @@ const HeartButton: React.FC<HeartButtonProps> = ({ isLiked, onToggleLike }) => {
       toValue: 0.85,
       duration: ANIMATION_DURATIONS.MICRO,
       useNativeDriver: true,
-      easing: ANIMATION_EASING.QUICK,
+      easing: ANIMATION_EASING.SYMMETRIC,
     }).start();
   };
 
@@ -79,7 +79,7 @@ const HeartButton: React.FC<HeartButtonProps> = ({ isLiked, onToggleLike }) => {
       toValue: 1,
       duration: ANIMATION_DURATIONS.FAST,
       useNativeDriver: true,
-      easing: ANIMATION_EASING.QUICK,
+      easing: ANIMATION_EASING.SYMMETRIC,
     }).start();
     handlePress();
   };
@@ -306,7 +306,7 @@ const RecentPiecesScreen: React.FC<RecentPiecesScreenProps> = ({
       <Animated.View
         entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
           ANIMATION_DELAYS.MEDIUM + index * 50,
-        )}
+        ).reduceMotion(ReduceMotion.System)}
         style={styles.pieceWrapper}
       >
         <View style={styles.roundedBoxContainer}>
@@ -408,8 +408,8 @@ const RecentPiecesScreen: React.FC<RecentPiecesScreenProps> = ({
       style={styles.content}
       entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
         ANIMATION_DELAYS.LARGE,
-      )}
-      exiting={FadeOutDown.duration(ANIMATION_DURATIONS.MICRO)}
+      ).reduceMotion(ReduceMotion.System)}
+      exiting={FadeOutDown.duration(ANIMATION_DURATIONS.MICRO).reduceMotion(ReduceMotion.System)}
     >
       {/* Header with oval background */}
       <View style={styles.header}>

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo } from "react";
+import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import {
   View,
   Text,
@@ -23,7 +23,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import Animated, {
   FadeIn,
   FadeInDown,
-  FadeOutDown,
+  ReduceMotion,
   useAnimatedStyle,
   withTiming,
   useSharedValue,
@@ -46,7 +46,6 @@ import {
   ANIMATION_EASING,
   getStaggeredDelay,
   getFadeInDownAnimation,
-  getFadeOutDownAnimation,
 } from "./lib/animations";
 import AvatarEditScreen from "./screens/AvatarEditScreen";
 import AvatarImage from "./components/AvatarImage";
@@ -57,6 +56,7 @@ import { mapProductToCardItem } from "./lib/productMapper";
 import { formatPrice } from "./lib/swipeCardUtils";
 import { useTheme } from "./lib/ThemeContext";
 import type { ThemeColors } from "./lib/theme";
+import { useStaleFocusEffect } from "./lib/useStaleFocusEffect";
 import {
   SkeletonOrderList,
   SkeletonOrderDetailList,
@@ -230,16 +230,15 @@ const Wall = ({ navigation, onLogout, openOrderId, initialView: initialViewProp 
     loadSwipeCount();
   }, []);
 
-  // Refresh stats when component mounts or becomes visible
-  useEffect(() => {
-    if (userStats) {
-      const now = Date.now();
-      if (now - statsLastLoaded > 60 * 1000) {
-        loadUserStats(true);
-      }
-    }
-    loadSwipeCount();
-  }, []);
+  // Refresh profile/stats/swipe count when returning to Wall tab (stale after 60s)
+  useStaleFocusEffect(
+    useCallback(() => {
+      loadUserProfile();
+      loadUserStats(true);
+      loadSwipeCount();
+    }, []),
+    60_000,
+  );
 
   // Open specific order when navigated via push notification
   const pushOrderIdRef = useRef<string | null>(null);
@@ -718,7 +717,7 @@ const Wall = ({ navigation, onLogout, openOrderId, initialView: initialViewProp 
         style={styles.backButton}
         entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
           ANIMATION_DELAYS.LARGE,
-        )}
+        ).reduceMotion(ReduceMotion.System)}
       >
         <TouchableOpacity onPress={() => setShowBrandSearch(false)}>
           <BackIcon width={22} height={22} />
@@ -728,7 +727,7 @@ const Wall = ({ navigation, onLogout, openOrderId, initialView: initialViewProp 
       <Animated.View
         entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
           ANIMATION_DELAYS.EXTENDED,
-        )}
+        ).reduceMotion(ReduceMotion.System)}
         style={styles.selectedBubblesContainer}
       >
         <ScrollView
@@ -747,7 +746,7 @@ const Wall = ({ navigation, onLogout, openOrderId, initialView: initialViewProp 
       <Animated.View
         entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
           ANIMATION_DELAYS.VERY_LARGE,
-        )}
+        ).reduceMotion(ReduceMotion.System)}
         style={styles.searchResultsContainer}
       >
         <View style={styles.searchContainer}>
@@ -827,7 +826,7 @@ const Wall = ({ navigation, onLogout, openOrderId, initialView: initialViewProp 
         style={styles.backButton}
         entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
           ANIMATION_DELAYS.LARGE,
-        )}
+        ).reduceMotion(ReduceMotion.System)}
       >
         <TouchableOpacity onPress={() => setSelectedOrderId(null)}>
           <BackIcon width={22} height={22} />
@@ -837,7 +836,7 @@ const Wall = ({ navigation, onLogout, openOrderId, initialView: initialViewProp 
       <Animated.View
         entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
           ANIMATION_DELAYS.LARGE,
-        )}
+        ).reduceMotion(ReduceMotion.System)}
         style={styles.orderDetailsContainer}
       >
         {isLoadingOrderDetail || !orderDetail ? (
@@ -852,7 +851,7 @@ const Wall = ({ navigation, onLogout, openOrderId, initialView: initialViewProp 
                 <Animated.View
                   entering={FadeInDown.duration(
                     ANIMATION_DURATIONS.MEDIUM,
-                  ).delay(ANIMATION_DELAYS.STANDARD)}
+                  ).delay(ANIMATION_DELAYS.STANDARD).reduceMotion(ReduceMotion.System)}
                   style={{ paddingHorizontal: 20, marginBottom: 8 }}
                 >
                   <Text
@@ -877,7 +876,7 @@ const Wall = ({ navigation, onLogout, openOrderId, initialView: initialViewProp 
                     ).delay(
                       ANIMATION_DELAYS.STANDARD +
                         index * ANIMATION_DELAYS.SMALL,
-                    )}
+                    ).reduceMotion(ReduceMotion.System)}
                     style={styles.cartItem}
                   >
                     <Pressable
@@ -969,7 +968,7 @@ const Wall = ({ navigation, onLogout, openOrderId, initialView: initialViewProp 
             <Animated.View
               entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
                 ANIMATION_DELAYS.VERY_LARGE + ANIMATION_DELAYS.SMALL,
-              )}
+              ).reduceMotion(ReduceMotion.System)}
               style={styles.orderTotalContainer}
             >
               <Text style={styles.orderTotalText}>
@@ -985,7 +984,7 @@ const Wall = ({ navigation, onLogout, openOrderId, initialView: initialViewProp 
             <Animated.View
               entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
                 ANIMATION_DELAYS.VERY_LARGE + ANIMATION_DELAYS.STANDARD,
-              )}
+              ).reduceMotion(ReduceMotion.System)}
               style={styles.orderStatusContainer}
             >
               <Text style={[styles.orderStatusText, { marginLeft: 20 }]}>
@@ -1003,7 +1002,7 @@ const Wall = ({ navigation, onLogout, openOrderId, initialView: initialViewProp 
                     ANIMATION_DURATIONS.MEDIUM,
                   ).delay(
                     ANIMATION_DELAYS.VERY_LARGE + ANIMATION_DELAYS.EXTENDED,
-                  )}
+                  ).reduceMotion(ReduceMotion.System)}
                   style={styles.orderStatus}
                 >
                   <Text style={styles.orderStatusText}>
@@ -1029,7 +1028,7 @@ const Wall = ({ navigation, onLogout, openOrderId, initialView: initialViewProp 
           style={styles.backButton}
           entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
             ANIMATION_DELAYS.LARGE,
-          )}
+          ).reduceMotion(ReduceMotion.System)}
         >
           <TouchableOpacity onPress={() => setCurrentView("wall")}>
             <BackIcon width={22} height={22} />
@@ -1039,7 +1038,7 @@ const Wall = ({ navigation, onLogout, openOrderId, initialView: initialViewProp 
         <Animated.View
           entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
             ANIMATION_DELAYS.VERY_LARGE,
-          )}
+          ).reduceMotion(ReduceMotion.System)}
           style={styles.ordersContainer}
         >
           {isLoadingOrders ? (
@@ -1069,7 +1068,7 @@ const Wall = ({ navigation, onLogout, openOrderId, initialView: initialViewProp 
                   ).delay(
                     ANIMATION_DELAYS.VERY_LARGE +
                       index * ANIMATION_DELAYS.SMALL,
-                  )}
+                  ).reduceMotion(ReduceMotion.System)}
                   style={styles.orderItem}
                 >
                   <View style={styles.orderBubble}>
@@ -1137,7 +1136,7 @@ const Wall = ({ navigation, onLogout, openOrderId, initialView: initialViewProp 
     <Animated.View
       entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
         ANIMATION_DELAYS.VERY_LARGE + ANIMATION_DELAYS.EXTENDED,
-      )}
+      ).reduceMotion(ReduceMotion.System)}
       style={styles.settingsButtonContainer}
     >
       <Pressable
@@ -1158,7 +1157,7 @@ const Wall = ({ navigation, onLogout, openOrderId, initialView: initialViewProp 
         <Animated.View
           entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
             ANIMATION_DELAYS.EXTENDED,
-          )}
+          ).reduceMotion(ReduceMotion.System)}
           style={styles.favoriteBrandsSection}
         >
           <TouchableOpacity
@@ -1172,7 +1171,7 @@ const Wall = ({ navigation, onLogout, openOrderId, initialView: initialViewProp 
         <Animated.View
           entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
             ANIMATION_DELAYS.VERY_LARGE,
-          )}
+          ).reduceMotion(ReduceMotion.System)}
           style={styles.statsContainer}
         >
           {stats.map((stat, index) => {
@@ -1233,7 +1232,7 @@ const Wall = ({ navigation, onLogout, openOrderId, initialView: initialViewProp 
         <Animated.View
           entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
             ANIMATION_DELAYS.VERY_LARGE + ANIMATION_DELAYS.SMALL,
-          )}
+          ).reduceMotion(ReduceMotion.System)}
           style={styles.sizeSection}
         >
           <Text style={styles.sizeSectionTitle}>размер</Text>
@@ -1337,7 +1336,7 @@ const Wall = ({ navigation, onLogout, openOrderId, initialView: initialViewProp 
         <Animated.View
           entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
             ANIMATION_DELAYS.LARGE,
-          )}
+          ).reduceMotion(ReduceMotion.System)}
           style={styles.profileSection}
         >
           <Text style={styles.profileName}>
@@ -1371,7 +1370,7 @@ const Wall = ({ navigation, onLogout, openOrderId, initialView: initialViewProp 
           style={styles.logoutButton}
           entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
             ANIMATION_DELAYS.LARGE,
-          )}
+          ).reduceMotion(ReduceMotion.System)}
         >
           <TouchableOpacity
             onPress={() => {
@@ -1387,8 +1386,8 @@ const Wall = ({ navigation, onLogout, openOrderId, initialView: initialViewProp 
         <View style={styles.scrollableContainer}>
           {showScrollHint && (
             <Animated.View
-              entering={FadeIn.duration(ANIMATION_DURATIONS.MEDIUM)}
-              exiting={FadeOut.duration(ANIMATION_DURATIONS.STANDARD)}
+              entering={FadeIn.duration(ANIMATION_DURATIONS.MEDIUM).reduceMotion(ReduceMotion.System)}
+              exiting={FadeOut.duration(ANIMATION_DURATIONS.STANDARD).reduceMotion(ReduceMotion.System)}
               style={styles.scrollHintContainer}
             >
               <Text style={styles.scrollHintText}>листай</Text>
@@ -1430,10 +1429,6 @@ const Wall = ({ navigation, onLogout, openOrderId, initialView: initialViewProp 
   return (
     <Animated.View
       style={styles.container}
-      entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
-        ANIMATION_DELAYS.LARGE,
-      )}
-      exiting={FadeOutDown.duration(ANIMATION_DURATIONS.MICRO)}
     >
       <Animated.View style={styles.roundedBox}>
         <LinearGradient

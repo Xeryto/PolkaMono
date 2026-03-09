@@ -1221,6 +1221,7 @@ export interface Friend {
   avatar_url?: string | null;
   can_view_recommendations?: boolean;
   can_view_likes?: boolean;
+  selected_size?: string | null;
 }
 
 export interface SearchUser {

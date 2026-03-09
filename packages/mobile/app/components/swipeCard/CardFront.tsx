@@ -30,6 +30,7 @@ import Svg, { Path } from "react-native-svg";
 import HeartButton from "./HeartButton";
 import { CardItem } from "../../types/product";
 import { LOADING_CARD_ID } from "../../lib/swipeCardConstants";
+import { SPRING_CONFIGS } from "../../lib/animations";
 import type { ViewStyle } from "react-native";
 
 const RAINBOW_COLORS = ["#FF0000", "#FF7F00", "#FFFF00", "#00FF00", "#0000FF", "#4B0082", "#8B00FF"] as const;
@@ -73,6 +74,7 @@ interface CardFrontProps {
   onCancelSizeSelection: () => void;
   onSizeSelect: (size: string) => void;
   userSelectedSize: string | null;
+  friendSelectedSize?: string | null;
   // Color selector
   colorSelectorOpen: boolean;
   colorDropdownAnimatedStyle: any;
@@ -110,6 +112,7 @@ const CardFront: React.FC<CardFrontProps> = ({
   onCancelSizeSelection,
   onSizeSelect,
   userSelectedSize,
+  friendSelectedSize,
   colorSelectorOpen,
   colorDropdownAnimatedStyle,
   onColorSelect,
@@ -148,11 +151,11 @@ const CardFront: React.FC<CardFrontProps> = ({
       heartOverlayX.value = e.x;
       heartOverlayY.value = e.y;
       heartOverlayScale.value = withSequence(
-        withSpring(1.2, { damping: 8, stiffness: 200 }),
-        withSpring(1, { damping: 10, stiffness: 150 }),
+        withSpring(1.2, SPRING_CONFIGS.DOUBLE_TAP_IN),
+        withSpring(1, SPRING_CONFIGS.DOUBLE_TAP_OUT),
       );
       heartOverlayOpacity.value = 1;
-      heartOverlayOpacity.value = withDelay(400, withTiming(0, { duration: 300 }));
+      heartOverlayOpacity.value = withDelay(250, withTiming(0, { duration: 300 }));
       runOnJS(fireDoubleTapLike)();
     });
 
@@ -284,7 +287,8 @@ const CardFront: React.FC<CardFrontProps> = ({
             >
               {card?.variants?.map((variant) => {
                 const isAvailable = variant.stock_quantity > 0;
-                const isUserSize = variant.size === userSelectedSize;
+                const isUserSize = friendSelectedSize === undefined && variant.size === userSelectedSize;
+                const isFriendSize = !!friendSelectedSize && variant.size === friendSelectedSize;
                 const isOneSize = variant.size === "One Size";
                 return (
                   <Pressable
@@ -293,6 +297,7 @@ const CardFront: React.FC<CardFrontProps> = ({
                       isOneSize ? styles.sizeOval : styles.sizeCircle,
                       isAvailable ? styles.sizeCircleAvailable : styles.sizeCircleUnavailable,
                       isUserSize && isAvailable ? styles.sizeCircleUserSize : null,
+                      isFriendSize && isAvailable ? { overflow: 'hidden' as const } : null,
                     ]}
                     onPress={() => {
                       if (isAvailable) {
@@ -303,6 +308,14 @@ const CardFront: React.FC<CardFrontProps> = ({
                     }}
                     disabled={!isAvailable}
                   >
+                    {isFriendSize && isAvailable && (
+                      <LinearGradient
+                        colors={['rgba(255,16,251,0.30)', 'rgba(3,65,234,0.15)']}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 1 }}
+                        style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, borderRadius: isOneSize ? 20 : 20.5 }}
+                      />
+                    )}
                     <Text style={isOneSize ? styles.sizeOvalText : styles.sizeText}>
                       {variant.size}
                     </Text>

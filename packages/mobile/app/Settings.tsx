@@ -37,6 +37,7 @@ import Animated, {
   FadeOutDown,
   withSequence,
   FadeOut,
+  ReduceMotion,
   useSharedValue,
   useAnimatedStyle,
   withTiming,
@@ -1055,7 +1056,7 @@ const Settings = ({
     }
 
     // Immediate validation for illegal characters and spaces (like in signup)
-    const illegalCharRegex = /[^a-zA-Z0-9#$-_!]/;
+    const illegalCharRegex = /[^a-zA-Z0-9а-яА-ЯёЁ#$\-_!]/;
     if (username.includes(" ")) {
       setUsernameError("ник не должен содержать пробелов");
       setUsernameAvailable(null);
@@ -1121,7 +1122,7 @@ const Settings = ({
     if (!myInfo.gender) return false;
 
     // Validate username (same rules as signup)
-    const illegalCharRegex = /[^a-zA-Z0-9#$-_!]/;
+    const illegalCharRegex = /[^a-zA-Z0-9а-яА-ЯёЁ#$\-_!]/;
     if (!myInfo.username.trim()) return false;
     if (myInfo.username.trim().length < 3) return false;
     if (myInfo.username.includes(" ")) return false;
@@ -1179,7 +1180,7 @@ const Settings = ({
     }
 
     // Validate username (same as signup)
-    const illegalCharRegex = /[^a-zA-Z0-9#$-_!]/;
+    const illegalCharRegex = /[^a-zA-Z0-9а-яА-ЯёЁ#$\-_!]/;
     if (!myInfo.username.trim()) {
       setUsernameError("ник обязателен");
       return;
@@ -1670,7 +1671,7 @@ const Settings = ({
         style={styles.backButton}
         entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
           ANIMATION_DELAYS.LARGE,
-        )}
+        ).reduceMotion(ReduceMotion.System)}
       >
         <TouchableOpacity onPress={() => setShowBrandSearch(false)}>
           <BackIcon width={22} height={22} />
@@ -1681,7 +1682,7 @@ const Settings = ({
       <Animated.View
         entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
           ANIMATION_DELAYS.EXTENDED,
-        )}
+        ).reduceMotion(ReduceMotion.System)}
         style={styles.selectedBubblesContainer}
       >
         <ScrollView
@@ -1701,7 +1702,7 @@ const Settings = ({
       <Animated.View
         entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
           ANIMATION_DELAYS.VERY_LARGE,
-        )}
+        ).reduceMotion(ReduceMotion.System)}
         style={styles.searchResultsContainer}
       >
         <View style={styles.searchContainer}>
@@ -1742,7 +1743,7 @@ const Settings = ({
     <Animated.View
       entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
         ANIMATION_DELAYS.MEDIUM + delay,
-      )}
+      ).reduceMotion(ReduceMotion.System)}
       style={styles.mainButtonContainer}
     >
       <Pressable
@@ -1773,7 +1774,7 @@ const Settings = ({
 
     return (
       <Animated.View
-        entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM)}
+        entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).reduceMotion(ReduceMotion.System)}
         style={{
           width: "100%",
           alignItems: "center",
@@ -1786,7 +1787,7 @@ const Settings = ({
           style={styles.backButton}
           entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
             ANIMATION_DELAYS.LARGE,
-          )}
+          ).reduceMotion(ReduceMotion.System)}
         >
           <TouchableOpacity
             onPress={() => {
@@ -1805,7 +1806,7 @@ const Settings = ({
         {/* <Animated.View
           entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
             ANIMATION_DELAYS.STANDARD
-          )}
+          ).reduceMotion(ReduceMotion.System)}
         >
           <Text style={styles.profileName}>рейтинг стиля</Text>
         </Animated.View>
@@ -1813,7 +1814,7 @@ const Settings = ({
         <Animated.View
           entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
             ANIMATION_DELAYS.MEDIUM
-          )}
+          ).reduceMotion(ReduceMotion.System)}
           style={styles.ratingContainer}
         >
           <AnimatedCircularProgress
@@ -1837,8 +1838,8 @@ const Settings = ({
         <View style={styles.scrollableMenuContainer}>
           {showScrollHint && (
             <Animated.View
-              entering={FadeIn.duration(ANIMATION_DURATIONS.MEDIUM)}
-              exiting={FadeOut.duration(ANIMATION_DURATIONS.STANDARD)}
+              entering={FadeIn.duration(ANIMATION_DURATIONS.MEDIUM).reduceMotion(ReduceMotion.System)}
+              exiting={FadeOut.duration(ANIMATION_DURATIONS.STANDARD).reduceMotion(ReduceMotion.System)}
               style={styles.scrollHintContainer}
             >
               <Text style={styles.scrollHintText}>листай</Text>
@@ -1862,7 +1863,7 @@ const Settings = ({
             <Animated.View
               entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
                 ANIMATION_DELAYS.MEDIUM + 400,
-              )}
+              ).reduceMotion(ReduceMotion.System)}
               style={styles.mainButtonContainer}
             >
               <Pressable
@@ -1891,7 +1892,7 @@ const Settings = ({
             style={styles.backButton}
             entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
               ANIMATION_DELAYS.LARGE,
-            )}
+            ).reduceMotion(ReduceMotion.System)}
           >
             <TouchableOpacity onPress={() => setActiveSection(null)}>
               <BackIcon width={22} height={22} />
@@ -1902,7 +1903,7 @@ const Settings = ({
             <Animated.View
               entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
                 ANIMATION_DELAYS.VERY_LARGE,
-              )}
+              ).reduceMotion(ReduceMotion.System)}
               style={styles.shoppingFormContainer}
             >
               <Text style={styles.loadingText}>загрузка...</Text>
@@ -1911,7 +1912,7 @@ const Settings = ({
             <Animated.View
               entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
                 ANIMATION_DELAYS.VERY_LARGE,
-              )}
+              ).reduceMotion(ReduceMotion.System)}
               style={styles.shoppingFormContainer}
             >
               <Text style={styles.errorText}>{shoppingInfoError}</Text>
@@ -1926,7 +1927,7 @@ const Settings = ({
                 <Animated.View
                   entering={FadeInDown.duration(
                     ANIMATION_DURATIONS.MEDIUM,
-                  ).delay(ANIMATION_DELAYS.VERY_LARGE)}
+                  ).delay(ANIMATION_DELAYS.VERY_LARGE).reduceMotion(ReduceMotion.System)}
                   style={styles.myInfoInputContainer}
                 >
                   <TouchableOpacity
@@ -1972,7 +1973,7 @@ const Settings = ({
                           ANIMATION_DURATIONS.MEDIUM,
                         ).delay(
                           ANIMATION_DELAYS.VERY_LARGE + ANIMATION_DELAYS.SMALL,
-                        )}
+                        ).reduceMotion(ReduceMotion.System)}
                         style={[
                           styles.myInfoInputContainer,
                           { marginTop: -10, marginBottom: 10 },
@@ -1991,7 +1992,7 @@ const Settings = ({
                 <Animated.View
                   entering={FadeInDown.duration(
                     ANIMATION_DURATIONS.MEDIUM,
-                  ).delay(ANIMATION_DELAYS.VERY_LARGE + ANIMATION_DELAYS.SMALL)}
+                  ).delay(ANIMATION_DELAYS.VERY_LARGE + ANIMATION_DELAYS.SMALL).reduceMotion(ReduceMotion.System)}
                   style={styles.myInfoInputContainer}
                 >
                   <View style={styles.myInfoOvalInput}>
@@ -2080,7 +2081,7 @@ const Settings = ({
                     ANIMATION_DURATIONS.MEDIUM,
                   ).delay(
                     ANIMATION_DELAYS.VERY_LARGE + ANIMATION_DELAYS.STANDARD,
-                  )}
+                  ).reduceMotion(ReduceMotion.System)}
                   style={styles.myInfoInputContainer}
                 >
                   <View style={styles.myInfoOvalInput}>
@@ -2179,7 +2180,7 @@ const Settings = ({
           style={styles.backButton}
           entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
             ANIMATION_DELAYS.LARGE,
-          )}
+          ).reduceMotion(ReduceMotion.System)}
         >
           <TouchableOpacity
             onPress={() => {
@@ -2206,7 +2207,7 @@ const Settings = ({
                     <Animated.View
                       entering={FadeInDown.duration(
                         ANIMATION_DURATIONS.MEDIUM,
-                      ).delay(ANIMATION_DELAYS.VERY_LARGE)}
+                      ).delay(ANIMATION_DELAYS.VERY_LARGE).reduceMotion(ReduceMotion.System)}
                       style={styles.myInfoInputContainer}
                     >
                       <View style={styles.myInfoOvalInput}>
@@ -2269,7 +2270,7 @@ const Settings = ({
                         ANIMATION_DURATIONS.MEDIUM,
                       ).delay(
                         ANIMATION_DELAYS.VERY_LARGE + ANIMATION_DELAYS.SMALL,
-                      )}
+                      ).reduceMotion(ReduceMotion.System)}
                       style={styles.myInfoInputContainer}
                     >
                       <View style={styles.myInfoOvalInput}>
@@ -2332,7 +2333,7 @@ const Settings = ({
                         ANIMATION_DURATIONS.MEDIUM,
                       ).delay(
                         ANIMATION_DELAYS.VERY_LARGE + ANIMATION_DELAYS.STANDARD,
-                      )}
+                      ).reduceMotion(ReduceMotion.System)}
                       style={styles.myInfoInputContainer}
                     >
                       <View style={styles.myInfoOvalInput}>
@@ -2394,7 +2395,7 @@ const Settings = ({
                         ANIMATION_DURATIONS.MEDIUM,
                       ).delay(
                         ANIMATION_DELAYS.VERY_LARGE + ANIMATION_DELAYS.EXTENDED,
-                      )}
+                      ).reduceMotion(ReduceMotion.System)}
                       style={styles.myInfoInputContainer}
                     >
                       <View style={styles.myInfoOvalInput}>
@@ -2462,7 +2463,7 @@ const Settings = ({
                         ANIMATION_DURATIONS.MEDIUM,
                       ).delay(
                         ANIMATION_DELAYS.VERY_LARGE + ANIMATION_DELAYS.LARGE,
-                      )}
+                      ).reduceMotion(ReduceMotion.System)}
                       style={styles.myInfoInputContainer}
                     >
                       <View style={styles.myInfoOvalInput}>
@@ -2562,7 +2563,7 @@ const Settings = ({
           style={styles.backButtonAlt}
           entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
             ANIMATION_DELAYS.LARGE,
-          )}
+          ).reduceMotion(ReduceMotion.System)}
         >
           <TouchableOpacity onPress={() => setActiveSection(null)}>
             <BackIcon width={22} height={22} />
@@ -2570,8 +2571,8 @@ const Settings = ({
           <View style={styles.searchContainerAlt}>
             {showThankYou ? (
               <Animated.View
-                entering={FadeInDown.duration(ANIMATION_DURATIONS.STANDARD)}
-                exiting={FadeOutDown.duration(ANIMATION_DURATIONS.STANDARD)}
+                entering={FadeInDown.duration(ANIMATION_DURATIONS.STANDARD).reduceMotion(ReduceMotion.System)}
+                exiting={FadeOutDown.duration(ANIMATION_DURATIONS.STANDARD).reduceMotion(ReduceMotion.System)}
                 style={styles.thankYouContainer}
               >
                 <Text style={styles.thankYouText}>cпасибо!</Text>
@@ -2594,7 +2595,7 @@ const Settings = ({
         <Animated.View
           entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
             ANIMATION_DELAYS.EXTENDED,
-          )}
+          ).reduceMotion(ReduceMotion.System)}
           style={{ marginTop: 20 }}
         >
           <Text style={styles.sectionTitle}>
@@ -2609,7 +2610,7 @@ const Settings = ({
       <Animated.View
         entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
           ANIMATION_DELAYS.VERY_LARGE,
-        )}
+        ).reduceMotion(ReduceMotion.System)}
         style={styles.supportContainer}
       >
         <Text style={styles.supportText}>
@@ -2640,7 +2641,7 @@ const Settings = ({
           style={styles.backButton}
           entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
             ANIMATION_DELAYS.LARGE,
-          )}
+          ).reduceMotion(ReduceMotion.System)}
         >
           <TouchableOpacity onPress={() => setActiveSection(null)}>
             <BackIcon width={22} height={22} />
@@ -2651,7 +2652,7 @@ const Settings = ({
           <Animated.View
             entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
               ANIMATION_DELAYS.STANDARD,
-            )}
+            ).reduceMotion(ReduceMotion.System)}
             style={styles.privacySectionTitle}
           >
             <Text style={styles.privacySectionTitleText}>выбор темы</Text>
@@ -2664,7 +2665,7 @@ const Settings = ({
                 key={option.id}
                 entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
                   ANIMATION_DELAYS.STANDARD + (index + 1) * 50,
-                )}
+                ).reduceMotion(ReduceMotion.System)}
                 style={styles.notificationItemContainer}
               >
                 <Pressable
@@ -2716,7 +2717,7 @@ const Settings = ({
             <Animated.View
               entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
                 ANIMATION_DELAYS.VERY_LARGE,
-              )}
+              ).reduceMotion(ReduceMotion.System)}
               style={styles.myInfoInputContainer}
             >
               <View style={styles.myInfoOvalInputGender}>
@@ -2758,7 +2759,7 @@ const Settings = ({
             <Animated.View
               entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
                 ANIMATION_DELAYS.VERY_LARGE + ANIMATION_DELAYS.SMALL,
-              )}
+              ).reduceMotion(ReduceMotion.System)}
               style={styles.myInfoInputContainer}
             >
               <View style={styles.myInfoOvalInput}>
@@ -2813,7 +2814,7 @@ const Settings = ({
             <Animated.View
               entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
                 ANIMATION_DELAYS.VERY_LARGE + ANIMATION_DELAYS.STANDARD,
-              )}
+              ).reduceMotion(ReduceMotion.System)}
               style={styles.myInfoInputContainer}
             >
               <View style={styles.myInfoOvalInput}>
@@ -2865,7 +2866,7 @@ const Settings = ({
             <Animated.View
               entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
                 ANIMATION_DELAYS.VERY_LARGE + ANIMATION_DELAYS.EXTENDED,
-              )}
+              ).reduceMotion(ReduceMotion.System)}
               style={styles.myInfoInputContainer}
             >
               <View style={styles.usernameInputWrapper}>
@@ -2945,7 +2946,7 @@ const Settings = ({
             <Animated.View
               entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
                 ANIMATION_DELAYS.VERY_LARGE + ANIMATION_DELAYS.VERY_LARGE,
-              )}
+              ).reduceMotion(ReduceMotion.System)}
               style={styles.myInfoInputContainer}
             >
               <View style={[styles.myInfoOvalInput, styles.disabledOvalInput]}>
@@ -2994,7 +2995,7 @@ const Settings = ({
           style={styles.backButton}
           entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
             ANIMATION_DELAYS.LARGE,
-          )}
+          ).reduceMotion(ReduceMotion.System)}
         >
           <TouchableOpacity onPress={() => setActiveSection(null)}>
             <BackIcon width={22} height={22} />
@@ -3005,7 +3006,7 @@ const Settings = ({
           <Animated.View
             entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
               ANIMATION_DELAYS.VERY_LARGE,
-            )}
+            ).reduceMotion(ReduceMotion.System)}
             style={styles.shoppingFormContainer}
           >
             <Text style={styles.loadingText}>загрузка...</Text>
@@ -3014,7 +3015,7 @@ const Settings = ({
           <Animated.View
             entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
               ANIMATION_DELAYS.VERY_LARGE,
-            )}
+            ).reduceMotion(ReduceMotion.System)}
             style={styles.shoppingFormContainer}
           >
             <Text style={styles.errorText}>{myInfoError}</Text>
@@ -3124,7 +3125,7 @@ const Settings = ({
       <Animated.View
         entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
           item.delay,
-        )}
+        ).reduceMotion(ReduceMotion.System)}
         style={styles.myInfoInputContainer}
       >
         <View style={styles.myInfoOvalInputGender}>
@@ -3176,7 +3177,7 @@ const Settings = ({
           style={styles.backButton}
           entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
             ANIMATION_DELAYS.LARGE,
-          )}
+          ).reduceMotion(ReduceMotion.System)}
         >
           <TouchableOpacity onPress={() => setActiveSection(null)}>
             <BackIcon width={22} height={22} />
@@ -3186,7 +3187,7 @@ const Settings = ({
         <Animated.View
           entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
             ANIMATION_DELAYS.VERY_LARGE,
-          )}
+          ).reduceMotion(ReduceMotion.System)}
           style={styles.privacySectionTitle}
         >
           <Text style={styles.privacySectionTitleText}>кто видит:</Text>
@@ -3210,7 +3211,7 @@ const Settings = ({
         style={styles.backButton}
         entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
           ANIMATION_DELAYS.LARGE,
-        )}
+        ).reduceMotion(ReduceMotion.System)}
       >
         <TouchableOpacity onPress={() => setActiveSection(null)}>
           <BackIcon width={22} height={22} />
@@ -3221,7 +3222,7 @@ const Settings = ({
         <Animated.View
           entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
             ANIMATION_DELAYS.VERY_LARGE,
-          )}
+          ).reduceMotion(ReduceMotion.System)}
           style={styles.notificationItemContainer}
         >
           <View style={styles.notificationItem}>
@@ -3247,7 +3248,7 @@ const Settings = ({
         <Animated.View
           entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
             ANIMATION_DELAYS.VERY_LARGE + ANIMATION_DELAYS.SMALL,
-          )}
+          ).reduceMotion(ReduceMotion.System)}
           style={styles.notificationItemContainer}
         >
           <View style={styles.notificationItem}>
@@ -3279,7 +3280,7 @@ const Settings = ({
         style={styles.backButton}
         entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
           ANIMATION_DELAYS.LARGE,
-        )}
+        ).reduceMotion(ReduceMotion.System)}
       >
         <TouchableOpacity onPress={() => setActiveSection(null)}>
           <BackIcon width={22} height={22} />
@@ -3290,7 +3291,7 @@ const Settings = ({
         <Animated.View
           entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
             ANIMATION_DELAYS.EXTENDED,
-          )}
+          ).reduceMotion(ReduceMotion.System)}
           style={styles.deleteAccountQuestionContainer}
         >
           <View style={styles.deleteAccountQuestion}>
@@ -3304,7 +3305,7 @@ const Settings = ({
           <Animated.View
             entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
               ANIMATION_DELAYS.VERY_LARGE,
-            )}
+            ).reduceMotion(ReduceMotion.System)}
             style={styles.deleteAccountYesButtonContainer}
           >
             <Pressable
@@ -3345,7 +3346,7 @@ const Settings = ({
           <Animated.View
             entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
               ANIMATION_DELAYS.VERY_LARGE + ANIMATION_DELAYS.SMALL,
-            )}
+            ).reduceMotion(ReduceMotion.System)}
             style={styles.deleteAccountNoButtonContainer}
           >
             <Pressable
@@ -3363,7 +3364,7 @@ const Settings = ({
         <Animated.View
           entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
             ANIMATION_DELAYS.VERY_LARGE + ANIMATION_DELAYS.MEDIUM,
-          )}
+          ).reduceMotion(ReduceMotion.System)}
           style={styles.deleteAccountWarningContainer}
         >
           <Text style={styles.deleteAccountWarningText}>
@@ -3398,7 +3399,7 @@ const Settings = ({
               style={styles.backButton}
               entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
                 ANIMATION_DELAYS.LARGE,
-              )}
+              ).reduceMotion(ReduceMotion.System)}
             >
               <TouchableOpacity onPress={() => setActiveSection(null)}>
                 <BackIcon width={22} height={22} />
@@ -3417,7 +3418,7 @@ const Settings = ({
               style={styles.backButton}
               entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
                 ANIMATION_DELAYS.LARGE,
-              )}
+              ).reduceMotion(ReduceMotion.System)}
             >
               <TouchableOpacity onPress={() => setActiveSection(null)}>
                 <BackIcon width={22} height={22} />
@@ -3427,7 +3428,7 @@ const Settings = ({
               <Animated.View
                 entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
                   ANIMATION_DELAYS.VERY_LARGE + ANIMATION_DELAYS.SMALL,
-                )}
+                ).reduceMotion(ReduceMotion.System)}
                 style={styles.myInfoInputContainer}
               >
                 <TouchableOpacity
@@ -3443,7 +3444,7 @@ const Settings = ({
               <Animated.View
                 entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
                   ANIMATION_DELAYS.VERY_LARGE + ANIMATION_DELAYS.STANDARD,
-                )}
+                ).reduceMotion(ReduceMotion.System)}
                 style={styles.myInfoInputContainer}
               >
                 <TouchableOpacity
@@ -3498,7 +3499,7 @@ const Settings = ({
   return (
     <View style={styles.container}>
       <Animated.View
-        entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM)}
+        entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).reduceMotion(ReduceMotion.System)}
         style={styles.roundedBox}
       >
         <LinearGradient

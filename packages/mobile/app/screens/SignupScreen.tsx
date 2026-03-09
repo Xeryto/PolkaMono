@@ -172,7 +172,7 @@ const SignupScreen: React.FC<SignupScreenProps> = ({ onSignup, onBack }) => {
       general: "",
     };
 
-    const illegalCharRegex = /[^a-zA-Z0-9#$-_!]/; // Only allow letters, numbers, and #$-_!
+    const illegalCharRegex = /[^a-zA-Z0-9а-яА-ЯёЁ#$\-_!]/; // Only allow letters, numbers, Cyrillic, and #$-_!
     const passwordRegex = /^(?=.*[A-Za-z])(?=.*\d).+$/;
 
     // Validate username

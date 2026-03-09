@@ -3,6 +3,7 @@ import { View, StyleSheet, ViewStyle, Platform } from "react-native";
 import Animated, {
   FadeInDown,
   FadeOutDown,
+  ReduceMotion,
 } from "react-native-reanimated";
 import {
   ANIMATION_DURATIONS,
@@ -58,8 +59,8 @@ const RoundedBox: React.FC<RoundedBoxProps> = ({
 
   const defaultEntering = entering || FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
     ANIMATION_DELAYS.LARGE
-  );
-  const defaultExiting = exiting || FadeOutDown.duration(ANIMATION_DURATIONS.MICRO);
+  ).reduceMotion(ReduceMotion.System);
+  const defaultExiting = exiting || FadeOutDown.duration(ANIMATION_DURATIONS.FAST).reduceMotion(ReduceMotion.System);
 
   return (
     <Animated.View

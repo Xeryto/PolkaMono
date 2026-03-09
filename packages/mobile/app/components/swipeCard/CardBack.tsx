@@ -16,7 +16,9 @@ import Animated, {
   withTiming,
   FadeInDown,
   FadeOutDown,
+  ReduceMotion,
 } from "react-native-reanimated";
+import { ANIMATION_DURATIONS } from "../../lib/animations";
 import * as Clipboard from "expo-clipboard";
 import * as Haptics from "expo-haptics";
 import Cancel from "../svg/Cancel";
@@ -56,9 +58,9 @@ const ZoomableImage: React.FC<{ imageUri: string; onClose: () => void }> = ({
       scale.value = savedScale.value * e.scale;
     })
     .onEnd(() => {
-      scale.value = withTiming(1, { duration: 200 });
-      translateX.value = withTiming(0, { duration: 200 });
-      translateY.value = withTiming(0, { duration: 200 });
+      scale.value = withTiming(1, { duration: ANIMATION_DURATIONS.SHORT });
+      translateX.value = withTiming(0, { duration: ANIMATION_DURATIONS.SHORT });
+      translateY.value = withTiming(0, { duration: ANIMATION_DURATIONS.SHORT });
       savedScale.value = 1;
       savedTX.value = 0;
       savedTY.value = 0;
@@ -183,8 +185,8 @@ const CardBack: React.FC<CardBackProps> = ({
     <View style={styles.cardBackContainer}>
       {showCopiedToast && (
         <Animated.View
-          entering={FadeInDown.duration(200)}
-          exiting={FadeOutDown.duration(200)}
+          entering={FadeInDown.duration(ANIMATION_DURATIONS.SHORT).reduceMotion(ReduceMotion.System)}
+          exiting={FadeOutDown.duration(ANIMATION_DURATIONS.SHORT).reduceMotion(ReduceMotion.System)}
           style={[styles.linkCopiedPopup, { top: -30 }]}
         >
           <Text style={styles.linkCopiedText}>ссылка скопирована</Text>

@@ -38,10 +38,12 @@ import { SkeletonSwipeCard } from "./components/SkeletonCard";
 import Animated, {
   FadeInDown,
   FadeOutDown,
+  ReduceMotion,
   useSharedValue,
   withTiming,
   useAnimatedStyle,
   interpolate,
+  runOnJS,
 } from "react-native-reanimated";
 import { ANIMATION_DURATIONS, ANIMATION_DELAYS } from "./lib/animations";
 import { useTheme } from "./lib/ThemeContext";
@@ -235,10 +237,10 @@ const MainPage = ({ navigation, route }: MainPageProps) => {
   // ─── Back-side button handlers ───────────────────────────────────────
   const makePressHandlers = (scale: { value: number }) => ({
     onPressIn: () => {
-      scale.value = withTiming(0.85, { duration: 80 });
+      scale.value = withTiming(0.85, { duration: ANIMATION_DURATIONS.MICRO });
     },
     onPressOut: () => {
-      scale.value = withTiming(1, { duration: 150 });
+      scale.value = withTiming(1, { duration: ANIMATION_DURATIONS.FAST });
     },
   });
 
@@ -258,13 +260,12 @@ const MainPage = ({ navigation, route }: MainPageProps) => {
 
   const handleBackCartPress = () => {
     if (showBackSizeSelection) {
-      backSizePanelProgress.value = withTiming(0, { duration: 180 });
-      requestAnimationFrame(() =>
-        setTimeout(() => setShowBackSizeSelection(false), 180),
-      );
+      backSizePanelProgress.value = withTiming(0, { duration: ANIMATION_DURATIONS.FAST }, (finished) => {
+        if (finished) runOnJS(setShowBackSizeSelection)(false);
+      });
     } else {
       setShowBackSizeSelection(true);
-      backSizePanelProgress.value = withTiming(1, { duration: 220 });
+      backSizePanelProgress.value = withTiming(1, { duration: ANIMATION_DURATIONS.SHORT });
     }
   };
 
@@ -332,8 +333,8 @@ const MainPage = ({ navigation, route }: MainPageProps) => {
       <View style={cardStyles.backBottomStrip}>
         {showLinkCopiedPopup && (
           <Animated.View
-            entering={FadeInDown.duration(200)}
-            exiting={FadeOutDown.duration(200)}
+            entering={FadeInDown.duration(200).reduceMotion(ReduceMotion.System)}
+            exiting={FadeOutDown.duration(200).reduceMotion(ReduceMotion.System)}
             style={cardStyles.linkCopiedPopup}
           >
             <Text style={cardStyles.linkCopiedText}>ссылка скопирована</Text>
@@ -462,10 +463,6 @@ const MainPage = ({ navigation, route }: MainPageProps) => {
   return (
     <Animated.View
       style={[styles.container, { paddingTop: insets.top }]}
-      entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
-        ANIMATION_DELAYS.LARGE,
-      )}
-      exiting={FadeOutDown.duration(ANIMATION_DURATIONS.MICRO)}
       onStartShouldSetResponder={() =>
         deck.showSizeSelection || showBackSizeSelection
       }

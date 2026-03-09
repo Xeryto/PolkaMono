@@ -21,7 +21,7 @@ import {
   interpolate,
 } from "react-native-reanimated";
 import * as Haptics from "expo-haptics";
-import { ANIMATION_DURATIONS, ANIMATION_EASING } from "../lib/animations";
+import { ANIMATION_DURATIONS, ANIMATION_EASING, SPRING_CONFIGS } from "../lib/animations";
 import { CardItem } from "../types/product";
 import { getCardItemForColorIndex } from "../lib/productMapper";
 import { toggleLikeApi, createLoadingCard } from "../lib/swipeCardUtils";
@@ -184,15 +184,15 @@ export function useSwipeDeck(config: SwipeDeckConfig) {
   const animateTextChange = () => {
     RNAnimated.timing(fadeAnim, {
       toValue: 0,
-      duration: 150,
+      duration: ANIMATION_DURATIONS.FAST,
       useNativeDriver: true,
-      easing: Easing.out(Easing.ease),
+      easing: ANIMATION_EASING.STANDARD,
     }).start(() => {
       RNAnimated.timing(fadeAnim, {
         toValue: 1,
-        duration: 250,
+        duration: ANIMATION_DURATIONS.SHORT,
         useNativeDriver: true,
-        easing: Easing.in(Easing.ease),
+        easing: ANIMATION_EASING.ACCELERATE,
       }).start();
     });
   };
@@ -221,14 +221,14 @@ export function useSwipeDeck(config: SwipeDeckConfig) {
   // ─── Color dropdown animation ────────────────────────────────────────
   useEffect(() => {
     if (colorSelectorOpen && dropdownContentHeight > 0) {
-      colorDropdownHeight.value = withTiming(dropdownContentHeight, { duration: 220 });
+      colorDropdownHeight.value = withTiming(dropdownContentHeight, { duration: ANIMATION_DURATIONS.SHORT });
     }
   }, [colorSelectorOpen, dropdownContentHeight]);
 
   const closeColorSelector = useCallback(() => {
     colorDropdownHeight.value = withTiming(
       COLOR_CORNER_CLOSED_HEIGHT,
-      { duration: 180 },
+      { duration: ANIMATION_DURATIONS.FAST },
       (finished) => {
         if (finished) {
           runOnJS(setColorSelectorOpen)(false);
@@ -325,7 +325,7 @@ export function useSwipeDeck(config: SwipeDeckConfig) {
   const handleFlip = useCallback(() => {
     RNAnimated.timing(flipAnimation, {
       toValue: isFlipped ? 0 : 180,
-      duration: ANIMATION_DURATIONS.EXTENDED,
+      duration: ANIMATION_DURATIONS.CARD_FLIP,
       useNativeDriver: true,
       easing: ANIMATION_EASING.CUBIC,
     }).start();
@@ -390,15 +390,15 @@ export function useSwipeDeck(config: SwipeDeckConfig) {
     RNAnimated.sequence([
       RNAnimated.timing(fadeAnim, {
         toValue: 0,
-        duration: 150,
+        duration: ANIMATION_DURATIONS.FAST,
         useNativeDriver: true,
-        easing: Easing.out(Easing.ease),
+        easing: ANIMATION_EASING.STANDARD,
       }),
       RNAnimated.timing(fadeAnim, {
         toValue: 1,
-        duration: 250,
+        duration: ANIMATION_DURATIONS.SHORT,
         useNativeDriver: true,
-        easing: Easing.in(Easing.ease),
+        easing: ANIMATION_EASING.ACCELERATE,
       }),
     ]).start((finished) => {
       if (!finished.finished) {
@@ -437,8 +437,8 @@ export function useSwipeDeck(config: SwipeDeckConfig) {
       RNAnimated.sequence([
         RNAnimated.timing(pan, {
           toValue: { x: 0, y: -50 },
-          duration: 100,
-          easing: Easing.out(Easing.ease),
+          duration: ANIMATION_DURATIONS.FAST,
+          easing: ANIMATION_EASING.STANDARD,
           useNativeDriver: false,
         }),
         RNAnimated.spring(pan, {
@@ -466,8 +466,8 @@ export function useSwipeDeck(config: SwipeDeckConfig) {
         x: direction === "right" ? screenWidth : 0,
         y: -screenHeight,
       },
-      duration: 100,
-      easing: Easing.ease,
+      duration: ANIMATION_DURATIONS.SWIPE_EXIT,
+      easing: ANIMATION_EASING.STANDARD,
       useNativeDriver: false,
     }).start(() => {
       clearTimeout(animationSafetyTimeout);
@@ -533,15 +533,15 @@ export function useSwipeDeck(config: SwipeDeckConfig) {
     RNAnimated.sequence([
       RNAnimated.timing(refreshAnim, {
         toValue: 0.7,
-        duration: 200,
+        duration: ANIMATION_DURATIONS.SHORT,
         useNativeDriver: false,
-        easing: Easing.out(Easing.ease),
+        easing: ANIMATION_EASING.STANDARD,
       }),
       RNAnimated.timing(refreshAnim, {
         toValue: 1,
-        duration: 300,
+        duration: ANIMATION_DURATIONS.STANDARD,
         useNativeDriver: false,
-        easing: Easing.inOut(Easing.ease),
+        easing: ANIMATION_EASING.SYMMETRIC,
       }),
     ]).start();
 
@@ -570,12 +570,11 @@ export function useSwipeDeck(config: SwipeDeckConfig) {
     lastEmptyFetchTime.current = 0;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
 
-    // Dramatic fade-out
     RNAnimated.timing(refreshAnim, {
       toValue: 0,
-      duration: 250,
+      duration: ANIMATION_DURATIONS.SHORT,
       useNativeDriver: false,
-      easing: Easing.out(Easing.ease),
+      easing: ANIMATION_EASING.STANDARD,
     }).start();
 
     try {
@@ -584,19 +583,18 @@ export function useSwipeDeck(config: SwipeDeckConfig) {
       setCards(newCards);
       setCurrentCardIndex(0);
       resetVisualState();
-      // Fade back in, then clear refreshing state
       RNAnimated.timing(refreshAnim, {
         toValue: 1,
-        duration: 350,
+        duration: ANIMATION_DURATIONS.STANDARD,
         useNativeDriver: false,
-        easing: Easing.out(Easing.ease),
+        easing: ANIMATION_EASING.STANDARD,
       }).start(() => setIsRefreshing(false));
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     } catch (error) {
       log.error("Error hard refreshing cards:", error);
       RNAnimated.timing(refreshAnim, {
         toValue: 1,
-        duration: 200,
+        duration: ANIMATION_DURATIONS.SHORT,
         useNativeDriver: false,
       }).start(() => setIsRefreshing(false));
     }
@@ -606,37 +604,35 @@ export function useSwipeDeck(config: SwipeDeckConfig) {
   const handleCartPressIn = () => {
     RNAnimated.timing(cartButtonScale, {
       toValue: 0.85,
-      duration: 80,
+      duration: ANIMATION_DURATIONS.MICRO,
       useNativeDriver: true,
-      easing: Easing.inOut(Easing.ease),
+      easing: ANIMATION_EASING.SYMMETRIC,
     }).start();
   };
 
   const handleCartPressOut = () => {
     RNAnimated.timing(cartButtonScale, {
       toValue: 1,
-      duration: 150,
+      duration: ANIMATION_DURATIONS.FAST,
       useNativeDriver: true,
-      easing: Easing.inOut(Easing.ease),
+      easing: ANIMATION_EASING.SYMMETRIC,
     }).start();
   };
 
   const handleCartPress = () => {
     if (showSizeSelection) {
-      sizePanelProgress.value = withTiming(0, { duration: 180 });
-      requestAnimationFrame(() => {
-        setTimeout(() => setShowSizeSelection(false), 180);
+      sizePanelProgress.value = withTiming(0, { duration: ANIMATION_DURATIONS.FAST }, (finished) => {
+        if (finished) runOnJS(setShowSizeSelection)(false);
       });
     } else {
       setShowSizeSelection(true);
-      sizePanelProgress.value = withTiming(1, { duration: 220 });
+      sizePanelProgress.value = withTiming(1, { duration: ANIMATION_DURATIONS.SHORT });
     }
   };
 
   const handleCancelSizeSelection = () => {
-    sizePanelProgress.value = withTiming(0, { duration: 180 });
-    requestAnimationFrame(() => {
-      setTimeout(() => setShowSizeSelection(false), 180);
+    sizePanelProgress.value = withTiming(0, { duration: ANIMATION_DURATIONS.FAST }, (finished) => {
+      if (finished) runOnJS(setShowSizeSelection)(false);
     });
   };
 
@@ -689,7 +685,7 @@ export function useSwipeDeck(config: SwipeDeckConfig) {
       },
       onPanResponderRelease: (_, gestureState) => {
         if (isAnimatingRef.current || isRefreshingRef.current) {
-          RNAnimated.spring(pan, { toValue: { x: 0, y: 0 }, friction: 5, useNativeDriver: false }).start();
+          RNAnimated.spring(pan, { toValue: { x: 0, y: 0 }, ...SPRING_CONFIGS.SNAP_BACK, useNativeDriver: false }).start();
           return;
         }
         if (gestureState.dy < -SWIPE_THRESHOLD) {
@@ -699,11 +695,11 @@ export function useSwipeDeck(config: SwipeDeckConfig) {
             return curr;
           });
         } else {
-          RNAnimated.spring(pan, { toValue: { x: 0, y: 0 }, friction: 5, useNativeDriver: false }).start();
+          RNAnimated.spring(pan, { toValue: { x: 0, y: 0 }, ...SPRING_CONFIGS.SNAP_BACK, useNativeDriver: false }).start();
         }
       },
       onPanResponderTerminate: () => {
-        RNAnimated.spring(pan, { toValue: { x: 0, y: 0 }, friction: 5, useNativeDriver: false }).start();
+        RNAnimated.spring(pan, { toValue: { x: 0, y: 0 }, ...SPRING_CONFIGS.SNAP_BACK, useNativeDriver: false }).start();
       },
     }),
   ).current;
@@ -742,7 +738,7 @@ export function useSwipeDeck(config: SwipeDeckConfig) {
         }
         gestureStartedOnHeartRef.current = false;
         if (isAnimatingRef.current || isRefreshingRef.current) {
-          RNAnimated.spring(pan, { toValue: { x: 0, y: 0 }, friction: 5, useNativeDriver: false }).start();
+          RNAnimated.spring(pan, { toValue: { x: 0, y: 0 }, ...SPRING_CONFIGS.SNAP_BACK, useNativeDriver: false }).start();
           return;
         }
         if (gestureState.dy < -SWIPE_THRESHOLD) {
@@ -752,12 +748,12 @@ export function useSwipeDeck(config: SwipeDeckConfig) {
             return curr;
           });
         } else {
-          RNAnimated.spring(pan, { toValue: { x: 0, y: 0 }, friction: 5, useNativeDriver: false }).start();
+          RNAnimated.spring(pan, { toValue: { x: 0, y: 0 }, ...SPRING_CONFIGS.SNAP_BACK, useNativeDriver: false }).start();
         }
       },
       onPanResponderTerminate: () => {
         gestureStartedOnHeartRef.current = false;
-        RNAnimated.spring(pan, { toValue: { x: 0, y: 0 }, friction: 5, useNativeDriver: false }).start();
+        RNAnimated.spring(pan, { toValue: { x: 0, y: 0 }, ...SPRING_CONFIGS.SNAP_BACK, useNativeDriver: false }).start();
       },
     }),
   ).current;

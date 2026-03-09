@@ -6,7 +6,7 @@ import {
   StyleSheet,
   ViewStyle,
 } from "react-native";
-import Animated, { FadeInDown } from "react-native-reanimated";
+import Animated, { FadeInDown, ReduceMotion } from "react-native-reanimated";
 import { AntDesign } from "@expo/vector-icons";
 import { useTheme } from "../lib/ThemeContext";
 import type { ThemeColors } from "../lib/theme";
@@ -46,7 +46,7 @@ const ErrorBanner = ({ message, onRetry, style }: ErrorBannerProps) => {
 
   return (
     <Animated.View
-      entering={FadeInDown.duration(300)}
+      entering={FadeInDown.duration(300).reduceMotion(ReduceMotion.System)}
       style={[styles.container, style]}
     >
       <AntDesign

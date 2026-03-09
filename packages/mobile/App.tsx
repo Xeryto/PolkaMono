@@ -63,13 +63,21 @@ import { registerPushToken } from "./app/services/api";
 import { useSession } from "./app/hooks/useSession";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { sessionManager } from "./app/services/api";
-import { ANIMATION_DURATIONS } from "./app/lib/animations";
+import { ANIMATION_DURATIONS, ANIMATION_DELAYS } from "./app/lib/animations";
+import Reanimated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withTiming,
+  withDelay,
+  Easing as ReanimatedEasing,
+} from "react-native-reanimated";
 import {
   NetworkTimeoutError,
   NetworkRetryError,
 } from "./app/services/networkUtils";
 import { ApiError } from "./app/services/apiHelpers";
 import { ThemeProvider, useTheme } from "./app/lib/ThemeContext";
+import { MotionProvider } from "./app/lib/ReduceMotionContext";
 
 import Cart from "./app/components/svg/Cart";
 import Search from "./app/components/svg/Search";
@@ -115,6 +123,7 @@ type NavigationListener = () => void;
 interface SimpleNavigation {
   navigate: (screen: string, params?: any) => void;
   goBack: () => void;
+  goBackPreserving?: () => void;
   addListener: (event: string, callback: NavigationListener) => () => void;
   setParams?: (params: any) => void;
 }
@@ -128,13 +137,14 @@ export type RootStackParamList = {
   };
   Cart: undefined;
   Search: undefined;
-  Favorites: { returnToFriendId?: string } | undefined;
+  Favorites: undefined;
   Wall: { openOrderId?: string; initialView?: "wall" | "settings" | "orders" } | undefined;
   RecentPieces: undefined;
   FriendRecommendations: {
     friendId?: string;
     friendUsername?: string;
     friendAvatarUrl?: string | null;
+    friendSelectedSize?: string | null;
     initialItems?: any[];
     clickedItemIndex?: number;
   };
@@ -142,6 +152,7 @@ export type RootStackParamList = {
     friendId?: string;
     friendUsername?: string;
     friendAvatarUrl?: string | null;
+    friendSelectedSize?: string | null;
     initialItems?: any[];
     clickedItemIndex?: number;
   };
@@ -170,7 +181,7 @@ const NavButton = ({ onPress, children, isActive }: NavButtonProps) => {
   const handlePressIn = () => {
     Animated.timing(scale, {
       toValue: 0.9,
-      duration: 80,
+      duration: ANIMATION_DURATIONS.MICRO,
       useNativeDriver: true,
       easing: Easing.inOut(Easing.ease),
     }).start();
@@ -179,7 +190,7 @@ const NavButton = ({ onPress, children, isActive }: NavButtonProps) => {
   const handlePressOut = () => {
     Animated.timing(scale, {
       toValue: 1,
-      duration: 150,
+      duration: ANIMATION_DURATIONS.FAST,
       useNativeDriver: true,
       easing: Easing.inOut(Easing.ease),
     }).start();
@@ -260,83 +271,58 @@ async function registerForPushNotificationsAsync(): Promise<string | null> {
 // Prevent the splash screen from auto-hiding
 SplashScreen.preventAutoHideAsync();
 
-// Screen wrapper component that ensures entering animations trigger
-// This forces remounting when screens come into focus so entering animations play
-// Ensures old screen is completely unmounted before new one mounts
-function ScreenWrapper({
+// Wraps tab/detail screens: applies safe area padding and plays a
+// FadeInDown animation every time the screen gains focus. No remounting —
+// screens stay mounted and state is preserved. Stack uses animation:"none"
+// so there's no cross-fade overlap; the new screen fully covers the old one
+// and then animates its content in.
+function TabScreenContainer({
   children,
-  screenName,
   skipSafeAreaTop = false,
-  preserveOnFocus = false,
 }: {
   children: React.ReactNode;
-  screenName: string;
   skipSafeAreaTop?: boolean;
-  preserveOnFocus?: boolean;
 }) {
   const insets = useSafeAreaInsets();
-  const [renderKey, setRenderKey] = React.useState(0);
-  const isMountedRef = React.useRef(false);
-  const isFocusedRef = React.useRef(false);
-  const timerRef = React.useRef<NodeJS.Timeout | null>(null);
-  const preserveRef = React.useRef(preserveOnFocus);
-  preserveRef.current = preserveOnFocus;
+  const opacity = useSharedValue(0);
+  const translateY = useSharedValue(15);
 
   useFocusEffect(
     React.useCallback(() => {
-      // Clear any pending timer
-      if (timerRef.current) {
-        clearTimeout(timerRef.current);
-        timerRef.current = null;
-      }
-
-      const wasFocused = isFocusedRef.current;
-      isFocusedRef.current = true;
-
-      // First mount — let initial render happen, no remount needed
-      if (!isMountedRef.current) {
-        isMountedRef.current = true;
-        return () => {
-          isFocusedRef.current = false;
-        };
-      }
-
-      // Screen is coming into focus after being unfocused — remount to replay
-      // entering animations. Skip remount when preserveOnFocus is set (e.g.
-      // returning from a sub-screen) to avoid replaying animations.
-      if (!wasFocused && !preserveRef.current) {
-        timerRef.current = setTimeout(() => {
-          setRenderKey((prev) => prev + 1);
-          timerRef.current = null;
-        }, 32);
-
-        return () => {
-          if (timerRef.current) {
-            clearTimeout(timerRef.current);
-            timerRef.current = null;
-          }
-          isFocusedRef.current = false;
-        };
-      }
-
-      return () => {
-        if (timerRef.current) {
-          clearTimeout(timerRef.current);
-          timerRef.current = null;
-        }
-        isFocusedRef.current = false;
-      };
+      // Reset to invisible, then animate in (FadeInDown)
+      opacity.value = 0;
+      translateY.value = 15;
+      opacity.value = withDelay(
+        ANIMATION_DELAYS.LARGE,
+        withTiming(1, {
+          duration: ANIMATION_DURATIONS.MEDIUM,
+          easing: ReanimatedEasing.out(ReanimatedEasing.ease),
+        }),
+      );
+      translateY.value = withDelay(
+        ANIMATION_DELAYS.LARGE,
+        withTiming(0, {
+          duration: ANIMATION_DURATIONS.MEDIUM,
+          easing: ReanimatedEasing.out(ReanimatedEasing.ease),
+        }),
+      );
     }, []),
   );
 
-  // Use key prop to force remount when renderKey changes
+  const animStyle = useAnimatedStyle(() => ({
+    opacity: opacity.value,
+    transform: [{ translateY: translateY.value }],
+  }));
+
   return (
-    <View
-      key={`${screenName}-${renderKey}`}
-      style={{ flex: 1, paddingTop: skipSafeAreaTop ? 0 : insets.top }}
+    <Reanimated.View
+      style={[
+        { flex: 1, paddingTop: skipSafeAreaTop ? 0 : insets.top },
+        animStyle,
+      ]}
     >
       {children}
-    </View>
+    </Reanimated.View>
   );
 }
 
@@ -373,7 +359,8 @@ function MainNavigator({
         }
         nav.navigate(screen as keyof RootStackParamList, params);
       },
-      goBack: () => nav.navigate("Home"),
+      goBack: () => nav.goBack(),
+      goBackPreserving: () => nav.goBack(),
       addListener: (event: string, callback: NavigationListener) => {
         if (event === "beforeRemove") {
           return nav.addListener("beforeRemove", callback);
@@ -390,8 +377,7 @@ function MainNavigator({
       screenOptions={{
         headerShown: false,
         contentStyle: { backgroundColor: "transparent" },
-        animation: "none", // Disable React Navigation animations - screens handle their own transitions with entering/exiting
-        presentation: "card", // Ensure proper screen lifecycle for entering/exiting animations
+        animation: "none",
       }}
       screenListeners={{
         state: (e) => {
@@ -403,113 +389,63 @@ function MainNavigator({
         },
       }}
     >
-      <Stack.Screen
-        name="Home"
-        options={{
-          animation: "none",
-          presentation: "card",
-        }}
-      >
+      <Stack.Screen name="Home">
         {({ navigation: nav, route }) => (
-          <ScreenWrapper screenName="home" skipSafeAreaTop>
+          <TabScreenContainer skipSafeAreaTop>
             <MainPage
               navigation={createNavigationAdapter(nav, route)}
               route={route}
             />
-          </ScreenWrapper>
+          </TabScreenContainer>
         )}
       </Stack.Screen>
-      <Stack.Screen
-        name="Cart"
-        options={{
-          animation: "none",
-          presentation: "card",
-        }}
-      >
+      <Stack.Screen name="Cart">
         {({ navigation: nav, route }) => (
-          <ScreenWrapper screenName="cart">
+          <TabScreenContainer>
             <CartPage navigation={createNavigationAdapter(nav, route)} />
-          </ScreenWrapper>
+          </TabScreenContainer>
         )}
       </Stack.Screen>
-      <Stack.Screen
-        name="Search"
-        options={{
-          animation: "none",
-          presentation: "card",
-        }}
-      >
+      <Stack.Screen name="Search">
         {({ navigation: nav, route }) => (
-          <ScreenWrapper screenName="search">
+          <TabScreenContainer>
             <SearchPage navigation={createNavigationAdapter(nav, route)} />
-          </ScreenWrapper>
+          </TabScreenContainer>
         )}
       </Stack.Screen>
-      <Stack.Screen
-        name="Favorites"
-        options={{
-          animation: "none",
-          presentation: "card",
-        }}
-      >
+      <Stack.Screen name="Favorites">
         {({ navigation: nav, route }) => (
-          <ScreenWrapper
-            screenName="favorites"
-            preserveOnFocus={!!route.params?.returnToFriendId}
-          >
-            <FavoritesPage
-              navigation={createNavigationAdapter(nav, route)}
-              returnToFriendId={route.params?.returnToFriendId}
-            />
-          </ScreenWrapper>
+          <TabScreenContainer>
+            <FavoritesPage navigation={createNavigationAdapter(nav, route)} />
+          </TabScreenContainer>
         )}
       </Stack.Screen>
-      <Stack.Screen
-        name="Wall"
-        options={{
-          animation: "none",
-          presentation: "card",
-        }}
-      >
+      <Stack.Screen name="Wall">
         {({ navigation: nav, route }) => (
-          <ScreenWrapper screenName="wall">
+          <TabScreenContainer>
             <WallPage
               navigation={createNavigationAdapter(nav, route)}
               onLogout={onLogout}
               openOrderId={route.params?.openOrderId}
               initialView={route.params?.initialView}
             />
-          </ScreenWrapper>
+          </TabScreenContainer>
         )}
       </Stack.Screen>
-      <Stack.Screen
-        name="RecentPieces"
-        options={{
-          animation: "none",
-          presentation: "card",
-        }}
-      >
+      <Stack.Screen name="RecentPieces">
         {({ navigation: nav, route }) => (
-          <ScreenWrapper screenName="recent-pieces">
+          <TabScreenContainer>
             <RecentPiecesScreen
               navigation={createNavigationAdapter(nav, route)}
             />
-          </ScreenWrapper>
+          </TabScreenContainer>
         )}
       </Stack.Screen>
-      <Stack.Screen
-        name="FriendRecommendations"
-        options={{
-          animation: "none",
-          presentation: "card",
-        }}
-      >
+      <Stack.Screen name="FriendRecommendations">
         {({ navigation: nav, route }) => {
           const params = route.params || {};
           return (
-            <ScreenWrapper
-              screenName={`friend-rec-${params.friendId || "default"}`}
-            >
+            <TabScreenContainer>
               <FriendRecommendationsScreen
                 navigation={createNavigationAdapter(nav, route)}
                 route={{
@@ -517,28 +453,21 @@ function MainNavigator({
                     friendId: params.friendId || "",
                     friendUsername: params.friendUsername || "",
                     friendAvatarUrl: params.friendAvatarUrl,
+                    friendSelectedSize: params.friendSelectedSize,
                     initialItems: params.initialItems || [],
                     clickedItemIndex: params.clickedItemIndex || 0,
                   },
                 }}
               />
-            </ScreenWrapper>
+            </TabScreenContainer>
           );
         }}
       </Stack.Screen>
-      <Stack.Screen
-        name="FriendLikedItems"
-        options={{
-          animation: "none",
-          presentation: "card",
-        }}
-      >
+      <Stack.Screen name="FriendLikedItems">
         {({ navigation: nav, route }) => {
           const params = route.params || {};
           return (
-            <ScreenWrapper
-              screenName={`friend-likes-${params.friendId || "default"}`}
-            >
+            <TabScreenContainer>
               <FriendLikedItemsScreen
                 navigation={createNavigationAdapter(nav, route)}
                 route={{
@@ -546,12 +475,13 @@ function MainNavigator({
                     friendId: params.friendId || "",
                     friendUsername: params.friendUsername || "",
                     friendAvatarUrl: params.friendAvatarUrl,
+                    friendSelectedSize: params.friendSelectedSize,
                     initialItems: params.initialItems || [],
                     clickedItemIndex: params.clickedItemIndex || 0,
                   },
                 }}
               />
-            </ScreenWrapper>
+            </TabScreenContainer>
           );
         }}
       </Stack.Screen>
@@ -710,10 +640,10 @@ const ThemeTransitionScreen: React.FC = () => {
     const timer = setTimeout(() => {
       Animated.timing(fadeAnim, {
         toValue: 0,
-        duration: 400,
+        duration: ANIMATION_DURATIONS.STANDARD,
         useNativeDriver: true,
       }).start(() => hideRef.current());
-    }, 400);
+    }, ANIMATION_DURATIONS.STANDARD);
     return () => clearTimeout(timer);
   }, []);
 
@@ -1956,7 +1886,9 @@ function AppContent() {
 export default function App() {
   return (
     <ThemeProvider>
-      <AppContent />
+      <MotionProvider>
+        <AppContent />
+      </MotionProvider>
     </ThemeProvider>
   );
 }

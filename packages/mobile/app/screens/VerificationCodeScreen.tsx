@@ -15,7 +15,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 
-import Animated, { FadeInDown } from "react-native-reanimated";
+import Animated, { FadeInDown, ReduceMotion } from "react-native-reanimated";
 import BackIcon from "../components/svg/BackIcon";
 import * as api from "../services/api";
 import {
@@ -25,7 +25,6 @@ import {
 } from "../lib/animations";
 import { useTheme } from "../lib/ThemeContext";
 import type { ThemeColors } from "../lib/theme";
-
 
 interface VerificationCodeScreenProps {
   onVerificationSuccess: () => void;
@@ -76,7 +75,7 @@ const VerificationCodeScreen: React.FC<VerificationCodeScreenProps> = ({
       setResendCooldown(60); // Start the 60-second cooldown
       Alert.alert(
         "код отправлен повторно",
-        "новый код подтверждения был отправлен на ваш email.",
+        "если аккаунт с таким именем пользователя или email существует, мы отправили новый код.",
       );
     } catch (err) {
       const message =
@@ -114,7 +113,7 @@ const VerificationCodeScreen: React.FC<VerificationCodeScreenProps> = ({
             keyboardShouldPersistTaps="handled"
           >
             <Animated.View
-              entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM)}
+              entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).reduceMotion(ReduceMotion.System)}
               style={styles.formContainer}
             >
               <TouchableOpacity
@@ -126,8 +125,8 @@ const VerificationCodeScreen: React.FC<VerificationCodeScreenProps> = ({
               </TouchableOpacity>
               <Text style={styles.title}>подтвердите почту</Text>
               <Text style={styles.subtitle}>
-                мы отправили 6-значный код на {email}. пожалуйста, введите его
-                ниже.
+                если аккаунт с таким именем пользователя или email существует,
+                мы отправили 6-значный код. пожалуйста, введите его ниже.
               </Text>
 
               {error ? (
@@ -145,7 +144,7 @@ const VerificationCodeScreen: React.FC<VerificationCodeScreenProps> = ({
                     style={styles.codeContainer}
                     entering={FadeInDown.duration(
                       ANIMATION_DURATIONS.MEDIUM,
-                    ).delay(ANIMATION_DELAYS.STANDARD)}
+                    ).delay(ANIMATION_DELAYS.STANDARD).reduceMotion(ReduceMotion.System)}
                   >
                     {[0, 1, 2, 3, 4, 5].map((index) => (
                       <View
