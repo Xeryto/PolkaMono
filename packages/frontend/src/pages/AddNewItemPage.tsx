@@ -26,7 +26,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { FileInput } from "@/components/ui/file-input";
-import { sizes } from "@/lib/sizes";
+import { sizes, getSizeType, getAllowedSizeTypes, waistValues, lengthValues, type SizeType } from "@/lib/sizes";
 import { useAuth } from "@/context/AuthContext";
 import { ImageCropModal } from "@/components/ImageCropModal";
 
@@ -102,6 +102,7 @@ export function AddNewItemPage() {
   const [selectedStyle, setSelectedStyle] = useState("");
   const [categories, setCategories] = useState<api.CategoryResponse[]>([]);
   const [selectedCategory, setSelectedCategory] = useState("");
+  const [sizeMode, setSizeMode] = useState<SizeType>("standard");
   const [colorVariations, setColorVariations] = useState<ColorVariationForm[]>([
     defaultColorVariation(),
   ]);
@@ -293,6 +294,9 @@ export function AddNewItemPage() {
       return true;
     });
   };
+
+  const allowedSizeTypes = getAllowedSizeTypes(selectedCategory);
+  const currentSizeType = allowedSizeTypes.length > 1 ? sizeMode : allowedSizeTypes[0];
 
   const canAddVariant = (
     variants: { size: string; stock_quantity: number }[],
@@ -634,7 +638,10 @@ export function AddNewItemPage() {
           <div>
             <Label htmlFor="category">Категория</Label>
             <Select
-              onValueChange={setSelectedCategory}
+              onValueChange={(val) => {
+                setSelectedCategory(val);
+                setSizeMode(getAllowedSizeTypes(val)[0]);
+              }}
               value={selectedCategory}
             >
               <SelectTrigger className="w-full mt-1 h-10 rounded-md border border-input bg-background px-3 py-2">
@@ -901,25 +908,89 @@ export function AddNewItemPage() {
                   </div>
                   <div>
                     <Label>Размеры и инвентарь</Label>
+                    {allowedSizeTypes.length > 1 && (
+                      <div className="flex gap-2 mt-1 mb-1">
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant={sizeMode === "standard" ? "default" : "outline"}
+                          onClick={() => setSizeMode("standard")}
+                        >
+                          Стандартные (XS–XL)
+                        </Button>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant={sizeMode === "waist_length" ? "default" : "outline"}
+                          onClick={() => setSizeMode("waist_length")}
+                        >
+                          Ширина × Длина (см)
+                        </Button>
+                      </div>
+                    )}
                     {cv.variants.map((v, vIdx) => (
                       <div key={vIdx} className="flex gap-2 mt-1 items-center">
-                        <Select
-                          value={v.size}
-                          onValueChange={(val) =>
-                            handleVariantChange(colorIndex, vIdx, "size", val)
-                          }
-                        >
-                          <SelectTrigger className="flex-1 h-10">
-                            <SelectValue placeholder="Размер" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {getAvailableSizes(cv.variants).map((s) => (
-                              <SelectItem key={s.name} value={s.name}>
-                                {s.russian}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                        {currentSizeType === "waist_length" ? (
+                          <div className="flex gap-1 flex-1">
+                            <Select
+                              value={v.size.includes("×") ? v.size.split("×")[0] : ""}
+                              onValueChange={(waist) => {
+                                const length = v.size.includes("×") ? v.size.split("×")[1] : "";
+                                const newSize = length ? `${waist}×${length}` : waist;
+                                handleVariantChange(colorIndex, vIdx, "size", newSize);
+                              }}
+                            >
+                              <SelectTrigger className="flex-1 h-10">
+                                <SelectValue placeholder="Ширина, см" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {waistValues.map((w) => (
+                                  <SelectItem key={w} value={String(w)}>
+                                    {w}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <span className="self-center text-muted-foreground">×</span>
+                            <Select
+                              value={v.size.includes("×") ? v.size.split("×")[1] : ""}
+                              onValueChange={(length) => {
+                                const waist = v.size.includes("×") ? v.size.split("×")[0] : "";
+                                const newSize = waist ? `${waist}×${length}` : length;
+                                handleVariantChange(colorIndex, vIdx, "size", newSize);
+                              }}
+                            >
+                              <SelectTrigger className="flex-1 h-10">
+                                <SelectValue placeholder="Длина, см" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {lengthValues.map((l) => (
+                                  <SelectItem key={l} value={String(l)}>
+                                    {l}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        ) : (
+                          <Select
+                            value={v.size}
+                            onValueChange={(val) =>
+                              handleVariantChange(colorIndex, vIdx, "size", val)
+                            }
+                          >
+                            <SelectTrigger className="flex-1 h-10">
+                              <SelectValue placeholder="Размер" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {getAvailableSizes(cv.variants).map((s) => (
+                                <SelectItem key={s.name} value={s.name}>
+                                  {s.russian}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        )}
                         <Input
                           type="number"
                           placeholder="Кол."

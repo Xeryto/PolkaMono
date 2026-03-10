@@ -81,16 +81,13 @@ CONTENT_TYPE_TO_EXTENSION = {
 }
 
 
-# Size ordering utility
-def get_size_order(size: str) -> int:
-    """Get the order index for size sorting (XS to XL)"""
-    size_order = {"XS": 1, "S": 2, "M": 3, "L": 4, "XL": 5, "One Size": 6}
-    return size_order.get(size, 999)  # Unknown sizes go to the end
+# Size ordering utility — delegates to size_config for category-aware sorting
+from size_config import get_size_sort_key, validate_size, validate_size_consistency, normalize_size, get_size_type, get_size_types, STANDARD_SIZES, WAIST_VALUES, LENGTH_VALUES
 
 
-def sort_variants_by_size(variants):
-    """Sort variants by size order (XS to XL)"""
-    return sorted(variants, key=lambda v: get_size_order(v.size))
+def sort_variants_by_size(variants, category_id=""):
+    """Sort variants by size order, category-aware."""
+    return sorted(variants, key=lambda v: get_size_sort_key(v.size, category_id))
 
 
 def validate_image_content_type(content_type: str) -> None:
@@ -160,7 +157,7 @@ def product_to_schema(product, is_liked=None):
                     schemas.ProductVariantSchema(
                         id=v.id, size=v.size, stock_quantity=v.stock_quantity
                     )
-                    for v in sort_variants_by_size(cv.variants)
+                    for v in sort_variants_by_size(cv.variants, product.category_id)
                 ],
             )
             for cv in product.color_variants
@@ -2616,6 +2613,24 @@ async def create_product(
 
         return f"{brand_prefix}-{product_abbrev}-{random_suffix}"
 
+    # Validate sizes for category
+    all_sizes = []
+    for cv_data in product_data.color_variants:
+        has_one_size = any(v.size == "One Size" for v in cv_data.variants)
+        has_other = any(v.size != "One Size" for v in cv_data.variants)
+        if has_one_size and has_other:
+            raise HTTPException(status_code=400, detail="'One Size' cannot be mixed with other sizes")
+        for v in cv_data.variants:
+            normalized = normalize_size(v.size, product_data.category_id)
+            v.size = normalized
+            err = validate_size(product_data.category_id, normalized)
+            if err:
+                raise HTTPException(status_code=400, detail=err)
+            all_sizes.append(normalized)
+    consistency_err = validate_size_consistency(product_data.category_id, all_sizes)
+    if consistency_err:
+        raise HTTPException(status_code=400, detail=consistency_err)
+
     # Generate unique article number (handle collisions)
     article_number = None
     max_attempts = 10
@@ -2736,6 +2751,26 @@ async def update_product(
         raise HTTPException(
             status_code=403, detail="Product does not belong to your brand"
         )
+
+    # Validate sizes if color_variants provided
+    cat_id = product_data.category_id or product.category_id
+    if product_data.color_variants is not None:
+        all_sizes = []
+        for cv_data in product_data.color_variants:
+            has_one_size = any(v.size == "One Size" for v in cv_data.variants)
+            has_other = any(v.size != "One Size" for v in cv_data.variants)
+            if has_one_size and has_other:
+                raise HTTPException(status_code=400, detail="'One Size' cannot be mixed with other sizes")
+            for v in cv_data.variants:
+                normalized = normalize_size(v.size, cat_id)
+                v.size = normalized
+                err = validate_size(cat_id, normalized)
+                if err:
+                    raise HTTPException(status_code=400, detail=err)
+                all_sizes.append(normalized)
+        consistency_err = validate_size_consistency(cat_id, all_sizes)
+        if consistency_err:
+            raise HTTPException(status_code=400, detail=consistency_err)
 
     # Update product fields
     for field, value in product_data.dict(exclude_unset=True).items():
@@ -3416,6 +3451,34 @@ async def get_categories(request: Request, db: Session = Depends(get_db)):
         )
         for category in categories
     ]
+
+
+@app.get("/api/v1/categories/{category_id}/sizes")
+@limiter.limit("60/minute")
+async def get_category_sizes(request: Request, category_id: str, db: Session = Depends(get_db)):
+    """Get available size options for a category. Categories with multiple
+    size_types let the brand choose per-product."""
+    category = db.query(Category).filter(Category.id == category_id).first()
+    if not category:
+        raise HTTPException(status_code=404, detail="Category not found")
+    allowed = get_size_types(category_id)
+
+    def _build_type_info(st: str) -> dict:
+        info: dict = {"size_type": st}
+        if st == "standard":
+            info["values"] = STANDARD_SIZES + ["One Size"]
+        elif st == "waist_length":
+            info["waist_values"] = WAIST_VALUES
+            info["length_values"] = LENGTH_VALUES
+        elif st == "numeric_eu":
+            from size_config import EU_SHOE_SIZES
+            info["values"] = EU_SHOE_SIZES
+        return info
+
+    if len(allowed) == 1:
+        return _build_type_info(allowed[0])
+    # Multiple allowed types — return list so client can offer a toggle
+    return {"size_types": [_build_type_info(st) for st in allowed]}
 
 
 # Liking Items Endpoint

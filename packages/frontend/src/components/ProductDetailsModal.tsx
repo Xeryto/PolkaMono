@@ -20,7 +20,7 @@ import {
 import { colors } from "@/lib/colors";
 import { materials } from "@/lib/materials";
 import { FileInput } from "@/components/ui/file-input";
-import { sizes } from "@/lib/sizes";
+import { sizes, getAllowedSizeTypes, waistValues, lengthValues, type SizeType } from "@/lib/sizes";
 import { useAuth } from "@/context/AuthContext"; // Import useAuth
 import { formatCurrency } from "@/lib/currency";
 import { ImageCropModal } from "@/components/ImageCropModal";
@@ -86,6 +86,13 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({
   const [selectedCategory, setSelectedCategory] = useState(
     product.category_id || "",
   );
+  // Detect initial size mode from existing variants
+  const [sizeMode, setSizeMode] = useState<SizeType>(() => {
+    const hasWxL = product.color_variants?.some((cv) =>
+      cv.variants?.some((v) => v.size.includes("×")),
+    );
+    return hasWxL ? "waist_length" : getAllowedSizeTypes(product.category_id || "")[0];
+  });
   const [saleType, setSaleType] = useState<"percent" | "exact" | "none">(
     (product.sale_type as "percent" | "exact") || "none",
   );
@@ -196,6 +203,10 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({
     );
     setSelectedStyles(product.styles || []);
     setSelectedCategory(product.category_id || "");
+    const hasWxL = product.color_variants?.some((cv) =>
+      cv.variants?.some((v) => v.size.includes("×")),
+    );
+    setSizeMode(hasWxL ? "waist_length" : getAllowedSizeTypes(product.category_id || "")[0]);
     setColorVariations(
       product.color_variants?.length
         ? product.color_variants
@@ -541,6 +552,9 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({
     });
   };
 
+  const allowedSizeTypes = getAllowedSizeTypes(selectedCategory);
+  const currentSizeType = allowedSizeTypes.length > 1 ? sizeMode : allowedSizeTypes[0];
+
   const canAddVariant = (
     variants: { size: string; stock_quantity: number }[],
   ) => {
@@ -745,7 +759,10 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({
                   <div>
                     <Label htmlFor="category">Категория</Label>
                     <Select
-                      onValueChange={setSelectedCategory}
+                      onValueChange={(val) => {
+                        setSelectedCategory(val);
+                        setSizeMode(getAllowedSizeTypes(val)[0]);
+                      }}
                       value={selectedCategory}
                     >
                       <SelectTrigger className="w-full mt-1 h-10 rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50">
@@ -934,35 +951,99 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({
                         </div>
                         <div>
                           <Label className="text-xs">Размеры и инвентарь</Label>
+                          {allowedSizeTypes.length > 1 && (
+                            <div className="flex gap-2 mt-1 mb-1">
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant={sizeMode === "standard" ? "default" : "outline"}
+                                onClick={() => setSizeMode("standard")}
+                              >
+                                Стандартные (XS–XL)
+                              </Button>
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant={sizeMode === "waist_length" ? "default" : "outline"}
+                                onClick={() => setSizeMode("waist_length")}
+                              >
+                                Ширина × Длина (см)
+                              </Button>
+                            </div>
+                          )}
                           {(cv.variants || []).map((v, vIdx) => (
                             <div
                               key={vIdx}
                               className="flex gap-2 mt-1 items-center"
                             >
-                              <Select
-                                value={v.size}
-                                onValueChange={(val) =>
-                                  handleVariantChange(
-                                    colorIndex,
-                                    vIdx,
-                                    "size",
-                                    val,
-                                  )
-                                }
-                              >
-                                <SelectTrigger className="flex-1 h-9">
-                                  <SelectValue placeholder="Размер" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  {getAvailableSizes(cv.variants || []).map(
-                                    (s) => (
-                                      <SelectItem key={s.name} value={s.name}>
-                                        {s.russian}
-                                      </SelectItem>
-                                    ),
-                                  )}
-                                </SelectContent>
-                              </Select>
+                              {currentSizeType === "waist_length" ? (
+                                <div className="flex gap-1 flex-1">
+                                  <Select
+                                    value={v.size.includes("×") ? v.size.split("×")[0] : ""}
+                                    onValueChange={(waist) => {
+                                      const length = v.size.includes("×") ? v.size.split("×")[1] : "";
+                                      const newSize = length ? `${waist}×${length}` : waist;
+                                      handleVariantChange(colorIndex, vIdx, "size", newSize);
+                                    }}
+                                  >
+                                    <SelectTrigger className="flex-1 h-9">
+                                      <SelectValue placeholder="Ширина, см" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      {waistValues.map((w) => (
+                                        <SelectItem key={w} value={String(w)}>
+                                          {w}
+                                        </SelectItem>
+                                      ))}
+                                    </SelectContent>
+                                  </Select>
+                                  <span className="self-center text-muted-foreground">×</span>
+                                  <Select
+                                    value={v.size.includes("×") ? v.size.split("×")[1] : ""}
+                                    onValueChange={(length) => {
+                                      const waist = v.size.includes("×") ? v.size.split("×")[0] : "";
+                                      const newSize = waist ? `${waist}×${length}` : length;
+                                      handleVariantChange(colorIndex, vIdx, "size", newSize);
+                                    }}
+                                  >
+                                    <SelectTrigger className="flex-1 h-9">
+                                      <SelectValue placeholder="Длина, см" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      {lengthValues.map((l) => (
+                                        <SelectItem key={l} value={String(l)}>
+                                          {l}
+                                        </SelectItem>
+                                      ))}
+                                    </SelectContent>
+                                  </Select>
+                                </div>
+                              ) : (
+                                <Select
+                                  value={v.size}
+                                  onValueChange={(val) =>
+                                    handleVariantChange(
+                                      colorIndex,
+                                      vIdx,
+                                      "size",
+                                      val,
+                                    )
+                                  }
+                                >
+                                  <SelectTrigger className="flex-1 h-9">
+                                    <SelectValue placeholder="Размер" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {getAvailableSizes(cv.variants || []).map(
+                                      (s) => (
+                                        <SelectItem key={s.name} value={s.name}>
+                                          {s.russian}
+                                        </SelectItem>
+                                      ),
+                                    )}
+                                  </SelectContent>
+                                </Select>
+                              )}
                               <Input
                                 type="number"
                                 min={0}

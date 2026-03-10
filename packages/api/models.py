@@ -107,7 +107,7 @@ class UserProfile(Base):
     user_id = Column(String, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, unique=True, index=True)
     full_name = Column(String(255), nullable=True)
     gender = Column(SQLEnum(Gender), nullable=True)
-    selected_size = Column(String(10), nullable=True)
+    selected_size = Column(String(20), nullable=True)
     avatar_url = Column(String(500), nullable=True)  # Cropped display image URL
     avatar_url_full = Column(String(500), nullable=True)  # Full-size source for re-editing
     avatar_crop = Column(String(1000), nullable=True)  # JSON: normalized crop in full image (legacy)
@@ -351,7 +351,7 @@ class ProductVariant(Base):
 
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
     product_color_variant_id = Column(String, ForeignKey("product_color_variants.id", ondelete="CASCADE"), nullable=False, index=True)
-    size = Column(String(10), nullable=False)
+    size = Column(String(20), nullable=False)
     stock_quantity = Column(Integer, nullable=False, default=0)
     created_at = Column(DateTime(timezone=True), default=_utcnow)
     updated_at = Column(DateTime(timezone=True), default=_utcnow, onupdate=_utcnow)

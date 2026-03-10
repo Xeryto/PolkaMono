@@ -290,11 +290,22 @@ const CardFront: React.FC<CardFrontProps> = ({
                 const isUserSize = friendSelectedSize === undefined && variant.size === userSelectedSize;
                 const isFriendSize = !!friendSelectedSize && variant.size === friendSelectedSize;
                 const isOneSize = variant.size === "One Size";
+                const isCompound = variant.size.includes("×");
+                const sizeButtonStyle = isOneSize
+                  ? styles.sizeOval
+                  : isCompound
+                    ? styles.sizeCompound
+                    : styles.sizeCircle;
+                const sizeTextStyle = isOneSize
+                  ? styles.sizeOvalText
+                  : isCompound
+                    ? styles.sizeCompoundText
+                    : styles.sizeText;
                 return (
                   <Pressable
                     key={variant.size}
                     style={[
-                      isOneSize ? styles.sizeOval : styles.sizeCircle,
+                      sizeButtonStyle,
                       isAvailable ? styles.sizeCircleAvailable : styles.sizeCircleUnavailable,
                       isUserSize && isAvailable ? styles.sizeCircleUserSize : null,
                       isFriendSize && isAvailable ? { overflow: 'hidden' as const } : null,
@@ -313,10 +324,10 @@ const CardFront: React.FC<CardFrontProps> = ({
                         colors={['rgba(255,16,251,0.30)', 'rgba(3,65,234,0.15)']}
                         start={{ x: 0, y: 0 }}
                         end={{ x: 1, y: 1 }}
-                        style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, borderRadius: isOneSize ? 20 : 20.5 }}
+                        style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, borderRadius: 20.5 }}
                       />
                     )}
-                    <Text style={isOneSize ? styles.sizeOvalText : styles.sizeText}>
+                    <Text style={sizeTextStyle}>
                       {variant.size}
                     </Text>
                   </Pressable>

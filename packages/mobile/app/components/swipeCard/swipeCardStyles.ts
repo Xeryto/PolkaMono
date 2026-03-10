@@ -272,6 +272,24 @@ export const createSwipeCardStyles = (
       fontSize: 12,
       textAlign: "center",
     },
+    sizeCompound: {
+      width: 65,
+      height: 41,
+      borderRadius: 20.5,
+      backgroundColor: theme.size.available,
+      justifyContent: "center",
+      alignItems: "center",
+      shadowColor: "#000",
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.15,
+      shadowRadius: 3,
+      elevation: 3,
+    },
+    sizeCompoundText: {
+      color: theme.size.text,
+      fontWeight: "bold",
+      fontSize: 14,
+    },
 
     // Color selector
     colorSelectorCornerBox: {

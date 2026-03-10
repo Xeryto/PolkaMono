@@ -426,7 +426,7 @@ class UserProfileUpdateRequest(BaseModel):
 class ProfileUpdateRequest(BaseModel):
     full_name: Optional[str] = Field(None, max_length=255)
     gender: Optional[str] = None
-    selected_size: Optional[str] = Field(None, max_length=10)
+    selected_size: Optional[str] = Field(None, max_length=20)
     avatar_url: Optional[str] = Field(None, max_length=500)
     avatar_url_full: Optional[str] = Field(None, max_length=500)
     avatar_crop: Optional[str] = Field(None, max_length=1000)
