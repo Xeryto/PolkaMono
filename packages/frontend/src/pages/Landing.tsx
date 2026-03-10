@@ -3,12 +3,22 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { exclusiveAccessSignup } from "@/services/api";
-import { Sparkles, ShoppingBag, Heart, ArrowRight } from "lucide-react";
+import {
+  Sparkles,
+  ShoppingBag,
+  Heart,
+  ArrowRight,
+  Sun,
+  Moon,
+} from "lucide-react";
 
 const Landing = () => {
   const [email, setEmail] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSignedUp, setIsSignedUp] = useState(false);
+  const [screenshotTheme, setScreenshotTheme] = useState<"dark" | "light">(
+    "dark",
+  );
   const { toast } = useToast();
 
   useEffect(() => {
@@ -161,33 +171,63 @@ const Landing = () => {
       {/* Visual teaser */}
       <section className="py-16 px-4 bg-accent/30">
         <div className="max-w-3xl mx-auto text-center space-y-8">
-          <h2 className="font-display text-3xl sm:text-4xl text-brand-dark">
-            Свайпай. Сохраняй. Покупай.
-          </h2>
-          <p className="text-muted-foreground max-w-md mx-auto">
-            Интерфейс, который делает шопинг интуитивным — как листать ленту,
-            только каждый свайп ведёт к чему-то стильному
-          </p>
+          <div className="relative">
+            <h2 className="font-display text-3xl sm:text-4xl text-brand-dark">
+              Свайпай. Сохраняй. Покупай.
+            </h2>
+            <p className="text-muted-foreground max-w-md mx-auto mt-3">
+              Интерфейс, который делает шопинг интуитивным — как листать ленту,
+              только каждый свайп ведёт к чему-то стильному
+            </p>
+            <div className="absolute top-1 right-0">
+              <button
+                onClick={() =>
+                  setScreenshotTheme(
+                    screenshotTheme === "dark" ? "light" : "dark",
+                  )
+                }
+                className="relative w-14 h-7 rounded-full bg-surface-elevated border border-border/50 transition-colors duration-300 flex items-center px-1"
+                aria-label="Toggle screenshot theme"
+              >
+                <div
+                  className={`absolute w-5 h-5 rounded-full bg-brand/80 transition-transform duration-300 flex items-center justify-center ${
+                    screenshotTheme === "light"
+                      ? "translate-x-7"
+                      : "translate-x-0"
+                  }`}
+                >
+                  {screenshotTheme === "dark" ? (
+                    <Moon className="h-3 w-3 text-background" />
+                  ) : (
+                    <Sun className="h-3 w-3 text-background" />
+                  )}
+                </div>
+              </button>
+            </div>
+          </div>
 
-          {/* Mockup cards */}
+          {/* App screenshots */}
           <div className="flex justify-center gap-4 py-8">
-            <div className="w-36 sm:w-44 h-52 sm:h-64 rounded-2xl bg-surface border border-border/50 shadow-sm flex items-end p-4 -rotate-6 hover:rotate-0 transition-transform duration-300">
-              <div className="space-y-1">
-                <div className="h-3 w-20 bg-brand/30 rounded" />
-                <div className="h-2 w-14 bg-muted/40 rounded" />
-              </div>
+            <div className="w-36 sm:w-44 aspect-[9/19.5] rounded-2xl overflow-hidden shadow-sm -rotate-6 hover:rotate-0 transition-transform duration-300">
+              <img
+                src={`/assets/screenshots/${screenshotTheme}-favorites.png`}
+                alt="Favorites"
+                className="w-full h-full object-cover"
+              />
             </div>
-            <div className="w-36 sm:w-44 h-52 sm:h-64 rounded-2xl bg-surface-elevated border border-brand/30 shadow-md flex items-end p-4 z-10 scale-105">
-              <div className="space-y-1">
-                <div className="h-3 w-24 bg-brand/40 rounded" />
-                <div className="h-2 w-16 bg-muted/40 rounded" />
-              </div>
+            <div className="w-36 sm:w-44 aspect-[9/19.5] rounded-2xl overflow-hidden border border-brand/30 shadow-md z-10 scale-105">
+              <img
+                src={`/assets/screenshots/${screenshotTheme}-main.png`}
+                alt="Swipe discovery"
+                className="w-full h-full object-cover"
+              />
             </div>
-            <div className="w-36 sm:w-44 h-52 sm:h-64 rounded-2xl bg-surface border border-border/50 shadow-sm flex items-end p-4 rotate-6 hover:rotate-0 transition-transform duration-300">
-              <div className="space-y-1">
-                <div className="h-3 w-20 bg-brand/30 rounded" />
-                <div className="h-2 w-14 bg-muted/40 rounded" />
-              </div>
+            <div className="w-36 sm:w-44 aspect-[9/19.5] rounded-2xl overflow-hidden shadow-sm rotate-6 hover:rotate-0 transition-transform duration-300">
+              <img
+                src={`/assets/screenshots/${screenshotTheme}-cart.png`}
+                alt="Cart"
+                className="w-full h-full object-cover"
+              />
             </div>
           </div>
         </div>
