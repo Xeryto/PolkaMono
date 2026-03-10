@@ -45,6 +45,7 @@ export interface SwipeDeckConfig {
   initialCards?: CardItem[];
   onSwipe?: (productId: string, direction: "up" | "right") => void;
   onCardsChange?: (cards: CardItem[]) => void;
+  circular?: boolean; // cycle through cards without removing them
 }
 
 export function useSwipeDeck(config: SwipeDeckConfig) {
@@ -55,6 +56,7 @@ export function useSwipeDeck(config: SwipeDeckConfig) {
     initialCards,
     onSwipe,
     onCardsChange,
+    circular,
   } = config;
 
   const screenHeight = Dimensions.get("window").height;
@@ -433,7 +435,7 @@ export function useSwipeDeck(config: SwipeDeckConfig) {
     if (currentCard?.id === LOADING_CARD_ID) return;
 
     const realCards = cards.filter((c) => c.id !== LOADING_CARD_ID);
-    if (realCards.length === 1) {
+    if (!circular && realCards.length === 1) {
       RNAnimated.sequence([
         RNAnimated.timing(pan, {
           toValue: { x: 0, y: -50 },
@@ -473,41 +475,48 @@ export function useSwipeDeck(config: SwipeDeckConfig) {
       clearTimeout(animationSafetyTimeout);
       setIsAnimating(false);
 
-      setCards((prevCards) => {
-        if (prevCards.length === 0) return [];
-        const newCards = [...prevCards];
-        newCards.splice(currentCardIndex, 1);
-
+      if (circular) {
+        // Circular mode: advance index, wrap around (use refs to avoid stale closure)
         if (currentCard?.id) trackSwipe(currentCard.id, direction);
+        const nextIndex = (currentCardIndexRef.current + 1) % cardsRef.current.length;
+        setCurrentCardIndex(nextIndex);
+      } else {
+        setCards((prevCards) => {
+          if (prevCards.length === 0) return [];
+          const newCards = [...prevCards];
+          newCards.splice(currentCardIndex, 1);
 
-        const newIndex =
-          currentCardIndex >= newCards.length
-            ? Math.max(0, newCards.length - 1)
-            : currentCardIndex;
-        setTimeout(() => setCurrentCardIndex(newIndex), 0);
+          if (currentCard?.id) trackSwipe(currentCard.id, direction);
 
-        // Fetch more if running low (skip if API recently returned empty)
-        const cardsWithoutLoading = newCards.filter((c) => c.id !== LOADING_CARD_ID);
-        const recentlyEmpty = Date.now() - lastEmptyFetchTime.current < EMPTY_FETCH_BACKOFF_MS;
-        if (cardsWithoutLoading.length < MIN_CARDS_THRESHOLD && !recentlyEmpty) {
-          const hasLoadingCard = newCards.some((c) => c.id === LOADING_CARD_ID);
-          if (!hasLoadingCard) newCards.push(createLoadingCard());
-          fetchCards(MIN_CARDS_THRESHOLD - cardsWithoutLoading.length + 1).then((apiCards) => {
-            if (apiCards.length > 0) {
-              lastEmptyFetchTime.current = 0;
-              setCards((latestCards) => {
-                const filtered = latestCards.filter((c) => c.id !== LOADING_CARD_ID);
-                return [...filtered, ...apiCards];
-              });
-            } else {
-              lastEmptyFetchTime.current = Date.now();
-              // Remove loading card placeholder since nothing to show
-              setCards((latestCards) => latestCards.filter((c) => c.id !== LOADING_CARD_ID));
-            }
-          });
-        }
-        return newCards;
-      });
+          const newIndex =
+            currentCardIndex >= newCards.length
+              ? Math.max(0, newCards.length - 1)
+              : currentCardIndex;
+          setTimeout(() => setCurrentCardIndex(newIndex), 0);
+
+          // Fetch more if running low (skip if API recently returned empty)
+          const cardsWithoutLoading = newCards.filter((c) => c.id !== LOADING_CARD_ID);
+          const recentlyEmpty = Date.now() - lastEmptyFetchTime.current < EMPTY_FETCH_BACKOFF_MS;
+          if (cardsWithoutLoading.length < MIN_CARDS_THRESHOLD && !recentlyEmpty) {
+            const hasLoadingCard = newCards.some((c) => c.id === LOADING_CARD_ID);
+            if (!hasLoadingCard) newCards.push(createLoadingCard());
+            fetchCards(MIN_CARDS_THRESHOLD - cardsWithoutLoading.length + 1).then((apiCards) => {
+              if (apiCards.length > 0) {
+                lastEmptyFetchTime.current = 0;
+                setCards((latestCards) => {
+                  const filtered = latestCards.filter((c) => c.id !== LOADING_CARD_ID);
+                  return [...filtered, ...apiCards];
+                });
+              } else {
+                lastEmptyFetchTime.current = Date.now();
+                // Remove loading card placeholder since nothing to show
+                setCards((latestCards) => latestCards.filter((c) => c.id !== LOADING_CARD_ID));
+              }
+            });
+          }
+          return newCards;
+        });
+      }
 
       flipAnimation.setValue(0);
       setIsFlipped(false);

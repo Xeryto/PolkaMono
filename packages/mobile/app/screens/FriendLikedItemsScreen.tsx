@@ -45,7 +45,6 @@ import { useSwipeDeck } from "../hooks/useSwipeDeck";
 interface SimpleNavigation {
   navigate: (screen: string, params?: any) => void;
   goBack: () => void;
-  goBackPreserving?: () => void;
   addListener?: (event: string, callback: () => void) => () => void;
   setParams?: (params: any) => void;
 }
@@ -86,7 +85,14 @@ const FriendLikedItemsScreen = ({
   const initialItems = route?.params?.initialItems || [];
   const clickedItemIndex = route?.params?.clickedItemIndex || 0;
 
-  log.info("[FLIS] friendSelectedSize param:", friendSelectedSize, "raw:", route?.params?.friendSelectedSize);
+  // Reorder items so clicked item is first, then wrap the rest circularly
+  const reorderedItems = useMemo(() => {
+    if (initialItems.length === 0) return [];
+    return [
+      ...initialItems.slice(clickedItemIndex),
+      ...initialItems.slice(0, clickedItemIndex),
+    ];
+  }, [initialItems, clickedItemIndex]);
 
   // Browse-only: no fetching of new cards, just cycle through initialItems
   const fetchNoMore = async (): Promise<CardItem[]> => [];
@@ -110,7 +116,8 @@ const FriendLikedItemsScreen = ({
         navigation.navigate("Cart");
       }
     },
-    initialCards: initialItems.slice(clickedItemIndex),
+    initialCards: reorderedItems,
+    circular: true,
   });
 
   const renderEmptyState = () => (
@@ -152,7 +159,7 @@ const FriendLikedItemsScreen = ({
           <View style={styles.backButtonContainer}>
             <TouchableOpacity
               style={styles.backButton}
-              onPress={() => navigation.goBackPreserving?.()}
+              onPress={() => navigation.goBack()}
               activeOpacity={0.7}
             >
               <BackIcon width={22} height={22} />
@@ -324,6 +331,7 @@ const createScreenStyles = (theme: ThemeColors, safeTop: number) =>
       justifyContent: "space-evenly",
       alignItems: "center",
       backgroundColor: "transparent",
+      paddingTop: safeTop,
     },
     headerBlur: {
       position: "absolute",

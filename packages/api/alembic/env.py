@@ -1,4 +1,5 @@
 import os
+import sys
 from logging.config import fileConfig
 from dotenv import load_dotenv
 
@@ -9,6 +10,27 @@ from alembic import context
 
 # Load environment variables from .env file
 load_dotenv()
+
+
+def _check_production_safety():
+    """Block migrations against production when ENVIRONMENT=production unless confirmed."""
+    env = os.getenv("ENVIRONMENT", "development")
+    if env != "production":
+        return
+
+    if os.getenv("ALLOW_PROD_MIGRATE") == "1":
+        print("WARNING: Running migration against PRODUCTION database", file=sys.stderr)
+        return
+
+    print(
+        "ABORT: ENVIRONMENT=production — refusing to migrate.\n"
+        "Set ALLOW_PROD_MIGRATE=1 to proceed (e.g. in CI).",
+        file=sys.stderr,
+    )
+    sys.exit(1)
+
+
+_check_production_safety()
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.

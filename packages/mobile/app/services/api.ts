@@ -1913,8 +1913,8 @@ export const getShoppingInfo = async (): Promise<ShoppingInfo> => {
 };
 
 export const updateShoppingInfo = async (shippingInfo: {
-  delivery_email: string;
-  phone: string;
+  delivery_email?: string;
+  phone?: string;
   street?: string;
   house_number?: string;
   apartment_number?: string;

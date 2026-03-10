@@ -17,7 +17,8 @@
       "supportsTablet": true,
       "bundleIdentifier": "com.danyvsthewrld.PolkaMobile",
       "infoPlist": {
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false,
+        "CADisableMinimumFrameSynchronization": true
       }
     },
     "android": {

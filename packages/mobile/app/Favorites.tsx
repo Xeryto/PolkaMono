@@ -68,7 +68,6 @@ import {
 import { mapProductToCardItem } from "./lib/productMapper";
 import { useTheme } from "./lib/ThemeContext";
 import type { ThemeColors } from "./lib/theme";
-import { useFocusEffect } from "@react-navigation/native";
 import { useStaleFocusEffect } from "./lib/useStaleFocusEffect";
 import LockIcon from "./assets/Lock.svg";
 import PriceTag from "./components/PriceTag";
@@ -254,7 +253,6 @@ const Favorites = ({ navigation }: FavoritesProps) => {
 
       // Convert API friends to FriendItem format - handle null values
       const friendsList: FriendItem[] = (friends || []).map((friend) => {
-        log.info("[Favorites] friend from API:", friend.username, "selected_size:", friend.selected_size);
         return {
           ...friend,
           status: "friend" as const,
@@ -328,22 +326,6 @@ const Favorites = ({ navigation }: FavoritesProps) => {
 
   // Note: Friend recommendations are now loaded in FriendProfileView component
 
-  // Replay a subtle slide-up when returning from FRS/FLIS with profile visible
-  const hasMountedRef = useRef(false);
-  useFocusEffect(
-    useCallback(() => {
-      if (!hasMountedRef.current) {
-        hasMountedRef.current = true;
-        return;
-      }
-      if (selectedFriend && profileViewOpacity.value === 1) {
-        profileTranslateY.value = 12;
-        profileViewOpacity.value = 0.6;
-        profileTranslateY.value = withTiming(0, { duration: ANIMATION_DURATIONS.STANDARD, easing: Easing.out(Easing.ease) });
-        profileViewOpacity.value = withTiming(1, { duration: ANIMATION_DURATIONS.STANDARD });
-      }
-    }, [selectedFriend]),
-  );
 
   // Animated styles for views
   const mainViewAnimatedStyle = useAnimatedStyle(() => ({
@@ -1736,7 +1718,6 @@ const FriendProfileView = React.memo(
         easing: RNEasing.inOut(RNEasing.cubic),
       }).start(() => {
         setIsSpinning(false);
-        log.info("[Favorites] navigating to FRS, friend.selected_size:", friend.selected_size);
         navigation.navigate("FriendRecommendations", {
           friendId: friend.id,
           friendUsername: friend.username,

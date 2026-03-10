@@ -20,6 +20,7 @@ import {
 import {
   NavigationContainer,
   useFocusEffect,
+  useNavigation,
   CommonActions,
 } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
@@ -123,7 +124,6 @@ type NavigationListener = () => void;
 interface SimpleNavigation {
   navigate: (screen: string, params?: any) => void;
   goBack: () => void;
-  goBackPreserving?: () => void;
   addListener: (event: string, callback: NavigationListener) => () => void;
   setParams?: (params: any) => void;
 }
@@ -271,6 +271,9 @@ async function registerForPushNotificationsAsync(): Promise<string | null> {
 // Prevent the splash screen from auto-hiding
 SplashScreen.preventAutoHideAsync();
 
+// Tab screen names — detail screens (FRS, FLIS, RecentPieces) are not in this set
+const TAB_SCREENS = new Set(["Home", "Cart", "Search", "Favorites", "Wall"]);
+
 // Wraps tab/detail screens: applies safe area padding and plays a
 // FadeInDown animation every time the screen gains focus. No remounting —
 // screens stay mounted and state is preserved. Stack uses animation:"none"
@@ -284,12 +287,37 @@ function TabScreenContainer({
   skipSafeAreaTop?: boolean;
 }) {
   const insets = useSafeAreaInsets();
-  const opacity = useSharedValue(0);
-  const translateY = useSharedValue(15);
+  const opacity = useSharedValue(1);
+  const translateY = useSharedValue(0);
+  const returningFromDetailRef = useRef(false);
+  const navigation = useNavigation();
+
+  // When this screen blurs because a detail screen was pushed on top,
+  // flag it so we skip the re-animation when focus returns.
+  useEffect(() => {
+    const unsub = navigation.addListener("blur", () => {
+      const state = navigation.getState();
+      if (state) {
+        const topRoute = state.routes[state.index];
+        if (!TAB_SCREENS.has(topRoute.name)) {
+          returningFromDetailRef.current = true;
+        }
+      }
+    });
+    return unsub;
+  }, [navigation]);
 
   useFocusEffect(
     React.useCallback(() => {
-      // Reset to invisible, then animate in (FadeInDown)
+      if (returningFromDetailRef.current) {
+        // Returning from detail screen — stay visible, no re-animation
+        returningFromDetailRef.current = false;
+        opacity.value = 1;
+        translateY.value = 0;
+        return;
+      }
+
+      // Tab switch or initial mount — animate in
       opacity.value = 0;
       translateY.value = 15;
       opacity.value = withDelay(
@@ -360,7 +388,6 @@ function MainNavigator({
         nav.navigate(screen as keyof RootStackParamList, params);
       },
       goBack: () => nav.goBack(),
-      goBackPreserving: () => nav.goBack(),
       addListener: (event: string, callback: NavigationListener) => {
         if (event === "beforeRemove") {
           return nav.addListener("beforeRemove", callback);
@@ -378,6 +405,7 @@ function MainNavigator({
         headerShown: false,
         contentStyle: { backgroundColor: "transparent" },
         animation: "none",
+        gestureEnabled: false,
       }}
       screenListeners={{
         state: (e) => {
@@ -432,56 +460,59 @@ function MainNavigator({
           </TabScreenContainer>
         )}
       </Stack.Screen>
-      <Stack.Screen name="RecentPieces">
+      <Stack.Screen
+        name="RecentPieces"
+        options={{ animation: "slide_from_right", gestureEnabled: true }}
+      >
         {({ navigation: nav, route }) => (
-          <TabScreenContainer>
-            <RecentPiecesScreen
-              navigation={createNavigationAdapter(nav, route)}
-            />
-          </TabScreenContainer>
+          <RecentPiecesScreen
+            navigation={createNavigationAdapter(nav, route)}
+          />
         )}
       </Stack.Screen>
-      <Stack.Screen name="FriendRecommendations">
+      <Stack.Screen
+        name="FriendRecommendations"
+        options={{ animation: "slide_from_right", gestureEnabled: true }}
+      >
         {({ navigation: nav, route }) => {
           const params = route.params || {};
           return (
-            <TabScreenContainer>
-              <FriendRecommendationsScreen
-                navigation={createNavigationAdapter(nav, route)}
-                route={{
-                  params: {
-                    friendId: params.friendId || "",
-                    friendUsername: params.friendUsername || "",
-                    friendAvatarUrl: params.friendAvatarUrl,
-                    friendSelectedSize: params.friendSelectedSize,
-                    initialItems: params.initialItems || [],
-                    clickedItemIndex: params.clickedItemIndex || 0,
-                  },
-                }}
-              />
-            </TabScreenContainer>
+            <FriendRecommendationsScreen
+              navigation={createNavigationAdapter(nav, route)}
+              route={{
+                params: {
+                  friendId: params.friendId || "",
+                  friendUsername: params.friendUsername || "",
+                  friendAvatarUrl: params.friendAvatarUrl,
+                  friendSelectedSize: params.friendSelectedSize,
+                  initialItems: params.initialItems || [],
+                  clickedItemIndex: params.clickedItemIndex || 0,
+                },
+              }}
+            />
           );
         }}
       </Stack.Screen>
-      <Stack.Screen name="FriendLikedItems">
+      <Stack.Screen
+        name="FriendLikedItems"
+        options={{ animation: "slide_from_right", gestureEnabled: true }}
+      >
         {({ navigation: nav, route }) => {
           const params = route.params || {};
           return (
-            <TabScreenContainer>
-              <FriendLikedItemsScreen
-                navigation={createNavigationAdapter(nav, route)}
-                route={{
-                  params: {
-                    friendId: params.friendId || "",
-                    friendUsername: params.friendUsername || "",
-                    friendAvatarUrl: params.friendAvatarUrl,
-                    friendSelectedSize: params.friendSelectedSize,
-                    initialItems: params.initialItems || [],
-                    clickedItemIndex: params.clickedItemIndex || 0,
-                  },
-                }}
-              />
-            </TabScreenContainer>
+            <FriendLikedItemsScreen
+              navigation={createNavigationAdapter(nav, route)}
+              route={{
+                params: {
+                  friendId: params.friendId || "",
+                  friendUsername: params.friendUsername || "",
+                  friendAvatarUrl: params.friendAvatarUrl,
+                  friendSelectedSize: params.friendSelectedSize,
+                  initialItems: params.initialItems || [],
+                  clickedItemIndex: params.clickedItemIndex || 0,
+                },
+              }}
+            />
           );
         }}
       </Stack.Screen>

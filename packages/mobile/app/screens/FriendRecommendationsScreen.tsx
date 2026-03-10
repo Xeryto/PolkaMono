@@ -49,7 +49,6 @@ import { useSwipeDeck } from "../hooks/useSwipeDeck";
 interface SimpleNavigation {
   navigate: (screen: string, params?: any) => void;
   goBack: () => void;
-  goBackPreserving?: () => void;
   addListener?: (event: string, callback: () => void) => () => void;
   setParams?: (params: any) => void;
 }
@@ -89,8 +88,6 @@ const FriendRecommendationsScreen = ({
   const friendSelectedSize = route?.params?.friendSelectedSize ?? null;
   const initialItems = route?.params?.initialItems || [];
   const clickedItemIndex = route?.params?.clickedItemIndex || 0;
-
-  log.info("[FRS] friendSelectedSize param:", friendSelectedSize, "raw:", route?.params?.friendSelectedSize);
 
   const fetchMoreFriendCards = async (
     count: number = 2,
@@ -175,7 +172,7 @@ const FriendRecommendationsScreen = ({
           <View style={styles.backButtonContainer}>
             <TouchableOpacity
               style={styles.backButton}
-              onPress={() => navigation.goBackPreserving?.()}
+              onPress={() => navigation.goBack()}
               activeOpacity={0.7}
             >
               <BackIcon width={22} height={22} />
@@ -347,6 +344,7 @@ const createScreenStyles = (theme: ThemeColors, safeTop: number) =>
       justifyContent: "space-evenly",
       alignItems: "center",
       backgroundColor: "transparent",
+      paddingTop: safeTop,
     },
     headerBlur: {
       position: "absolute",

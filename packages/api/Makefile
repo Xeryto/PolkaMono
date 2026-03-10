@@ -52,4 +52,4 @@ docs: ## Open API documentation in browser
 	@echo "Opening API documentation..."
 	@echo "Swagger UI: http://localhost:8000/docs"
 	@echo "ReDoc: http://localhost:8000/redoc"
-	@echo "Make sure the server is running first!" 
+	@echo "Make sure the server is running first!"

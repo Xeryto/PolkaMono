@@ -18,7 +18,7 @@ from auth_service import auth_service
 
 # Import our modules
 from config import settings
-from database import get_db, init_db
+from database import get_db, init_db, SessionLocal
 from fastapi import Depends, FastAPI, HTTPException, Query, Request, status
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
@@ -5334,8 +5334,14 @@ async def payment_webhook(request: Request, db: Session = Depends(get_db)):
 # Initialize database on startup
 @app.on_event("startup")
 async def startup_event():
-    """Initialize database on application startup"""
+    """Initialize database and ensure admin account exists."""
     init_db()
+    if settings.ADMIN_EMAIL and settings.ADMIN_PASSWORD:
+        db = SessionLocal()
+        try:
+            auth_service.create_admin_account(db, settings.ADMIN_EMAIL, settings.ADMIN_PASSWORD)
+        finally:
+            db.close()
 
 
 if __name__ == "__main__":

@@ -57,7 +57,7 @@ class Settings:
             return [origin.strip() for origin in cors_origins_env.split(",")]
         if self.ENVIRONMENT == "production":
             return []
-        return ["http://localhost:3000", "http://localhost:8081"]
+        return ["http://localhost:8080", "http://localhost:8081", "http://localhost:8000"]
     
     @property
     def BACKEND_CORS_ORIGINS(self) -> List[str]:

@@ -1278,36 +1278,7 @@ const Settings = ({
         return;
       }
 
-      // On the address screen, validate all fields including address details
-      // Validate required fields
-      if (!shoppingInfo.fullName.trim()) {
-        Alert.alert(
-          "ошибка",
-          "пожалуйста, введите ваше полное имя для доставки.",
-        );
-        return;
-      }
-
-      if (!shoppingInfo.deliveryEmail.trim()) {
-        Alert.alert("ошибка", "пожалуйста, введите email для доставки.");
-        return;
-      }
-
-      if (!shoppingInfo.phoneNumber.trim()) {
-        Alert.alert("ошибка", "пожалуйста, введите ваш телефон.");
-        return;
-      }
-
-      // Validate phone number format (must be exactly 10 digits)
-      const phoneDigits = shoppingInfo.phoneNumber.replace(/\D/g, "");
-      if (phoneDigits.length !== 10) {
-        Alert.alert(
-          "ошибка",
-          "номер телефона должен содержать 10 цифр (без кода страны +7).",
-        );
-        return;
-      }
-
+      // On the address screen, validate only address-specific fields
       // Validate street is provided
       if (!shoppingInfo.street || !shoppingInfo.street.trim()) {
         Alert.alert("ошибка", "пожалуйста, введите улицу.");
@@ -1329,21 +1300,15 @@ const Settings = ({
         }
       }
 
-      // Save shopping information using the new API
-      // Update profile for full_name, and shipping_info for delivery details
-      const fullPhoneNumber = phoneCountryCode + phoneDigits;
-
-      // Update profile if full_name changed
+      // Update profile if full_name provided
       if (shoppingInfo.fullName.trim()) {
         await api.updateUserProfileData({
           full_name: shoppingInfo.fullName.trim(),
         });
       }
 
-      // Update shipping info
+      // Update only address fields
       await api.updateShoppingInfo({
-        delivery_email: shoppingInfo.deliveryEmail,
-        phone: fullPhoneNumber,
         street: shoppingInfo.street.trim(),
         house_number: shoppingInfo.houseNumber?.trim() || undefined,
         apartment_number: shoppingInfo.apartmentNumber?.trim() || undefined,
