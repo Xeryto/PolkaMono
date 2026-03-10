@@ -32,7 +32,7 @@ def generate_article_number(brand_name: str, product_name: str) -> str:
     words = product_clean.split()
     if not words:
         # Fallback: use first 4 chars of original product name
-        product_clean = re.sub(r'[^A-Z0-9]', '', product_name.upper())[:4]
+        product_abbrev = re.sub(r'[^A-Z0-9]', '', product_name.upper())[:4]
     else:
         # Abbreviation strategy: Take first letter of first 3-4 significant words
         # Skip common stop words
@@ -969,6 +969,7 @@ def populate_initial_data():
                 
                 # Create Order 1: Nike sneakers (Ozon-style: Checkout -> Order -> OrderItem -> Payment)
                 if nike_variant_m:
+                    assert nike_brand is not None
                     subtotal1 = 150.00
                     shipping1 = 0.0 if (nike_brand.min_free_shipping and subtotal1 >= nike_brand.min_free_shipping) else (float(nike_brand.shipping_price or 0))
                     total1 = subtotal1 + shipping1
@@ -1030,6 +1031,7 @@ def populate_initial_data():
 
                 # Create Order 2: Adidas sneakers (Ozon-style)
                 if adidas_variant_s:
+                    assert adidas_brand is not None
                     subtotal2 = 180.00
                     shipping2 = 0.0 if (adidas_brand.min_free_shipping and subtotal2 >= adidas_brand.min_free_shipping) else (float(adidas_brand.shipping_price or 0))
                     total2 = subtotal2 + shipping2
@@ -1091,6 +1093,7 @@ def populate_initial_data():
 
                 # Create Order 3: Zara dress (Ozon-style)
                 if zara_variant_l:
+                    assert zara_brand is not None
                     subtotal3 = 79.99
                     shipping3 = 0.0 if (zara_brand.min_free_shipping and subtotal3 >= zara_brand.min_free_shipping) else (float(zara_brand.shipping_price or 0))
                     total3 = subtotal3 + shipping3

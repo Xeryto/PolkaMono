@@ -4,6 +4,7 @@ import random
 import re
 import time
 import uuid
+from contextlib import asynccontextmanager
 from datetime import datetime, timedelta, timezone
 from typing import List, Literal, Optional
 
@@ -58,7 +59,7 @@ from models import (
     UserSwipe,
 )
 from oauth_service import oauth_service
-from pydantic import BaseModel, Field, ValidationError, validator
+from pydantic import BaseModel, Field, ValidationError, field_validator
 from schemas import UserCreate
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
@@ -187,12 +188,27 @@ limiter = Limiter(key_func=get_remote_address)
 
 _is_production = settings.ENVIRONMENT == "production"
 
+
+@asynccontextmanager
+async def lifespan(app):
+    """Initialize database and ensure admin account exists."""
+    init_db()
+    if settings.ADMIN_EMAIL and settings.ADMIN_PASSWORD:
+        db = SessionLocal()
+        try:
+            auth_service.create_admin_account(db, settings.ADMIN_EMAIL, settings.ADMIN_PASSWORD)
+        finally:
+            db.close()
+    yield
+
+
 app = FastAPI(
     title="PolkaAPI - Authentication Backend",
     description="A modern, fast, and secure authentication API with OAuth support for mobile and web applications",
     version="1.0.0",
     docs_url=None if _is_production else "/docs",
     redoc_url=None if _is_production else "/redoc",
+    lifespan=lifespan,
 )
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
@@ -361,7 +377,8 @@ class UserLogin(BaseModel):
     identifier: str  # Can be either email or username
     password: str
 
-    @validator("identifier")
+    @field_validator("identifier", mode="before")
+    @classmethod
     def validate_identifier(cls, v):
         if not v or not v.strip():
             raise ValueError("Identifier cannot be empty")
@@ -5392,19 +5409,6 @@ async def payment_webhook(request: Request, db: Session = Depends(get_db)):
             payment_service.update_order_status(db, order_id, OrderStatus.CANCELED)
     db.commit()  # Added commit here
     return {"status": "ok"}
-
-
-# Initialize database on startup
-@app.on_event("startup")
-async def startup_event():
-    """Initialize database and ensure admin account exists."""
-    init_db()
-    if settings.ADMIN_EMAIL and settings.ADMIN_PASSWORD:
-        db = SessionLocal()
-        try:
-            auth_service.create_admin_account(db, settings.ADMIN_EMAIL, settings.ADMIN_PASSWORD)
-        finally:
-            db.close()
 
 
 if __name__ == "__main__":

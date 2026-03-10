@@ -3,7 +3,7 @@ Database models for PolkaAPI
 """
 from sqlalchemy import Column, String, Boolean, DateTime, Text, ForeignKey, Integer, Enum as SQLEnum, UniqueConstraint, Float, Index, TypeDecorator, Computed
 from sqlalchemy.dialects.postgresql import ARRAY, TSVECTOR
-from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import declarative_base
 from sqlalchemy.orm import relationship
 import uuid
 from enum import Enum

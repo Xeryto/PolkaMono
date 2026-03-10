@@ -5,7 +5,7 @@ from typing import Any, List, Optional
 from config import settings  # Import settings
 from models import Gender  # Import enums
 from profanity import contains_profanity
-from pydantic import BaseModel, EmailStr, Field, field_validator, model_validator, validator
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator, model_validator
 
 _USERNAME_REGEX = re.compile(r"^[a-zA-Z0-9а-яА-ЯёЁ#$_!\-]+$")
 
@@ -38,7 +38,8 @@ class Amount(BaseModel):
     value: float
     currency: str
 
-    @validator("value")
+    @field_validator("value", mode="before")
+    @classmethod
     def validate_value(cls, v):
         if v <= 0:
             raise ValueError("Amount must be positive")
@@ -62,7 +63,8 @@ class CartItem(BaseModel):
     product_variant_id: str  # Identifies color + size (ProductVariant.id)
     quantity: int = 1
 
-    @validator("quantity")
+    @field_validator("quantity", mode="before")
+    @classmethod
     def validate_quantity(cls, v):
         if v < 1:
             raise ValueError("Quantity must be at least 1")
@@ -75,7 +77,8 @@ class PaymentCreate(BaseModel):
     returnUrl: str
     items: List[CartItem]
 
-    @validator("returnUrl")
+    @field_validator("returnUrl", mode="before")
+    @classmethod
     def validate_return_url(cls, v):
         if "://" not in v:
             raise ValueError("returnUrl must be a valid URL containing ://")
@@ -118,8 +121,7 @@ class OrderItemResponse(BaseModel):
     product_id: Optional[str] = None  # Original product ID for swipe tracking
     status: str = "shipped"  # shipped | returned
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class UpdateTrackingRequest(BaseModel):
@@ -145,8 +147,7 @@ class OrderSummaryResponse(BaseModel):
     tracking_link: Optional[str] = None
     shipping_cost: float = 0.0
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class AdminOrderSummaryResponse(OrderSummaryResponse):
@@ -174,8 +175,7 @@ class OrderResponse(BaseModel):
     delivery_city: Optional[str] = None
     delivery_postal_code: Optional[str] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class OrderPartResponse(BaseModel):
@@ -210,8 +210,7 @@ class CheckoutResponse(BaseModel):
     delivery_city: Optional[str] = None
     delivery_postal_code: Optional[str] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class ForgotPasswordRequest(BaseModel):
@@ -222,7 +221,8 @@ class ResetPasswordRequest(BaseModel):
     token: str
     new_password: str
 
-    @validator("new_password")
+    @field_validator("new_password", mode="before")
+    @classmethod
     def validate_new_password(cls, v):
         return _validate_password(v)
 
@@ -232,7 +232,8 @@ class ResetPasswordWithCodeRequest(BaseModel):
     code: str
     new_password: str
 
-    @validator("new_password")
+    @field_validator("new_password", mode="before")
+    @classmethod
     def validate_new_password(cls, v):
         return _validate_password(v)
 
@@ -256,14 +257,14 @@ class ProductVariantSchema(BaseModel):
     size: str
     stock_quantity: int
 
-    @validator("stock_quantity")
+    @field_validator("stock_quantity", mode="before")
+    @classmethod
     def validate_stock_quantity(cls, v):
         if v < 0:
             raise ValueError("Stock quantity cannot be negative")
         return v
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class ProductColorVariantSchema(BaseModel):
@@ -273,8 +274,7 @@ class ProductColorVariantSchema(BaseModel):
     images: List[str] = []
     variants: List[ProductVariantSchema] = []
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class ProductColorVariantCreate(BaseModel):
@@ -396,8 +396,7 @@ class Product(BaseModel):
     sale_type: Optional[str] = None
     sizing_table_image: Optional[str] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # User core update (username/email only)
@@ -405,7 +404,8 @@ class UserProfileUpdateRequest(BaseModel):
     username: Optional[str] = Field(None, max_length=50)
     email: Optional[EmailStr] = None
 
-    @validator("username")
+    @field_validator("username", mode="before")
+    @classmethod
     def validate_username(cls, v):
         if v is None:
             return v
@@ -442,8 +442,7 @@ class ProfileResponse(BaseModel):
     avatar_crop: Optional[str] = None
     avatar_transform: Optional[str] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # Shipping info schemas
@@ -456,7 +455,8 @@ class ShippingInfoUpdateRequest(BaseModel):
     city: Optional[str] = Field(None, max_length=100)
     postal_code: Optional[str] = Field(None, max_length=20)
 
-    @validator("phone")
+    @field_validator("phone", mode="before")
+    @classmethod
     def validate_phone(cls, v):
         if v is None:
             return v
@@ -483,7 +483,8 @@ class ShippingInfoUpdateRequest(BaseModel):
             )
         return cleaned
 
-    @validator("postal_code")
+    @field_validator("postal_code", mode="before")
+    @classmethod
     def validate_postal_code(cls, v):
         if v is None:
             return v
@@ -507,8 +508,7 @@ class ShippingInfoResponse(BaseModel):
     city: Optional[str] = None
     postal_code: Optional[str] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # Preferences schemas
@@ -527,8 +527,7 @@ class PreferencesResponse(BaseModel):
     order_notifications: bool = True
     marketing_notifications: bool = True
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class StyleResponse(BaseModel):
@@ -536,8 +535,7 @@ class StyleResponse(BaseModel):
     name: str
     description: Optional[str] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class UserBrandResponse(BaseModel):
@@ -547,8 +545,7 @@ class UserBrandResponse(BaseModel):
     logo: Optional[str] = None
     description: Optional[str] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class UserProfileResponse(BaseModel):
@@ -567,8 +564,7 @@ class UserProfileResponse(BaseModel):
     shipping_info: Optional[ShippingInfoResponse] = None
     preferences: Optional[PreferencesResponse] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class BrandCreate(BaseModel):
@@ -670,8 +666,7 @@ class BrandResponse(BaseModel):
     created_at: datetime
     updated_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class UserCreate(BaseModel):
@@ -682,7 +677,8 @@ class UserCreate(BaseModel):
     selected_size: Optional[str] = None
     avatar_url: Optional[str] = None
 
-    @validator("username")
+    @field_validator("username", mode="before")
+    @classmethod
     def validate_username(cls, v):
         if len(v) < settings.MIN_USERNAME_LENGTH:
             raise ValueError(
@@ -696,7 +692,8 @@ class UserCreate(BaseModel):
             raise ValueError("Username contains inappropriate language")
         return v
 
-    @validator("password")
+    @field_validator("password", mode="before")
+    @classmethod
     def validate_password(cls, v):
         return _validate_password(v)
 
@@ -722,7 +719,8 @@ class BrandChangePassword(BaseModel):
     current_password: str
     new_password: str
 
-    @validator("new_password")
+    @field_validator("new_password", mode="before")
+    @classmethod
     def validate_new_password(cls, v):
         return _validate_password(v)
 
@@ -775,8 +773,7 @@ class NotificationItem(BaseModel):
     is_read: bool
     created_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class NotificationsResponse(BaseModel):
@@ -839,8 +836,7 @@ class BrandWithdrawalItem(BaseModel):
     admin_email: str
     created_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class BrandWithdrawalListResponse(BaseModel):
