@@ -3,7 +3,7 @@ Database connection and session management
 """
 from collections.abc import Generator
 
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker, Session
 from config import settings
 from models import Base
@@ -29,6 +29,9 @@ def get_db() -> Generator[Session, None, None]:
 
 def init_db():
     """Initialize database tables"""
+    with engine.connect() as conn:
+        conn.execute(text("CREATE EXTENSION IF NOT EXISTS pg_trgm"))
+        conn.commit()
     Base.metadata.create_all(bind=engine)
 
 def drop_db():
