@@ -213,6 +213,67 @@ export async function recordWithdrawal(
   return res.json();
 }
 
+// --- Brand Management ---
+
+export interface AdminBrandListItem {
+  id: string;
+  name: string;
+  email: string;
+  slug: string;
+  is_inactive: boolean;
+  created_at: string | null;
+}
+
+export interface AdminBrandCreateResponse {
+  id: string;
+  name: string;
+  email: string;
+  slug: string;
+  temporary_password: string;
+  is_inactive: boolean;
+}
+
+export async function getAdminBrands(): Promise<AdminBrandListItem[]> {
+  const res = await adminApiRequest("/api/v1/admin/brands");
+  if (!res.ok) throw new Error("Failed to fetch brands");
+  return res.json();
+}
+
+export async function createAdminBrand(name: string, email: string): Promise<AdminBrandCreateResponse> {
+  const res = await adminApiRequest("/api/v1/admin/brands", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ name, email }),
+  });
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.detail || "Failed to create brand");
+  }
+  return res.json();
+}
+
+export async function updateAdminBrand(brandId: string, updates: { name?: string; email?: string }): Promise<void> {
+  const res = await adminApiRequest(`/api/v1/admin/brands/${brandId}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(updates),
+  });
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.detail || "Failed to update brand");
+  }
+}
+
+export async function activateAdminBrand(brandId: string): Promise<void> {
+  const res = await adminApiRequest(`/api/v1/admin/brands/${brandId}/activate`, { method: "PUT" });
+  if (!res.ok) throw new Error("Failed to activate brand");
+}
+
+export async function deactivateAdminBrand(brandId: string): Promise<void> {
+  const res = await adminApiRequest(`/api/v1/admin/brands/${brandId}/deactivate`, { method: "PUT" });
+  if (!res.ok) throw new Error("Failed to deactivate brand");
+}
+
 export async function getWithdrawals(brandId?: string, dateFrom?: string, dateTo?: string): Promise<WithdrawalRecord[]> {
   const params = new URLSearchParams();
   if (brandId) params.set("brand_id", brandId);

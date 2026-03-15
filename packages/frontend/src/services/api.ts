@@ -71,11 +71,6 @@ export interface BrandResponse {
   min_free_shipping?: number;
   shipping_price?: number;
   shipping_provider?: string;
-  amount_withdrawn: number;
-  inn?: string;
-  registration_address?: string;
-  payout_account?: string;
-  payout_account_locked: boolean;
   delivery_time_min?: number;
   delivery_time_max?: number;
   is_inactive: boolean;
@@ -107,10 +102,6 @@ export interface BrandProfileUpdateRequest {
   min_free_shipping?: number;
   shipping_price?: number;
   shipping_provider?: string;
-  inn?: string;
-  registration_address?: string;
-  payout_account?: string;
-  payout_account_locked?: boolean;
   delivery_time_min?: number;
   delivery_time_max?: number;
 }

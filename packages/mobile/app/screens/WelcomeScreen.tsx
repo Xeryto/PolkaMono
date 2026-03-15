@@ -82,7 +82,7 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
     // Spin border with acceleration and deceleration
     RNAnimated.timing(borderSpinValue, {
       toValue: 1,
-      duration: ANIMATION_DURATIONS.VERY_LONG,
+      duration: ANIMATION_DURATIONS.VERY_LONG * 1.5,
       useNativeDriver: true,
       easing: ANIMATION_EASING.CUBIC,
     }).start(() => {
@@ -95,7 +95,7 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
   // Map 0-1 animation value to a full 720 degree rotation (two spins)
   const borderSpin = borderSpinValue.interpolate({
     inputRange: [0, 1],
-    outputRange: ["0deg", "360deg"],
+    outputRange: ["0deg", "720deg"],
   });
 
   // Handle back button press

@@ -9,18 +9,7 @@ import {
   Alert,
 } from "react-native";
 import { TouchableOpacity } from "react-native";
-import { UIManager } from "react-native";
-let ProgressiveBlurView: React.ComponentType<any> | null = null;
-try {
-  const hasNative =
-    UIManager.getViewManagerConfig("ReactNativeProgressiveBlurView") != null;
-  if (hasNative) {
-    ProgressiveBlurView =
-      require("@sbaiahmed1/react-native-blur").ProgressiveBlurView;
-  }
-} catch {
-  // fallback: no blur if package unavailable
-}
+import { ProgressiveBlurView } from "../lib/progressiveBlur";
 import { LinearGradient } from "expo-linear-gradient";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";

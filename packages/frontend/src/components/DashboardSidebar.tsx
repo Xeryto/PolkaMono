@@ -49,12 +49,12 @@ export function DashboardSidebar({
 
   return (
     <Sidebar
-      className={`${
-        collapsed ? "w-14" : "w-60"
-      } bg-card border-r border-border/30`}
+      className="bg-card border-r border-border/30"
       collapsible="icon"
     >
-      <SidebarTrigger className="m-2 self-end hidden md:flex" />
+      <div className="h-16 flex items-center justify-end px-2 border-b border-border/30 shrink-0">
+        <SidebarTrigger className="hidden md:flex" />
+      </div>
 
       <SidebarContent>
         <SidebarGroup>

@@ -105,7 +105,7 @@ export function DashboardHeader({
   );
 
   return (
-    <header className="relative h-16 bg-card/50 border-b border-border/30 flex items-center justify-between px-4 sm:px-6 gap-2 before:absolute before:inset-y-0 before:right-full before:w-[--sidebar-width] before:bg-card/50 before:border-b before:border-border/30">
+    <header className="h-16 bg-card/50 border-b border-border/30 flex items-center justify-between px-4 sm:px-6 gap-2">
       <div className="flex items-center gap-2 min-w-0">
         <SidebarTrigger
           className="shrink-0 md:hidden"

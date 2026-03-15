@@ -19,19 +19,8 @@ import {
   Alert,
 } from "react-native";
 import * as Clipboard from "expo-clipboard";
-import { UIManager } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-let ProgressiveBlurView: React.ComponentType<any> | null = null;
-try {
-  const hasNative =
-    UIManager.getViewManagerConfig("ReactNativeProgressiveBlurView") != null;
-  if (hasNative) {
-    ProgressiveBlurView =
-      require("@sbaiahmed1/react-native-blur").ProgressiveBlurView;
-  }
-} catch {
-  // fallback: no blur
-}
+import { ProgressiveBlurView } from "./lib/progressiveBlur";
 import { LinearGradient } from "expo-linear-gradient";
 import * as Haptics from "expo-haptics";
 import { SkeletonSwipeCard } from "./components/SkeletonCard";

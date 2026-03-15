@@ -135,7 +135,15 @@ export function ProductsView() {
             message="загрузка товаров..."
           />
 
-          {!isLoading && !error && products && (
+          {!isLoading && !error && products && products.length === 0 && (
+            <div className="flex flex-col items-center justify-center py-12 text-center">
+              <p className="text-muted-foreground text-sm">
+                У вас пока нет товаров. Добавьте первый товар, чтобы начать продавать.
+              </p>
+            </div>
+          )}
+
+          {!isLoading && !error && products && products.length > 0 && (
             <div className="space-y-4">
               {products.map((product) => (
                 <div

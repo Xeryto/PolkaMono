@@ -586,32 +586,12 @@ class BrandLogin(BaseModel):
 
 
 class BrandUpdate(BaseModel):
-    name: Optional[str] = Field(None, max_length=100)
-    email: Optional[EmailStr] = None
-    password: Optional[str] = None  # For changing password
-    slug: Optional[str] = None
-    logo: Optional[str] = None
-    description: Optional[str] = Field(None, max_length=1000)
-    return_policy: Optional[str] = None
-    min_free_shipping: Optional[int] = None
     shipping_price: Optional[float] = None
     shipping_provider: Optional[str] = None
-    inn: Optional[str] = None
-    registration_address: Optional[str] = None
-    payout_account: Optional[str] = Field(None, max_length=100)
-    payout_account_locked: Optional[bool] = None
     delivery_time_min: Optional[int] = None  # days
     delivery_time_max: Optional[int] = None  # days
-
-    @field_validator("inn", mode="before")
-    @classmethod
-    def validate_inn(cls, v):
-        if v is None:
-            return v
-        cleaned = re.sub(r"\s", "", str(v))
-        if not re.match(r"^\d{10}$|^\d{12}$", cleaned):
-            raise ValueError("ИНН должен содержать 10 или 12 цифр")
-        return cleaned
+    return_policy: Optional[str] = None
+    min_free_shipping: Optional[int] = None
 
     @field_validator("shipping_price", mode="before")
     @classmethod
@@ -640,6 +620,34 @@ class BrandUpdate(BaseModel):
             if self.delivery_time_max < self.delivery_time_min:
                 raise ValueError("Максимальный срок доставки должен быть не меньше минимального")
         return self
+
+
+class AdminBrandCreate(BaseModel):
+    name: str = Field(..., max_length=100)
+    email: EmailStr
+
+
+class AdminBrandCreateResponse(BaseModel):
+    id: str
+    name: str
+    email: EmailStr
+    slug: str
+    temporary_password: str
+    is_inactive: bool
+
+
+class AdminBrandUpdate(BaseModel):
+    name: Optional[str] = Field(None, max_length=100)
+    email: Optional[EmailStr] = None
+
+
+class AdminBrandListItem(BaseModel):
+    id: str
+    name: str
+    email: EmailStr
+    slug: str
+    is_inactive: bool
+    created_at: Optional[datetime] = None
 
 
 class BrandResponse(BaseModel):

@@ -47,6 +47,21 @@ class MailService:
             print(f"An unexpected error occurred: {e}")
             return None
 
+    def send_brand_welcome_email(self, email, brand_name, temp_password):
+        subject = "Polka — Данные для входа в аккаунт бренда"
+        html_content = f"""
+        <div style="font-family: sans-serif; max-width: 480px; margin: 0 auto;">
+            <h2>Добро пожаловать в Polka!</h2>
+            <p>Для бренда <strong>{brand_name}</strong> создан аккаунт.</p>
+            <p>Данные для входа:</p>
+            <p><strong>Email:</strong> {email}<br/>
+            <strong>Пароль:</strong> {temp_password}</p>
+            <p>Рекомендуем сменить пароль после первого входа.</p>
+        </div>
+        """
+        return self.send_email(email, subject, html_content)
+
+
 mail_service = MailService(
     os.getenv("UNISENDER_API_KEY"),
     os.getenv("UNISENDER_FROM_EMAIL"),

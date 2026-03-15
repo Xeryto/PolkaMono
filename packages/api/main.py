@@ -2,6 +2,7 @@ import json
 import logging
 import random
 import re
+import secrets
 import time
 import uuid
 from contextlib import asynccontextmanager
@@ -652,6 +653,15 @@ def get_current_admin(
     return acc
 
 
+def generate_brand_slug(name: str, db) -> str:
+    base = re.sub(r"[^a-z0-9]+", "-", name.lower()).strip("-") or "brand"
+    slug, counter = base, 2
+    while db.query(Brand).filter(Brand.slug == slug).first():
+        slug = f"{base}-{counter}"
+        counter += 1
+    return slug
+
+
 @app.get("/api/v1/brands/profile", response_model=schemas.BrandResponse)
 @limiter.limit("30/minute")
 async def get_brand_profile(
@@ -798,6 +808,8 @@ async def get_user_stats(
     db: Session = Depends(get_db),
 ):
     """Get statistics for the authenticated user"""
+    if isinstance(current_user, Brand):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not a user account")
 
     # Items purchased: from PAID/SHIPPED orders (via Order.user_id or Checkout)
     items_purchased = (
@@ -848,6 +860,8 @@ async def track_user_swipe(
     db: Session = Depends(get_db),
 ):
     """Track user swipe on a product"""
+    if isinstance(current_user, Brand):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not a user account")
 
     # Verify product exists (ID-only check)
     if not db.query(Product.id).filter(Product.id == swipe_data.product_id).first():
@@ -875,40 +889,9 @@ async def update_brand_profile(
     current_brand_user: User = Depends(get_current_brand_user),
     db: Session = Depends(get_db),
 ):
-    """Update the authenticated brand user's profile"""
+    """Update the authenticated brand user's delivery settings"""
     brand = current_brand_user
 
-    # Update fields
-    if brand_data.name is not None:
-        brand.name = brand_data.name
-    if brand_data.email is not None:
-        # Check if new email is already taken by another brand
-        if (
-            db.query(AuthAccount)
-            .filter(
-                AuthAccount.email == brand_data.email,
-                AuthAccount.id != brand.auth_account_id,
-            )
-            .first()
-        ):
-            raise HTTPException(
-                status_code=400, detail="Email already registered to another brand"
-            )
-        brand.auth_account.email = brand_data.email
-    if brand_data.password is not None:
-        brand.auth_account.password_hash = auth_service.hash_password(
-            brand_data.password
-        )
-    if brand_data.slug is not None:
-        brand.slug = brand_data.slug
-    if brand_data.logo is not None:
-        brand.logo = brand_data.logo
-    if brand_data.description is not None:
-        brand.description = brand_data.description  # type: ignore
-    if brand_data.return_policy is not None:
-        brand.return_policy = brand_data.return_policy  # type: ignore
-    if brand_data.min_free_shipping is not None:
-        brand.min_free_shipping = brand_data.min_free_shipping  # type: ignore
     if brand_data.shipping_price is not None:
         brand.shipping_price = brand_data.shipping_price  # type: ignore
     if brand_data.shipping_provider is not None:
@@ -917,25 +900,10 @@ async def update_brand_profile(
         brand.delivery_time_min = brand_data.delivery_time_min
     if brand_data.delivery_time_max is not None:
         brand.delivery_time_max = brand_data.delivery_time_max
-    requisites_updated = False
-    if brand_data.inn is not None:
-        brand.inn = brand_data.inn
-        requisites_updated = True
-    if brand_data.registration_address is not None:
-        brand.registration_address = brand_data.registration_address  # type: ignore
-        requisites_updated = True
-    if brand_data.payout_account is not None:
-        if brand.payout_account_locked:  # type: ignore
-            raise HTTPException(
-                status_code=400,
-                detail="Счёт для выплат заблокирован. Обратитесь в поддержку для изменения.",
-            )
-        brand.payout_account = brand_data.payout_account  # type: ignore
-        requisites_updated = True
-    if requisites_updated:
-        brand.payout_account_locked = 1  # Lock on every update of requisites
-    elif brand_data.payout_account_locked is not None:
-        brand.payout_account_locked = 1 if brand_data.payout_account_locked else 0
+    if brand_data.return_policy is not None:
+        brand.return_policy = brand_data.return_policy  # type: ignore
+    if brand_data.min_free_shipping is not None:
+        brand.min_free_shipping = brand_data.min_free_shipping  # type: ignore
 
     brand.updated_at = datetime.now(timezone.utc)  # type: ignore
     db.commit()
@@ -1796,6 +1764,20 @@ async def toggle_brand_inactive(
     db: Session = Depends(get_db),
 ):
     """Set or clear brand inactive mode"""
+    if not payload.is_inactive:
+        required = {
+            "Стоимость доставки": current_user.shipping_price,
+            "Служба доставки": current_user.shipping_provider,
+            "Мин. срок доставки": current_user.delivery_time_min,
+            "Макс. срок доставки": current_user.delivery_time_max,
+            "Политика возврата": current_user.return_policy,
+        }
+        missing = [k for k, v in required.items() if v is None]
+        if missing:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Заполните обязательные поля перед активацией: {', '.join(missing)}",
+            )
     current_user.is_inactive = payload.is_inactive
     db.commit()
     return {"is_inactive": current_user.is_inactive}
@@ -2078,6 +2060,8 @@ async def request_verification(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    if isinstance(current_user, Brand):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not a user account")
     if current_user.auth_account.is_email_verified:
         raise HTTPException(status_code=400, detail="Email already verified")
     code = auth_service.create_verification_code(db, current_user)
@@ -2340,6 +2324,8 @@ async def get_user_profile(
     db: Session = Depends(get_db),
 ):
     """Get current user's complete profile (users only)"""
+    if isinstance(current_user, Brand):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not a user account")
     user_id = str(current_user.id)
 
     # Single query with eager loading instead of 5 separate queries
@@ -3062,6 +3048,8 @@ async def get_profile_completion_status(
     db: Session = Depends(get_db),
 ):
     """Check user profile completion status"""
+    if isinstance(current_user, Brand):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not a user account")
     missing_fields = []
     required_screens = []
 
@@ -3109,6 +3097,8 @@ async def get_oauth_accounts(
     db: Session = Depends(get_db),
 ):
     """Get user's OAuth accounts"""
+    if isinstance(current_user, Brand):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not a user account")
     oauth_accounts = (
         db.query(OAuthAccount).filter(OAuthAccount.user_id == current_user.id).all()
     )
@@ -3135,6 +3125,8 @@ async def update_user_profile(
     db: Session = Depends(get_db),
 ):
     """Update user core information (username/email only)"""
+    if isinstance(current_user, Brand):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not a user account")
     # Update user fields only
     if profile_data.username is not None:
         existing = auth_service.get_user_by_username(db, profile_data.username)
@@ -3174,6 +3166,8 @@ async def update_user_profile_data(
     db: Session = Depends(get_db),
 ):
     """Update user profile data (name, gender, size, avatar)"""
+    if isinstance(current_user, Brand):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not a user account")
     user_id = str(current_user.id)
 
     # Get or create profile
@@ -3258,6 +3252,8 @@ async def update_user_shipping_info(
     db: Session = Depends(get_db),
 ):
     """Update user shipping/delivery information"""
+    if isinstance(current_user, Brand):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not a user account")
     user_id = str(current_user.id)
 
     # Get or create shipping info
@@ -3316,6 +3312,8 @@ async def update_user_preferences(
     db: Session = Depends(get_db),
 ):
     """Update user preferences (privacy and notifications)"""
+    if isinstance(current_user, Brand):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not a user account")
     user_id = str(current_user.id)
 
     # Get or create preferences
@@ -3392,6 +3390,8 @@ async def update_user_brands(
     db: Session = Depends(get_db),
 ):
     """Update user's favorite brands"""
+    if isinstance(current_user, Brand):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not a user account")
     user_id = str(current_user.id)
 
     # Batch-validate all brand IDs
@@ -3436,6 +3436,8 @@ async def update_user_styles(
     db: Session = Depends(get_db),
 ):
     """Update user's favorite styles"""
+    if isinstance(current_user, Brand):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not a user account")
     user_id = str(current_user.id)
 
     # Batch-validate all style IDs
@@ -3508,6 +3510,8 @@ async def toggle_favorite_item(
     db: Session = Depends(get_db),
 ):
     """Add or remove an item from the user's favorites (liked items)"""
+    if isinstance(current_user, Brand):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not a user account")
     product_id = toggle_data.product_id
     action = toggle_data.action
 
@@ -3554,6 +3558,8 @@ async def get_user_favorites(
     db: Session = Depends(get_db),
 ):
     """Get all products liked by the current user"""
+    if isinstance(current_user, Brand):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not a user account")
     liked_products = (
         db.query(Product)
         .options(*_product_eager_options())
@@ -3578,6 +3584,8 @@ async def get_friend_liked_items(
     db: Session = Depends(get_db),
 ):
     """Get liked items for a specific user (respects privacy settings)"""
+    if isinstance(current_user, Brand):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not a user account")
     target_user = (
         db.query(User)
         .options(joinedload(User.preferences))
@@ -3620,6 +3628,8 @@ async def get_recent_swipes(
     db: Session = Depends(get_db),
 ):
     """Get the most recently swiped products for the current user (up to 5)"""
+    if isinstance(current_user, Brand):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not a user account")
     # Get recent swipes ordered by created_at descending, limit to 5
     recent_swipes = (
         db.query(UserSwipe)
@@ -3670,6 +3680,8 @@ async def get_recommendations_for_user(
     db: Session = Depends(get_db),
 ):
     """Provide recommended items for the current user"""
+    if isinstance(current_user, Brand):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not a user account")
     products = recommendation_service.get_recommendations_for_user(
         db, current_user, limit
     )
@@ -3689,6 +3701,8 @@ async def get_recommendations_for_friend(
     db: Session = Depends(get_db),
 ):
     """Provide recommended items for a specific friend"""
+    if isinstance(current_user, Brand):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not a user account")
     friend_user = db.query(User).options(joinedload(User.preferences)).filter(User.id == friend_id).first()
     if not friend_user:
         raise HTTPException(
@@ -3730,6 +3744,8 @@ async def get_popular_products(
     db: Session = Depends(get_db),
 ):
     """Get the most popular products (most purchased)"""
+    if isinstance(current_user, Brand):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not a user account")
     global _popular_items_cache, _popular_items_cache_time
 
     # Check if cache is valid
@@ -3785,6 +3801,8 @@ async def search_products(
     db: Session = Depends(get_db),
 ):
     """Search with hybrid FTS + trigram scoring (>= 3 chars) or ILIKE fallback."""
+    if isinstance(current_user, Brand):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not a user account")
     use_hybrid = query and len(query.strip()) >= 3
     query_stripped = query.strip() if query else ""
 
@@ -3876,6 +3894,8 @@ async def get_product_details(
     db: Session = Depends(get_db),
 ):
     """Get details of a specific product for regular users"""
+    if isinstance(current_user, Brand):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not a user account")
     product = (
         db.query(Product)
         .options(*_product_eager_options())
@@ -3904,6 +3924,8 @@ async def send_friend_request(
     db: Session = Depends(get_db),
 ):
     """Send a friend request to another user"""
+    if isinstance(current_user, Brand):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not a user account")
     # Find recipient by username or email
     recipient = None
     if "@" in request_data.recipient_identifier:
@@ -3996,6 +4018,8 @@ async def get_sent_friend_requests(
     db: Session = Depends(get_db),
 ):
     """Get sent friend requests"""
+    if isinstance(current_user, Brand):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not a user account")
     requests = (
         db.query(FriendRequest)
         .options(joinedload(FriendRequest.recipient))
@@ -4024,6 +4048,8 @@ async def get_received_friend_requests(
     db: Session = Depends(get_db),
 ):
     """Get received friend requests"""
+    if isinstance(current_user, Brand):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not a user account")
     requests = (
         db.query(FriendRequest)
         .options(joinedload(FriendRequest.sender))
@@ -4055,6 +4081,8 @@ async def accept_friend_request(
     db: Session = Depends(get_db),
 ):
     """Accept a friend request"""
+    if isinstance(current_user, Brand):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not a user account")
     friend_request = (
         db.query(FriendRequest)
         .filter(
@@ -4098,6 +4126,8 @@ async def reject_friend_request(
     db: Session = Depends(get_db),
 ):
     """Reject a friend request"""
+    if isinstance(current_user, Brand):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not a user account")
     friend_request = (
         db.query(FriendRequest)
         .filter(
@@ -4133,6 +4163,8 @@ async def cancel_friend_request(
     db: Session = Depends(get_db),
 ):
     """Cancel a sent friend request"""
+    if isinstance(current_user, Brand):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not a user account")
     friend_request = (
         db.query(FriendRequest)
         .filter(
@@ -4165,6 +4197,8 @@ async def get_friends_list(
     db: Session = Depends(get_db),
 ):
     """Get user's friends list"""
+    if isinstance(current_user, Brand):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not a user account")
     # Get friendships where current user is either user or friend
     friendships = (
         db.query(Friendship)
@@ -4225,6 +4259,8 @@ async def remove_friend(
     db: Session = Depends(get_db),
 ):
     """Remove a friend"""
+    if isinstance(current_user, Brand):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not a user account")
     # Find the friendship entry
     friendship = (
         db.query(Friendship)
@@ -4261,6 +4297,8 @@ async def search_users(
     db: Session = Depends(get_db),
 ):
     """Search for users by username or email"""
+    if isinstance(current_user, Brand):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not a user account")
     if len(query) < 2:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -4399,6 +4437,8 @@ async def get_public_user_profile(
     db: Session = Depends(get_db),
 ):
     """Get public profile of another user"""
+    if isinstance(current_user, Brand):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not a user account")
     user = db.query(User).options(joinedload(User.preferences)).filter(User.id == user_id).first()
 
     if not user:
@@ -4446,6 +4486,8 @@ async def create_payment_endpoint(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    if isinstance(current_user, Brand):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not a user account")
     try:
         confirmation_url = payment_service.create_payment(
             db=db,
@@ -5185,6 +5227,153 @@ def admin_list_withdrawals(
     )
 
 
+@app.get("/api/v1/admin/brands", response_model=List[schemas.AdminBrandListItem])
+@limiter.limit("30/minute")
+def admin_list_brands(
+    request: Request,
+    admin: AuthAccount = Depends(get_current_admin),
+    db: Session = Depends(get_db),
+):
+    """Admin: list all brands."""
+    brands = (
+        db.query(Brand)
+        .options(joinedload(Brand.auth_account))
+        .order_by(Brand.created_at.desc())
+        .all()
+    )
+    return [
+        schemas.AdminBrandListItem(
+            id=str(b.id),
+            name=str(b.name),
+            email=b.auth_account.email,
+            slug=str(b.slug),
+            is_inactive=bool(b.is_inactive),
+            created_at=b.created_at,
+        )
+        for b in brands
+    ]
+
+
+@app.post("/api/v1/admin/brands", response_model=schemas.AdminBrandCreateResponse)
+@limiter.limit("5/minute")
+def admin_create_brand(
+    request: Request,
+    body: schemas.AdminBrandCreate,
+    admin: AuthAccount = Depends(get_current_admin),
+    db: Session = Depends(get_db),
+):
+    """Admin: create a new brand with temporary password."""
+    if (
+        db.query(AuthAccount)
+        .filter(AuthAccount.email == body.email)
+        .first()
+    ):
+        raise HTTPException(status_code=400, detail="Email уже зарегистрирован")
+    if db.query(Brand).filter(Brand.name == body.name).first():
+        raise HTTPException(status_code=400, detail="Бренд с таким названием уже существует")
+
+    temp_password = secrets.token_urlsafe(12)
+    acc = AuthAccount(
+        id=str(uuid.uuid4()),
+        email=body.email,
+        password_hash=auth_service.hash_password(temp_password),
+        is_email_verified=True,
+    )
+    db.add(acc)
+    db.flush()
+
+    slug = generate_brand_slug(body.name, db)
+    brand = Brand(
+        name=body.name,
+        auth_account_id=acc.id,
+        slug=slug,
+        is_inactive=True,
+    )
+    db.add(brand)
+    db.commit()
+    db.refresh(brand)
+
+    mail_service.send_brand_welcome_email(body.email, body.name, temp_password)
+
+    return schemas.AdminBrandCreateResponse(
+        id=str(brand.id),
+        name=str(brand.name),
+        email=body.email,
+        slug=slug,
+        temporary_password=temp_password,
+        is_inactive=True,
+    )
+
+
+@app.put("/api/v1/admin/brands/{brand_id}")
+@limiter.limit("10/minute")
+def admin_update_brand(
+    request: Request,
+    brand_id: str,
+    body: schemas.AdminBrandUpdate,
+    admin: AuthAccount = Depends(get_current_admin),
+    db: Session = Depends(get_db),
+):
+    """Admin: update brand name/email."""
+    brand = db.query(Brand).filter(Brand.id == brand_id).first()
+    if not brand:
+        raise HTTPException(status_code=404, detail="Бренд не найден")
+
+    if body.name is not None:
+        if db.query(Brand).filter(Brand.name == body.name, Brand.id != brand_id).first():
+            raise HTTPException(status_code=400, detail="Бренд с таким названием уже существует")
+        brand.name = body.name
+        brand.slug = generate_brand_slug(body.name, db)
+
+    if body.email is not None:
+        if (
+            db.query(AuthAccount)
+            .filter(AuthAccount.email == body.email, AuthAccount.id != brand.auth_account_id)
+            .first()
+        ):
+            raise HTTPException(status_code=400, detail="Email уже зарегистрирован")
+        brand.auth_account.email = body.email
+
+    brand.updated_at = datetime.now(timezone.utc)
+    db.commit()
+    db.refresh(brand)
+    return {"id": str(brand.id), "name": str(brand.name), "email": brand.auth_account.email, "slug": str(brand.slug)}
+
+
+@app.put("/api/v1/admin/brands/{brand_id}/activate")
+@limiter.limit("10/minute")
+def admin_activate_brand(
+    request: Request,
+    brand_id: str,
+    admin: AuthAccount = Depends(get_current_admin),
+    db: Session = Depends(get_db),
+):
+    """Admin: activate a brand (admin override — no delivery field check)."""
+    brand = db.query(Brand).filter(Brand.id == brand_id).first()
+    if not brand:
+        raise HTTPException(status_code=404, detail="Бренд не найден")
+    brand.is_inactive = False
+    db.commit()
+    return {"id": str(brand.id), "is_inactive": False}
+
+
+@app.put("/api/v1/admin/brands/{brand_id}/deactivate")
+@limiter.limit("10/minute")
+def admin_deactivate_brand(
+    request: Request,
+    brand_id: str,
+    admin: AuthAccount = Depends(get_current_admin),
+    db: Session = Depends(get_db),
+):
+    """Admin: deactivate a brand."""
+    brand = db.query(Brand).filter(Brand.id == brand_id).first()
+    if not brand:
+        raise HTTPException(status_code=404, detail="Бренд не найден")
+    brand.is_inactive = True
+    db.commit()
+    return {"id": str(brand.id), "is_inactive": True}
+
+
 @app.get("/api/v1/admin/brands/search")
 @limiter.limit("30/minute")
 def admin_search_brands(
@@ -5342,6 +5531,7 @@ def get_brand_notifications(
             Notification.recipient_type == "brand",
             Notification.recipient_id == str(current_user.id),
             Notification.expires_at > now,
+            Notification.created_at >= current_user.created_at,
         )
         .order_by(Notification.created_at.desc())
         .limit(20)

@@ -14,13 +14,6 @@ import { useAuth } from "@/context/AuthContext";
 import { formatCurrency } from "@/lib/currency";
 import { Label } from "@/components/ui/label";
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-} from "@/components/ui/dialog";
-import {
   Select,
   SelectContent,
   SelectItem,
@@ -82,7 +75,6 @@ export function ProfileSettingsPage() {
   const [profile, setProfile] = useState<BrandResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
-  const [legalModalOpen, setLegalModalOpen] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -192,7 +184,6 @@ export function ProfileSettingsPage() {
         shipping_provider: profile.shipping_provider,
         delivery_time_min: profile.delivery_time_min,
         delivery_time_max: profile.delivery_time_max,
-        // inn, registration_address, payout_account, payout_account_locked intentionally omitted (admin-only)
       };
       const response = await api.updateBrandProfile(updatedProfile, token);
       setProfile(response);
@@ -298,20 +289,6 @@ export function ProfileSettingsPage() {
                   )}
                 </div>
 
-                {/* Legal info — view-only modal trigger */}
-                <div>
-                  <h3 className="text-sm font-semibold text-foreground mb-2">
-                    Юридические данные
-                  </h3>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setLegalModalOpen(true)}
-                  >
-                    Просмотреть реквизиты
-                  </Button>
-                </div>
-
                 {/* Delivery section */}
                 <div className="space-y-4">
                   <h3 className="text-sm font-semibold text-foreground">
@@ -323,10 +300,14 @@ export function ProfileSettingsPage() {
                       id="shipping_price"
                       type="number"
                       min={0}
+                      placeholder="0"
                       value={profile.shipping_price ?? ""}
                       onChange={handleInputChange}
                       className="mt-1"
                     />
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Укажите 0 для бесплатной доставки
+                    </p>
                     {fieldErrors.shipping_price && (
                       <p className="text-xs text-destructive mt-1">
                         {fieldErrors.shipping_price}
@@ -484,62 +465,60 @@ export function ProfileSettingsPage() {
                   <p className="text-lg">{profile.email}</p>
                 </div>
 
-                {/* Legal info — view-only modal trigger (also in view mode) */}
-                <div>
-                  <h3 className="text-sm font-semibold text-foreground mb-2">
-                    Юридические данные
-                  </h3>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setLegalModalOpen(true)}
-                  >
-                    Просмотреть реквизиты
-                  </Button>
-                </div>
-
                 <div>
                   <p className="text-sm font-medium text-muted-foreground">
                     Цена доставки
                   </p>
                   <p className="text-lg">
-                    {formatCurrency(profile.shipping_price)}
+                    {profile.shipping_price != null
+                      ? formatCurrency(profile.shipping_price)
+                      : <span className="text-muted-foreground/60 italic">Не указана</span>}
                   </p>
                 </div>
                 <div>
                   <p className="text-sm font-medium text-muted-foreground">
-                    Минимальная цена для бесплатной доставки
+                    Минимальная сумма для бесплатной доставки
                   </p>
                   <p className="text-lg">
-                    {formatCurrency(profile.min_free_shipping)}
+                    {profile.min_free_shipping != null
+                      ? formatCurrency(profile.min_free_shipping)
+                      : <span className="text-muted-foreground/60 italic">Не указана</span>}
                   </p>
                 </div>
-                {(profile.delivery_time_min || profile.delivery_time_max) && (
-                  <div>
-                    <p className="text-sm font-medium text-muted-foreground">
-                      Срок доставки
-                    </p>
-                    <p className="text-lg">
-                      {profile.delivery_time_min
-                        ? `от ${DELIVERY_TIME_OPTIONS.find((o) => o.value === profile.delivery_time_min)?.label ?? `${profile.delivery_time_min} дн.`}`
-                        : ""}
-                      {profile.delivery_time_max
-                        ? ` до ${DELIVERY_TIME_OPTIONS.find((o) => o.value === profile.delivery_time_max)?.label ?? `${profile.delivery_time_max} дн.`}`
-                        : ""}
-                    </p>
-                  </div>
-                )}
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">
+                    Срок доставки
+                  </p>
+                  <p className="text-lg">
+                    {profile.delivery_time_min || profile.delivery_time_max ? (
+                      <>
+                        {profile.delivery_time_min
+                          ? `от ${DELIVERY_TIME_OPTIONS.find((o) => o.value === profile.delivery_time_min)?.label ?? `${profile.delivery_time_min} дн.`}`
+                          : ""}
+                        {profile.delivery_time_max
+                          ? ` до ${DELIVERY_TIME_OPTIONS.find((o) => o.value === profile.delivery_time_max)?.label ?? `${profile.delivery_time_max} дн.`}`
+                          : ""}
+                      </>
+                    ) : (
+                      <span className="text-muted-foreground/60 italic">Не указан</span>
+                    )}
+                  </p>
+                </div>
                 <div>
                   <p className="text-sm font-medium text-muted-foreground">
                     Служба доставки
                   </p>
-                  <p className="text-lg">{profile.shipping_provider}</p>
+                  <p className="text-lg">
+                    {profile.shipping_provider || <span className="text-muted-foreground/60 italic">Не указана</span>}
+                  </p>
                 </div>
                 <div>
                   <p className="text-sm font-medium text-muted-foreground">
                     Политика возврата
                   </p>
-                  <p className="text-lg">{profile.return_policy}</p>
+                  <p className="text-lg">
+                    {profile.return_policy || <span className="text-muted-foreground/60 italic">Не указана</span>}
+                  </p>
                 </div>
               </div>
             )
@@ -549,34 +528,6 @@ export function ProfileSettingsPage() {
         </CardContent>
       </Card>
 
-      {/* Legal info Dialog (read-only) */}
-      <Dialog open={legalModalOpen} onOpenChange={setLegalModalOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Юридические данные и выплаты</DialogTitle>
-            <DialogDescription>
-              Эти данные доступны только для просмотра. Для изменений обратитесь
-              в поддержку.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-3 text-sm">
-            <div>
-              <p className="text-muted-foreground">ИНН</p>
-              <p className="font-medium">{profile?.inn || "—"}</p>
-            </div>
-            <div>
-              <p className="text-muted-foreground">Адрес регистрации</p>
-              <p className="font-medium">
-                {profile?.registration_address || "—"}
-              </p>
-            </div>
-            <div>
-              <p className="text-muted-foreground">Счёт для выплат</p>
-              <p className="font-medium">{profile?.payout_account || "—"}</p>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

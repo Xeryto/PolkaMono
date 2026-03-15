@@ -4,10 +4,11 @@ import { AdminNotificationsView } from "./AdminNotificationsView";
 import { AdminOrdersView } from "./AdminOrdersView";
 import { AdminInflowView } from "./AdminInflowView";
 import { AdminWithdrawalsView } from "./AdminWithdrawalsView";
+import { AdminBrandsView } from "./AdminBrandsView";
 import { Button } from "@/components/ui/button";
-import { Bell, LogOut, RotateCcw, Wallet, FileSpreadsheet } from "lucide-react";
+import { Bell, LogOut, RotateCcw, Wallet, FileSpreadsheet, Store } from "lucide-react";
 
-type AdminView = "notifications" | "orders" | "inflow" | "withdrawals";
+type AdminView = "notifications" | "orders" | "inflow" | "withdrawals" | "brands";
 
 const AdminDashboard = () => {
   const { logout } = useAdminAuth();
@@ -28,6 +29,8 @@ const AdminDashboard = () => {
         return <AdminInflowView />;
       case "withdrawals":
         return <AdminWithdrawalsView />;
+      case "brands":
+        return <AdminBrandsView />;
       default:
         return <AdminNotificationsView />;
     }
@@ -85,6 +88,17 @@ const AdminDashboard = () => {
           >
             <Wallet className="h-4 w-4" />
             Выводы
+          </button>
+          <button
+            onClick={() => setCurrentView("brands")}
+            className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors ${
+              currentView === "brands"
+                ? "bg-foreground/10 text-foreground"
+                : "text-muted-foreground hover:text-foreground hover:bg-foreground/5"
+            }`}
+          >
+            <Store className="h-4 w-4" />
+            Бренды
           </button>
         </nav>
 
