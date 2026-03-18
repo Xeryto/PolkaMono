@@ -309,7 +309,7 @@ class AuthService:
                 from fastapi import HTTPException, status
                 raise HTTPException(
                     status_code=status.HTTP_423_LOCKED,
-                    detail=f"Account locked. Try again in {remaining} minute(s).",
+                    detail=f"Аккаунт заблокирован. Попробуйте через {remaining} мин.",
                 )
             # Lockout expired — reset so user gets fresh attempts
             auth_account.failed_login_attempts = 0

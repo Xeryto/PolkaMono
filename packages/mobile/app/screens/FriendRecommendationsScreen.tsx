@@ -91,7 +91,7 @@ const FriendRecommendationsScreen = ({
         .slice(0, count)
         .map((p: api.Product, i: number) => mapProductToCardItem(p, i));
     } catch (error: any) {
-      if (error?.message?.toLowerCase().includes("invalid token")) {
+      if (error?.status === 401) {
         Alert.alert("сессия истекла", "пожалуйста, войдите в аккаунт снова.");
         return [];
       }

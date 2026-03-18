@@ -156,7 +156,9 @@ const UserActionButton = memo(
         )}
         {status === "not_friend" && (
           <Animated.View
-            entering={FadeInDown.duration(ANIMATION_DURATIONS.STANDARD).reduceMotion(ReduceMotion.System)}
+            entering={FadeInDown.duration(
+              ANIMATION_DURATIONS.STANDARD,
+            ).reduceMotion(ReduceMotion.System)}
           >
             <TouchableOpacity
               style={[styles.addFriendButton, styles.stackedButton]}
@@ -168,7 +170,9 @@ const UserActionButton = memo(
         )}
         {status === "request_sent" && (
           <Animated.View
-            entering={FadeInDown.duration(ANIMATION_DURATIONS.STANDARD).reduceMotion(ReduceMotion.System)}
+            entering={FadeInDown.duration(
+              ANIMATION_DURATIONS.STANDARD,
+            ).reduceMotion(ReduceMotion.System)}
           >
             <TouchableOpacity
               style={[
@@ -325,7 +329,6 @@ const Favorites = ({ navigation }: FavoritesProps) => {
   useStaleFocusEffect(loadSavedItems, 30_000);
 
   // Note: Friend recommendations are now loaded in FriendProfileView component
-
 
   // Animated styles for views
   const mainViewAnimatedStyle = useAnimatedStyle(() => ({
@@ -782,9 +785,9 @@ const Favorites = ({ navigation }: FavoritesProps) => {
     separators,
   }) => (
     <Animated.View
-      entering={FadeInDown.duration(ANIMATION_DURATIONS.STANDARD).delay(
-        ANIMATION_DELAYS.STANDARD + index * ANIMATION_DELAYS.SMALL,
-      ).reduceMotion(ReduceMotion.System)}
+      entering={FadeInDown.duration(ANIMATION_DURATIONS.STANDARD)
+        .delay(ANIMATION_DELAYS.STANDARD + index * ANIMATION_DELAYS.SMALL)
+        .reduceMotion(ReduceMotion.System)}
       style={styles.productItem}
     >
       <Pressable
@@ -798,6 +801,7 @@ const Favorites = ({ navigation }: FavoritesProps) => {
             source={item.images[0]}
             style={styles.productItemImage}
             contentFit="contain"
+            contentPosition={"bottom"}
           />
         ) : (
           <View
@@ -815,6 +819,7 @@ const Favorites = ({ navigation }: FavoritesProps) => {
           price={item.price}
           sale_price={item.sale_price}
           sale_type={item.sale_type}
+          compact
         />
       </Pressable>
     </Animated.View>
@@ -1047,7 +1052,9 @@ const Favorites = ({ navigation }: FavoritesProps) => {
           ) : item.status === "request_sent" ? (
             <View style={styles.buttonContainerStyle}>
               <Animated.View
-                entering={FadeInDown.duration(ANIMATION_DURATIONS.STANDARD).reduceMotion(ReduceMotion.System)}
+                entering={FadeInDown.duration(
+                  ANIMATION_DURATIONS.STANDARD,
+                ).reduceMotion(ReduceMotion.System)}
               >
                 <TouchableOpacity
                   style={[
@@ -1102,9 +1109,7 @@ const Favorites = ({ navigation }: FavoritesProps) => {
 
   // Simplified render method - always render immediately for smooth transitions
   return (
-    <Animated.View
-      style={styles.container}
-    >
+    <Animated.View style={styles.container}>
       <>
         {/* Main Content (visible by default) */}
         <Animated.View style={mainViewAnimatedStyle}>
@@ -1279,9 +1284,9 @@ const MainContent = ({
           { backgroundColor: theme.surface.elevated },
           topBoxStyle,
         ]}
-        entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
-          ANIMATION_DELAYS.LARGE,
-        ).reduceMotion(ReduceMotion.System)}
+        entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM)
+          .delay(ANIMATION_DELAYS.LARGE)
+          .reduceMotion(ReduceMotion.System)}
         //exiting={FadeOutDown.duration(50).reduceMotion(ReduceMotion.System)}
       >
         <View style={{ flex: 1, borderRadius: 41 }}>
@@ -1364,9 +1369,9 @@ const MainContent = ({
           { backgroundColor: theme.background.favorites },
           bottomBoxStyle,
         ]}
-        entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
-          ANIMATION_DELAYS.VERY_LARGE,
-        ).reduceMotion(ReduceMotion.System)}
+        entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM)
+          .delay(ANIMATION_DELAYS.VERY_LARGE)
+          .reduceMotion(ReduceMotion.System)}
         //exiting={FadeOutDown.duration(50).reduceMotion(ReduceMotion.System)}
       >
         <Animated.View
@@ -1446,7 +1451,9 @@ const SearchContent = ({
     <>
       {/* Search Input */}
       <Animated.View
-        entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).reduceMotion(ReduceMotion.System)}
+        entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).reduceMotion(
+          ReduceMotion.System,
+        )}
         style={styles.favoritesSearchContainer}
       >
         <View style={styles.favoritesSearchInputContainer}>
@@ -1460,7 +1467,9 @@ const SearchContent = ({
           />
 
           <Animated.View
-            entering={FadeInDown.duration(ANIMATION_DURATIONS.STANDARD).reduceMotion(ReduceMotion.System)}
+            entering={FadeInDown.duration(
+              ANIMATION_DURATIONS.STANDARD,
+            ).reduceMotion(ReduceMotion.System)}
             style={styles.favoritesCancelButtonContainer}
           >
             <TouchableOpacity
@@ -1476,23 +1485,23 @@ const SearchContent = ({
       {/* Search Results */}
       <Animated.View
         style={[styles.searchResultsBox, searchResultsBoxStyle]}
-        entering={FadeInDown.duration(ANIMATION_DURATIONS.MICRO).delay(
-          ANIMATION_DELAYS.STANDARD,
-        ).reduceMotion(ReduceMotion.System)}
+        entering={FadeInDown.duration(ANIMATION_DURATIONS.MICRO)
+          .delay(ANIMATION_DELAYS.STANDARD)
+          .reduceMotion(ReduceMotion.System)}
       >
         <View style={{ flex: 1 }}>
           {!hasValidQuery ? (
             trimmedQuery.length === 0 ? (
               <Animated.View
-                entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
-                  ANIMATION_DELAYS.STANDARD,
-                ).reduceMotion(ReduceMotion.System)}
+                entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM)
+                  .delay(ANIMATION_DELAYS.STANDARD)
+                  .reduceMotion(ReduceMotion.System)}
                 style={styles.emptyStateContainer}
               >
                 <Animated.View
-                  entering={FadeInDown.duration(
-                    ANIMATION_DURATIONS.MEDIUM,
-                  ).delay(ANIMATION_DELAYS.STANDARD).reduceMotion(ReduceMotion.System)}
+                  entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM)
+                    .delay(ANIMATION_DELAYS.STANDARD)
+                    .reduceMotion(ReduceMotion.System)}
                   style={styles.emptyStateIcon}
                 >
                   <AntDesign
@@ -1502,17 +1511,17 @@ const SearchContent = ({
                   />
                 </Animated.View>
                 <Animated.Text
-                  entering={FadeInDown.duration(
-                    ANIMATION_DURATIONS.MEDIUM,
-                  ).delay(ANIMATION_DELAYS.MEDIUM).reduceMotion(ReduceMotion.System)}
+                  entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM)
+                    .delay(ANIMATION_DELAYS.MEDIUM)
+                    .reduceMotion(ReduceMotion.System)}
                   style={styles.emptyStateTitle}
                 >
                   начните поиск
                 </Animated.Text>
                 <Animated.Text
-                  entering={FadeInDown.duration(
-                    ANIMATION_DURATIONS.MEDIUM,
-                  ).delay(ANIMATION_DELAYS.LARGE).reduceMotion(ReduceMotion.System)}
+                  entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM)
+                    .delay(ANIMATION_DELAYS.LARGE)
+                    .reduceMotion(ReduceMotion.System)}
                   style={styles.emptyStateDescription}
                 >
                   введите имя пользователя для поиска друзей
@@ -1520,15 +1529,15 @@ const SearchContent = ({
               </Animated.View>
             ) : (
               <Animated.View
-                entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
-                  ANIMATION_DELAYS.STANDARD,
-                ).reduceMotion(ReduceMotion.System)}
+                entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM)
+                  .delay(ANIMATION_DELAYS.STANDARD)
+                  .reduceMotion(ReduceMotion.System)}
                 style={styles.emptyStateContainer}
               >
                 <Animated.Text
-                  entering={FadeInDown.duration(
-                    ANIMATION_DURATIONS.MEDIUM,
-                  ).delay(ANIMATION_DELAYS.MEDIUM).reduceMotion(ReduceMotion.System)}
+                  entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM)
+                    .delay(ANIMATION_DELAYS.MEDIUM)
+                    .reduceMotion(ReduceMotion.System)}
                   style={styles.emptyStateDescription}
                 >
                   введите минимум {minSearchLength} символа для поиска
@@ -1541,29 +1550,31 @@ const SearchContent = ({
             </View>
           ) : filteredFriends.length === 0 ? (
             <Animated.View
-              entering={FadeIn.duration(ANIMATION_DURATIONS.STANDARD).reduceMotion(ReduceMotion.System)}
+              entering={FadeIn.duration(
+                ANIMATION_DURATIONS.STANDARD,
+              ).reduceMotion(ReduceMotion.System)}
               style={styles.noResultsContainer}
             >
               <Animated.View
-                entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
-                  ANIMATION_DELAYS.STANDARD,
-                ).reduceMotion(ReduceMotion.System)}
+                entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM)
+                  .delay(ANIMATION_DELAYS.STANDARD)
+                  .reduceMotion(ReduceMotion.System)}
                 style={styles.emptyStateIcon}
               >
                 <AntDesign name="inbox" size={64} color={theme.text.disabled} />
               </Animated.View>
               <Animated.Text
-                entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
-                  ANIMATION_DELAYS.MEDIUM,
-                ).reduceMotion(ReduceMotion.System)}
+                entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM)
+                  .delay(ANIMATION_DELAYS.MEDIUM)
+                  .reduceMotion(ReduceMotion.System)}
                 style={styles.noResultsText}
               >
                 пользователи не найдены
               </Animated.Text>
               <Animated.Text
-                entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
-                  ANIMATION_DELAYS.LARGE,
-                ).reduceMotion(ReduceMotion.System)}
+                entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM)
+                  .delay(ANIMATION_DELAYS.LARGE)
+                  .reduceMotion(ReduceMotion.System)}
                 style={styles.noResultsDescription}
               >
                 попробуйте изменить поисковый запрос
@@ -1596,9 +1607,9 @@ const SearchContent = ({
           { backgroundColor: theme.surface.elevated },
           searchModeTopBoxStyle,
         ]}
-        entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
-          ANIMATION_DELAYS.SMALL,
-        ).reduceMotion(ReduceMotion.System)}
+        entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM)
+          .delay(ANIMATION_DELAYS.SMALL)
+          .reduceMotion(ReduceMotion.System)}
       >
         <View style={styles.titleRow}>
           <Text style={styles.boxTitle}>ДРУЗЬЯ</Text>
@@ -1751,6 +1762,7 @@ const FriendProfileView = React.memo(
                 source={item.images[0]}
                 style={styles.itemImage}
                 contentFit="contain"
+                contentPosition={"bottom"}
               />
             ) : (
               <View
@@ -1768,6 +1780,7 @@ const FriendProfileView = React.memo(
               price={item.price}
               sale_price={item.sale_price}
               sale_type={item.sale_type}
+              compact
             />
           </Pressable>
         </View>
@@ -1777,7 +1790,9 @@ const FriendProfileView = React.memo(
     return (
       <Animated.View
         style={[styles.profileContainer]}
-        entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).reduceMotion(ReduceMotion.System)}
+        entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).reduceMotion(
+          ReduceMotion.System,
+        )}
       >
         {/* FRS-style header */}
         <View style={styles.friendHeader}>
@@ -1808,9 +1823,9 @@ const FriendProfileView = React.memo(
         </View>
 
         <Animated.View
-          entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
-            ANIMATION_DELAYS.SMALL,
-          ).reduceMotion(ReduceMotion.System)}
+          entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM)
+            .delay(ANIMATION_DELAYS.SMALL)
+            .reduceMotion(ReduceMotion.System)}
           style={styles.regenerateButtonWrapper}
         >
           {/* Container for the button - this stays still */}
@@ -1872,9 +1887,9 @@ const FriendProfileView = React.memo(
 
         <Animated.View
           style={styles.roundedBox}
-          entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
-            ANIMATION_DELAYS.STANDARD,
-          ).reduceMotion(ReduceMotion.System)}
+          entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM)
+            .delay(ANIMATION_DELAYS.STANDARD)
+            .reduceMotion(ReduceMotion.System)}
         >
           <LinearGradient
             colors={theme.gradients.overlay as any}
@@ -1886,9 +1901,9 @@ const FriendProfileView = React.memo(
           {/* Liked items section */}
           <Animated.View
             style={styles.recommendationsContainer}
-            entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
-              ANIMATION_DELAYS.MEDIUM,
-            ).reduceMotion(ReduceMotion.System)}
+            entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM)
+              .delay(ANIMATION_DELAYS.MEDIUM)
+              .reduceMotion(ReduceMotion.System)}
           >
             {!canViewLikes ? (
               <View style={styles.loadingContainer}>
@@ -1946,7 +1961,9 @@ const FriendRequestItemComponent: React.FC<FriendRequestItemProps> = ({
   return (
     <View style={styles.requestItemWrapper}>
       <Animated.View
-        entering={FadeInDown.duration(ANIMATION_DURATIONS.STANDARD).reduceMotion(ReduceMotion.System)}
+        entering={FadeInDown.duration(
+          ANIMATION_DURATIONS.STANDARD,
+        ).reduceMotion(ReduceMotion.System)}
       >
         <View style={styles.requestItemContainer}>
           <View style={styles.requestImageContainer}>
@@ -2200,8 +2217,8 @@ const createStyles = (theme: ThemeColors) =>
       justifyContent: "center",
     },
     productItemImage: {
-      width: "73%",
-      height: "73%",
+      width: "60%",
+      height: "75%",
     },
     noProductImagePlaceholder: {
       backgroundColor: theme.surface.button,
@@ -2216,10 +2233,9 @@ const createStyles = (theme: ThemeColors) =>
       color: theme.text.disabled,
     },
     productItemInfo: {
-      bottom: -5,
+      bottom: 0,
       alignItems: "center",
-      borderRadius: 20,
-      padding: 6,
+      paddingVertical: 10,
     },
     productItemName: {
       fontFamily: "IgraSans",
@@ -2802,9 +2818,9 @@ const FriendListItem = memo(
     return (
       <View style={styles.itemWrapper}>
         <Animated.View
-          entering={FadeInDown.duration(ANIMATION_DURATIONS.STANDARD).delay(
-            ANIMATION_DELAYS.STANDARD + index * ANIMATION_DELAYS.SMALL,
-          ).reduceMotion(ReduceMotion.System)}
+          entering={FadeInDown.duration(ANIMATION_DURATIONS.STANDARD)
+            .delay(ANIMATION_DELAYS.STANDARD + index * ANIMATION_DELAYS.SMALL)
+            .reduceMotion(ReduceMotion.System)}
         >
           <View style={styles.itemContainer}>
             <Pressable

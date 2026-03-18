@@ -18,10 +18,9 @@ export const handleApiResponse = async (response: Response) => {
     
     // Handle FastAPI validation errors (422) - detail is an array of error objects
     if (response.status === 422 && Array.isArray(data.detail)) {
-      const errorMessages = data.detail.map((err: any) => {
-        const field = err.loc?.join('.') || 'field';
-        return `${field}: ${err.msg || err.message || String(err)}`;
-      });
+      const errorMessages = data.detail.map((err: any) =>
+        err.msg || err.message || String(err)
+      );
       message = errorMessages.join('\n');
     } else if (typeof message === 'object') {
       // If detail is an object, try to extract a message

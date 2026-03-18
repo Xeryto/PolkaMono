@@ -116,15 +116,7 @@ const ResetPasswordScreen: React.FC<ResetPasswordScreenProps> = ({
       let errorMessage = "произошла неожиданная ошибка.";
 
       if (err instanceof Error) {
-        if (err.message.includes("You cannot reuse a previous password")) {
-          errorMessage = "вы не можете использовать предыдущий пароль.";
-        } else if (
-          err.message.includes("You cannot reuse your current password")
-        ) {
-          errorMessage = "вы не можете использовать текущий пароль.";
-        } else {
-          errorMessage = err.message;
-        }
+        errorMessage = err.message;
       }
 
       setErrors((prev) => ({ ...prev, general: errorMessage }));

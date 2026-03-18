@@ -17,9 +17,13 @@ import {
   Animated as RNAnimated,
 } from "react-native";
 import { Image } from "expo-image";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
-import Animated, { FadeInDown, FadeOutDown, ReduceMotion } from "react-native-reanimated";
+import Animated, {
+  FadeInDown,
+  FadeOutDown,
+  ReduceMotion,
+} from "react-native-reanimated";
 import BackIcon from "../components/svg/BackIcon";
 import Cart2 from "../components/svg/Cart2";
 import Heart2 from "../components/svg/Heart2";
@@ -142,6 +146,7 @@ const RecentPiecesScreen: React.FC<RecentPiecesScreenProps> = ({
   navigation,
 }) => {
   const { theme } = useTheme();
+  const insets = useSafeAreaInsets();
   const styles = useMemo(() => createStyles(theme), [theme]);
 
   const [recentPieces, setRecentPieces] = useState<CardItem[]>([]);
@@ -304,9 +309,9 @@ const RecentPiecesScreen: React.FC<RecentPiecesScreenProps> = ({
 
     return (
       <Animated.View
-        entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
-          ANIMATION_DELAYS.MEDIUM + index * 50,
-        ).reduceMotion(ReduceMotion.System)}
+        entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM)
+          .delay(ANIMATION_DELAYS.MEDIUM + index * 50)
+          .reduceMotion(ReduceMotion.System)}
         style={styles.pieceWrapper}
       >
         <View style={styles.roundedBoxContainer}>
@@ -405,11 +410,13 @@ const RecentPiecesScreen: React.FC<RecentPiecesScreenProps> = ({
 
   return (
     <Animated.View
-      style={styles.content}
-      entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
-        ANIMATION_DELAYS.LARGE,
-      ).reduceMotion(ReduceMotion.System)}
-      exiting={FadeOutDown.duration(ANIMATION_DURATIONS.MICRO).reduceMotion(ReduceMotion.System)}
+      style={[styles.content, { paddingTop: insets.top }]}
+      entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM)
+        .delay(ANIMATION_DELAYS.LARGE)
+        .reduceMotion(ReduceMotion.System)}
+      exiting={FadeOutDown.duration(ANIMATION_DURATIONS.MICRO).reduceMotion(
+        ReduceMotion.System,
+      )}
     >
       {/* Header with oval background */}
       <View style={styles.header}>
@@ -628,6 +635,7 @@ const createStyles = (theme: ThemeColors) =>
       bottom: 12.5,
       left: 18,
       right: 18,
+      height: 38,
       paddingTop: 5,
       flexDirection: "row",
       justifyContent: "space-between",

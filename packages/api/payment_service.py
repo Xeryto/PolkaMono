@@ -113,7 +113,7 @@ def create_payment(
     # Fetch user's current delivery information to store with the order
     user = db.query(models.User).filter(models.User.id == user_id).first()
     if not user:
-        raise Exception(f"User with id {user_id} not found")
+        raise Exception("Пользователь не найден")
 
     profile = (
         db.query(models.UserProfile)
@@ -162,21 +162,21 @@ def create_payment(
         )
         if not variant:
             raise Exception(
-                f"Product variant with id {item.product_variant_id} not found"
+                "Вариант товара не найден"
             )
         product = variant.product
         if not product:
-            raise Exception(f"Product not found for variant {item.product_variant_id}")
+            raise Exception("Товар не найден")
 
         brand = product.brand
         if brand and brand.is_inactive:
             raise Exception(
-                f"Brand '{brand.name}' is currently inactive and cannot accept orders"
+                f"Бренд «{brand.name}» временно не принимает заказы"
             )
 
         if variant.stock_quantity < item.quantity:
             raise Exception(
-                f"Insufficient stock for product {product.name} in size {variant.size}. Available: {variant.stock_quantity}, Requested: {item.quantity}"
+                f"Недостаточно товара «{product.name}» размера {variant.size}. Доступно: {variant.stock_quantity}, запрошено: {item.quantity}"
             )
 
         variant.stock_quantity -= item.quantity
@@ -215,7 +215,8 @@ def create_payment(
     db.add(payment_model)
     db.commit()
 
-    return payment.confirmation.confirmation_url if payment.confirmation else ""
+    confirmation_url = payment.confirmation.confirmation_url if payment.confirmation else ""
+    return confirmation_url, str(order.id)
 
 
 def _build_delivery_address(shipping_info) -> Optional[str]:
@@ -278,7 +279,7 @@ def create_order_test(
     """
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
-        raise Exception(f"User with id {user_id} not found")
+        raise Exception("Пользователь не найден")
 
     profile = db.query(UserProfile).filter(UserProfile.user_id == user_id).first()
     shipping_info = (
@@ -299,22 +300,22 @@ def create_order_test(
         )
         if not variant:
             raise Exception(
-                f"Product variant with id {item.product_variant_id} not found"
+                "Вариант товара не найден"
             )
         product = variant.product
         if not product:
-            raise Exception(f"Product not found for variant {item.product_variant_id}")
+            raise Exception("Товар не найден")
 
         brand = product.brand
         if brand and brand.is_inactive:
             raise Exception(
-                f"Brand '{brand.name}' is currently inactive and cannot accept orders"
+                f"Бренд «{brand.name}» временно не принимает заказы"
             )
 
         if variant.stock_quantity < item.quantity:
             raise Exception(
-                f"Insufficient stock for product {product.name} in size {variant.size}. "
-                f"Available: {variant.stock_quantity}, Requested: {item.quantity}"
+                f"Недостаточно товара «{product.name}» размера {variant.size}. "
+                f"Доступно: {variant.stock_quantity}, запрошено: {item.quantity}"
             )
         bid = product.brand_id
         if bid not in brand_items:

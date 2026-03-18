@@ -8,11 +8,12 @@ interface PriceTagProps {
   price: number;
   sale_price?: number | null;
   sale_type?: "percent" | "exact" | null;
+  compact?: boolean;
 }
 
-const PriceTag = ({ price, sale_price, sale_type }: PriceTagProps) => {
+const PriceTag = ({ price, sale_price, sale_type, compact }: PriceTagProps) => {
   const { theme } = useTheme();
-  const styles = useMemo(() => createStyles(theme), [theme]);
+  const styles = useMemo(() => createStyles(theme, compact), [theme, compact]);
 
   const displayPrice = getEffectivePrice({ price, sale_price, sale_type });
 
@@ -35,10 +36,9 @@ const PriceTag = ({ price, sale_price, sale_type }: PriceTagProps) => {
 
   const TEXT_LENGTH = isMeasured ? textWidth : 70;
   const TEXT_HEIGHT = isMeasured ? textHeight : 22;
-  const OFFSET = isMeasured ? TEXT_LENGTH / 2 - TEXT_HEIGHT / 2 : 0;
 
-  const translateX = isMeasured ? TEXT_LENGTH * 0.3 : 200;
-  const translateY = isMeasured ? TEXT_HEIGHT * 2.35 : 0;
+  const translateX = 0;
+  const translateY = isMeasured ? -TEXT_LENGTH / 2 : 0;
 
   return (
     <View
@@ -47,11 +47,11 @@ const PriceTag = ({ price, sale_price, sale_type }: PriceTagProps) => {
         {
           position: "absolute",
           right: 0,
-          top: 0,
+          top: compact ? "50%" : 0,
           width: isMeasured ? TEXT_HEIGHT : 200,
           height: isMeasured ? TEXT_LENGTH : 100,
           transform: [{ translateX: translateX }, { translateY: translateY }],
-          overflow: "visible",
+          overflow: compact ? "hidden" : "visible",
         },
       ]}
     >
@@ -67,12 +67,8 @@ const PriceTag = ({ price, sale_price, sale_type }: PriceTagProps) => {
             {
               width: TEXT_LENGTH,
               height: TEXT_HEIGHT,
-              overflow: "visible",
-              transform: [
-                { rotate: "90deg" },
-                { translateX: -OFFSET },
-                { translateY: OFFSET },
-              ],
+              // overflow: "visible",
+              transform: [{ rotate: "90deg" }],
             },
           ]}
         >
@@ -83,7 +79,7 @@ const PriceTag = ({ price, sale_price, sale_type }: PriceTagProps) => {
   );
 };
 
-const createStyles = (theme: ThemeColors) =>
+const createStyles = (theme: ThemeColors, compact?: boolean) =>
   StyleSheet.create({
     priceContainer: {
       alignItems: "center",
@@ -91,15 +87,15 @@ const createStyles = (theme: ThemeColors) =>
       borderRadius: 10,
       shadowColor: theme.shadow.default,
       shadowOffset: { width: 4, height: 0 },
-      shadowOpacity: 0.25,
+      shadowOpacity: compact ? 0.15 : 0.25,
       shadowRadius: 4,
     },
     priceText: {
       fontFamily: "REM",
-      fontSize: 14,
+      fontSize: compact ? 12 : 14,
       color: theme.text.secondary,
-      paddingHorizontal: 8,
-      paddingVertical: 4,
+      paddingHorizontal: compact ? 6 : 8,
+      paddingVertical: compact ? 3 : 4,
     },
   });
 

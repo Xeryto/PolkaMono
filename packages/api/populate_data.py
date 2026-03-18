@@ -1,17 +1,39 @@
-from sqlalchemy.orm import Session
-from database import SessionLocal
-from models import Brand, Style, Product, ProductStyle, Category, ProductVariant, ProductColorVariant, User, Order, OrderItem, OrderStatus, Payment, UserProfile, UserShippingInfo, UserPreferences, Gender, PrivacyOption, AuthAccount, Checkout
-import uuid
-import re
 import random
-from auth_service import auth_service # NEW
+import re
+import uuid
+
+from auth_service import auth_service  # NEW
+from database import SessionLocal
+from models import (
+    AuthAccount,
+    Brand,
+    Category,
+    Checkout,
+    Gender,
+    Order,
+    OrderItem,
+    OrderStatus,
+    Payment,
+    PrivacyOption,
+    Product,
+    ProductColorVariant,
+    ProductStyle,
+    ProductVariant,
+    Style,
+    User,
+    UserPreferences,
+    UserProfile,
+    UserShippingInfo,
+)
+from sqlalchemy.orm import Session
+
 
 def generate_article_number(brand_name: str, product_name: str) -> str:
     """
     Generate article number for a product (Option 5: Brand + Abbreviation + Random)
     Format: BRAND-ABBREV-RANDOM (e.g., NIKE-AM270-A3B7, ZARA-FMD-X9K2)
     Total length: ~12-18 characters (designed to be easily typeable)
-    
+
     Abbreviation logic:
     1. Remove brand name from product name if present (case-insensitive)
     2. Extract first letter of each significant word (skip stop words)
@@ -19,79 +41,97 @@ def generate_article_number(brand_name: str, product_name: str) -> str:
     4. Cap abbreviation at 5 characters
     """
     # Brand prefix: First 4-6 uppercase letters (remove spaces, special chars)
-    brand_clean = re.sub(r'[^A-Z0-9]', '', brand_name.upper())
+    brand_clean = re.sub(r"[^A-Z0-9]", "", brand_name.upper())
     brand_prefix = brand_clean[:6]  # Max 6 chars (NIKE, ADIDAS, ZARA, etc.)
-    
+
     # Product abbreviation: Remove brand name from product name if present
     product_clean = product_name
     # Case-insensitive removal of brand name (with word boundaries)
-    brand_pattern = r'\b' + re.escape(brand_name) + r'\b'
-    product_clean = re.sub(brand_pattern, '', product_clean, flags=re.IGNORECASE).strip()
-    
+    brand_pattern = r"\b" + re.escape(brand_name) + r"\b"
+    product_clean = re.sub(
+        brand_pattern, "", product_clean, flags=re.IGNORECASE
+    ).strip()
+
     # If product name still starts with brand after removal, take from second word
     words = product_clean.split()
     if not words:
         # Fallback: use first 4 chars of original product name
-        product_abbrev = re.sub(r'[^A-Z0-9]', '', product_name.upper())[:4]
+        product_abbrev = re.sub(r"[^A-Z0-9]", "", product_name.upper())[:4]
     else:
         # Abbreviation strategy: Take first letter of first 3-4 significant words
         # Skip common stop words
-        stop_words = {'the', 'a', 'an', 'and', 'or', 'of', 'in', 'on', 'at', 'to', 'for', 'with'}
+        stop_words = {
+            "the",
+            "a",
+            "an",
+            "and",
+            "or",
+            "of",
+            "in",
+            "on",
+            "at",
+            "to",
+            "for",
+            "with",
+        }
         significant_words = [w for w in words[:5] if w.lower() not in stop_words]
-        
+
         if significant_words:
             # Separate words with numbers from words without
             words_with_numbers = []
             words_without_numbers = []
-            
+
             for word in significant_words[:4]:
-                if re.search(r'\d', word):
+                if re.search(r"\d", word):
                     words_with_numbers.append(word)
                 else:
                     words_without_numbers.append(word)
-            
+
             abbrev_parts = []
-            
+
             # Take first letter of words WITHOUT numbers (up to 3 words)
             for word in words_without_numbers[:3]:
-                first_char = re.sub(r'[^A-Z]', '', word.upper())[0:1]
+                first_char = re.sub(r"[^A-Z]", "", word.upper())[0:1]
                 if first_char:
                     abbrev_parts.append(first_char)
-            
+
             # Extract numbers from words WITH numbers (preserve full number if possible)
             if words_with_numbers:
                 for word in words_with_numbers[:2]:  # Check first 2 words with numbers
-                    number_match = re.search(r'\d+', word)
+                    number_match = re.search(r"\d+", word)
                     if number_match:
                         number_str = number_match.group(0)[:3]  # Max 3 digits
                         abbrev_parts.append(number_str)
                         break  # Only use first number found
-            
-            product_abbrev = ''.join(abbrev_parts)[:5]  # Cap at 5 characters total
-            
+
+            product_abbrev = "".join(abbrev_parts)[:5]  # Cap at 5 characters total
+
             # If abbreviation is too short (< 3 chars), supplement with first letters
             if len(product_abbrev) < 3:
-                first_chars = re.sub(r'[^A-Z0-9]', '', ' '.join(significant_words[:2]).upper())[:5]
+                first_chars = re.sub(
+                    r"[^A-Z0-9]", "", " ".join(significant_words[:2]).upper()
+                )[:5]
                 product_abbrev = (product_abbrev + first_chars)[:5]
         else:
             # Fallback: Take first 4-5 alphanumeric characters from product name
-            product_abbrev = re.sub(r'[^A-Z0-9]', '', product_clean.upper())[:5]
-    
+            product_abbrev = re.sub(r"[^A-Z0-9]", "", product_clean.upper())[:5]
+
     # Ensure abbreviation is at least 2 characters
     if len(product_abbrev) < 2:
-        product_abbrev = re.sub(r'[^A-Z0-9]', '', product_name.upper())[:5]
+        product_abbrev = re.sub(r"[^A-Z0-9]", "", product_name.upper())[:5]
         if len(product_abbrev) < 2:
             product_abbrev = "PRD"  # Fallback
-    
+
     # Random suffix: 4 characters (excludes ambiguous chars: 0, O, 1, I, L)
     # Use uppercase letters and numbers only
-    random_chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'  # No 0, O, 1, I, L
-    random_suffix = ''.join(random.choices(random_chars, k=4))
-    
+    random_chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"  # No 0, O, 1, I, L
+    random_suffix = "".join(random.choices(random_chars, k=4))
+
     # Format: BRAND-ABBREV-RANDOM
     article_number = f"{brand_prefix}-{product_abbrev}-{random_suffix}"
-    
+
     return article_number
+
 
 # Default product image URLs (S3) for populated products
 S3_PRODUCT_IMAGES = [
@@ -117,21 +157,27 @@ COLOR_HEX = {
     "Navy": "#000080",
 }
 
+
 def generate_order_item_sku(product_name: str, size: str, order_counter: int) -> str:
     """Generate SKU for an OrderItem (specific instance of a product variant in an order)"""
     # Convert to uppercase, replace spaces, remove non-alphanumeric
-    sku_base = re.sub(r'[^a-zA-Z0-9]', '', product_name.upper().replace(' ', '').replace('-', ''))
+    sku_base = re.sub(
+        r"[^a-zA-Z0-9]", "", product_name.upper().replace(" ", "").replace("-", "")
+    )
     # Format: PRODUCTNAME-SIZE-ORDERCOUNTER (e.g., NIKEAIRMAX270-M-001)
     return f"{sku_base}-{size}-{order_counter:03d}"
 
-def populate_initial_data():
 
+def populate_initial_data():
     db: Session = SessionLocal()
     try:
         # Seed admin account
         from config import settings
+
         if settings.ADMIN_EMAIL and settings.ADMIN_PASSWORD:
-            auth_service.create_admin_account(db, settings.ADMIN_EMAIL, settings.ADMIN_PASSWORD)
+            auth_service.create_admin_account(
+                db, settings.ADMIN_EMAIL, settings.ADMIN_PASSWORD
+            )
             print(f"Admin account seeded: {settings.ADMIN_EMAIL}")
 
         # Populate Brands
@@ -214,30 +260,50 @@ def populate_initial_data():
                 )
                 db.add(auth_account)
                 db.flush()
-                db.add(Brand(
-                    name=b_data["name"],
-                    auth_account_id=auth_account.id,
-                    slug=b_data["slug"],
-                    description=b_data["description"],
-                    return_policy=b_data["return_policy"],
-                    min_free_shipping=b_data["min_free_shipping"],
-                    shipping_price=float(b_data["shipping_price"]) if b_data.get("shipping_price") else None,
-                    shipping_provider=b_data["shipping_provider"],
-                    amount_withdrawn=b_data["amount_withdrawn"],
-                    inn=b_data.get("inn"),
-                    registration_address=b_data.get("registration_address"),
-                    payout_account=b_data.get("payout_account"),
-                    payout_account_locked=b_data.get("payout_account_locked", 0),
-                ))
+                db.add(
+                    Brand(
+                        name=b_data["name"],
+                        auth_account_id=auth_account.id,
+                        slug=b_data["slug"],
+                        description=b_data["description"],
+                        return_policy=b_data["return_policy"],
+                        min_free_shipping=b_data["min_free_shipping"],
+                        shipping_price=float(b_data["shipping_price"])
+                        if b_data.get("shipping_price")
+                        else None,
+                        shipping_provider=b_data["shipping_provider"],
+                        amount_withdrawn=b_data["amount_withdrawn"],
+                        inn=b_data.get("inn"),
+                        registration_address=b_data.get("registration_address"),
+                        payout_account=b_data.get("payout_account"),
+                        payout_account_locked=b_data.get("payout_account_locked", 0),
+                    )
+                )
         db.commit()
         print("Brands populated.")
 
         # Populate Styles
         styles_data = [
-            {"id": "casual", "name": "Casual", "description": "Relaxed, comfortable, and suitable for everyday wear."},
-            {"id": "sporty", "name": "Sporty", "description": "Athletic-inspired, comfortable, and functional."},
-            {"id": "elegant", "name": "Elegant", "description": "Sophisticated, graceful, and refined."},
-            {"id": "streetwear", "name": "Streetwear", "description": "Comfortable, casual clothing inspired by hip-hop and skate culture."}
+            {
+                "id": "casual",
+                "name": "Casual",
+                "description": "Relaxed, comfortable, and suitable for everyday wear.",
+            },
+            {
+                "id": "sporty",
+                "name": "Sporty",
+                "description": "Athletic-inspired, comfortable, and functional.",
+            },
+            {
+                "id": "elegant",
+                "name": "Elegant",
+                "description": "Sophisticated, graceful, and refined.",
+            },
+            {
+                "id": "streetwear",
+                "name": "Streetwear",
+                "description": "Comfortable, casual clothing inspired by hip-hop and skate culture.",
+            },
         ]
         for s_data in styles_data:
             if not db.query(Style).filter(Style.id == s_data["id"]).first():
@@ -247,11 +313,27 @@ def populate_initial_data():
 
         # Populate Categories
         categories_data = [
-            {"id": "tshirts", "name": "T-Shirts", "description": "Casual tops for everyday wear."},
+            {
+                "id": "tshirts",
+                "name": "T-Shirts",
+                "description": "Casual tops for everyday wear.",
+            },
             {"id": "jeans", "name": "Jeans", "description": "Durable denim trousers."},
-            {"id": "dresses", "name": "Dresses", "description": "One-piece garments for various occasions."},
-            {"id": "sneakers", "name": "Sneakers", "description": "Athletic and casual footwear."},
-            {"id": "hoodies", "name": "Hoodies", "description": "Comfortable hooded sweatshirts."}
+            {
+                "id": "dresses",
+                "name": "Dresses",
+                "description": "One-piece garments for various occasions.",
+            },
+            {
+                "id": "sneakers",
+                "name": "Sneakers",
+                "description": "Athletic and casual footwear.",
+            },
+            {
+                "id": "hoodies",
+                "name": "Hoodies",
+                "description": "Comfortable hooded sweatshirts.",
+            },
         ]
         for c_data in categories_data:
             if not db.query(Category).filter(Category.id == c_data["id"]).first():
@@ -270,7 +352,6 @@ def populate_initial_data():
         elegant_style = db.query(Style).filter(Style.id == "elegant").first()
         streetwear_style = db.query(Style).filter(Style.id == "streetwear").first()
 
-        
         tshirts_category = db.query(Category).filter(Category.id == "tshirts").first()
         jeans_category = db.query(Category).filter(Category.id == "jeans").first()
         dresses_category = db.query(Category).filter(Category.id == "dresses").first()
@@ -290,7 +371,7 @@ def populate_initial_data():
                 "styles": [sporty_style, casual_style],
                 "color": "White",
                 "material": "polyester",
-                "return_policy": "30-day free returns."
+                "return_policy": "30-day free returns.",
             },
             {
                 "name": "Adidas Ultraboost 22",
@@ -777,19 +858,27 @@ def populate_initial_data():
                 "color": "Red",
                 "material": "leather",
                 "return_policy": "30-day free returns.",
-            }
+            },
         ]
 
         for p_data in products_data:
-            existing_product = db.query(Product).filter(Product.name == p_data["name"]).first()
+            existing_product = (
+                db.query(Product).filter(Product.name == p_data["name"]).first()
+            )
             if not existing_product:
                 # Create new product with article number
                 # Generate unique article number for the product (handle collisions)
                 article_number = None
                 max_attempts = 10
                 for attempt in range(max_attempts):
-                    candidate_article = generate_article_number(p_data["brand"].name, p_data["name"])
-                    existing = db.query(Product).filter(Product.article_number == candidate_article).first()
+                    candidate_article = generate_article_number(
+                        p_data["brand"].name, p_data["name"]
+                    )
+                    existing = (
+                        db.query(Product)
+                        .filter(Product.article_number == candidate_article)
+                        .first()
+                    )
                     if not existing:
                         article_number = candidate_article
                         break
@@ -797,14 +886,16 @@ def populate_initial_data():
                     if attempt < max_attempts - 1:
                         # Just regenerate - the function has random component
                         pass  # Will regenerate on next iteration
-                
+
                 if not article_number:
                     # Fallback: use UUID-based (extremely unlikely with 10 attempts)
                     product_id_preview = str(uuid.uuid4())[:8].upper()
-                    random_chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
-                    brand_prefix = re.sub(r'[^A-Z0-9]', '', p_data["brand"].name.upper())[:6]
+                    random_chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
+                    brand_prefix = re.sub(
+                        r"[^A-Z0-9]", "", p_data["brand"].name.upper()
+                    )[:6]
                     article_number = f"{brand_prefix}-{product_id_preview[:4]}-{''.join(random.choices(random_chars, k=4))}"
-                
+
                 product = Product(
                     id=str(uuid.uuid4()),
                     name=p_data["name"],
@@ -840,39 +931,57 @@ def populate_initial_data():
                     db.add(pv)
 
                 for style in p_data["styles"]:
-                    product_style = ProductStyle(product_id=product.id, style_id=style.id)
+                    product_style = ProductStyle(
+                        product_id=product.id, style_id=style.id
+                    )
                     db.add(product_style)
-                print(f"Added product: {product.name} (Article: {product.article_number})")
+                print(
+                    f"Added product: {product.name} (Article: {product.article_number})"
+                )
             else:
                 # Update existing product with article_number if it doesn't have one
                 if not existing_product.article_number:
                     article_number = None
                     max_attempts = 10
                     for attempt in range(max_attempts):
-                        candidate_article = generate_article_number(p_data["brand"].name, p_data["name"])
-                        existing = db.query(Product).filter(Product.article_number == candidate_article).first()
+                        candidate_article = generate_article_number(
+                            p_data["brand"].name, p_data["name"]
+                        )
+                        existing = (
+                            db.query(Product)
+                            .filter(Product.article_number == candidate_article)
+                            .first()
+                        )
                         if not existing:
                             article_number = candidate_article
                             break
-                    
+
                     if article_number:
                         existing_product.article_number = article_number
-                        print(f"Generated article number for existing product: {existing_product.name} -> {article_number}")
+                        print(
+                            f"Generated article number for existing product: {existing_product.name} -> {article_number}"
+                        )
                     else:
                         # Fallback
                         product_id_preview = str(uuid.uuid4())[:8].upper()
-                        random_chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
-                        brand_prefix = re.sub(r'[^A-Z0-9]', '', p_data["brand"].name.upper())[:6]
+                        random_chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
+                        brand_prefix = re.sub(
+                            r"[^A-Z0-9]", "", p_data["brand"].name.upper()
+                        )[:6]
                         existing_product.article_number = f"{brand_prefix}-{product_id_preview[:4]}-{''.join(random.choices(random_chars, k=4))}"
-                        print(f"Generated fallback article number for existing product: {existing_product.name} -> {existing_product.article_number}")
+                        print(
+                            f"Generated fallback article number for existing product: {existing_product.name} -> {existing_product.article_number}"
+                        )
                 else:
-                    print(f"Product already exists: {p_data['name']} (Article: {existing_product.article_number})")
-        
+                    print(
+                        f"Product already exists: {p_data['name']} (Article: {existing_product.article_number})"
+                    )
+
         db.commit()
         print("Products populated.")
-        
+
         # Create test user account with domain-specific data (User + AuthAccount)
-        test_user_password_hash = auth_service.hash_password("123abc")
+        test_user_password_hash = auth_service.hash_password("123abcde")
         test_user = db.query(User).filter(User.username == "test").first()
         if not test_user:
             test_auth_account = AuthAccount(
@@ -889,17 +998,17 @@ def populate_initial_data():
             )
             db.add(test_user)
             db.flush()  # Flush to get user.id
-            
+
             # Create profile
             test_profile = UserProfile(
                 user_id=test_user.id,
                 full_name="Test User",
                 gender=Gender.MALE,
                 selected_size="M",
-                avatar_url=None
+                avatar_url=None,
             )
             db.add(test_profile)
-            
+
             # Create shipping info
             test_shipping = UserShippingInfo(
                 user_id=test_user.id,
@@ -909,10 +1018,10 @@ def populate_initial_data():
                 house_number="1",
                 apartment_number=None,
                 city="Test City",
-                postal_code="12345"
+                postal_code="12345",
             )
             db.add(test_shipping)
-            
+
             # Create preferences
             test_preferences = UserPreferences(
                 user_id=test_user.id,
@@ -920,10 +1029,10 @@ def populate_initial_data():
                 recommendations_privacy=PrivacyOption.FRIENDS,
                 likes_privacy=PrivacyOption.FRIENDS,
                 order_notifications=True,
-                marketing_notifications=True
+                marketing_notifications=True,
             )
             db.add(test_preferences)
-            
+
             db.commit()
             print("Test user created with domain-specific data.")
         else:
@@ -932,31 +1041,53 @@ def populate_initial_data():
         # Create fake orders
         if test_user:
             # Get some products and their variants for orders
-            nike_product = db.query(Product).filter(Product.name == "Nike Air Max 270").first()
-            adidas_product = db.query(Product).filter(Product.name == "Adidas Ultraboost 22").first()
-            zara_product = db.query(Product).filter(Product.name == "Zara Flowy Midi Dress").first()
-            
+            nike_product = (
+                db.query(Product).filter(Product.name == "Nike Air Max 270").first()
+            )
+            adidas_product = (
+                db.query(Product).filter(Product.name == "Adidas Ultraboost 22").first()
+            )
+            zara_product = (
+                db.query(Product)
+                .filter(Product.name == "Zara Flowy Midi Dress")
+                .first()
+            )
+
             if nike_product and adidas_product and zara_product:
                 # Get product variants via color variant
                 def get_variant_for_product(product, size):
-                    cv = db.query(ProductColorVariant).filter(
-                        ProductColorVariant.product_id == product.id
-                    ).first()
+                    cv = (
+                        db.query(ProductColorVariant)
+                        .filter(ProductColorVariant.product_id == product.id)
+                        .first()
+                    )
                     if not cv:
                         return None
-                    return db.query(ProductVariant).filter(
-                        ProductVariant.product_color_variant_id == cv.id,
-                        ProductVariant.size == size,
-                    ).first()
+                    return (
+                        db.query(ProductVariant)
+                        .filter(
+                            ProductVariant.product_color_variant_id == cv.id,
+                            ProductVariant.size == size,
+                        )
+                        .first()
+                    )
 
                 nike_variant_m = get_variant_for_product(nike_product, "M")
                 adidas_variant_s = get_variant_for_product(adidas_product, "S")
                 zara_variant_l = get_variant_for_product(zara_product, "L")
 
                 # Get user profile and shipping info for orders
-                test_profile = db.query(UserProfile).filter(UserProfile.user_id == test_user.id).first()
-                test_shipping = db.query(UserShippingInfo).filter(UserShippingInfo.user_id == test_user.id).first()
-                
+                test_profile = (
+                    db.query(UserProfile)
+                    .filter(UserProfile.user_id == test_user.id)
+                    .first()
+                )
+                test_shipping = (
+                    db.query(UserShippingInfo)
+                    .filter(UserShippingInfo.user_id == test_user.id)
+                    .first()
+                )
+
                 # Build delivery address string from shipping info
                 delivery_address_parts = []
                 if test_shipping and test_shipping.street:
@@ -964,26 +1095,45 @@ def populate_initial_data():
                 if test_shipping and test_shipping.house_number:
                     delivery_address_parts.append(f"д. {test_shipping.house_number}")
                 if test_shipping and test_shipping.apartment_number:
-                    delivery_address_parts.append(f"кв. {test_shipping.apartment_number}")
-                delivery_address = ", ".join(delivery_address_parts) if delivery_address_parts else None
-                
+                    delivery_address_parts.append(
+                        f"кв. {test_shipping.apartment_number}"
+                    )
+                delivery_address = (
+                    ", ".join(delivery_address_parts)
+                    if delivery_address_parts
+                    else None
+                )
+
                 # Create Order 1: Nike sneakers (Ozon-style: Checkout -> Order -> OrderItem -> Payment)
                 if nike_variant_m:
                     assert nike_brand is not None
                     subtotal1 = 150.00
-                    shipping1 = 0.0 if (nike_brand.min_free_shipping and subtotal1 >= nike_brand.min_free_shipping) else (float(nike_brand.shipping_price or 0))
+                    shipping1 = (
+                        0.0
+                        if (
+                            nike_brand.min_free_shipping
+                            and subtotal1 >= nike_brand.min_free_shipping
+                        )
+                        else (float(nike_brand.shipping_price or 0))
+                    )
                     total1 = subtotal1 + shipping1
 
                     checkout1 = Checkout(
                         id=str(uuid.uuid4()),
                         user_id=test_user.id,
                         total_amount=total1,
-                        delivery_full_name=test_profile.full_name if test_profile else None,
-                        delivery_email=test_shipping.delivery_email if test_shipping else None,
+                        delivery_full_name=test_profile.full_name
+                        if test_profile
+                        else None,
+                        delivery_email=test_shipping.delivery_email
+                        if test_shipping
+                        else None,
                         delivery_phone=test_shipping.phone if test_shipping else None,
                         delivery_address=delivery_address,
                         delivery_city=test_shipping.city if test_shipping else None,
-                        delivery_postal_code=test_shipping.postal_code if test_shipping else None
+                        delivery_postal_code=test_shipping.postal_code
+                        if test_shipping
+                        else None,
                     )
                     db.add(checkout1)
                     db.flush()
@@ -1004,7 +1154,7 @@ def populate_initial_data():
                         delivery_phone=checkout1.delivery_phone,
                         delivery_address=checkout1.delivery_address,
                         delivery_city=checkout1.delivery_city,
-                        delivery_postal_code=checkout1.delivery_postal_code
+                        delivery_postal_code=checkout1.delivery_postal_code,
                     )
                     db.add(order1)
                     db.flush()
@@ -1014,7 +1164,7 @@ def populate_initial_data():
                         product_variant_id=nike_variant_m.id,
                         quantity=1,
                         price=150.00,
-                        sku=generate_order_item_sku("Nike Air Max 270", "M", 1)
+                        sku=generate_order_item_sku("Nike Air Max 270", "M", 1),
                     )
                     db.add(order_item1)
 
@@ -1024,7 +1174,7 @@ def populate_initial_data():
                         order_id=order1.id,
                         amount=total1,
                         currency="RUB",
-                        status="completed"
+                        status="completed",
                     )
                     db.add(payment1)
                     print("Created Order 1: Nike Air Max 270")
@@ -1033,19 +1183,32 @@ def populate_initial_data():
                 if adidas_variant_s:
                     assert adidas_brand is not None
                     subtotal2 = 180.00
-                    shipping2 = 0.0 if (adidas_brand.min_free_shipping and subtotal2 >= adidas_brand.min_free_shipping) else (float(adidas_brand.shipping_price or 0))
+                    shipping2 = (
+                        0.0
+                        if (
+                            adidas_brand.min_free_shipping
+                            and subtotal2 >= adidas_brand.min_free_shipping
+                        )
+                        else (float(adidas_brand.shipping_price or 0))
+                    )
                     total2 = subtotal2 + shipping2
 
                     checkout2 = Checkout(
                         id=str(uuid.uuid4()),
                         user_id=test_user.id,
                         total_amount=total2,
-                        delivery_full_name=test_profile.full_name if test_profile else None,
-                        delivery_email=test_shipping.delivery_email if test_shipping else None,
+                        delivery_full_name=test_profile.full_name
+                        if test_profile
+                        else None,
+                        delivery_email=test_shipping.delivery_email
+                        if test_shipping
+                        else None,
                         delivery_phone=test_shipping.phone if test_shipping else None,
                         delivery_address=delivery_address,
                         delivery_city=test_shipping.city if test_shipping else None,
-                        delivery_postal_code=test_shipping.postal_code if test_shipping else None
+                        delivery_postal_code=test_shipping.postal_code
+                        if test_shipping
+                        else None,
                     )
                     db.add(checkout2)
                     db.flush()
@@ -1066,7 +1229,7 @@ def populate_initial_data():
                         delivery_phone=checkout2.delivery_phone,
                         delivery_address=checkout2.delivery_address,
                         delivery_city=checkout2.delivery_city,
-                        delivery_postal_code=checkout2.delivery_postal_code
+                        delivery_postal_code=checkout2.delivery_postal_code,
                     )
                     db.add(order2)
                     db.flush()
@@ -1076,7 +1239,7 @@ def populate_initial_data():
                         product_variant_id=adidas_variant_s.id,
                         quantity=1,
                         price=180.00,
-                        sku=generate_order_item_sku("Adidas Ultraboost 22", "S", 2)
+                        sku=generate_order_item_sku("Adidas Ultraboost 22", "S", 2),
                     )
                     db.add(order_item2)
 
@@ -1086,7 +1249,7 @@ def populate_initial_data():
                         order_id=order2.id,
                         amount=total2,
                         currency="RUB",
-                        status="pending"
+                        status="pending",
                     )
                     db.add(payment2)
                     print("Created Order 2: Adidas Ultraboost 22")
@@ -1095,19 +1258,32 @@ def populate_initial_data():
                 if zara_variant_l:
                     assert zara_brand is not None
                     subtotal3 = 79.99
-                    shipping3 = 0.0 if (zara_brand.min_free_shipping and subtotal3 >= zara_brand.min_free_shipping) else (float(zara_brand.shipping_price or 0))
+                    shipping3 = (
+                        0.0
+                        if (
+                            zara_brand.min_free_shipping
+                            and subtotal3 >= zara_brand.min_free_shipping
+                        )
+                        else (float(zara_brand.shipping_price or 0))
+                    )
                     total3 = subtotal3 + shipping3
 
                     checkout3 = Checkout(
                         id=str(uuid.uuid4()),
                         user_id=test_user.id,
                         total_amount=total3,
-                        delivery_full_name=test_profile.full_name if test_profile else None,
-                        delivery_email=test_shipping.delivery_email if test_shipping else None,
+                        delivery_full_name=test_profile.full_name
+                        if test_profile
+                        else None,
+                        delivery_email=test_shipping.delivery_email
+                        if test_shipping
+                        else None,
                         delivery_phone=test_shipping.phone if test_shipping else None,
                         delivery_address=delivery_address,
                         delivery_city=test_shipping.city if test_shipping else None,
-                        delivery_postal_code=test_shipping.postal_code if test_shipping else None
+                        delivery_postal_code=test_shipping.postal_code
+                        if test_shipping
+                        else None,
                     )
                     db.add(checkout3)
                     db.flush()
@@ -1128,7 +1304,7 @@ def populate_initial_data():
                         delivery_phone=checkout3.delivery_phone,
                         delivery_address=checkout3.delivery_address,
                         delivery_city=checkout3.delivery_city,
-                        delivery_postal_code=checkout3.delivery_postal_code
+                        delivery_postal_code=checkout3.delivery_postal_code,
                     )
                     db.add(order3)
                     db.flush()
@@ -1138,7 +1314,7 @@ def populate_initial_data():
                         product_variant_id=zara_variant_l.id,
                         quantity=1,
                         price=79.99,
-                        sku=generate_order_item_sku("Zara Flowy Midi Dress", "L", 3)
+                        sku=generate_order_item_sku("Zara Flowy Midi Dress", "L", 3),
                     )
                     db.add(order_item3)
 
@@ -1148,59 +1324,159 @@ def populate_initial_data():
                         order_id=order3.id,
                         amount=total3,
                         currency="RUB",
-                        status="completed"
+                        status="completed",
                     )
                     db.add(payment3)
                     print("Created Order 3: Zara Flowy Midi Dress")
 
                 db.commit()
-                
+
                 # Add more PAID orders for various products to populate purchase_count for popular items
                 # Query additional products for orders (after initial orders are committed)
                 additional_orders_data = [
-                    {"product_name": "Nike Dunk Low", "size": "M", "price": 100.00, "order_num": "ORD-004"},
-                    {"product_name": "Nike Air Force 1", "size": "L", "price": 90.00, "order_num": "ORD-005"},
-                    {"product_name": "Nike React Element 55", "size": "S", "price": 130.00, "order_num": "ORD-006"},
-                    {"product_name": "Nike Air Max 90", "size": "M", "price": 120.00, "order_num": "ORD-007"},
-                    {"product_name": "Nike Sportswear Tech Fleece", "size": "M", "price": 110.00, "order_num": "ORD-008"},
-                    {"product_name": "Adidas Samba", "size": "L", "price": 80.00, "order_num": "ORD-009"},
-                    {"product_name": "Adidas Stan Smith", "size": "M", "price": 75.00, "order_num": "ORD-010"},
-                    {"product_name": "Adidas NMD R1", "size": "S", "price": 130.00, "order_num": "ORD-011"},
-                    {"product_name": "Zara Basic T-Shirt", "size": "L", "price": 15.99, "order_num": "ORD-012"},
-                    {"product_name": "Zara Midi Dress Floral", "size": "M", "price": 49.99, "order_num": "ORD-013"},
-                    {"product_name": "H&M Cotton Hoodie", "size": "L", "price": 29.99, "order_num": "ORD-014"},
+                    {
+                        "product_name": "Nike Dunk Low",
+                        "size": "M",
+                        "price": 100.00,
+                        "order_num": "ORD-004",
+                    },
+                    {
+                        "product_name": "Nike Air Force 1",
+                        "size": "L",
+                        "price": 90.00,
+                        "order_num": "ORD-005",
+                    },
+                    {
+                        "product_name": "Nike React Element 55",
+                        "size": "S",
+                        "price": 130.00,
+                        "order_num": "ORD-006",
+                    },
+                    {
+                        "product_name": "Nike Air Max 90",
+                        "size": "M",
+                        "price": 120.00,
+                        "order_num": "ORD-007",
+                    },
+                    {
+                        "product_name": "Nike Sportswear Tech Fleece",
+                        "size": "M",
+                        "price": 110.00,
+                        "order_num": "ORD-008",
+                    },
+                    {
+                        "product_name": "Adidas Samba",
+                        "size": "L",
+                        "price": 80.00,
+                        "order_num": "ORD-009",
+                    },
+                    {
+                        "product_name": "Adidas Stan Smith",
+                        "size": "M",
+                        "price": 75.00,
+                        "order_num": "ORD-010",
+                    },
+                    {
+                        "product_name": "Adidas NMD R1",
+                        "size": "S",
+                        "price": 130.00,
+                        "order_num": "ORD-011",
+                    },
+                    {
+                        "product_name": "Zara Basic T-Shirt",
+                        "size": "L",
+                        "price": 15.99,
+                        "order_num": "ORD-012",
+                    },
+                    {
+                        "product_name": "Zara Midi Dress Floral",
+                        "size": "M",
+                        "price": 49.99,
+                        "order_num": "ORD-013",
+                    },
+                    {
+                        "product_name": "H&M Cotton Hoodie",
+                        "size": "L",
+                        "price": 29.99,
+                        "order_num": "ORD-014",
+                    },
                     # More orders for popular items variety (duplicate purchases to increase purchase_count)
-                    {"product_name": "Nike Dunk Low", "size": "S", "price": 100.00, "order_num": "ORD-015"},  # Second purchase
-                    {"product_name": "Nike Air Force 1", "size": "M", "price": 90.00, "order_num": "ORD-016"},  # Second purchase
-                    {"product_name": "Nike Air Max 270", "size": "L", "price": 150.00, "order_num": "ORD-017"},  # Second purchase
-                    {"product_name": "Zara Flowy Midi Dress", "size": "M", "price": 79.99, "order_num": "ORD-018"},  # Second purchase
+                    {
+                        "product_name": "Nike Dunk Low",
+                        "size": "S",
+                        "price": 100.00,
+                        "order_num": "ORD-015",
+                    },  # Second purchase
+                    {
+                        "product_name": "Nike Air Force 1",
+                        "size": "M",
+                        "price": 90.00,
+                        "order_num": "ORD-016",
+                    },  # Second purchase
+                    {
+                        "product_name": "Nike Air Max 270",
+                        "size": "L",
+                        "price": 150.00,
+                        "order_num": "ORD-017",
+                    },  # Second purchase
+                    {
+                        "product_name": "Zara Flowy Midi Dress",
+                        "size": "M",
+                        "price": 79.99,
+                        "order_num": "ORD-018",
+                    },  # Second purchase
                 ]
-                
+
                 order_num_counter = 4
                 for order_data in additional_orders_data:
-                    product = db.query(Product).filter(Product.name == order_data["product_name"]).first()
+                    product = (
+                        db.query(Product)
+                        .filter(Product.name == order_data["product_name"])
+                        .first()
+                    )
                     if product:
                         variant = get_variant_for_product(product, order_data["size"])
-                        
+
                         if variant:
                             # Check if order with this order_number already exists to avoid duplicates on re-run
-                            existing_order = db.query(Order).filter(Order.order_number == order_data["order_num"]).first()
+                            existing_order = (
+                                db.query(Order)
+                                .filter(Order.order_number == order_data["order_num"])
+                                .first()
+                            )
                             if not existing_order:
                                 brand = product.brand
                                 subtotal = order_data["price"]
-                                shipping = 0.0 if (brand.min_free_shipping and subtotal >= brand.min_free_shipping) else (float(brand.shipping_price or 0))
+                                shipping = (
+                                    0.0
+                                    if (
+                                        brand.min_free_shipping
+                                        and subtotal >= brand.min_free_shipping
+                                    )
+                                    else (float(brand.shipping_price or 0))
+                                )
                                 total = subtotal + shipping
 
                                 checkout = Checkout(
                                     id=str(uuid.uuid4()),
                                     user_id=test_user.id,
                                     total_amount=total,
-                                    delivery_full_name=test_profile.full_name if test_profile else None,
-                                    delivery_email=test_shipping.delivery_email if test_shipping else None,
-                                    delivery_phone=test_shipping.phone if test_shipping else None,
+                                    delivery_full_name=test_profile.full_name
+                                    if test_profile
+                                    else None,
+                                    delivery_email=test_shipping.delivery_email
+                                    if test_shipping
+                                    else None,
+                                    delivery_phone=test_shipping.phone
+                                    if test_shipping
+                                    else None,
                                     delivery_address=delivery_address,
-                                    delivery_city=test_shipping.city if test_shipping else None,
-                                    delivery_postal_code=test_shipping.postal_code if test_shipping else None
+                                    delivery_city=test_shipping.city
+                                    if test_shipping
+                                    else None,
+                                    delivery_postal_code=test_shipping.postal_code
+                                    if test_shipping
+                                    else None,
                                 )
                                 db.add(checkout)
                                 db.flush()
@@ -1221,7 +1497,7 @@ def populate_initial_data():
                                     delivery_phone=checkout.delivery_phone,
                                     delivery_address=checkout.delivery_address,
                                     delivery_city=checkout.delivery_city,
-                                    delivery_postal_code=checkout.delivery_postal_code
+                                    delivery_postal_code=checkout.delivery_postal_code,
                                 )
                                 db.add(order)
                                 db.flush()
@@ -1231,7 +1507,11 @@ def populate_initial_data():
                                     product_variant_id=variant.id,
                                     quantity=1,
                                     price=order_data["price"],
-                                    sku=generate_order_item_sku(product.name, order_data["size"], order_num_counter)
+                                    sku=generate_order_item_sku(
+                                        product.name,
+                                        order_data["size"],
+                                        order_num_counter,
+                                    ),
                                 )
                                 db.add(order_item)
 
@@ -1241,13 +1521,17 @@ def populate_initial_data():
                                     order_id=order.id,
                                     amount=total,
                                     currency="RUB",
-                                    status="completed"
+                                    status="completed",
                                 )
                                 db.add(payment)
-                                print(f"Created Order {order_data['order_num']}: {product.name}")
+                                print(
+                                    f"Created Order {order_data['order_num']}: {product.name}"
+                                )
                             else:
-                                print(f"Order {order_data['order_num']} already exists, skipping")
-                    
+                                print(
+                                    f"Order {order_data['order_num']} already exists, skipping"
+                                )
+
                     order_num_counter += 1
 
                 db.commit()
@@ -1257,6 +1541,7 @@ def populate_initial_data():
         print(f"Error populating data: {e}")
     finally:
         db.close()
+
 
 if __name__ == "__main__":
     print("Populating initial data (Brands, Styles, Products, Test User, Orders)...")

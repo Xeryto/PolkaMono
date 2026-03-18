@@ -58,6 +58,7 @@ from models import (
     UserShippingInfo,
     UserStyle,
     UserSwipe,
+    Payment as PaymentModel,
 )
 from oauth_service import oauth_service
 from pydantic import BaseModel, Field, ValidationError, field_validator
@@ -102,7 +103,7 @@ def validate_image_content_type(content_type: str) -> None:
         allowed_types = ", ".join(sorted(ALLOWED_IMAGE_CONTENT_TYPES))
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Invalid content type. Allowed types: {allowed_types}.",
+            detail=f"Недопустимый тип файла. Допустимые: {allowed_types}",
         )
 
 
@@ -507,6 +508,7 @@ class ToggleFavoriteRequest(BaseModel):
 
 class PaymentCreateResponse(BaseModel):
     confirmation_url: str
+    payment_id: str
 
 
 class PaymentStatusResponse(BaseModel):
@@ -591,7 +593,7 @@ async def get_payment_status(
     order = db.query(Order).filter(Order.id == payment_id).first()
     if not order:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Payment not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail="Платёж не найден"
         )
 
     # Verify ownership
@@ -599,16 +601,21 @@ async def get_payment_status(
     if is_brand:
         if str(order.brand_id) != str(current_user.id):
             raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden"
+                status_code=status.HTTP_403_FORBIDDEN, detail="Нет доступа к этому заказу"
             )
     else:
         if str(order.user_id) != str(current_user.id):
             raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden"
+                status_code=status.HTTP_403_FORBIDDEN, detail="Нет доступа к этому заказу"
             )
 
     # Fetch real-time status from YooKassa
-    yookassa_status = payment_service.get_yookassa_payment_status(str(order.payment_id))  # type: ignore
+    payment_record = db.query(PaymentModel).filter(PaymentModel.order_id == payment_id).first()
+    yookassa_status = (
+        payment_service.get_yookassa_payment_status(payment_record.id)
+        if payment_record
+        else None
+    )
     if yookassa_status:
         # Update local order status if different
         if order.status.value.lower() != yookassa_status.lower():
@@ -1049,7 +1056,7 @@ async def login(request: Request, user_data: UserLogin, db: Session = Depends(ge
     if not user or not user.auth_account.password_hash:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid credentials.",
+            detail="Неверный логин или пароль.",
         )
 
     # Check login lockout
@@ -1061,7 +1068,7 @@ async def login(request: Request, user_data: UserLogin, db: Session = Depends(ge
         auth_service.record_failed_login(db, user.auth_account)
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid credentials.",
+            detail="Неверный логин или пароль.",
         )
 
     # Reset failed login attempts on success
@@ -1146,7 +1153,7 @@ async def refresh_token(
     if not acc:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid or expired refresh token",
+            detail="Недействительный или истёкший токен обновления",
         )
 
     # Determine linked principal (User or Brand)
@@ -1679,12 +1686,12 @@ async def brand_validate_password_reset_code(
     else:
         brand = db.query(Brand).filter(Brand.name == identifier).first()
     if not brand:
-        raise HTTPException(status_code=400, detail="Invalid brand email/name or code")
+        raise HTTPException(status_code=400, detail="Неверный email/имя бренда или код")
     acc = brand.auth_account
     if acc.email_verification_code != validation_request.code:
-        raise HTTPException(status_code=400, detail="Invalid brand email/name or code")
+        raise HTTPException(status_code=400, detail="Неверный email/имя бренда или код")
     if acc.email_verification_code_expires_at < datetime.now(timezone.utc):
-        raise HTTPException(status_code=400, detail="Verification code has expired")
+        raise HTTPException(status_code=400, detail="Код подтверждения истёк")
     return {"message": "Code is valid"}
 
 
@@ -1712,18 +1719,18 @@ async def brand_reset_password_with_code(
     else:
         brand = db.query(Brand).filter(Brand.name == identifier).first()
     if not brand:
-        raise HTTPException(status_code=400, detail="Invalid brand email/name or code")
+        raise HTTPException(status_code=400, detail="Неверный email/имя бренда или код")
     acc = brand.auth_account
     if acc.email_verification_code != reset_password_request.code:
-        raise HTTPException(status_code=400, detail="Invalid brand email/name or code")
+        raise HTTPException(status_code=400, detail="Неверный email/имя бренда или код")
     if acc.email_verification_code_expires_at < datetime.now(timezone.utc):
-        raise HTTPException(status_code=400, detail="Verification code has expired")
+        raise HTTPException(status_code=400, detail="Код подтверждения истёк")
     new_password_hash = auth_service.hash_password(reset_password_request.new_password)
     if acc.password_hash and auth_service.verify_password(
         reset_password_request.new_password, acc.password_hash
     ):
         raise HTTPException(
-            status_code=400, detail="You cannot reuse your current password"
+            status_code=400, detail="Нельзя использовать текущий пароль"
         )
     if acc.password_history:
         for historical_hash in acc.password_history:
@@ -1731,7 +1738,7 @@ async def brand_reset_password_with_code(
                 reset_password_request.new_password, historical_hash
             ):
                 raise HTTPException(
-                    status_code=400, detail="You cannot reuse a previous password"
+                    status_code=400, detail="Нельзя использовать предыдущий пароль"
                 )
     if not acc.password_history:
         acc.password_history = []
@@ -1799,7 +1806,7 @@ async def request_brand_deletion(
     """
     if current_user.scheduled_deletion_at is not None:
         raise HTTPException(
-            status_code=400, detail="Account deletion already scheduled"
+            status_code=400, detail="Удаление аккаунта уже запланировано"
         )
     grace_end = datetime.now(timezone.utc) + timedelta(
         days=settings.BRAND_DELETION_GRACE_DAYS
@@ -2063,7 +2070,7 @@ async def request_verification(
     if isinstance(current_user, Brand):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not a user account")
     if current_user.auth_account.is_email_verified:
-        raise HTTPException(status_code=400, detail="Email already verified")
+        raise HTTPException(status_code=400, detail="Email уже подтверждён")
     code = auth_service.create_verification_code(db, current_user)
     mail_service.send_email(
         to_email=current_user.auth_account.email,
@@ -2082,13 +2089,13 @@ async def verify_email(
 ):
     user = auth_service.get_user_by_email(db, verification_data.email)
     if not user:
-        raise HTTPException(status_code=400, detail="Invalid email or code")
+        raise HTTPException(status_code=400, detail="Неверный email или код")
 
     acc = user.auth_account
     if acc.email_verification_code != verification_data.code:
-        raise HTTPException(status_code=400, detail="Invalid email or code")
+        raise HTTPException(status_code=400, detail="Неверный email или код")
     if acc.email_verification_code_expires_at < datetime.now(timezone.utc):
-        raise HTTPException(status_code=400, detail="Verification code has expired")
+        raise HTTPException(status_code=400, detail="Код подтверждения истёк")
     acc.is_email_verified = True
     acc.email_verification_code = None
     acc.email_verification_code_expires_at = None
@@ -2150,16 +2157,16 @@ async def reset_password(
         .first()
     )
     if not user:
-        raise HTTPException(status_code=400, detail="Invalid token")
+        raise HTTPException(status_code=400, detail="Недействительная ссылка")
     acc = user.auth_account
     if acc.password_reset_expires < datetime.now(timezone.utc):
-        raise HTTPException(status_code=400, detail="Token has expired")
+        raise HTTPException(status_code=400, detail="Ссылка для сброса пароля истекла")
     new_password_hash = auth_service.hash_password(reset_password_request.new_password)
     if acc.password_hash and auth_service.verify_password(
         reset_password_request.new_password, acc.password_hash
     ):
         raise HTTPException(
-            status_code=400, detail="You cannot reuse your current password"
+            status_code=400, detail="Нельзя использовать текущий пароль"
         )
     if acc.password_history:
         for historical_hash in acc.password_history:
@@ -2167,7 +2174,7 @@ async def reset_password(
                 reset_password_request.new_password, historical_hash
             ):
                 raise HTTPException(
-                    status_code=400, detail="You cannot reuse a previous password"
+                    status_code=400, detail="Нельзя использовать предыдущий пароль"
                 )
     if not acc.password_history:
         acc.password_history = []
@@ -2208,13 +2215,13 @@ async def validate_password_reset_code(
         user = auth_service.get_user_by_username(db, identifier)
 
     if not user:
-        raise HTTPException(status_code=400, detail="Invalid username/email or code")
+        raise HTTPException(status_code=400, detail="Неверные данные или код")
 
     acc = user.auth_account
     if acc.email_verification_code != validation_request.code:
-        raise HTTPException(status_code=400, detail="Invalid username/email or code")
+        raise HTTPException(status_code=400, detail="Неверные данные или код")
     if acc.email_verification_code_expires_at < datetime.now(timezone.utc):
-        raise HTTPException(status_code=400, detail="Verification code has expired")
+        raise HTTPException(status_code=400, detail="Код подтверждения истёк")
     return {"message": "Code is valid"}
 
 
@@ -2239,19 +2246,19 @@ async def reset_password_with_code(
         user = auth_service.get_user_by_username(db, identifier)
 
     if not user:
-        raise HTTPException(status_code=400, detail="Invalid username/email or code")
+        raise HTTPException(status_code=400, detail="Неверные данные или код")
 
     acc = user.auth_account
     if acc.email_verification_code != reset_password_request.code:
-        raise HTTPException(status_code=400, detail="Invalid username/email or code")
+        raise HTTPException(status_code=400, detail="Неверные данные или код")
     if acc.email_verification_code_expires_at < datetime.now(timezone.utc):
-        raise HTTPException(status_code=400, detail="Verification code has expired")
+        raise HTTPException(status_code=400, detail="Код подтверждения истёк")
     new_password_hash = auth_service.hash_password(reset_password_request.new_password)
     if acc.password_hash and auth_service.verify_password(
         reset_password_request.new_password, acc.password_hash
     ):
         raise HTTPException(
-            status_code=400, detail="You cannot reuse your current password"
+            status_code=400, detail="Нельзя использовать текущий пароль"
         )
     if acc.password_history:
         for historical_hash in acc.password_history:
@@ -2259,7 +2266,7 @@ async def reset_password_with_code(
                 reset_password_request.new_password, historical_hash
             ):
                 raise HTTPException(
-                    status_code=400, detail="You cannot reuse a previous password"
+                    status_code=400, detail="Нельзя использовать предыдущий пароль"
                 )
     if not acc.password_history:
         acc.password_history = []
@@ -2307,7 +2314,7 @@ async def exclusive_access_signup(
     if existing_email:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Email already signed up for exclusive access",
+            detail="Email уже зарегистрирован для раннего доступа",
         )
 
     new_signup = ExclusiveAccessEmail(email=signup_data.email)
@@ -2622,7 +2629,7 @@ async def create_product(
         has_one_size = any(v.size == "One Size" for v in cv_data.variants)
         has_other = any(v.size != "One Size" for v in cv_data.variants)
         if has_one_size and has_other:
-            raise HTTPException(status_code=400, detail="'One Size' cannot be mixed with other sizes")
+            raise HTTPException(status_code=400, detail="«One Size» нельзя сочетать с другими размерами")
         for v in cv_data.variants:
             normalized = normalize_size(v.size, product_data.category_id)
             v.size = normalized
@@ -2722,7 +2729,7 @@ async def create_product(
         style = db.query(Style).filter(Style.id == style_id).first()
         if not style:
             raise HTTPException(
-                status_code=400, detail=f"Style with ID {style_id} not found"
+                status_code=400, detail=f"Стиль с ID {style_id} не найден"
             )
         product_style = ProductStyle(product_id=product.id, style_id=style_id)
         db.add(product_style)
@@ -2752,7 +2759,7 @@ async def update_product(
     # Ensure the product belongs to the current brand user
     if product.brand_id != current_user.id:
         raise HTTPException(
-            status_code=403, detail="Product does not belong to your brand"
+            status_code=403, detail="Товар не принадлежит вашему бренду"
         )
 
     # Validate sizes if color_variants provided
@@ -2763,7 +2770,7 @@ async def update_product(
             has_one_size = any(v.size == "One Size" for v in cv_data.variants)
             has_other = any(v.size != "One Size" for v in cv_data.variants)
             if has_one_size and has_other:
-                raise HTTPException(status_code=400, detail="'One Size' cannot be mixed with other sizes")
+                raise HTTPException(status_code=400, detail="«One Size» нельзя сочетать с другими размерами")
             for v in cv_data.variants:
                 normalized = normalize_size(v.size, cat_id)
                 v.size = normalized
@@ -2872,7 +2879,7 @@ async def update_product(
                 style = db.query(Style).filter(Style.id == style_id).first()
                 if not style:
                     raise HTTPException(
-                        status_code=400, detail=f"Style with ID {style_id} not found"
+                        status_code=400, detail=f"Стиль с ID {style_id} не найден"
                     )
                 product_style = ProductStyle(product_id=product.id, style_id=style_id)
                 db.add(product_style)
@@ -2928,7 +2935,7 @@ async def get_brand_product_details(
         )
     if product.brand_id != current_user.id:
         raise HTTPException(
-            status_code=403, detail="Product does not belong to your brand"
+            status_code=403, detail="Товар не принадлежит вашему бренду"
         )
     return product_to_schema(product)
 
@@ -3032,7 +3039,7 @@ async def update_order_item_sku(
 
     if not order_item.sku:  # type: ignore
         raise HTTPException(
-            status_code=400, detail="SKU already assigned and cannot be changed."
+            status_code=400, detail="Артикул уже присвоен и не может быть изменён"
         )
 
     order_item.sku = sku_data.sku
@@ -3132,7 +3139,7 @@ async def update_user_profile(
         existing = auth_service.get_user_by_username(db, profile_data.username)
         if existing and existing.id != current_user.id:
             raise HTTPException(
-                status_code=400, detail="Username already taken"
+                status_code=400, detail="Имя пользователя уже занято"
             )
         current_user.username = profile_data.username
     if profile_data.email is not None:
@@ -3145,7 +3152,7 @@ async def update_user_profile(
             .first()
         ):
             raise HTTPException(
-                status_code=400, detail="Email already registered to another account"
+                status_code=400, detail="Email уже привязан к другому аккаунту"
             )
         current_user.auth_account.email = profile_data.email
 
@@ -3479,7 +3486,7 @@ async def get_category_sizes(request: Request, category_id: str, db: Session = D
     size_types let the brand choose per-product."""
     category = db.query(Category).filter(Category.id == category_id).first()
     if not category:
-        raise HTTPException(status_code=404, detail="Category not found")
+        raise HTTPException(status_code=404, detail="Категория не найдена")
     allowed = get_size_types(category_id)
 
     def _build_type_info(st: str) -> dict:
@@ -4489,7 +4496,7 @@ async def create_payment_endpoint(
     if isinstance(current_user, Brand):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not a user account")
     try:
-        confirmation_url = payment_service.create_payment(
+        confirmation_url, payment_id = payment_service.create_payment(
             db=db,
             user_id=current_user.id,
             amount=payment_data.amount.value,
@@ -4498,8 +4505,7 @@ async def create_payment_endpoint(
             return_url=payment_data.returnUrl,
             items=payment_data.items,
         )
-        # print(f"Receipt data sent to payment_service: {payment_data.receipt.dict() if payment_data.receipt else None}")
-        return PaymentCreateResponse(confirmation_url=confirmation_url)
+        return PaymentCreateResponse(confirmation_url=confirmation_url, payment_id=payment_id)
     except ValidationError as e:
         print(f"Pydantic Validation Error: {e.errors()}")
         raise HTTPException(
@@ -4509,7 +4515,7 @@ async def create_payment_endpoint(
         logger.exception("Payment creation failed")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Payment creation failed. Please try again.",
+            detail=str(e),
         )
 
 
@@ -4710,7 +4716,7 @@ async def create_order_test_endpoint(
         logger.exception("Test order creation failed")
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Order creation failed. Please try again.",
+            detail=str(e),
         )
 
 
@@ -4733,11 +4739,11 @@ async def confirm_test_order(
         .first()
     )
     if not order:
-        raise HTTPException(status_code=404, detail="Order not found")
+        raise HTTPException(status_code=404, detail="Заказ не найден")
     if order.status != OrderStatus.CREATED:
         raise HTTPException(
             status_code=400,
-            detail=f"Only CREATED orders can be confirmed. Status: {order.status.value}",
+            detail="Заказ уже обработан и не может быть подтверждён",
         )
     payment_service.update_order_status(db, order_id, OrderStatus.PAID)
     db.commit()
@@ -4811,13 +4817,13 @@ async def get_order_by_id(
     """Get full order details. Brands see their own orders; users see orders they placed."""
     order = db.query(Order).options(*_order_load).filter(Order.id == order_id).first()
     if not order:
-        raise HTTPException(status_code=404, detail="Order not found")
+        raise HTTPException(status_code=404, detail="Заказ не найден")
     if isinstance(current_user, Brand):
         if order.brand_id != current_user.id:
-            raise HTTPException(status_code=404, detail="Order not found")
+            raise HTTPException(status_code=404, detail="Заказ не найден")
     else:
         if order.user_id != str(current_user.id):
-            raise HTTPException(status_code=404, detail="Order not found")
+            raise HTTPException(status_code=404, detail="Заказ не найден")
     allocated = _allocated_shipping_for_order(order)
     order_items = []
     for idx, item in enumerate(order.items):

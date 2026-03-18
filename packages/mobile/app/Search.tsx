@@ -182,10 +182,12 @@ const SearchResultItem = memo(
       <Animated.View
         entering={
           isNewItem
-            ? FadeInDown.duration(ANIMATION_DURATIONS.STANDARD).delay(
-                ANIMATION_DELAYS.STANDARD +
-                  (index - initialResultsCount) * ANIMATION_DELAYS.SMALL,
-              ).reduceMotion(ReduceMotion.System)
+            ? FadeInDown.duration(ANIMATION_DURATIONS.STANDARD)
+                .delay(
+                  ANIMATION_DELAYS.STANDARD +
+                    (index - initialResultsCount) * ANIMATION_DELAYS.SMALL,
+                )
+                .reduceMotion(ReduceMotion.System)
             : undefined
         }
         style={styles.searchItem}
@@ -199,6 +201,7 @@ const SearchResultItem = memo(
               source={item.images[0]}
               style={styles.itemImage}
               contentFit="contain"
+              contentPosition={"bottom"}
             />
           ) : (
             <View style={[styles.itemImage, styles.noProductImagePlaceholder]}>
@@ -214,6 +217,7 @@ const SearchResultItem = memo(
             price={item.price}
             sale_price={item.sale_price}
             sale_type={item.sale_type}
+            compact
           />
         </Pressable>
       </Animated.View>
@@ -885,9 +889,7 @@ const Search = ({ navigation }: SearchProps) => {
   );
 
   return (
-    <Animated.View
-      style={styles.container}
-    >
+    <Animated.View style={styles.container}>
       <Animated.View
         style={[
           styles.searchContainer,
@@ -909,8 +911,12 @@ const Search = ({ navigation }: SearchProps) => {
 
           {isSearchActive && (
             <Animated.View
-              entering={FadeInDown.duration(ANIMATION_DURATIONS.STANDARD).reduceMotion(ReduceMotion.System)}
-              exiting={FadeOutDown.duration(ANIMATION_DURATIONS.QUICK).reduceMotion(ReduceMotion.System)}
+              entering={FadeInDown.duration(
+                ANIMATION_DURATIONS.STANDARD,
+              ).reduceMotion(ReduceMotion.System)}
+              exiting={FadeOutDown.duration(
+                ANIMATION_DURATIONS.QUICK,
+              ).reduceMotion(ReduceMotion.System)}
               style={styles.cancelButtonContainer}
             >
               <TouchableOpacity
@@ -925,8 +931,12 @@ const Search = ({ navigation }: SearchProps) => {
       </Animated.View>
       {isSearchActive && (
         <Animated.View
-          entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).reduceMotion(ReduceMotion.System)}
-          exiting={FadeOutDown.duration(ANIMATION_DURATIONS.QUICK).reduceMotion(ReduceMotion.System)}
+          entering={FadeInDown.duration(
+            ANIMATION_DURATIONS.MEDIUM,
+          ).reduceMotion(ReduceMotion.System)}
+          exiting={FadeOutDown.duration(ANIMATION_DURATIONS.QUICK).reduceMotion(
+            ReduceMotion.System,
+          )}
           style={styles.filtersContainer}
         >
           {/* Main Filter Buttons */}
@@ -962,7 +972,9 @@ const Search = ({ navigation }: SearchProps) => {
           {/* Options Dropdown */}
           {activeFilter && (
             <Animated.View
-              entering={FadeInDown.duration(ANIMATION_DURATIONS.STANDARD).reduceMotion(ReduceMotion.System)}
+              entering={FadeInDown.duration(
+                ANIMATION_DURATIONS.STANDARD,
+              ).reduceMotion(ReduceMotion.System)}
               style={styles.optionsContainer}
             >
               <View style={styles.optionsHeader}>
@@ -1014,9 +1026,9 @@ const Search = ({ navigation }: SearchProps) => {
         </Animated.View>
       )}
       <Animated.View
-        entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
-          ANIMATION_DELAYS.EXTENDED,
-        ).reduceMotion(ReduceMotion.System)}
+        entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM)
+          .delay(ANIMATION_DELAYS.EXTENDED)
+          .reduceMotion(ReduceMotion.System)}
         style={[styles.roundedBox, !isSearchActive && styles.roundedBoxInitial]}
       >
         <Animated.View
@@ -1025,13 +1037,15 @@ const Search = ({ navigation }: SearchProps) => {
         >
           {showEmptyState ? (
             <Animated.View
-              entering={FadeIn.duration(ANIMATION_DURATIONS.STANDARD).reduceMotion(ReduceMotion.System)}
+              entering={FadeIn.duration(
+                ANIMATION_DURATIONS.STANDARD,
+              ).reduceMotion(ReduceMotion.System)}
               style={styles.emptyStateContainer}
             >
               <Animated.View
-                entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
-                  ANIMATION_DELAYS.STANDARD,
-                ).reduceMotion(ReduceMotion.System)}
+                entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM)
+                  .delay(ANIMATION_DELAYS.STANDARD)
+                  .reduceMotion(ReduceMotion.System)}
                 style={styles.emptyStateIcon}
               >
                 <AntDesign
@@ -1041,17 +1055,17 @@ const Search = ({ navigation }: SearchProps) => {
                 />
               </Animated.View>
               <Animated.Text
-                entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
-                  ANIMATION_DELAYS.MEDIUM,
-                ).reduceMotion(ReduceMotion.System)}
+                entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM)
+                  .delay(ANIMATION_DELAYS.MEDIUM)
+                  .reduceMotion(ReduceMotion.System)}
                 style={styles.emptyStateTitle}
               >
                 начните поиск
               </Animated.Text>
               <Animated.Text
-                entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
-                  ANIMATION_DELAYS.LARGE,
-                ).reduceMotion(ReduceMotion.System)}
+                entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM)
+                  .delay(ANIMATION_DELAYS.LARGE)
+                  .reduceMotion(ReduceMotion.System)}
                 style={styles.emptyStateDescription}
               >
                 введите название товара или используйте фильтры для поиска
@@ -1059,7 +1073,9 @@ const Search = ({ navigation }: SearchProps) => {
             </Animated.View>
           ) : isLoadingResults ? (
             <Animated.View
-              entering={FadeIn.duration(ANIMATION_DURATIONS.STANDARD).reduceMotion(ReduceMotion.System)}
+              entering={FadeIn.duration(
+                ANIMATION_DURATIONS.STANDARD,
+              ).reduceMotion(ReduceMotion.System)}
               style={styles.loadingContainer}
             >
               <SkeletonGrid count={6} />
@@ -1091,29 +1107,31 @@ const Search = ({ navigation }: SearchProps) => {
             />
           ) : showNoResults ? (
             <Animated.View
-              entering={FadeIn.duration(ANIMATION_DURATIONS.STANDARD).reduceMotion(ReduceMotion.System)}
+              entering={FadeIn.duration(
+                ANIMATION_DURATIONS.STANDARD,
+              ).reduceMotion(ReduceMotion.System)}
               style={styles.noResultsContainer}
             >
               <Animated.View
-                entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
-                  ANIMATION_DELAYS.STANDARD,
-                ).reduceMotion(ReduceMotion.System)}
+                entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM)
+                  .delay(ANIMATION_DELAYS.STANDARD)
+                  .reduceMotion(ReduceMotion.System)}
                 style={styles.emptyStateIcon}
               >
                 <AntDesign name="inbox" size={64} color={theme.text.disabled} />
               </Animated.View>
               <Animated.Text
-                entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
-                  ANIMATION_DELAYS.MEDIUM,
-                ).reduceMotion(ReduceMotion.System)}
+                entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM)
+                  .delay(ANIMATION_DELAYS.MEDIUM)
+                  .reduceMotion(ReduceMotion.System)}
                 style={styles.noResultsText}
               >
                 ничего не найдено
               </Animated.Text>
               <Animated.Text
-                entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM).delay(
-                  ANIMATION_DELAYS.LARGE,
-                ).reduceMotion(ReduceMotion.System)}
+                entering={FadeInDown.duration(ANIMATION_DURATIONS.MEDIUM)
+                  .delay(ANIMATION_DELAYS.LARGE)
+                  .reduceMotion(ReduceMotion.System)}
                 style={styles.noResultsDescription}
               >
                 попробуйте изменить поисковый запрос или фильтры
@@ -1179,7 +1197,9 @@ const Search = ({ navigation }: SearchProps) => {
         </Animated.View>
         {!isSearchActive && (
           <AnimatedText
-            entering={FadeInDown.duration(ANIMATION_DURATIONS.STANDARD).reduceMotion(ReduceMotion.System)}
+            entering={FadeInDown.duration(
+              ANIMATION_DURATIONS.STANDARD,
+            ).reduceMotion(ReduceMotion.System)}
             style={styles.popularItemsText}
           >
             ПОПУЛЯРНОЕ
@@ -1381,8 +1401,8 @@ const createStyles = (theme: ThemeColors) =>
       justifyContent: "center",
     },
     itemImage: {
-      width: "73%",
-      height: "73%",
+      width: "60%",
+      height: "75%",
     },
     noProductImagePlaceholder: {
       backgroundColor: theme.surface.button,
@@ -1397,20 +1417,16 @@ const createStyles = (theme: ThemeColors) =>
       color: theme.text.disabled,
     },
     itemInfo: {
-      // position: 'absolute',
-      bottom: -5,
-      // left: 10,
-      // right: 10,
+      bottom: 0,
       alignItems: "center",
-      borderRadius: 20,
-      padding: 6,
+      paddingVertical: 10,
+      width: "75%",
     },
     itemName: {
       fontFamily: "IgraSans",
       fontSize: 13,
       color: theme.text.secondary,
       textAlign: "center",
-      paddingHorizontal: 10,
     },
     emptyStateContainer: {
       flex: 1,

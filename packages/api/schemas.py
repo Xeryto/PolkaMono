@@ -23,14 +23,14 @@ COMMON_PASSWORDS = frozenset({
 def _validate_password(v: str) -> str:
     if len(v) < settings.MIN_PASSWORD_LENGTH:
         raise ValueError(
-            f"Password must be at least {settings.MIN_PASSWORD_LENGTH} characters"
+            f"Пароль должен содержать не менее {settings.MIN_PASSWORD_LENGTH} символов"
         )
     if " " in v:
-        raise ValueError("Password cannot contain spaces")
+        raise ValueError("Пароль не должен содержать пробелов")
     if not any(c.isalpha() for c in v) or not any(c.isdigit() for c in v):
-        raise ValueError("Password must contain both letters and numbers")
+        raise ValueError("Пароль должен содержать буквы и цифры")
     if v.lower() in COMMON_PASSWORDS:
-        raise ValueError("This password is too common, please choose a stronger one")
+        raise ValueError("Этот пароль слишком распространён, выберите другой")
     return v
 
 
@@ -42,7 +42,7 @@ class Amount(BaseModel):
     @classmethod
     def validate_value(cls, v):
         if v <= 0:
-            raise ValueError("Amount must be positive")
+            raise ValueError("Сумма должна быть положительной")
         return v
 
 
@@ -53,9 +53,7 @@ class Customer(BaseModel):
     @model_validator(mode="after")
     def check_at_least_one_contact(self):
         if self.email is None and self.phone is None:
-            raise ValueError(
-                "At least one of email or phone must be provided for the customer."
-            )
+            raise ValueError("Укажите email или телефон")
         return self
 
 
@@ -67,7 +65,7 @@ class CartItem(BaseModel):
     @classmethod
     def validate_quantity(cls, v):
         if v < 1:
-            raise ValueError("Quantity must be at least 1")
+            raise ValueError("Количество должно быть не менее 1")
         return v
 
 
@@ -261,7 +259,7 @@ class ProductVariantSchema(BaseModel):
     @classmethod
     def validate_stock_quantity(cls, v):
         if v < 0:
-            raise ValueError("Stock quantity cannot be negative")
+            raise ValueError("Количество на складе не может быть отрицательным")
         return v
 
     model_config = ConfigDict(from_attributes=True)
@@ -326,7 +324,7 @@ class ProductCreateRequest(BaseModel):
         )
         if not has_general and not has_one_per_color:
             raise ValueError(
-                "At least one image is required: add general_images and/or at least one image per color variant."
+                "Необходимо добавить хотя бы одно изображение"
             )
         if self.delivery_time_min is not None and self.delivery_time_max is not None:
             if self.delivery_time_max < self.delivery_time_min:
@@ -364,7 +362,7 @@ class ProductUpdateRequest(BaseModel):
             )
             if not has_general and not has_one_per_color:
                 raise ValueError(
-                    "At least one image is required: add general_images and/or at least one image per color variant."
+                    "Необходимо добавить хотя бы одно изображение"
                 )
         if self.delivery_time_min is not None and self.delivery_time_max is not None:
             if self.delivery_time_max < self.delivery_time_min:
@@ -411,14 +409,14 @@ class UserProfileUpdateRequest(BaseModel):
             return v
         if len(v) < settings.MIN_USERNAME_LENGTH:
             raise ValueError(
-                f"Username must be at least {settings.MIN_USERNAME_LENGTH} characters"
+                f"Имя пользователя должно содержать не менее {settings.MIN_USERNAME_LENGTH} символов"
             )
         if " " in v:
-            raise ValueError("Username cannot contain spaces")
+            raise ValueError("Имя пользователя не должно содержать пробелов")
         if not _USERNAME_REGEX.match(v):
-            raise ValueError("Username contains invalid characters")
+            raise ValueError("Имя пользователя содержит недопустимые символы")
         if contains_profanity(v):
-            raise ValueError("Username contains inappropriate language")
+            raise ValueError("Имя пользователя содержит недопустимую лексику")
         return v
 
 
@@ -479,7 +477,7 @@ class ShippingInfoUpdateRequest(BaseModel):
         # Validate format: +7 followed by exactly 10 digits
         if not re.match(r"^\+7\d{10}$", cleaned):
             raise ValueError(
-                "Phone number must be a valid Russian phone number (+7 followed by 10 digits)"
+                "Введите корректный российский номер телефона (+7 и 10 цифр)"
             )
         return cleaned
 
@@ -495,7 +493,7 @@ class ShippingInfoUpdateRequest(BaseModel):
         # Remove spaces and dashes
         cleaned = re.sub(r"[\s\-]", "", v)
         if not re.match(r"^\d{6}$", cleaned):
-            raise ValueError("Postal code must be 6 digits (Russian format)")
+            raise ValueError("Почтовый индекс должен содержать 6 цифр")
         return cleaned
 
 
@@ -572,6 +570,11 @@ class BrandCreate(BaseModel):
     email: EmailStr
     password: str
     slug: str
+
+    @field_validator("password", mode="before")
+    @classmethod
+    def validate_password(cls, v):
+        return _validate_password(v)
     logo: Optional[str] = None
     description: Optional[str] = None
     return_policy: Optional[str] = None
@@ -690,14 +693,14 @@ class UserCreate(BaseModel):
     def validate_username(cls, v):
         if len(v) < settings.MIN_USERNAME_LENGTH:
             raise ValueError(
-                f"Username must be at least {settings.MIN_USERNAME_LENGTH} characters"
+                f"Имя пользователя должно содержать не менее {settings.MIN_USERNAME_LENGTH} символов"
             )
         if " " in v:
-            raise ValueError("Username cannot contain spaces")
+            raise ValueError("Имя пользователя не должно содержать пробелов")
         if not _USERNAME_REGEX.match(v):
-            raise ValueError("Username contains invalid characters")
+            raise ValueError("Имя пользователя содержит недопустимые символы")
         if contains_profanity(v):
-            raise ValueError("Username contains inappropriate language")
+            raise ValueError("Имя пользователя содержит недопустимую лексику")
         return v
 
     @field_validator("password", mode="before")

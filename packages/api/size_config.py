@@ -64,27 +64,27 @@ def _validate_single_size(size_type: str, size: str) -> Optional[str]:
     """Validate a size against a specific size type. Returns error or None."""
     if size_type == STANDARD:
         if size not in STANDARD_SIZES:
-            return f"Invalid size '{size}'. Allowed: {', '.join(STANDARD_SIZES)}, One Size"
+            return f"Недопустимый размер '{size}'. Допустимые: {', '.join(STANDARD_SIZES)}, One Size"
         return None
 
     if size_type == WAIST_LENGTH:
         m = _WAIST_LENGTH_RE.match(size)
         if not m:
-            return f"Invalid size '{size}'. Must be in W×L format in cm (e.g. 76×82)"
+            return f"Размер должен быть в формате Ш×Д в см (например 76×82)"
         waist, length = int(m.group(1)), int(m.group(2))
         if waist not in WAIST_VALUES:
-            return f"Waist {waist} out of range ({WAIST_VALUES[0]}-{WAIST_VALUES[-1]})"
+            return f"Обхват талии {waist} вне диапазона ({WAIST_VALUES[0]}–{WAIST_VALUES[-1]})"
         if length not in LENGTH_VALUES:
-            return f"Length {length} out of range ({LENGTH_VALUES[0]}-{LENGTH_VALUES[-1]})"
+            return f"Длина {length} вне диапазона ({LENGTH_VALUES[0]}–{LENGTH_VALUES[-1]})"
         return None
 
     if size_type == NUMERIC_EU:
         try:
             val = float(size)
         except ValueError:
-            return f"Invalid shoe size '{size}'. Must be numeric (e.g. 42, 43.5)"
+            return f"Недопустимый размер обуви '{size}'. Должен быть числом (например 42, 43.5)"
         if val not in EU_SHOE_SIZES:
-            return f"Shoe size {val} out of range ({EU_SHOE_SIZES[0]}-{EU_SHOE_SIZES[-1]})"
+            return f"Размер обуви {val} вне диапазона ({EU_SHOE_SIZES[0]}–{EU_SHOE_SIZES[-1]})"
         return None
 
     return None
@@ -107,7 +107,7 @@ def validate_size(category_id: str, size: str) -> Optional[str]:
 
     if len(allowed) == 1:
         return errors[0]
-    return f"Invalid size '{size}' for this category"
+    return f"Недопустимый размер '{size}' для этой категории"
 
 
 def validate_size_consistency(category_id: str, sizes: List[str]) -> Optional[str]:
@@ -123,7 +123,7 @@ def validate_size_consistency(category_id: str, sizes: List[str]) -> Optional[st
     detected = _detect_size_type(real_sizes[0])
     for s in real_sizes[1:]:
         if _detect_size_type(s) != detected:
-            return "Cannot mix standard sizes (XS/S/M/L/XL) with width×length sizes in the same product"
+            return "Нельзя сочетать стандартные размеры (XS/S/M/L/XL) с размерами ширина×длина"
     return None
 
 

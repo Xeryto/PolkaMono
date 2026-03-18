@@ -72,9 +72,6 @@ const LoginScreen: React.FC<LoginScreenProps> = ({
     if (!usernameOrEmail.trim()) {
       newErrors.usernameOrEmail = "ник или email обязателен";
       valid = false;
-    } else if (illegalCharRegex.test(usernameOrEmail)) {
-      newErrors.usernameOrEmail = "ник или email содержит недопустимые символы";
-      valid = false;
     } else if (usernameOrEmail.includes("@")) {
       // If it contains '@', it should match email format
       if (!emailRegex.test(usernameOrEmail)) {
@@ -82,9 +79,9 @@ const LoginScreen: React.FC<LoginScreenProps> = ({
         valid = false;
       }
     } else {
-      // If it doesn't contain '@', it's considered a username, so no @ allowed
-      if (usernameOrEmail.includes("@")) {
-        newErrors.usernameOrEmail = "ник не может содержать символ @";
+      // Username — check for illegal characters
+      if (illegalCharRegex.test(usernameOrEmail)) {
+        newErrors.usernameOrEmail = "ник содержит недопустимые символы";
         valid = false;
       }
     }

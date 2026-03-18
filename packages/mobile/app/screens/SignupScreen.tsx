@@ -206,9 +206,6 @@ const SignupScreen: React.FC<SignupScreenProps> = ({ onSignup, onBack }) => {
     } else if (email.includes(" ")) {
       newErrors.email = "email не должен содержать пробелов";
       valid = false;
-    } else if (illegalCharRegex.test(email)) {
-      newErrors.email = "email содержит недопустимые символы";
-      valid = false;
     } else if (emailAvailable === false) {
       newErrors.email = "этот email уже используется";
       valid = false;
