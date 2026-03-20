@@ -5,8 +5,9 @@ import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Label } from "@/components/ui/label";
-import { PlusCircle, XCircle } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
+import { Loader2, Lock, PlusCircle, XCircle } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
+import { toast } from "sonner";
 import * as api from "@/services/api"; // Assuming API calls are here
 import { Textarea } from "@/components/ui/textarea";
 import { MultiSelect } from "@/components/ui/multi-select";
@@ -77,7 +78,6 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({
   );
   const [generalImageFiles, setGeneralImageFiles] = useState<File[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const { toast } = useToast();
   const [selectedStyles, setSelectedStyles] = useState<string[]>(
     product.styles || [],
   );
@@ -219,7 +219,8 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({
     setSalePrice(product.sale_price != null ? String(product.sale_price) : "");
     setSizingTableImage(product.sizing_table_image ?? null);
     setSizingTableFile(null);
-    setDeliveryOverride(false);
+    const hasCustomDelivery = product.delivery_time_min != null || product.delivery_time_max != null;
+    setDeliveryOverride(hasCustomDelivery);
     setDeliveryTimeMin(
       product.delivery_time_min != null
         ? String(product.delivery_time_min)
@@ -244,81 +245,45 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({
         setStyles(fetchedStyles);
         setCategories(fetchedCategories);
       } catch (error) {
-        toast({
-          title: "ошибка загрузки данных",
-          description: "не удалось загрузить стили и категории.",
-          variant: "destructive",
-        });
+        toast.error("Не удалось загрузить стили и категории.");
       }
     };
     fetchData();
-  }, [toast]);
+  }, []);
 
   const handleSave = async () => {
     if (!token) {
-      toast({
-        title: "ошибка",
-        description: "Войдите в систему для сохранения.",
-        variant: "destructive",
-      });
+      toast.error("Войдите в систему для сохранения.");
       return;
     }
     if (!name.trim()) {
-      toast({
-        title: "ошибка",
-        description: "Заполните название товара.",
-        variant: "destructive",
-      });
+      toast.error("Заполните название товара.");
       return;
     }
     if (!isFinite(price) || price <= 0) {
-      toast({
-        title: "ошибка",
-        description: "Цена должна быть больше нуля.",
-        variant: "destructive",
-      });
+      toast.error("Цена должна быть больше нуля.");
       return;
     }
     if (!description.trim()) {
-      toast({
-        title: "ошибка",
-        description: "Заполните описание.",
-        variant: "destructive",
-      });
+      toast.error("Заполните описание.");
       return;
     }
     if (!selectedCategory) {
-      toast({
-        title: "ошибка",
-        description: "Выберите категорию.",
-        variant: "destructive",
-      });
+      toast.error("Выберите категорию.");
       return;
     }
     for (const cv of colorVariations) {
       if (!(cv.color_name || "").trim()) {
-        toast({
-          title: "ошибка",
-          description: "У каждого варианта должен быть выбран цвет.",
-          variant: "destructive",
-        });
+        toast.error("У каждого варианта должен быть выбран цвет.");
         return;
       }
       if (hasDuplicateSizes(cv.variants || [])) {
-        toast({
-          title: "ошибка",
-          description: `Дублирующиеся размеры в цвете "${cv.color_name}".`,
-          variant: "destructive",
-        });
+        toast.error(`Дублирующиеся размеры в цвете "${cv.color_name}".`);
         return;
       }
       const filledSizes = (cv.variants || []).filter((v) => v.size.trim());
       if (filledSizes.length === 0) {
-        toast({
-          title: "ошибка",
-          description: `Добавьте хотя бы один размер для цвета "${cv.color_name}".`,
-          variant: "destructive",
-        });
+        toast.error(`Добавьте хотя бы один размер для цвета "${cv.color_name}".`);
         return;
       }
       for (const v of cv.variants || []) {
@@ -327,66 +292,38 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({
           v.size?.trim() &&
           (typeof q !== "number" || q < 0 || !Number.isInteger(q))
         ) {
-          toast({
-            title: "ошибка",
-            description: `Количество не может быть отрицательным (цвет "${cv.color_name}").`,
-            variant: "destructive",
-          });
+          toast.error(`Количество не может быть отрицательным (цвет "${cv.color_name}").`);
           return;
         }
       }
     }
 
     if (selectedMaterials.length === 0) {
-      toast({
-        title: "ошибка",
-        description: "Выберите хотя бы один материал.",
-        variant: "destructive",
-      });
+      toast.error("Выберите хотя бы один материал.");
       return;
     }
     if (!countryOfManufacture.trim()) {
-      toast({
-        title: "ошибка",
-        description: "Укажите страну производства.",
-        variant: "destructive",
-      });
+      toast.error("Укажите страну производства.");
       return;
     }
     if (saleType !== "none" && salePrice !== "") {
       const salePriceNum = parseFloat(salePrice.replace(",", "."));
       if (!isFinite(salePriceNum)) {
-        toast({
-          title: "ошибка",
-          description: "Введите корректное значение скидки.",
-          variant: "destructive",
-        });
+        toast.error("Введите корректное значение скидки.");
         return;
       }
       if (saleType === "percent") {
         if (salePriceNum < 1 || salePriceNum > 99) {
-          toast({
-            title: "ошибка",
-            description: "Процент скидки должен быть от 1 до 99.",
-            variant: "destructive",
-          });
+          toast.error("Процент скидки должен быть от 1 до 99.");
           return;
         }
       } else if (saleType === "exact") {
         if (salePriceNum < 0) {
-          toast({
-            title: "ошибка",
-            description: "Цена со скидкой не может быть отрицательной.",
-            variant: "destructive",
-          });
+          toast.error("Цена со скидкой не может быть отрицательной.");
           return;
         }
         if (salePriceNum >= price) {
-          toast({
-            title: "ошибка",
-            description: "Цена со скидкой должна быть меньше обычной цены.",
-            variant: "destructive",
-          });
+          toast.error("Цена со скидкой должна быть меньше обычной цены.");
           return;
         }
       }
@@ -406,12 +343,7 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({
     const hasAtLeastOnePerColor =
       totalPerColor.length > 0 && totalPerColor.every((n) => n > 0);
     if (!hasGeneral && !hasAtLeastOnePerColor) {
-      toast({
-        title: "ошибка",
-        description:
-          "Нужно хотя бы одно общее изображение или хотя бы одно изображение в каждом цвете.",
-        variant: "destructive",
-      });
+      toast.error("Нужно хотя бы одно общее изображение или хотя бы одно изображение в каждом цвете.");
       return;
     }
 
@@ -494,18 +426,11 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({
         },
         token!,
       );
-      toast({
-        title: "успех",
-        description: "товар обновлен.",
-      });
+      toast.success("товар обновлен.");
       onProductUpdated();
       onClose();
     } catch (error) {
-      toast({
-        title: "ошибка",
-        description: "Не удалось обновить товар.",
-        variant: "destructive",
-      });
+      toast.error("Не удалось обновить товар.");
     } finally {
       setIsLoading(false);
     }
@@ -605,11 +530,7 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({
 
   const handleRemoveColorVariation = (colorIndex: number) => {
     if (colorVariations.length <= 1) {
-      toast({
-        title: "ошибка",
-        description: "Должен остаться хотя бы один цвет.",
-        variant: "destructive",
-      });
+      toast.error("Должен остаться хотя бы один цвет.");
       return;
     }
     setColorVariations((prev) => prev.filter((_, i) => i !== colorIndex));
@@ -619,11 +540,7 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({
   const handleColorVariationImages = (colorIndex: number, files: File[]) => {
     const prev = colorVariations[colorIndex];
     if ((prev.images?.length || 0) + files.length > 5) {
-      toast({
-        title: "ошибка",
-        description: "Максимум 5 изображений на цвет.",
-        variant: "destructive",
-      });
+      toast.error("Максимум 5 изображений на цвет.");
       return;
     }
     startCropQueue(files, { color: colorIndex });
@@ -647,11 +564,7 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({
 
   const handleGeneralImages = (files: File[]) => {
     if (generalImages.length + files.length > 5) {
-      toast({
-        title: "ошибка",
-        description: "Максимум 5 общих изображений.",
-        variant: "destructive",
-      });
+      toast.error("Максимум 5 общих изображений.");
       return;
     }
     startCropQueue(files, "general");
@@ -664,39 +577,40 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl">
-        <div>
-          <h2 className="text-lg font-semibold leading-none tracking-tight">
-            Редактировать товар
-          </h2>
-          <p className="text-sm text-muted-foreground mt-1.5">
-            Внесите изменения в детали вашего товара
-          </p>
+      <DialogContent className="max-w-4xl p-0 overflow-hidden bg-card border-border/30">
+        {/* Modal header with gradient accent */}
+        <div className="relative px-6 pt-6 pb-4">
+          <div className="absolute inset-0 bg-gradient-to-r from-brand/5 via-transparent to-brand/5 pointer-events-none" />
+          <div className="relative">
+            <h2 className="text-xl font-bold tracking-tight text-foreground">
+              Редактировать товар
+            </h2>
+            <p className="text-sm text-muted-foreground mt-1">
+              {name || product.name} {price > 0 && <span className="text-brand font-medium">· {formatCurrency(price)}</span>}
+            </p>
+          </div>
         </div>
-        <div className="space-y-4">
+
+        <div className="px-6 pb-6 space-y-4">
           <Tabs value={activeTab} onValueChange={setActiveTab}>
-            <TabsList className="mb-4">
+            <TabsList className="mb-4 bg-surface-elevated/50">
               <TabsTrigger value="info">Информация</TabsTrigger>
               <TabsTrigger value="sale">Скидка</TabsTrigger>
             </TabsList>
 
-            <TabsContent value="info" className="space-y-4">
+            <TabsContent value="info" className="space-y-5">
+              <div className="flex items-center gap-2">
+                <div className="h-1.5 w-1.5 rounded-full bg-brand" />
+                <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Основная информация</h3>
+              </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                 <div className="space-y-4">
-                  <div>
-                    <Label htmlFor="article_number">Артикул</Label>
-                    <Input
-                      id="article_number"
-                      placeholder="Автоматически присвоен при создании"
-                      className="mt-1 bg-muted cursor-not-allowed"
-                      value={product.article_number || "Не присвоен"}
-                      disabled
-                      readOnly
-                    />
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Артикул автоматически генерируется системой и не может
-                      быть изменен
-                    </p>
+                  <div className="rounded-xl bg-surface-elevated/50 p-3 flex items-center justify-between">
+                    <div>
+                      <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Артикул</p>
+                      <p className="text-sm font-medium font-mono mt-0.5">{product.article_number || "Не присвоен"}</p>
+                    </div>
+                    <Lock className="h-4 w-4 text-muted-foreground/40" />
                   </div>
                   <div>
                     <Label htmlFor="name">Название товара</Label>
@@ -758,6 +672,9 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({
                 <div className="space-y-4">
                   <div>
                     <Label htmlFor="category">Категория</Label>
+                    {categories.length === 0 ? (
+                      <Skeleton className="h-10 w-full mt-1" />
+                    ) : (
                     <Select
                       onValueChange={(val) => {
                         setSelectedCategory(val);
@@ -779,6 +696,12 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({
                         ))}
                       </SelectContent>
                     </Select>
+                    )}
+                  </div>
+
+                  <div className="flex items-center gap-2 pt-2">
+                    <div className="h-1.5 w-1.5 rounded-full bg-brand" />
+                    <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Изображения</h3>
                   </div>
                   <div className="space-y-2">
                     <Label>Общие изображения (до 5)</Label>
@@ -798,7 +721,7 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({
                           <img
                             src={url}
                             alt=""
-                            className="w-20 h-20 object-cover rounded-md"
+                            className="w-24 h-24 object-cover rounded-lg hover:ring-2 ring-brand/50 transition-all"
                           />
                           <button
                             type="button"
@@ -850,9 +773,13 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({
                       </div>
                     )}
                   </div>
+                  <div className="flex items-center gap-2 pt-2">
+                    <div className="h-1.5 w-1.5 rounded-full bg-brand" />
+                    <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Варианты по цветам</h3>
+                  </div>
                   <div className="space-y-3">
                     <div className="flex items-center justify-between">
-                      <Label>Варианты по цветам</Label>
+                      <Label>Цвета</Label>
                       <Button
                         type="button"
                         variant="outline"
@@ -865,7 +792,7 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({
                     {colorVariations.map((cv, colorIndex) => (
                       <Card
                         key={colorIndex}
-                        className="p-3 border border-border/50"
+                        className="p-4 rounded-xl bg-surface-elevated/30 border-border/40 hover:border-brand/30 transition-colors"
                       >
                         <div className="flex items-center justify-between gap-2 mb-2">
                           <div className="flex items-center gap-2">
@@ -931,7 +858,7 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({
                                 <img
                                   src={url}
                                   alt=""
-                                  className="w-20 h-20 object-cover rounded-md"
+                                  className="w-24 h-24 object-cover rounded-lg hover:ring-2 ring-brand/50 transition-all"
                                 />
                                 <button
                                   type="button"
@@ -1088,7 +1015,11 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({
                 </div>
               </div>
               {/* Delivery time override */}
-              <div className="border border-border/30 rounded-lg p-4 space-y-3">
+              <div className="flex items-center gap-2 pt-2">
+                <div className="h-1.5 w-1.5 rounded-full bg-brand" />
+                <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Доставка</h3>
+              </div>
+              <div className="bg-accent/10 border border-border/30 rounded-xl p-4 space-y-3">
                 <div className="flex items-center justify-between">
                   <div>
                     <h3 className="font-medium text-sm">
@@ -1176,8 +1107,36 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({
             </TabsContent>
 
             <TabsContent value="sale" className="space-y-4">
-              <div className="border border-border/30 rounded-lg p-4 space-y-3">
-                <h3 className="font-medium text-sm">Скидка</h3>
+              {/* Sale price preview card */}
+              {saleType !== "none" && salePrice !== "" && price > 0 && (
+                <div className="rounded-xl border border-brand/20 bg-gradient-to-r from-brand/5 to-transparent p-5 flex items-center gap-6">
+                  <div className="text-center">
+                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">Было</p>
+                    <p className="text-xl line-through text-muted-foreground">{formatCurrency(price)}</p>
+                  </div>
+                  <div className="h-8 w-px bg-border/30" />
+                  <div className="text-center">
+                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">Стало</p>
+                    <p className="text-xl font-bold text-green-500">
+                      {saleType === "percent"
+                        ? formatCurrency(Math.round(price * (1 - parseFloat(salePrice.replace(",", ".")) / 100)))
+                        : formatCurrency(parseFloat(salePrice.replace(",", ".")))}
+                    </p>
+                  </div>
+                  <div className="ml-auto">
+                    <span className="inline-flex items-center px-3 py-1 rounded-full bg-green-500/10 text-green-500 text-sm font-semibold">
+                      {saleType === "percent"
+                        ? `-${salePrice}%`
+                        : `-${Math.round((1 - parseFloat(salePrice.replace(",", ".")) / price) * 100)}%`}
+                    </span>
+                  </div>
+                </div>
+              )}
+              <div className="border border-border/30 rounded-xl bg-surface-elevated/30 p-4 space-y-3">
+                <div className="flex items-center gap-2">
+                  <div className="h-1.5 w-1.5 rounded-full bg-brand" />
+                  <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Настройки скидки</h3>
+                </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <Label>Тип скидки</Label>
@@ -1244,16 +1203,17 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({
             </TabsContent>
           </Tabs>
 
-          <div className="flex justify-end space-x-2 pt-4">
-            <Button variant="outline" onClick={onClose}>
+          <div className="flex justify-end items-center gap-3 pt-4 mt-2 border-t border-border/30">
+            <Button variant="ghost" onClick={onClose} className="text-muted-foreground">
               Отмена
             </Button>
             <Button
               size="lg"
               onClick={handleSave}
               disabled={isLoading}
-              className="bg-primary hover:bg-primary/90 text-primary-foreground border-0"
+              className="bg-primary hover:bg-primary/90 text-primary-foreground border-0 px-8 rounded-xl"
             >
+              {isLoading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
               {isLoading ? "Сохранение..." : "Сохранить изменения"}
             </Button>
           </div>

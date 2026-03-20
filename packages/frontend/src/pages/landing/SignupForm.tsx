@@ -46,7 +46,7 @@ export function SignupForm({
       <Button
         type="submit"
         size="lg"
-        className="h-12 px-6 whitespace-nowrap animate-glow-pulse"
+        className="h-12 px-6 whitespace-nowrap"
         disabled={isSubmitting}
       >
         {isSubmitting ? "..." : "Присоединиться"}

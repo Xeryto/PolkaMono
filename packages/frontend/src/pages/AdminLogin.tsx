@@ -3,6 +3,7 @@ import { useAdminAuth } from "@/context/AdminAuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Loader2 } from "lucide-react";
 
 const AdminLogin = () => {
   const { login, verifyOtp, resendOtp, loading, otpPending } = useAdminAuth();
@@ -97,6 +98,7 @@ const AdminLogin = () => {
             {error && <p className="text-sm text-red-500">{error}</p>}
 
             <Button type="submit" disabled={loading} className="w-full">
+              {loading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
               {loading ? "Вход..." : "Войти"}
             </Button>
           </form>
@@ -132,6 +134,7 @@ const AdminLogin = () => {
               disabled={loading || otpCode.length !== 6}
               className="w-full"
             >
+              {loading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
               {loading ? "Проверка..." : "Подтвердить"}
             </Button>
 
@@ -143,6 +146,7 @@ const AdminLogin = () => {
               onClick={handleResend}
               className="w-full text-muted-foreground"
             >
+              {resending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
               {resending ? "Отправка..." : "Отправить код повторно"}
             </Button>
           </form>

@@ -364,6 +364,8 @@ export const createProduct = async (productData: {
   general_images?: string[];
   country_of_manufacture?: string;
   sizing_table_image?: string | null;
+  delivery_time_min?: number;
+  delivery_time_max?: number;
 }, token: string, requestOptions?: RequestOptions): Promise<ProductResponse> => {
   return await apiRequest('/api/v1/brands/products', 'POST', productData, true, token, requestOptions);
 };

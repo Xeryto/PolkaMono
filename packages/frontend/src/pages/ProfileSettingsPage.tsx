@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import * as api from "@/services/api";
 import {
   BrandResponse,
@@ -21,6 +21,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { z } from "zod";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Loader2 } from "lucide-react";
 
 const DELIVERY_TIME_OPTIONS = [
   { value: 1, label: "1 день" },
@@ -74,19 +76,16 @@ export function ProfileSettingsPage() {
 
   const [profile, setProfile] = useState<BrandResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
-  const { toast } = useToast();
 
   useEffect(() => {
     const fetchProfile = async () => {
       if (!token) {
         setIsLoading(false);
-        toast({
-          title: "ошибка",
-          description:
-            "токен аутентификации не найден. пожалуйста, войдите в систему.",
-          variant: "destructive",
-        });
+        toast.error(
+          "Токен аутентификации не найден. Пожалуйста, войдите в систему.",
+        );
         return;
       }
 
@@ -97,17 +96,13 @@ export function ProfileSettingsPage() {
       } catch (error: unknown) {
         console.error("Failed to fetch brand profile:", error);
         const err = error as { message?: string };
-        toast({
-          title: "ошибка",
-          description: err.message || "Не удалось загрузить профиль.",
-          variant: "destructive",
-        });
+        toast.error(err.message || "Не удалось загрузить профиль.");
       } finally {
         setIsLoading(false);
       }
     };
     fetchProfile();
-  }, [token, toast]);
+  }, [token]);
 
   const handleInputChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
@@ -122,7 +117,6 @@ export function ProfileSettingsPage() {
     } else {
       setProfile((prev) => (prev ? { ...prev, [id]: value } : null));
     }
-    // Clear field error on change
     if (fieldErrors[id]) {
       setFieldErrors((prev) => {
         const next = { ...prev };
@@ -136,16 +130,12 @@ export function ProfileSettingsPage() {
     if (!profile) return;
 
     if (!token) {
-      toast({
-        title: "ошибка",
-        description:
-          "токен аутентификации не найден. пожалуйста, войдите в систему.",
-        variant: "destructive",
-      });
+      toast.error(
+        "Токен аутентификации не найден. Пожалуйста, войдите в систему.",
+      );
       return;
     }
 
-    // Zod validation
     const parseResult = profileSchema.safeParse({
       name: profile.name,
       email: profile.email,
@@ -170,7 +160,7 @@ export function ProfileSettingsPage() {
     }
 
     setFieldErrors({});
-    setIsLoading(true);
+    setIsSaving(true);
     try {
       const updatedProfile: BrandProfileUpdateRequest = {
         name: profile.name,
@@ -188,10 +178,7 @@ export function ProfileSettingsPage() {
       const response = await api.updateBrandProfile(updatedProfile, token);
       setProfile(response);
       setIsEditing(false);
-      toast({
-        title: "успех",
-        description: "Профиль бренда успешно обновлен!",
-      });
+      toast.success("Профиль бренда успешно обновлен!");
     } catch (error: unknown) {
       console.error("Failed to update brand profile:", error);
       const err = error as {
@@ -201,13 +188,9 @@ export function ProfileSettingsPage() {
       if (err.fieldErrors) {
         setFieldErrors(err.fieldErrors);
       }
-      toast({
-        title: "ошибка",
-        description: err.message || "Не удалось обновить профиль бренда.",
-        variant: "destructive",
-      });
+      toast.error(err.message || "Не удалось обновить профиль бренда.");
     } finally {
-      setIsLoading(false);
+      setIsSaving(false);
     }
   };
 
@@ -215,18 +198,43 @@ export function ProfileSettingsPage() {
     <div className="space-y-6">
       <h2 className="text-2xl font-bold text-foreground">Настройки</h2>
 
-      <Card className="bg-card border-border/30 shadow-lg">
-        <CardHeader className="flex flex-row items-center justify-between">
-          <div>
-            <CardTitle>Профиль бренда</CardTitle>
-          </div>
-          {!isEditing && (
-            <Button onClick={() => setIsEditing(true)}>Обновить</Button>
-          )}
-        </CardHeader>
+      <Card className="bg-card border-border/30 shadow-lg overflow-hidden">
+        <div className="relative">
+          <div className="absolute inset-0 bg-gradient-to-r from-brand/5 via-transparent to-brand/5 pointer-events-none" />
+          <CardHeader className="relative flex flex-row items-center justify-between">
+            <div>
+              <CardTitle className="text-lg">Профиль бренда</CardTitle>
+              <p className="text-sm text-muted-foreground mt-0.5">Управление данными и настройками вашего бренда</p>
+            </div>
+            {!isEditing && !isLoading && profile && (
+              <Button onClick={() => setIsEditing(true)} className="rounded-xl">Обновить</Button>
+            )}
+          </CardHeader>
+        </div>
         <CardContent className="space-y-4">
           {isLoading ? (
-            <div>загрузка профиля...</div>
+            <div className="space-y-4">
+              <div>
+                <Skeleton className="h-4 w-20 mb-2" />
+                <Skeleton className="h-6 w-48" />
+              </div>
+              <div>
+                <Skeleton className="h-4 w-28 mb-2" />
+                <Skeleton className="h-6 w-56" />
+              </div>
+              <div>
+                <Skeleton className="h-4 w-24 mb-2" />
+                <Skeleton className="h-6 w-32" />
+              </div>
+              <div>
+                <Skeleton className="h-4 w-36 mb-2" />
+                <Skeleton className="h-6 w-40" />
+              </div>
+              <div>
+                <Skeleton className="h-4 w-24 mb-2" />
+                <Skeleton className="h-6 w-64" />
+              </div>
+            </div>
           ) : profile ? (
             isEditing ? (
               <>
@@ -254,7 +262,7 @@ export function ProfileSettingsPage() {
                     htmlFor="email"
                     className="text-sm font-medium text-muted-foreground"
                   >
-                    контактный email
+                    Контактный email
                   </label>
                   <Input
                     id="email"
@@ -290,10 +298,11 @@ export function ProfileSettingsPage() {
                 </div>
 
                 {/* Delivery section */}
-                <div className="space-y-4">
-                  <h3 className="text-sm font-semibold text-foreground">
-                    Доставка
-                  </h3>
+                <div className="space-y-4 bg-accent/10 rounded-xl p-4">
+                  <div className="flex items-center gap-2">
+                    <div className="h-1.5 w-1.5 rounded-full bg-brand" />
+                    <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Доставка</h3>
+                  </div>
                   <div>
                     <Label htmlFor="shipping_price">Цена доставки (руб.)</Label>
                     <Input
@@ -434,96 +443,99 @@ export function ProfileSettingsPage() {
                   )}
                 </div>
 
-                <div className="flex justify-end gap-2">
+                <div className="flex justify-end items-center gap-3 pt-2 border-t border-border/30">
                   <Button
-                    variant="outline"
+                    variant="ghost"
                     onClick={() => {
                       setIsEditing(false);
                       setFieldErrors({});
                     }}
-                    disabled={isLoading}
+                    disabled={isSaving}
+                    className="text-muted-foreground"
                   >
                     Отмена
                   </Button>
-                  <Button onClick={handleSave} disabled={isLoading}>
-                    {isLoading ? "Сохранение..." : "Сохранить изменения"}
+                  <Button onClick={handleSave} disabled={isSaving} className="rounded-xl px-6">
+                    {isSaving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                    {isSaving ? "Сохранение..." : "Сохранить изменения"}
                   </Button>
                 </div>
               </>
             ) : (
               <div className="space-y-4">
-                <div>
-                  <p className="text-sm font-medium text-muted-foreground">
-                    Название
-                  </p>
-                  <p className="text-lg">{profile.name}</p>
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-muted-foreground">
-                    контактный email
-                  </p>
-                  <p className="text-lg">{profile.email}</p>
+                {/* Basic info cards */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="rounded-xl bg-surface-elevated/50 p-4">
+                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">Название</p>
+                    <p className="font-medium">{profile.name}</p>
+                  </div>
+                  <div className="rounded-xl bg-surface-elevated/50 p-4">
+                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">Контактный email</p>
+                    <p className="font-medium">{profile.email}</p>
+                  </div>
                 </div>
 
-                <div>
-                  <p className="text-sm font-medium text-muted-foreground">
-                    Цена доставки
-                  </p>
-                  <p className="text-lg">
-                    {profile.shipping_price != null
-                      ? formatCurrency(profile.shipping_price)
-                      : <span className="text-muted-foreground/60 italic">Не указана</span>}
-                  </p>
+                {/* Delivery section */}
+                <div className="flex items-center gap-2 pt-2">
+                  <div className="h-1.5 w-1.5 rounded-full bg-brand" />
+                  <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Доставка</h3>
                 </div>
-                <div>
-                  <p className="text-sm font-medium text-muted-foreground">
-                    Минимальная сумма для бесплатной доставки
-                  </p>
-                  <p className="text-lg">
-                    {profile.min_free_shipping != null
-                      ? formatCurrency(profile.min_free_shipping)
-                      : <span className="text-muted-foreground/60 italic">Не указана</span>}
-                  </p>
+
+                <div className="bg-accent/10 rounded-xl p-4 space-y-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="rounded-lg bg-card/50 p-3">
+                      <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">Цена доставки</p>
+                      <p className="font-medium">
+                        {profile.shipping_price != null
+                          ? formatCurrency(profile.shipping_price)
+                          : <span className="text-muted-foreground/60 italic text-sm">Не указана</span>}
+                      </p>
+                    </div>
+                    <div className="rounded-lg bg-card/50 p-3">
+                      <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">Мин. для бесплатной</p>
+                      <p className="font-medium">
+                        {profile.min_free_shipping != null
+                          ? formatCurrency(profile.min_free_shipping)
+                          : <span className="text-muted-foreground/60 italic text-sm">Не указана</span>}
+                      </p>
+                    </div>
+                    <div className="rounded-lg bg-card/50 p-3">
+                      <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">Срок доставки</p>
+                      <p className="font-medium">
+                        {profile.delivery_time_min || profile.delivery_time_max ? (
+                          <>
+                            {profile.delivery_time_min
+                              ? `от ${DELIVERY_TIME_OPTIONS.find((o) => o.value === profile.delivery_time_min)?.label ?? `${profile.delivery_time_min} дн.`}`
+                              : ""}
+                            {profile.delivery_time_max
+                              ? ` до ${DELIVERY_TIME_OPTIONS.find((o) => o.value === profile.delivery_time_max)?.label ?? `${profile.delivery_time_max} дн.`}`
+                              : ""}
+                          </>
+                        ) : (
+                          <span className="text-muted-foreground/60 italic text-sm">Не указан</span>
+                        )}
+                      </p>
+                    </div>
+                    <div className="rounded-lg bg-card/50 p-3">
+                      <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">Служба доставки</p>
+                      <p className="font-medium">
+                        {profile.shipping_provider || <span className="text-muted-foreground/60 italic text-sm">Не указана</span>}
+                      </p>
+                    </div>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-sm font-medium text-muted-foreground">
-                    Срок доставки
-                  </p>
-                  <p className="text-lg">
-                    {profile.delivery_time_min || profile.delivery_time_max ? (
-                      <>
-                        {profile.delivery_time_min
-                          ? `от ${DELIVERY_TIME_OPTIONS.find((o) => o.value === profile.delivery_time_min)?.label ?? `${profile.delivery_time_min} дн.`}`
-                          : ""}
-                        {profile.delivery_time_max
-                          ? ` до ${DELIVERY_TIME_OPTIONS.find((o) => o.value === profile.delivery_time_max)?.label ?? `${profile.delivery_time_max} дн.`}`
-                          : ""}
-                      </>
-                    ) : (
-                      <span className="text-muted-foreground/60 italic">Не указан</span>
-                    )}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-muted-foreground">
-                    Служба доставки
-                  </p>
-                  <p className="text-lg">
-                    {profile.shipping_provider || <span className="text-muted-foreground/60 italic">Не указана</span>}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-muted-foreground">
-                    Политика возврата
-                  </p>
-                  <p className="text-lg">
-                    {profile.return_policy || <span className="text-muted-foreground/60 italic">Не указана</span>}
+
+                {/* Return policy */}
+                <div className="rounded-xl bg-surface-elevated/50 p-4">
+                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">Политика возврата</p>
+                  <p className="font-medium">
+                    {profile.return_policy || <span className="text-muted-foreground/60 italic text-sm">Не указана</span>}
                   </p>
                 </div>
               </div>
             )
           ) : (
-            <div>Нет удалось загрузить профиль.</div>
+            <div className="text-muted-foreground">Не удалось загрузить профиль.</div>
           )}
         </CardContent>
       </Card>

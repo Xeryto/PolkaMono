@@ -76,9 +76,9 @@ export function PreviewStep({
       <div className="space-y-3">
         <p className="text-xs text-muted-foreground">Варианты по цветам ({colorVariations.length})</p>
         {colorVariations.map((cv, i) => (
-          <div key={i} className="p-3 rounded-lg border border-border/30 space-y-2">
+          <div key={i} className="p-4 rounded-lg bg-surface-elevated/30 border border-border/30 space-y-2">
             <div className="flex items-center gap-2">
-              <div className="w-4 h-4 rounded-full border" style={{ background: cv.colorHex }} />
+              <div className="w-6 h-6 rounded-full border" style={{ background: cv.colorHex }} />
               <span className="font-medium text-sm">{translateColorToRussian(cv.colorName) || `Цвет ${i + 1}`}</span>
               {cv.images.length > 0 && (
                 <Badge variant="outline" className="text-[10px]">{cv.images.length} фото</Badge>

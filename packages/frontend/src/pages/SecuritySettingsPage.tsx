@@ -13,12 +13,20 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import * as api from "@/services/api";
 import { BrandResponse } from "@/services/api";
 import { useAuth } from "@/context/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { z } from "zod";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Badge } from "@/components/ui/badge";
+import { Loader2 } from "lucide-react";
+import {
+  InputOTP,
+  InputOTPGroup,
+  InputOTPSlot,
+} from "@/components/ui/input-otp";
 
 const passwordRegex = /^(?=.*[A-Za-z])(?=.*\d).+$/;
 const illegalCharRegex = /[^a-zA-Z0-9#$\-_!]/;
@@ -49,7 +57,6 @@ type TwoFAState = "idle" | "pending_otp" | "disabling";
 
 export function SecuritySettingsPage() {
   const { token, logout } = useAuth();
-  const { toast } = useToast();
   const navigate = useNavigate();
 
   const [profile, setProfile] = useState<BrandResponse | null>(null);
@@ -94,19 +101,16 @@ export function SecuritySettingsPage() {
         const data = await api.getBrandProfile(token);
         setProfile(data);
       } catch (err: unknown) {
-        toast({
-          title: "ошибка",
-          description:
-            (err as { message?: string }).message ||
+        toast.error(
+          (err as { message?: string }).message ||
             "Не удалось загрузить профиль.",
-          variant: "destructive",
-        });
+        );
       } finally {
         setIsLoading(false);
       }
     };
     fetchProfile();
-  }, [token, toast]);
+  }, [token]);
 
   // Resend countdown timer
   useEffect(() => {
@@ -131,20 +135,12 @@ export function SecuritySettingsPage() {
       const newState = !profile.is_inactive;
       await api.toggleBrandInactive(newState, token);
       setProfile((p) => (p ? { ...p, is_inactive: newState } : null));
-      toast({
-        title: "успех",
-        description: newState
-          ? "Аккаунт деактивирован."
-          : "Аккаунт активирован.",
-      });
+      toast.success(newState ? "Аккаунт деактивирован." : "Аккаунт активирован.");
     } catch (err: unknown) {
-      toast({
-        title: "ошибка",
-        description:
-          (err as { message?: string }).message ||
+      toast.error(
+        (err as { message?: string }).message ||
           "Не удалось изменить статус.",
-        variant: "destructive",
-      });
+      );
     } finally {
       setTogglingInactive(false);
       setInactiveDialogOpen(false);
@@ -191,17 +187,13 @@ export function SecuritySettingsPage() {
         new_password: "",
         confirm_new_password: "",
       });
-      toast({ title: "успех", description: "Пароль успешно изменён." });
+      toast.success("Пароль успешно изменён.");
     } catch (err: unknown) {
       const e = err as { message?: string; status?: number };
       if (e.status === 400) {
         setPwErrors({ current_password: "Текущий пароль неверный" });
       } else {
-        toast({
-          title: "ошибка",
-          description: e.message || "Не удалось изменить пароль.",
-          variant: "destructive",
-        });
+        toast.error(e.message || "Не удалось изменить пароль.");
       }
     } finally {
       setPwLoading(false);
@@ -220,12 +212,9 @@ export function SecuritySettingsPage() {
       setResendCountdown(60);
       setResendCount(1);
     } catch (err: unknown) {
-      toast({
-        title: "ошибка",
-        description:
-          (err as { message?: string }).message || "Не удалось включить 2FA.",
-        variant: "destructive",
-      });
+      toast.error(
+        (err as { message?: string }).message || "Не удалось включить 2FA.",
+      );
     } finally {
       setTwoFALoading(false);
     }
@@ -240,7 +229,7 @@ export function SecuritySettingsPage() {
       setProfile((p) => (p ? { ...p, two_factor_enabled: true } : null));
       setTwoFAState("idle");
       setOtpCode("");
-      toast({ title: "успех", description: "2FA включена." });
+      toast.success("2FA включена.");
     } catch (err: unknown) {
       setOtpError((err as { message?: string }).message || "Неверный код");
     } finally {
@@ -257,12 +246,9 @@ export function SecuritySettingsPage() {
       setResendCount((c) => c + 1);
       setOtpError("");
     } catch (err: unknown) {
-      toast({
-        title: "ошибка",
-        description:
-          (err as { message?: string }).message || "Не удалось отправить код.",
-        variant: "destructive",
-      });
+      toast.error(
+        (err as { message?: string }).message || "Не удалось отправить код.",
+      );
     } finally {
       setTwoFALoading(false);
     }
@@ -277,7 +263,7 @@ export function SecuritySettingsPage() {
       setProfile((p) => (p ? { ...p, two_factor_enabled: false } : null));
       setTwoFAState("idle");
       setDisablePassword("");
-      toast({ title: "успех", description: "2FA отключена." });
+      toast.success("2FA отключена.");
     } catch (err: unknown) {
       setDisableError(
         (err as { message?: string }).message || "Неверный пароль",
@@ -294,20 +280,16 @@ export function SecuritySettingsPage() {
     setDeleteLoading(true);
     try {
       const result = await api.requestBrandDeletion(token);
-      toast({
-        title: "аккаунт будет удалён",
-        description: `Удаление запланировано: ${result.scheduled_deletion_at}`,
-      });
+      toast.success(
+        `Удаление запланировано: ${result.scheduled_deletion_at}`,
+      );
       logout();
       navigate("/portal");
     } catch (err: unknown) {
-      toast({
-        title: "ошибка",
-        description:
-          (err as { message?: string }).message ||
+      toast.error(
+        (err as { message?: string }).message ||
           "Не удалось удалить аккаунт.",
-        variant: "destructive",
-      });
+      );
     } finally {
       setDeleteLoading(false);
       setDeleteStep("idle");
@@ -316,7 +298,40 @@ export function SecuritySettingsPage() {
   };
 
   if (isLoading) {
-    return <div className="p-6 text-muted-foreground">загрузка...</div>;
+    return (
+      <div className="space-y-6 p-6">
+        <Skeleton className="h-8 w-48" />
+        <Card className="bg-card border-border/30 shadow-lg">
+          <CardHeader><Skeleton className="h-6 w-40" /></CardHeader>
+          <CardContent className="space-y-3">
+            <Skeleton className="h-4 w-64" />
+            <Skeleton className="h-10 w-40" />
+          </CardContent>
+        </Card>
+        <Card className="bg-card border-border/30 shadow-lg">
+          <CardHeader><Skeleton className="h-6 w-40" /></CardHeader>
+          <CardContent className="space-y-3">
+            <Skeleton className="h-10 w-full" />
+            <Skeleton className="h-10 w-full" />
+            <Skeleton className="h-10 w-full" />
+          </CardContent>
+        </Card>
+        <Card className="bg-card border-border/30 shadow-lg">
+          <CardHeader><Skeleton className="h-6 w-56" /></CardHeader>
+          <CardContent className="space-y-3">
+            <Skeleton className="h-4 w-48" />
+            <Skeleton className="h-10 w-36" />
+          </CardContent>
+        </Card>
+        <Card className="bg-card border-border/30 shadow-lg">
+          <CardHeader><Skeleton className="h-6 w-40" /></CardHeader>
+          <CardContent className="space-y-3">
+            <Skeleton className="h-4 w-72" />
+            <Skeleton className="h-10 w-40" />
+          </CardContent>
+        </Card>
+      </div>
+    );
   }
 
   return (
@@ -324,28 +339,26 @@ export function SecuritySettingsPage() {
       <h2 className="text-2xl font-bold text-foreground">Безопасность</h2>
 
       {/* Section 1 — Account Status */}
-      <Card className="bg-card border-border/30 shadow-lg">
-        <CardHeader>
-          <CardTitle>Статус аккаунта</CardTitle>
-        </CardHeader>
+      <Card className="bg-card border-border/30 shadow-lg overflow-hidden">
+        <div className="relative">
+          <div className="absolute inset-0 bg-gradient-to-r from-brand/5 via-transparent to-transparent pointer-events-none" />
+          <CardHeader className="relative">
+            <CardTitle>Статус аккаунта</CardTitle>
+          </CardHeader>
+        </div>
         <CardContent className="space-y-4">
-          <p className="text-sm text-muted-foreground">
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
             Текущий статус:{" "}
-            <span
-              className={
-                profile?.is_inactive
-                  ? "text-destructive font-medium"
-                  : "text-green-500 font-medium"
-              }
-            >
+            <Badge variant={profile?.is_inactive ? "destructive" : "default"} className={!profile?.is_inactive ? "bg-green-500/10 text-green-500 border-green-500/20 hover:bg-green-500/20" : ""}>
               {profile?.is_inactive ? "Неактивный" : "Активный"}
-            </span>
-          </p>
+            </Badge>
+          </div>
           <Button
             variant={profile?.is_inactive ? "default" : "outline"}
             onClick={() => setInactiveDialogOpen(true)}
             disabled={togglingInactive}
           >
+            {togglingInactive && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
             {profile?.is_inactive
               ? "Активировать аккаунт"
               : "Деактивировать аккаунт"}
@@ -383,10 +396,13 @@ export function SecuritySettingsPage() {
       </Card>
 
       {/* Section 2 — Change Password */}
-      <Card className="bg-card border-border/30 shadow-lg">
-        <CardHeader>
-          <CardTitle>Изменить пароль</CardTitle>
-        </CardHeader>
+      <Card className="bg-card border-border/30 shadow-lg overflow-hidden">
+        <div className="relative">
+          <div className="absolute inset-0 bg-gradient-to-r from-brand/5 via-transparent to-transparent pointer-events-none" />
+          <CardHeader className="relative">
+            <CardTitle>Изменить пароль</CardTitle>
+          </CardHeader>
+        </div>
         <CardContent>
           <form onSubmit={handlePwSubmit} className="space-y-4">
             <div>
@@ -438,6 +454,7 @@ export function SecuritySettingsPage() {
             </div>
             <div className="flex justify-end">
               <Button type="submit" disabled={pwLoading}>
+                {pwLoading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
                 {pwLoading ? "Сохранение..." : "Изменить пароль"}
               </Button>
             </div>
@@ -446,25 +463,22 @@ export function SecuritySettingsPage() {
       </Card>
 
       {/* Section 3 — Two-Factor Authentication */}
-      <Card className="bg-card border-border/30 shadow-lg">
-        <CardHeader>
-          <CardTitle>Двухфакторная аутентификация</CardTitle>
-        </CardHeader>
+      <Card className="bg-card border-border/30 shadow-lg overflow-hidden">
+        <div className="relative">
+          <div className="absolute inset-0 bg-gradient-to-r from-brand/5 via-transparent to-transparent pointer-events-none" />
+          <CardHeader className="relative">
+            <CardTitle>Двухфакторная аутентификация</CardTitle>
+          </CardHeader>
+        </div>
         <CardContent className="space-y-4">
           {twoFAState === "idle" && (
-            <>
-              <p className="text-sm text-muted-foreground">
+            <div className="animate-fade-in">
+              <div className="flex items-center gap-2 text-sm text-muted-foreground mb-4">
                 Статус 2FA:{" "}
-                <span
-                  className={
-                    profile?.two_factor_enabled
-                      ? "text-green-500 font-medium"
-                      : "text-muted-foreground font-medium"
-                  }
-                >
+                <Badge variant={profile?.two_factor_enabled ? "default" : "secondary"} className={profile?.two_factor_enabled ? "bg-green-500/10 text-green-500 border-green-500/20 hover:bg-green-500/20" : ""}>
                   {profile?.two_factor_enabled ? "Включена" : "Отключена"}
-                </span>
-              </p>
+                </Badge>
+              </div>
               {profile?.two_factor_enabled ? (
                 <Button
                   variant="outline"
@@ -475,14 +489,15 @@ export function SecuritySettingsPage() {
                 </Button>
               ) : (
                 <Button onClick={handleEnable2FA} disabled={twoFALoading}>
+                  {twoFALoading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
                   {twoFALoading ? "Отправка кода..." : "Включить 2FA"}
                 </Button>
               )}
-            </>
+            </div>
           )}
 
           {twoFAState === "pending_otp" && (
-            <div className="space-y-4">
+            <div className="space-y-4 animate-fade-in">
               <p className="text-sm text-muted-foreground">
                 Введите 6-значный код из письма для подтверждения.
                 {profile?.email && (
@@ -504,19 +519,25 @@ export function SecuritySettingsPage() {
               </p>
               <div>
                 <Label htmlFor="otp_code">Код подтверждения</Label>
-                <Input
-                  id="otp_code"
-                  type="text"
-                  inputMode="numeric"
-                  maxLength={6}
-                  value={otpCode}
-                  onChange={(e) => {
-                    setOtpCode(e.target.value);
-                    setOtpError("");
-                  }}
-                  className="mt-1"
-                  placeholder="123456"
-                />
+                <div className="mt-2">
+                  <InputOTP
+                    maxLength={6}
+                    value={otpCode}
+                    onChange={(value) => {
+                      setOtpCode(value);
+                      setOtpError("");
+                    }}
+                  >
+                    <InputOTPGroup>
+                      <InputOTPSlot index={0} />
+                      <InputOTPSlot index={1} />
+                      <InputOTPSlot index={2} />
+                      <InputOTPSlot index={3} />
+                      <InputOTPSlot index={4} />
+                      <InputOTPSlot index={5} />
+                    </InputOTPGroup>
+                  </InputOTP>
+                </div>
                 {otpError && (
                   <p className="text-sm text-red-500 mt-1">{otpError}</p>
                 )}
@@ -526,6 +547,7 @@ export function SecuritySettingsPage() {
                   onClick={handleConfirm2FA}
                   disabled={twoFALoading || otpCode.length !== 6}
                 >
+                  {twoFALoading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
                   {twoFALoading ? "Проверка..." : "Подтвердить"}
                 </Button>
                 <Button
@@ -553,7 +575,7 @@ export function SecuritySettingsPage() {
           )}
 
           {twoFAState === "disabling" && (
-            <div className="space-y-4">
+            <div className="space-y-4 animate-fade-in">
               <p className="text-sm text-muted-foreground">
                 Введите ваш пароль для отключения 2FA.
               </p>
@@ -579,6 +601,7 @@ export function SecuritySettingsPage() {
                   onClick={handleDisable2FA}
                   disabled={twoFALoading || !disablePassword}
                 >
+                  {twoFALoading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
                   {twoFALoading ? "Отключение..." : "Подтвердить отключение"}
                 </Button>
                 <Button
@@ -598,10 +621,13 @@ export function SecuritySettingsPage() {
       </Card>
 
       {/* Section 4 — Delete Account */}
-      <Card className="bg-card border-border/30 shadow-lg">
-        <CardHeader>
-          <CardTitle className="text-destructive">Удаление аккаунта</CardTitle>
-        </CardHeader>
+      <Card className="bg-card border-destructive/30 shadow-lg overflow-hidden">
+        <div className="relative">
+          <div className="absolute inset-0 bg-gradient-to-r from-destructive/5 via-transparent to-transparent pointer-events-none" />
+          <CardHeader className="relative">
+            <CardTitle className="text-destructive">Удаление аккаунта</CardTitle>
+          </CardHeader>
+        </div>
         <CardContent className="space-y-4">
           <p className="text-sm text-muted-foreground">
             Это действие нельзя отменить немедленно. У вас есть 30 дней для
@@ -669,6 +695,7 @@ export function SecuritySettingsPage() {
                   disabled={deleteLoading || deleteNameInput !== profile?.name}
                   className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                 >
+                  {deleteLoading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
                   {deleteLoading ? "Удаление..." : "Удалить аккаунт"}
                 </AlertDialogAction>
               </AlertDialogFooter>

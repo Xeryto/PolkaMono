@@ -1,13 +1,28 @@
 """
 Database models for PolkaAPI
 """
-from sqlalchemy import Column, String, Boolean, DateTime, Text, ForeignKey, Integer, Enum as SQLEnum, UniqueConstraint, Float, Index, TypeDecorator, Computed
-from sqlalchemy.dialects.postgresql import ARRAY, TSVECTOR
-from sqlalchemy.orm import declarative_base
-from sqlalchemy.orm import relationship
+
 import uuid
-from enum import Enum
 from datetime import datetime, timezone
+from enum import Enum
+
+from sqlalchemy import (
+    Boolean,
+    Column,
+    Computed,
+    DateTime,
+    Float,
+    ForeignKey,
+    Index,
+    Integer,
+    String,
+    Text,
+    TypeDecorator,
+    UniqueConstraint,
+)
+from sqlalchemy import Enum as SQLEnum
+from sqlalchemy.dialects.postgresql import ARRAY, TSVECTOR
+from sqlalchemy.orm import declarative_base, relationship
 
 
 def _utcnow():
@@ -16,14 +31,17 @@ def _utcnow():
 
 Base = declarative_base()
 
+
 class Gender(str, Enum):
     MALE = "male"
     FEMALE = "female"
+
 
 class PrivacyOption(str, Enum):
     NOBODY = "nobody"
     FRIENDS = "friends"
     EVERYONE = "everyone"
+
 
 class FriendRequestStatus(str, Enum):
     PENDING = "pending"
@@ -31,8 +49,10 @@ class FriendRequestStatus(str, Enum):
     REJECTED = "rejected"
     CANCELLED = "cancelled"
 
+
 class AuthAccount(Base):
     """Shared auth credentials and verification for users and brands"""
+
     __tablename__ = "auth_accounts"
     __table_args__ = {"extend_existing": True}
 
@@ -47,13 +67,27 @@ class AuthAccount(Base):
     password_history = Column(ARRAY(String), default=list)
     is_admin = Column(Boolean, default=False, nullable=False)
     two_factor_enabled = Column(Boolean, default=False, nullable=False)
-    otp_code = Column(String(6), nullable=True)               # Current pending 2FA OTP (6-digit code)
-    otp_code_expires_at = Column(DateTime(timezone=True), nullable=True)     # Expires 5 min from send
-    otp_session_token = Column(String(64), nullable=True)     # secrets.token_hex(32) — ties OTP to login session; cleared after verify
-    failed_otp_attempts = Column(Integer, default=0, nullable=False)  # Resets on success
-    otp_locked_until = Column(DateTime(timezone=True), nullable=True)        # 15-min lockout after too many fails
-    otp_resend_count = Column(Integer, default=0, nullable=False)     # Resets each login attempt
-    otp_resend_window_start = Column(DateTime(timezone=True), nullable=True) # When current resend window started
+    otp_code = Column(
+        String(6), nullable=True
+    )  # Current pending 2FA OTP (6-digit code)
+    otp_code_expires_at = Column(
+        DateTime(timezone=True), nullable=True
+    )  # Expires 5 min from send
+    otp_session_token = Column(
+        String(64), nullable=True
+    )  # secrets.token_hex(32) — ties OTP to login session; cleared after verify
+    failed_otp_attempts = Column(
+        Integer, default=0, nullable=False
+    )  # Resets on success
+    otp_locked_until = Column(
+        DateTime(timezone=True), nullable=True
+    )  # 15-min lockout after too many fails
+    otp_resend_count = Column(
+        Integer, default=0, nullable=False
+    )  # Resets each login attempt
+    otp_resend_window_start = Column(
+        DateTime(timezone=True), nullable=True
+    )  # When current resend window started
     failed_login_attempts = Column(Integer, default=0, nullable=False)
     login_locked_until = Column(DateTime(timezone=True), nullable=True)
     refresh_token_hash = Column(String(255), nullable=True)
@@ -62,69 +96,155 @@ class AuthAccount(Base):
     updated_at = Column(DateTime(timezone=True), default=_utcnow, onupdate=_utcnow)
 
     # Relationships (one account per user or per brand)
-    user = relationship("User", back_populates="auth_account", uselist=False, cascade="all, delete-orphan")
-    brand = relationship("Brand", back_populates="auth_account", uselist=False, cascade="all, delete-orphan")
+    user = relationship(
+        "User",
+        back_populates="auth_account",
+        uselist=False,
+        cascade="all, delete-orphan",
+    )
+    brand = relationship(
+        "Brand",
+        back_populates="auth_account",
+        uselist=False,
+        cascade="all, delete-orphan",
+    )
 
 
 class User(Base):
     """User model"""
+
     __tablename__ = "users"
     __table_args__ = {"extend_existing": True}
 
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
     username = Column(String(50), unique=True, nullable=False, index=True)
-    auth_account_id = Column(String, ForeignKey("auth_accounts.id", ondelete="CASCADE"), nullable=False, unique=True, index=True)
+    auth_account_id = Column(
+        String,
+        ForeignKey("auth_accounts.id", ondelete="CASCADE"),
+        nullable=False,
+        unique=True,
+        index=True,
+    )
     is_active = Column(Boolean, default=True)
-    deleted_at = Column(DateTime(timezone=True), nullable=True)  # Soft delete; when set, user is anonymized and access revoked
+    deleted_at = Column(
+        DateTime(timezone=True), nullable=True
+    )  # Soft delete; when set, user is anonymized and access revoked
     created_at = Column(DateTime(timezone=True), default=_utcnow)
     updated_at = Column(DateTime(timezone=True), default=_utcnow, onupdate=_utcnow)
-    items_swiped = Column(Integer, default=0, nullable=False)  # Denormalized counter for stats (Option 2)
+    items_swiped = Column(
+        Integer, default=0, nullable=False
+    )  # Denormalized counter for stats (Option 2)
     expo_push_token = Column(String(200), nullable=True)  # Expo push notification token
 
     # Relationships
-    auth_account = relationship("AuthAccount", back_populates="user", uselist=False, lazy="joined")
-    oauth_accounts = relationship("OAuthAccount", back_populates="user", cascade="all, delete-orphan")
-    favorite_brands = relationship("UserBrand", back_populates="user", cascade="all, delete-orphan")
-    favorite_styles = relationship("UserStyle", back_populates="user", cascade="all, delete-orphan")
-    
+    auth_account = relationship(
+        "AuthAccount", back_populates="user", uselist=False, lazy="joined"
+    )
+    oauth_accounts = relationship(
+        "OAuthAccount", back_populates="user", cascade="all, delete-orphan"
+    )
+    favorite_brands = relationship(
+        "UserBrand", back_populates="user", cascade="all, delete-orphan"
+    )
+    favorite_styles = relationship(
+        "UserStyle", back_populates="user", cascade="all, delete-orphan"
+    )
+
     # Friend relationships
-    sent_friend_requests = relationship("FriendRequest", foreign_keys="FriendRequest.sender_id", back_populates="sender", cascade="all, delete-orphan")
-    received_friend_requests = relationship("FriendRequest", foreign_keys="FriendRequest.recipient_id", back_populates="recipient", cascade="all, delete-orphan")
-    friendships = relationship("Friendship", foreign_keys="Friendship.user_id", back_populates="user", cascade="all, delete-orphan")
-    friends = relationship("Friendship", foreign_keys="Friendship.friend_id", back_populates="friend", cascade="all, delete-orphan")
-    
+    sent_friend_requests = relationship(
+        "FriendRequest",
+        foreign_keys="FriendRequest.sender_id",
+        back_populates="sender",
+        cascade="all, delete-orphan",
+    )
+    received_friend_requests = relationship(
+        "FriendRequest",
+        foreign_keys="FriendRequest.recipient_id",
+        back_populates="recipient",
+        cascade="all, delete-orphan",
+    )
+    friendships = relationship(
+        "Friendship",
+        foreign_keys="Friendship.user_id",
+        back_populates="user",
+        cascade="all, delete-orphan",
+    )
+    friends = relationship(
+        "Friendship",
+        foreign_keys="Friendship.friend_id",
+        back_populates="friend",
+        cascade="all, delete-orphan",
+    )
+
     # Domain-specific relationships
-    profile = relationship("UserProfile", back_populates="user", uselist=False, cascade="all, delete-orphan")
-    shipping_info = relationship("UserShippingInfo", back_populates="user", uselist=False, cascade="all, delete-orphan")
-    preferences = relationship("UserPreferences", back_populates="user", uselist=False, cascade="all, delete-orphan")
+    profile = relationship(
+        "UserProfile",
+        back_populates="user",
+        uselist=False,
+        cascade="all, delete-orphan",
+    )
+    shipping_info = relationship(
+        "UserShippingInfo",
+        back_populates="user",
+        uselist=False,
+        cascade="all, delete-orphan",
+    )
+    preferences = relationship(
+        "UserPreferences",
+        back_populates="user",
+        uselist=False,
+        cascade="all, delete-orphan",
+    )
+
 
 class UserProfile(Base):
     """User profile information (separated from core user table)"""
+
     __tablename__ = "user_profiles"
     __table_args__ = {"extend_existing": True}
-    
+
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
-    user_id = Column(String, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, unique=True, index=True)
+    user_id = Column(
+        String,
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+        unique=True,
+        index=True,
+    )
     full_name = Column(String(255), nullable=True)
     gender = Column(SQLEnum(Gender), nullable=True)
     selected_size = Column(String(20), nullable=True)
     avatar_url = Column(String(500), nullable=True)  # Cropped display image URL
-    avatar_url_full = Column(String(500), nullable=True)  # Full-size source for re-editing
-    avatar_crop = Column(String(1000), nullable=True)  # JSON: normalized crop in full image (legacy)
-    avatar_transform = Column(String(500), nullable=True)  # JSON: { scale, translateXPercent, translateYPercent } device-independent
+    avatar_url_full = Column(
+        String(500), nullable=True
+    )  # Full-size source for re-editing
+    avatar_crop = Column(
+        String(1000), nullable=True
+    )  # JSON: normalized crop in full image (legacy)
+    avatar_transform = Column(
+        String(500), nullable=True
+    )  # JSON: { scale, translateXPercent, translateYPercent } device-independent
     created_at = Column(DateTime(timezone=True), default=_utcnow)
     updated_at = Column(DateTime(timezone=True), default=_utcnow, onupdate=_utcnow)
-    
+
     # Relationships
     user = relationship("User", back_populates="profile")
 
+
 class UserShippingInfo(Base):
     """User shipping/delivery information (separated from core user table)"""
+
     __tablename__ = "user_shipping_info"
     __table_args__ = {"extend_existing": True}
-    
+
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
-    user_id = Column(String, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, unique=True, index=True)
+    user_id = Column(
+        String,
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+        unique=True,
+        index=True,
+    )
     delivery_email = Column(String(255), nullable=True)
     phone = Column(String(20), nullable=True)
     street = Column(String(255), nullable=True)
@@ -134,32 +254,48 @@ class UserShippingInfo(Base):
     postal_code = Column(String(20), nullable=True)
     created_at = Column(DateTime(timezone=True), default=_utcnow)
     updated_at = Column(DateTime(timezone=True), default=_utcnow, onupdate=_utcnow)
-    
+
     # Relationships
     user = relationship("User", back_populates="shipping_info")
 
+
 class UserPreferences(Base):
     """User privacy and notification preferences (separated from core user table)"""
+
     __tablename__ = "user_preferences"
     __table_args__ = {"extend_existing": True}
-    
+
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
-    user_id = Column(String, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, unique=True, index=True)
+    user_id = Column(
+        String,
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+        unique=True,
+        index=True,
+    )
     # Privacy settings
-    size_privacy = Column(SQLEnum(PrivacyOption), nullable=True, default=PrivacyOption.FRIENDS)
-    recommendations_privacy = Column(SQLEnum(PrivacyOption), nullable=True, default=PrivacyOption.FRIENDS)
-    likes_privacy = Column(SQLEnum(PrivacyOption), nullable=True, default=PrivacyOption.FRIENDS)
+    size_privacy = Column(
+        SQLEnum(PrivacyOption), nullable=True, default=PrivacyOption.FRIENDS
+    )
+    recommendations_privacy = Column(
+        SQLEnum(PrivacyOption), nullable=True, default=PrivacyOption.FRIENDS
+    )
+    likes_privacy = Column(
+        SQLEnum(PrivacyOption), nullable=True, default=PrivacyOption.FRIENDS
+    )
     # Notification settings
     order_notifications = Column(Boolean, default=True, nullable=False)
     marketing_notifications = Column(Boolean, default=True, nullable=False)
     created_at = Column(DateTime(timezone=True), default=_utcnow)
     updated_at = Column(DateTime(timezone=True), default=_utcnow, onupdate=_utcnow)
-    
+
     # Relationships
     user = relationship("User", back_populates="preferences")
 
+
 class OAuthAccount(Base):
     """OAuth account model for social login"""
+
     __tablename__ = "oauth_accounts"
     __table_args__ = (
         UniqueConstraint("user_id", "provider", name="uq_oauth_user_provider"),
@@ -168,7 +304,9 @@ class OAuthAccount(Base):
     )
 
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
-    user_id = Column(String, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    user_id = Column(
+        String, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    )
     provider = Column(String(50), nullable=False)  # google, facebook, github, apple
     provider_user_id = Column(String(255), nullable=False)
     access_token = Column(Text, nullable=True)
@@ -180,14 +318,22 @@ class OAuthAccount(Base):
     # Relationships
     user = relationship("User", back_populates="oauth_accounts")
 
+
 class Brand(Base):
     """Brand model"""
+
     __tablename__ = "brands"
     __table_args__ = {"extend_existing": True}
 
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
     name = Column(String(100), unique=True, nullable=False)
-    auth_account_id = Column(String, ForeignKey("auth_accounts.id", ondelete="CASCADE"), nullable=False, unique=True, index=True)
+    auth_account_id = Column(
+        String,
+        ForeignKey("auth_accounts.id", ondelete="CASCADE"),
+        nullable=False,
+        unique=True,
+        index=True,
+    )
     slug = Column(String(100), unique=True, nullable=False)
     logo = Column(String(500), nullable=True)
     description = Column(String(1000), nullable=True)
@@ -203,28 +349,36 @@ class Brand(Base):
     payout_account = Column(String(100), nullable=True)
     payout_account_locked = Column(Integer, nullable=False, default=0)
     is_inactive = Column(Boolean, default=False, nullable=False)
-    scheduled_deletion_at = Column(DateTime(timezone=True), nullable=True)  # Set when brand requests deletion; null means active
+    scheduled_deletion_at = Column(
+        DateTime(timezone=True), nullable=True
+    )  # Set when brand requests deletion; null means active
     created_at = Column(DateTime(timezone=True), default=_utcnow)
     updated_at = Column(DateTime(timezone=True), default=_utcnow, onupdate=_utcnow)
 
     # Relationships
-    auth_account = relationship("AuthAccount", back_populates="brand", uselist=False, lazy="joined")
+    auth_account = relationship(
+        "AuthAccount", back_populates="brand", uselist=False, lazy="joined"
+    )
+
 
 class Style(Base):
     """Style model"""
+
     __tablename__ = "styles"
-    
+
     id = Column(String(50), primary_key=True)
     name = Column(String(100), nullable=False)
     description = Column(String(500), nullable=True)
     created_at = Column(DateTime(timezone=True), default=_utcnow)
     updated_at = Column(DateTime(timezone=True), default=_utcnow, onupdate=_utcnow)
 
+
 class Category(Base):
     """Category model for products"""
+
     __tablename__ = "categories"
 
-    id = Column(String(50), primary_key=True) # e.g., "dresses", "shirts"
+    id = Column(String(50), primary_key=True)  # e.g., "dresses", "shirts"
     name = Column(String(100), unique=True, nullable=False)
     description = Column(String(500), nullable=True)
     created_at = Column(DateTime(timezone=True), default=_utcnow)
@@ -233,6 +387,7 @@ class Category(Base):
 
 class UserBrand(Base):
     """User-Brand many-to-many relationship"""
+
     __tablename__ = "user_brands"
     __table_args__ = (
         UniqueConstraint("user_id", "brand_id", name="uq_user_brand"),
@@ -240,15 +395,21 @@ class UserBrand(Base):
     )
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    user_id = Column(String, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
-    brand_id = Column(String, ForeignKey("brands.id", ondelete="CASCADE"), nullable=False, index=True)
+    user_id = Column(
+        String, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    brand_id = Column(
+        String, ForeignKey("brands.id", ondelete="CASCADE"), nullable=False, index=True
+    )
     created_at = Column(DateTime(timezone=True), default=_utcnow)
 
     user = relationship("User", back_populates="favorite_brands")
     brand = relationship("Brand")
 
+
 class UserStyle(Base):
     """User-Style many-to-many relationship"""
+
     __tablename__ = "user_styles"
     __table_args__ = (
         UniqueConstraint("user_id", "style_id", name="uq_user_style"),
@@ -256,20 +417,33 @@ class UserStyle(Base):
     )
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    user_id = Column(String, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
-    style_id = Column(String(50), ForeignKey("styles.id", ondelete="CASCADE"), nullable=False, index=True)
+    user_id = Column(
+        String, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    style_id = Column(
+        String(50),
+        ForeignKey("styles.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
     created_at = Column(DateTime(timezone=True), default=_utcnow)
 
     user = relationship("User", back_populates="favorite_styles")
     style = relationship("Style")
 
+
 class ProductStyle(Base):
     """Product-Style many-to-many association table"""
+
     __tablename__ = "product_styles"
     __table_args__ = {"extend_existing": True}
 
-    product_id = Column(String, ForeignKey("products.id", ondelete="CASCADE"), primary_key=True)
-    style_id = Column(String(50), ForeignKey("styles.id", ondelete="CASCADE"), primary_key=True)
+    product_id = Column(
+        String, ForeignKey("products.id", ondelete="CASCADE"), primary_key=True
+    )
+    style_id = Column(
+        String(50), ForeignKey("styles.id", ondelete="CASCADE"), primary_key=True
+    )
     created_at = Column(DateTime(timezone=True), default=_utcnow)
 
     product = relationship("Product", back_populates="styles")
@@ -278,24 +452,43 @@ class ProductStyle(Base):
 
 class Product(Base):
     """Product model for recommendations. Images and color live on ProductColorVariant."""
+
     __tablename__ = "products"
-    
+
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
     name = Column(String(255), nullable=False)
     description = Column(String(1000), nullable=True)
     price = Column(Float, nullable=False)
     material = Column(String(100), nullable=True)
     country_of_manufacture = Column(String(100), nullable=True)
-    article_number = Column(String(50), nullable=True)  # Article number for user-facing identification, search, and sharing
-    delivery_time_min = Column(Integer, nullable=True)  # per-product override; None = use brand default
+    article_number = Column(
+        String(50), nullable=True
+    )  # Article number for user-facing identification, search, and sharing
+    delivery_time_min = Column(
+        Integer, nullable=True
+    )  # per-product override; None = use brand default
     delivery_time_max = Column(Integer, nullable=True)
-    sale_price = Column(Float, nullable=True)        # Reduced price (exact) or discount pct; None = no sale
-    sale_type = Column(String(10), nullable=True)     # 'percent' or 'exact'; None when no active sale
-    sizing_table_image = Column(String, nullable=True)  # S3 public URL of sizing table image
-    brand_id = Column(String, ForeignKey("brands.id", ondelete="RESTRICT"), nullable=False, index=True)
-    category_id = Column(String(50), ForeignKey("categories.id", ondelete="RESTRICT"), nullable=False)
-    purchase_count = Column(Integer, nullable=False, default=0)  # Denormalized for performance
-    general_images = Column(ARRAY(String), nullable=True)  # Images shown for all color variants
+    sale_price = Column(
+        Float, nullable=True
+    )  # Reduced price (exact) or discount pct; None = no sale
+    sale_type = Column(
+        String(10), nullable=True
+    )  # 'percent' or 'exact'; None when no active sale
+    sizing_table_image = Column(
+        String, nullable=True
+    )  # S3 public URL of sizing table image
+    brand_id = Column(
+        String, ForeignKey("brands.id", ondelete="RESTRICT"), nullable=False, index=True
+    )
+    category_id = Column(
+        String(50), ForeignKey("categories.id", ondelete="RESTRICT"), nullable=False
+    )
+    purchase_count = Column(
+        Integer, nullable=False, default=0
+    )  # Denormalized for performance
+    general_images = Column(
+        ARRAY(String), nullable=True
+    )  # Images shown for all color variants
     created_at = Column(DateTime(timezone=True), default=_utcnow)
     updated_at = Column(DateTime(timezone=True), default=_utcnow, onupdate=_utcnow)
 
@@ -310,47 +503,78 @@ class Product(Base):
 
     brand = relationship("Brand")
     category = relationship("Category")
-    styles = relationship("ProductStyle", back_populates="product", cascade="all, delete-orphan")
-    color_variants = relationship("ProductColorVariant", back_populates="product", cascade="all, delete-orphan", order_by="ProductColorVariant.display_order")
+    styles = relationship(
+        "ProductStyle", back_populates="product", cascade="all, delete-orphan"
+    )
+    color_variants = relationship(
+        "ProductColorVariant",
+        back_populates="product",
+        cascade="all, delete-orphan",
+        order_by="ProductColorVariant.display_order",
+    )
 
     __table_args__ = (
-        Index('idx_product_purchase_count', 'purchase_count'),
-        Index('idx_product_article_number', 'article_number'),
-        UniqueConstraint('article_number', name='uq_product_article_number'),
-        Index('idx_products_search_vector', 'search_vector', postgresql_using='gin'),
-        Index('idx_products_name_trgm', 'name', postgresql_using='gin', postgresql_ops={'name': 'gin_trgm_ops'}),
-        Index('idx_products_description_trgm', 'description', postgresql_using='gin', postgresql_ops={'description': 'gin_trgm_ops'}),
+        Index("idx_product_purchase_count", "purchase_count"),
+        Index("idx_product_article_number", "article_number"),
+        UniqueConstraint("article_number", name="uq_product_article_number"),
+        Index("idx_products_search_vector", "search_vector", postgresql_using="gin"),
+        Index(
+            "idx_products_name_trgm",
+            "name",
+            postgresql_using="gin",
+            postgresql_ops={"name": "gin_trgm_ops"},
+        ),
+        Index(
+            "idx_products_description_trgm",
+            "description",
+            postgresql_using="gin",
+            postgresql_ops={"description": "gin_trgm_ops"},
+        ),
     )
 
 
 class ProductColorVariant(Base):
     """One color variation of a product: its own images and size/stock variants."""
+
     __tablename__ = "product_color_variants"
     __table_args__ = (
-        UniqueConstraint('product_id', 'color_name', name='uq_product_color'),
+        UniqueConstraint("product_id", "color_name", name="uq_product_color"),
         {"extend_existing": True},
     )
 
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
-    product_id = Column(String, ForeignKey("products.id", ondelete="CASCADE"), nullable=False, index=True)
+    product_id = Column(
+        String,
+        ForeignKey("products.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
     color_name = Column(String(50), nullable=False)  # Canonical name (e.g. Black, Blue)
-    color_hex = Column(String(200), nullable=False)    # Hex or CSS gradient
-    images = Column(ARRAY(String), nullable=True)    # Image URLs for this color
+    color_hex = Column(String(200), nullable=False)  # Hex or CSS gradient
+    images = Column(ARRAY(String), nullable=True)  # Image URLs for this color
     display_order = Column(Integer, nullable=False, default=0)
     created_at = Column(DateTime(timezone=True), default=_utcnow)
     updated_at = Column(DateTime(timezone=True), default=_utcnow, onupdate=_utcnow)
 
     product = relationship("Product", back_populates="color_variants")
-    variants = relationship("ProductVariant", back_populates="color_variant", cascade="all, delete-orphan")
+    variants = relationship(
+        "ProductVariant", back_populates="color_variant", cascade="all, delete-orphan"
+    )
 
 
 class ProductVariant(Base):
     """Size and stock for a specific product color variant."""
+
     __tablename__ = "product_variants"
     __table_args__ = {"extend_existing": True}
 
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
-    product_color_variant_id = Column(String, ForeignKey("product_color_variants.id", ondelete="CASCADE"), nullable=False, index=True)
+    product_color_variant_id = Column(
+        String,
+        ForeignKey("product_color_variants.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
     size = Column(String(20), nullable=False)
     stock_quantity = Column(Integer, nullable=False, default=0)
     created_at = Column(DateTime(timezone=True), default=_utcnow)
@@ -364,48 +588,70 @@ class ProductVariant(Base):
         return self.color_variant.product if self.color_variant else None
 
     __table_args__ = (
-        UniqueConstraint('product_color_variant_id', 'size', name='uq_color_variant_size'),
+        UniqueConstraint(
+            "product_color_variant_id", "size", name="uq_color_variant_size"
+        ),
     )
+
 
 class UserLikedProduct(Base):
     """User-Product many-to-many relationship for liked items"""
+
     __tablename__ = "user_liked_products"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    user_id = Column(String, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
-    product_id = Column(String, ForeignKey("products.id", ondelete="CASCADE"), nullable=False, index=True)
+    user_id = Column(
+        String, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    product_id = Column(
+        String,
+        ForeignKey("products.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
     created_at = Column(DateTime(timezone=True), default=_utcnow)
 
     user = relationship("User", back_populates="liked_products")
     product = relationship("Product")
-    
+
     __table_args__ = (
         UniqueConstraint("user_id", "product_id", name="uq_user_liked_product"),
         {"extend_existing": True},
     )
 
+
 # Add liked_products relationship to User model
-User.liked_products = relationship("UserLikedProduct", back_populates="user", cascade="all, delete-orphan")
+User.liked_products = relationship(
+    "UserLikedProduct", back_populates="user", cascade="all, delete-orphan"
+)
+
 
 class UserSwipe(Base):
     """User swipe tracking for analytics and recommendations (single signal: user saw product)"""
+
     __tablename__ = "user_swipes"
     __table_args__ = (
-        Index('idx_user_swipes_user_created', 'user_id', 'created_at'),  # For "last N swipes" per user
-        Index('idx_user_swipes_product_id', 'product_id'),
+        Index(
+            "idx_user_swipes_user_created", "user_id", "created_at"
+        ),  # For "last N swipes" per user
+        Index("idx_user_swipes_product_id", "product_id"),
         {"extend_existing": True},
     )
-    
+
     id = Column(Integer, primary_key=True, autoincrement=True)
     user_id = Column(String, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
-    product_id = Column(String, ForeignKey("products.id", ondelete="CASCADE"), nullable=False)
+    product_id = Column(
+        String, ForeignKey("products.id", ondelete="CASCADE"), nullable=False
+    )
     created_at = Column(DateTime(timezone=True), default=_utcnow)
-    
+
     user = relationship("User")
     product = relationship("Product")
 
+
 class FriendRequest(Base):
     """Friend request model"""
+
     __tablename__ = "friend_requests"
     __table_args__ = (
         UniqueConstraint("sender_id", "recipient_id", name="uq_friend_request_pair"),
@@ -413,17 +659,31 @@ class FriendRequest(Base):
     )
 
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
-    sender_id = Column(String, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
-    recipient_id = Column(String, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
-    status = Column(SQLEnum(FriendRequestStatus), default=FriendRequestStatus.PENDING, nullable=False)
+    sender_id = Column(
+        String, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    recipient_id = Column(
+        String, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    status = Column(
+        SQLEnum(FriendRequestStatus),
+        default=FriendRequestStatus.PENDING,
+        nullable=False,
+    )
     created_at = Column(DateTime(timezone=True), default=_utcnow)
     updated_at = Column(DateTime(timezone=True), default=_utcnow, onupdate=_utcnow)
 
-    sender = relationship("User", foreign_keys=[sender_id], back_populates="sent_friend_requests")
-    recipient = relationship("User", foreign_keys=[recipient_id], back_populates="received_friend_requests")
+    sender = relationship(
+        "User", foreign_keys=[sender_id], back_populates="sent_friend_requests"
+    )
+    recipient = relationship(
+        "User", foreign_keys=[recipient_id], back_populates="received_friend_requests"
+    )
+
 
 class Friendship(Base):
     """Friendship model for accepted friend relationships"""
+
     __tablename__ = "friendships"
     __table_args__ = (
         UniqueConstraint("user_id", "friend_id", name="uq_friendship_pair"),
@@ -431,23 +691,33 @@ class Friendship(Base):
     )
 
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
-    user_id = Column(String, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
-    friend_id = Column(String, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    user_id = Column(
+        String, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    friend_id = Column(
+        String, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    )
     created_at = Column(DateTime(timezone=True), default=_utcnow)
 
     user = relationship("User", foreign_keys=[user_id], back_populates="friendships")
     friend = relationship("User", foreign_keys=[friend_id], back_populates="friends")
 
+
 # Add products relationship to Style model
-Style.products = relationship("ProductStyle", back_populates="style", cascade="all, delete-orphan")
+Style.products = relationship(
+    "ProductStyle", back_populates="style", cascade="all, delete-orphan"
+)
 
 
 class Checkout(Base):
     """Ozon-style: one Checkout per payment session. Groups Orders (one per brand)."""
+
     __tablename__ = "checkouts"
 
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
-    user_id = Column(String, ForeignKey("users.id", ondelete="RESTRICT"), nullable=False, index=True)
+    user_id = Column(
+        String, ForeignKey("users.id", ondelete="RESTRICT"), nullable=False, index=True
+    )
     total_amount = Column(Float, nullable=False)
     delivery_full_name = Column(String(255), nullable=True)
     delivery_email = Column(String(255), nullable=True)
@@ -459,13 +729,21 @@ class Checkout(Base):
     updated_at = Column(DateTime(timezone=True), default=_utcnow, onupdate=_utcnow)
 
     user = relationship("User")
-    orders = relationship("Order", back_populates="checkout", cascade="all, delete-orphan")
-    payment = relationship("Payment", back_populates="checkout", uselist=False, cascade="all, delete-orphan")
+    orders = relationship(
+        "Order", back_populates="checkout", cascade="all, delete-orphan"
+    )
+    payment = relationship(
+        "Payment",
+        back_populates="checkout",
+        uselist=False,
+        cascade="all, delete-orphan",
+    )
 
 
 class OrderStatus(str, Enum):
     """Canonical order status. Values are lowercase; API returns these strings.
     Keep in sync with packages/shared orderStatus.ts and schemas.ORDER_STATUS_VALUES."""
+
     CREATED = "created"
     PENDING = "pending"
     PAID = "paid"
@@ -477,6 +755,7 @@ class OrderStatus(str, Enum):
 
 class OrderStatusType(TypeDecorator):
     """Binds OrderStatus enum to lowercase PostgreSQL orderstatus enum values."""
+
     impl = String(20)
     cache_ok = True
 
@@ -495,15 +774,27 @@ class OrderStatusType(TypeDecorator):
 
 class Order(Base):
     """Ozon-style: one Order per brand within a Checkout. Has its own tracking and status."""
+
     __tablename__ = "orders"
 
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
-    checkout_id = Column(String, ForeignKey("checkouts.id", ondelete="CASCADE"), nullable=True, index=True)
-    brand_id = Column(String, ForeignKey("brands.id", ondelete="RESTRICT"), nullable=True, index=True)
+    checkout_id = Column(
+        String,
+        ForeignKey("checkouts.id", ondelete="CASCADE"),
+        nullable=True,
+        index=True,
+    )
+    brand_id = Column(
+        String, ForeignKey("brands.id", ondelete="RESTRICT"), nullable=True, index=True
+    )
     order_number = Column(String, unique=True, nullable=False)
-    user_id = Column(String, ForeignKey("users.id", ondelete="RESTRICT"), nullable=True, index=True)
+    user_id = Column(
+        String, ForeignKey("users.id", ondelete="RESTRICT"), nullable=True, index=True
+    )
     subtotal = Column(Float, nullable=True)  # Items only; nullable for migration
-    shipping_cost = Column(Float, nullable=True)  # Per-brand delivery; nullable for migration
+    shipping_cost = Column(
+        Float, nullable=True
+    )  # Per-brand delivery; nullable for migration
     total_amount = Column(Float, nullable=False)
     status = Column(OrderStatusType, default=OrderStatus.PENDING, nullable=False)
     tracking_number = Column(String(255), nullable=True)
@@ -517,13 +808,23 @@ class Order(Base):
     delivery_postal_code = Column(String(20), nullable=True)
     created_at = Column(DateTime(timezone=True), default=_utcnow)
     updated_at = Column(DateTime(timezone=True), default=_utcnow, onupdate=_utcnow)
-    expires_at = Column(DateTime(timezone=True), nullable=True)  # Cutoff for unpaid CREATED/PENDING orders
+    expires_at = Column(
+        DateTime(timezone=True), nullable=True
+    )  # Cutoff for unpaid CREATED/PENDING orders
 
     checkout = relationship("Checkout", back_populates="orders")
     brand = relationship("Brand")
     user = relationship("User")
-    items = relationship("OrderItem", back_populates="order", cascade="all, delete-orphan")
-    status_events = relationship("OrderStatusEvent", back_populates="order", cascade="all, delete-orphan", order_by="OrderStatusEvent.created_at")
+    items = relationship(
+        "OrderItem", back_populates="order", cascade="all, delete-orphan"
+    )
+    status_events = relationship(
+        "OrderStatusEvent",
+        back_populates="order",
+        cascade="all, delete-orphan",
+        order_by="OrderStatusEvent.created_at",
+    )
+
 
 class OrderItemStatus(str, Enum):
     SHIPPED = "shipped"
@@ -534,8 +835,15 @@ class OrderItem(Base):
     __tablename__ = "order_items"
 
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
-    order_id = Column(String, ForeignKey("orders.id", ondelete="CASCADE"), nullable=False, index=True)
-    product_variant_id = Column(String, ForeignKey("product_variants.id", ondelete="RESTRICT"), nullable=False, index=True)
+    order_id = Column(
+        String, ForeignKey("orders.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    product_variant_id = Column(
+        String,
+        ForeignKey("product_variants.id", ondelete="RESTRICT"),
+        nullable=False,
+        index=True,
+    )
     quantity = Column(Integer, nullable=False, default=1)
     price = Column(Float, nullable=False)
     sku = Column(String(255), unique=True, nullable=True)
@@ -544,12 +852,17 @@ class OrderItem(Base):
     order = relationship("Order", back_populates="items")
     product_variant = relationship("ProductVariant")
 
+
 class Payment(Base):
     __tablename__ = "payments"
 
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
-    order_id = Column(String, ForeignKey("orders.id", ondelete="CASCADE"), nullable=True)  # Legacy; nullable for migration
-    checkout_id = Column(String, ForeignKey("checkouts.id", ondelete="CASCADE"), nullable=True)  # Ozon-style
+    order_id = Column(
+        String, ForeignKey("orders.id", ondelete="CASCADE"), nullable=True
+    )  # Legacy; nullable for migration
+    checkout_id = Column(
+        String, ForeignKey("checkouts.id", ondelete="CASCADE"), nullable=True
+    )  # Ozon-style
     amount = Column(Float, nullable=False)
     currency = Column(String(10), nullable=False)
     status = Column(String(50), nullable=False)
@@ -557,7 +870,8 @@ class Payment(Base):
     updated_at = Column(DateTime(timezone=True), default=_utcnow, onupdate=_utcnow)
 
     order = relationship("Order", foreign_keys=[order_id])
-    checkout = relationship("Checkout", back_populates="payment") 
+    checkout = relationship("Checkout", back_populates="payment")
+
 
 class ExclusiveAccessEmail(Base):
     __tablename__ = "exclusive_access_emails"
@@ -569,15 +883,22 @@ class ExclusiveAccessEmail(Base):
 
 class OrderStatusEvent(Base):
     """Audit log: one row per status transition on an Order."""
+
     __tablename__ = "order_status_events"
 
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
-    order_id = Column(String, ForeignKey("orders.id", ondelete="CASCADE"), nullable=False, index=True)
-    from_status = Column(String(30), nullable=True)   # Null for first event (order creation)
+    order_id = Column(
+        String, ForeignKey("orders.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    from_status = Column(
+        String(30), nullable=True
+    )  # Null for first event (order creation)
     to_status = Column(String(30), nullable=False)
-    actor_type = Column(String(20), nullable=False)   # "system" | "user" | "brand" | "admin"
-    actor_id = Column(String, nullable=True)          # UUID/int of the actor; null for "system"
-    note = Column(String(500), nullable=True)         # Optional human-readable reason
+    actor_type = Column(
+        String(20), nullable=False
+    )  # "system" | "user" | "brand" | "admin"
+    actor_id = Column(String, nullable=True)  # UUID/int of the actor; null for "system"
+    note = Column(String(500), nullable=True)  # Optional human-readable reason
     created_at = Column(DateTime(timezone=True), default=_utcnow, nullable=False)
 
     order = relationship("Order", back_populates="status_events")
@@ -585,14 +906,19 @@ class OrderStatusEvent(Base):
 
 class BrandWithdrawal(Base):
     """Audit trail for admin-recorded brand withdrawals."""
+
     __tablename__ = "brand_withdrawals"
     __table_args__ = {"extend_existing": True}
 
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
-    brand_id = Column(String, ForeignKey("brands.id", ondelete="RESTRICT"), nullable=False, index=True)
+    brand_id = Column(
+        String, ForeignKey("brands.id", ondelete="RESTRICT"), nullable=False, index=True
+    )
     amount = Column(Float, nullable=False)
     note = Column(String(500), nullable=True)
-    admin_id = Column(String, ForeignKey("auth_accounts.id", ondelete="RESTRICT"), nullable=False)
+    admin_id = Column(
+        String, ForeignKey("auth_accounts.id", ondelete="RESTRICT"), nullable=False
+    )
     created_at = Column(DateTime(timezone=True), default=_utcnow)
 
     brand = relationship("Brand")
@@ -601,15 +927,24 @@ class BrandWithdrawal(Base):
 
 class Notification(Base):
     """In-app notification for brands (and future: users)."""
+
     __tablename__ = "notifications"
     __table_args__ = {"extend_existing": True}
 
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
     recipient_type = Column(String(20), nullable=False)  # "brand" or "user"
-    recipient_id = Column(String, nullable=False, index=True)  # brand.id (int as str) or user.id
-    type = Column(String(50), nullable=False)  # "new_order", "return_logged", "admin_custom"
+    recipient_id = Column(
+        String, nullable=False, index=True
+    )  # brand.id (int as str) or user.id
+    type = Column(
+        String(50), nullable=False
+    )  # "new_order", "return_logged", "admin_custom"
     message = Column(String(500), nullable=False)
-    order_id = Column(String, nullable=True)  # FK-like reference (not a real FK; order IDs are strings)
+    order_id = Column(
+        String, nullable=True
+    )  # FK-like reference (not a real FK; order IDs are strings)
     is_read = Column(Boolean, default=False, nullable=False)
-    expires_at = Column(DateTime(timezone=True), nullable=False)  # now + 7 days at creation
+    expires_at = Column(
+        DateTime(timezone=True), nullable=False
+    )  # now + 7 days at creation
     created_at = Column(DateTime(timezone=True), default=_utcnow)

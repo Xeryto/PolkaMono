@@ -8,8 +8,8 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Mail, Shield } from "lucide-react";
+import { toast } from "sonner";
+import { ArrowLeft, Loader2, Mail, Shield } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import * as api from "@/services/api";
 
@@ -21,18 +21,13 @@ const BrandForgotPasswordPage = () => {
   const [email, setEmail] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
-  const { toast } = useToast();
   const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!email.trim()) {
-      toast({
-        title: "ошибка",
-        description: "пожалуйста, введите email бренда.",
-        variant: "destructive",
-      });
+      toast.error("Пожалуйста, введите email бренда.");
       return;
     }
 
@@ -54,11 +49,7 @@ const BrandForgotPasswordPage = () => {
         errorMessage = err.message;
       }
 
-      toast({
-        title: "ошибка",
-        description: errorMessage,
-        variant: "destructive",
-      });
+      toast.error(errorMessage);
     } finally {
       setIsSubmitting(false);
     }
@@ -163,7 +154,7 @@ const BrandForgotPasswordPage = () => {
                 className="w-full"
                 disabled={isSubmitting || !email.trim()}
               >
-                <Mail className="mr-2 h-4 w-4" />
+                {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Mail className="mr-2 h-4 w-4" />}
                 {isSubmitting ? "Отправка кода..." : "Отправить код"}
               </Button>
             </form>

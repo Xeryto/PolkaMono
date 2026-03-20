@@ -5,8 +5,6 @@ import {
   ShoppingCart,
   LogOut,
   PlusSquare,
-  UserCircle,
-  Shield,
 } from "lucide-react";
 import {
   Sidebar,
@@ -34,11 +32,6 @@ const shopItems = [
   { id: "orders" as const, title: "Заказы", icon: ShoppingCart },
   { id: "products" as const, title: "Товары", icon: Package },
   { id: "add-item" as const, title: "Добавить товар", icon: PlusSquare },
-];
-
-const settingsItems = [
-  { id: "profile" as const, title: "Профиль", icon: UserCircle },
-  { id: "security" as const, title: "Безопасность", icon: Shield },
 ];
 
 export function DashboardSidebar({ currentView, onViewChange }: DashboardSidebarProps) {
@@ -103,14 +96,6 @@ export function DashboardSidebar({ currentView, onViewChange }: DashboardSidebar
           {!collapsed && <SidebarGroupLabel className="text-xs text-muted-foreground uppercase tracking-wider">Магазин</SidebarGroupLabel>}
           <SidebarGroupContent>
             <SidebarMenu>{renderMenu(shopItems)}</SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
-
-        {/* Settings group */}
-        <SidebarGroup>
-          {!collapsed && <SidebarGroupLabel className="text-xs text-muted-foreground uppercase tracking-wider">Настройки</SidebarGroupLabel>}
-          <SidebarGroupContent>
-            <SidebarMenu>{renderMenu(settingsItems)}</SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
 

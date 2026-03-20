@@ -9,6 +9,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Skeleton } from "@/components/ui/skeleton";
 import { materials } from "@/lib/materials";
 import type { CategoryResponse, StyleResponse } from "@/services/api";
 
@@ -73,26 +74,34 @@ export function BasicInfoStep({
       </div>
       <div>
         <Label>Категория</Label>
-        <Select onValueChange={onCategoryChange} value={selectedCategory}>
-          <SelectTrigger className="w-full mt-1 h-10">
-            <SelectValue placeholder="Выберите категорию" />
-          </SelectTrigger>
-          <SelectContent>
-            {categories.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
-          </SelectContent>
-        </Select>
+        {categories.length === 0 ? (
+          <Skeleton className="h-10 w-full mt-1" />
+        ) : (
+          <Select onValueChange={onCategoryChange} value={selectedCategory}>
+            <SelectTrigger className="w-full mt-1 h-10">
+              <SelectValue placeholder="Выберите категорию" />
+            </SelectTrigger>
+            <SelectContent>
+              {categories.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        )}
         {fieldErrors.selectedCategory && <p className="text-xs text-destructive mt-1">{fieldErrors.selectedCategory}</p>}
       </div>
       <div>
         <Label>Стиль</Label>
-        <Select onValueChange={onStyleChange} value={selectedStyle}>
-          <SelectTrigger className="w-full mt-1 h-10">
-            <SelectValue placeholder="Выберите стиль" />
-          </SelectTrigger>
-          <SelectContent>
-            {styles.map((s) => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
-          </SelectContent>
-        </Select>
+        {styles.length === 0 ? (
+          <Skeleton className="h-10 w-full mt-1" />
+        ) : (
+          <Select onValueChange={onStyleChange} value={selectedStyle}>
+            <SelectTrigger className="w-full mt-1 h-10">
+              <SelectValue placeholder="Выберите стиль" />
+            </SelectTrigger>
+            <SelectContent>
+              {styles.map((s) => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        )}
         {fieldErrors.selectedStyle && <p className="text-xs text-destructive mt-1">{fieldErrors.selectedStyle}</p>}
       </div>
     </div>

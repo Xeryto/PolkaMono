@@ -32,13 +32,14 @@ export function ImagesStep({
         <div className="mt-2 flex flex-wrap gap-2">
           {generalImages.map((url, i) => (
             <div key={i} className="relative">
-              <img src={url} alt="" className="w-20 h-20 object-cover rounded-md" />
+              <img src={url} alt="" className="w-20 h-20 object-cover rounded-lg hover:ring-2 ring-brand/50 transition-all" />
               <button type="button" className="absolute -top-2 -right-2 h-4 w-4 text-red-500" onClick={() => onRemoveGeneralImage(i)}>
                 <XCircle className="h-4 w-4" />
               </button>
             </div>
           ))}
         </div>
+        <p className="text-xs text-muted-foreground">{generalImages.length}/5 изображений</p>
       </div>
 
       {colorVariations.map((cv, colorIndex) => (
@@ -54,7 +55,7 @@ export function ImagesStep({
           <div className="mt-2 flex flex-wrap gap-2">
             {cv.images.map((url, imgIdx) => (
               <div key={imgIdx} className="relative">
-                <img src={url} alt="" className="w-20 h-20 object-cover rounded-md" />
+                <img src={url} alt="" className="w-20 h-20 object-cover rounded-lg hover:ring-2 ring-brand/50 transition-all" />
                 <button type="button" className="absolute -top-2 -right-2 h-4 w-4 text-red-500" onClick={() => onRemoveColorVariationImage(colorIndex, imgIdx)}>
                   <XCircle className="h-4 w-4" />
                 </button>

@@ -1,200 +1,220 @@
 # Polka Mobile
 
-<p align="center">
-  <img src="app/assets/Logo.svg" alt="Polka Logo" width="150" />
-</p>
+Expo React Native app for the Polka fashion marketplace — the primary client for buyers.
 
-<p align="center">
-  A premium mobile shopping experience built with React Native and Expo
-</p>
+Part of the [Polka monorepo](../../README.md).
 
-<p align="center">
-  <img src="https://img.shields.io/badge/React%20Native-0.76-blue" alt="React Native" />
-  <img src="https://img.shields.io/badge/Expo-52.0-blueviolet" alt="Expo" />
-  <img src="https://img.shields.io/badge/TypeScript-5.3-3178C6" alt="TypeScript" />
-  <img src="https://img.shields.io/badge/License-Custom%20Non--Commercial-red" alt="License" />
-</p>
+## Tech stack
 
-## ✨ Features
+- React Native 0.81.5 (New Architecture enabled)
+- Expo SDK 54
+- React 19.1
+- TypeScript 5.9
+- React Native Reanimated 4.1
+- React Native Gesture Handler 2.28
+- Shopify React Native Skia 2.2
+- React Navigation 6 (native stack + bottom tabs)
 
-Polka Mobile is a sophisticated shopping application with a focus on elegant UI design and smooth, responsive animations.
+## Setup
 
-- **Beautiful UI Design**
+From the monorepo root:
 
-  - Custom gradient backgrounds throughout the app
-  - Elegant animations and transitions between screens
-  - Custom SVG icons and premium visual elements
-  - Responsive layouts for various device sizes
-
-- **Advanced Authentication System**
-
-  - Secure login and registration with form validation
-  - Persistent authentication using AsyncStorage
-  - Beautiful loading animations during authentication flow
-  - Seamless transition between authentication states
-
-- **Shopping Experience**
-
-  - Card-based product browsing with swipe interactions
-  - Heart/like functionality with beautiful animations
-  - Size selection with elegant transition animations
-  - Quick add-to-cart with haptic feedback
-
-- **Shopping Cart**
-
-  - Persistent cart that saves between app sessions
-  - Quantity adjustment with real-time updates
-  - Clear cart on logout for data privacy
-  - Beautiful item presentation with images and details
-
-- **Favorites & Search**
-  - Save favorite items for later browsing
-  - Comprehensive search functionality
-  - Smooth transitions and loading states
-  - Interactive UI elements with haptic feedback
-
-## 📱 App Showcase
-
-<p align="center">
-  <img src="https://via.placeholder.com/220x440?text=Welcome+Screen" alt="Welcome Screen" width="220" />
-  <img src="https://via.placeholder.com/220x440?text=Main+Screen" alt="Main Screen" width="220" /> 
-  <img src="https://via.placeholder.com/220x440?text=Cart+Screen" alt="Cart Screen" width="220" />
-</p>
-
-## 🛠️ Technology Stack
-
-- **Frontend**
-
-  - [React Native](https://reactnative.dev/) - Core framework
-  - [Expo](https://expo.dev/) - Development platform
-  - [TypeScript](https://www.typescriptlang.org/) - Type safety
-  - [React Native Reanimated](https://docs.swmansion.com/react-native-reanimated/) - Advanced animations
-  - [React Native Gesture Handler](https://docs.swmansion.com/react-native-gesture-handler/) - Touch handling
-  - [Expo Linear Gradient](https://docs.expo.dev/versions/latest/sdk/linear-gradient/) - Gradient effects
-  - [Expo Haptics](https://docs.expo.dev/versions/latest/sdk/haptics/) - Haptic feedback
-  - [AsyncStorage](https://react-native-async-storage.github.io/async-storage/) - Local data persistence
-
-- **Design & Assets**
-  - Custom SVG icons
-  - Custom fonts
-  - Linear gradients for sophisticated UI
-  - Dynamic animations
-
-## 🚀 Installation & Setup
-
-1. **Clone the repository**
-
-   ```bash
-   git clone https://github.com/yourusername/polka-mobile.git
-   cd polka-mobile
-   ```
-
-2. **Install dependencies**
-
-   ```bash
-   npm install
-   ```
-
-3. **Start the application**
-
-   ```bash
-   npm start
-   ```
-
-4. **Run on a device or emulator**
-   - Scan the QR code with Expo Go app (iOS/Android)
-   - Press `i` for iOS simulator
-   - Press `a` for Android emulator
-
-## 📁 Project Structure
-
-```
-polka-mobile/
-├── App.tsx               # Main app component
-├── app/                  # App components and modules
-│   ├── assets/           # Images, icons, and fonts
-│   │   ├── fonts/        # Custom fonts
-│   │   └── ...           # SVG icons and images
-│   ├── screens/          # App screens
-│   │   ├── WelcomeScreen.tsx  # Welcome/login/signup entry
-│   │   ├── LoginScreen.tsx    # User login screen
-│   │   └── SignupScreen.tsx   # User registration screen
-│   ├── cartStorage.ts    # Cart data persistence
-│   ├── MainPage.tsx      # Product browsing screen
-│   ├── Cart.tsx          # Shopping cart screen
-│   ├── Search.tsx        # Search functionality
-│   ├── Favorites.tsx     # Saved favorites
-│   └── Settings.tsx      # User settings
-└── ...
+```bash
+yarn install:all
+cp packages/mobile/.env.example packages/mobile/.env
+# Edit .env — set EXPO_PUBLIC_API_URL to your running API
+yarn start:mobile         # Expo dev server (clears cache)
 ```
 
-## 🎨 UI/UX Highlights
+Then press `i` for iOS simulator or `a` for Android emulator.
 
-- **Interactive Button Effects**
+For device testing, set `EXPO_PUBLIC_API_URL` to an ngrok URL or your machine's LAN IP.
 
-  - Spinning gradient borders with acceleration/deceleration
-  - Scale animations with haptic feedback
-  - Custom gradient borders and backgrounds
+## Environment variables
 
-- **Seamless Transitions**
+From `.env.example`:
 
-  - Smooth animations between screens
-  - Loading animations with elegant timing
-  - Card swiping interactions
+| Variable | Default | Description |
+|---|---|---|
+| `EXPO_PUBLIC_API_URL` | `http://localhost:8000` | API server URL |
+| `EXPO_PUBLIC_ENVIRONMENT` | `development` | Environment name |
+| `EXPO_PUBLIC_API_TIMEOUT` | `10000` | API request timeout (ms) |
+| `EXPO_PUBLIC_AUTH_TIMEOUT` | `20000` | Auth request timeout (ms) |
+| `EXPO_PUBLIC_DEBUG_MODE` | `true` | Enable debug logging |
+| `EXPO_PUBLIC_LOG_LEVEL` | `debug` | Log level |
+| `EXPO_PUBLIC_API_DELAY` | `500` | Simulated API delay for dev (ms) |
 
-- **Premium Design Elements**
-  - Custom font integration
-  - SVG icon animations
-  - Layered gradients for depth
-  - Consistent design language
+## App structure
 
-## 🔐 Authentication Flow
+```
+packages/mobile/
+├── App.tsx                    Root component, navigation container, phase manager
+├── app.json                   Expo config (bundle ID, plugins, EAS)
+├── eas.json                   EAS Build profiles
+├── app/
+│   ├── screens/               Auth flow screens
+│   │   ├── WelcomeScreen      Landing with login/signup overlays
+│   │   ├── LoginScreen        Email + password login
+│   │   ├── SignupScreen        Registration
+│   │   ├── VerificationCodeScreen  Email verification
+│   │   ├── ForgotPasswordScreen
+│   │   ├── PasswordResetVerificationScreen
+│   │   ├── ResetPasswordScreen
+│   │   ├── ConfirmationScreen  Gender selection
+│   │   ├── AvatarEditScreen
+│   │   ├── BrandSearchScreen   Favorite brands picker
+│   │   ├── StylesSelectionScreen
+│   │   ├── RecentPiecesScreen
+│   │   ├── FriendRecommendationsScreen
+│   │   └── FriendLikedItemsScreen
+│   ├── components/
+│   │   ├── swipeCard/         SwipeCard, CardFront, CardBack, HeartButton
+│   │   ├── svg/               30+ SVG icon components
+│   │   ├── PriceTag, SkeletonCard, ErrorBanner, AvatarImage, ...
+│   ├── services/
+│   │   ├── api.ts             API client + SessionManager singleton
+│   │   ├── networkUtils.ts    Timeout + retry logic
+│   │   ├── apiHelpers.ts      Response parsing
+│   │   └── apiHealthCheck.ts
+│   ├── hooks/
+│   │   ├── useSwipeDeck.ts    Swipe/flip/size/color/like state
+│   │   ├── useSession.ts      JWT + auth state
+│   │   └── useNetworkRequest.ts
+│   ├── lib/
+│   │   ├── theme.ts           Light/dark color tokens
+│   │   ├── ThemeContext.tsx    useTheme() hook
+│   │   ├── ReduceMotionContext.tsx  useMotion() hook
+│   │   ├── swipeCardConstants.ts
+│   │   ├── swipeCardUtils.ts
+│   │   ├── productMapper.ts
+│   │   ├── translations.ts
+│   │   └── animations.ts
+│   ├── types/                 TypeScript definitions
+│   ├── MainPage.tsx           Swipe discovery feed (home tab)
+│   ├── Cart.tsx               Shopping cart
+│   ├── Search.tsx             Brand/product search
+│   ├── Favorites.tsx          Liked items
+│   ├── Wall.tsx               User profile + orders
+│   └── Settings.tsx           App settings
+```
 
-The app features a professional authentication system that securely stores user data using AsyncStorage:
+## Navigation
 
-1. Initial loading with the app logo
-2. Authentication check during startup
-3. Welcome screen for non-authenticated users
-4. Login/Signup options with form validation
-5. Seamless transition to main app after authentication
-6. Persistent login state between app sessions
-7. Secure logout with cart clearing
+### Auth flow
 
-## 🛒 Cart System
+Phase-based flow managed by `AppContent` in `App.tsx`:
 
-The shopping cart system features:
+1. **Boot** — splash screen, token check
+2. **Welcome** — login / signup overlays
+3. **Email verification** — 6-digit code
+4. **Profile setup** — gender selection, avatar, favorite brands, favorite styles
+5. **Main** — bottom tab navigator
 
-1. Persistent storage using AsyncStorage
-2. Automatic saving of cart items between sessions
-3. Quantity adjustment with animated UI
-4. Clean wiping of cart data on logout
-5. Automatic navigation to cart after adding items
+### Main tabs
 
-## 🧩 Future Enhancements
+5 bottom tabs with a custom tab bar:
 
-- Backend integration with a real product API
-- Push notifications for order updates
-- User profile management
-- Payment gateway integration
-- Delivery tracking
-- Social sharing features
+| Tab | Screen | Description |
+|---|---|---|
+| Home | MainPage | Swipe card product discovery |
+| Search | Search | Brand and product search |
+| Cart | Cart | Shopping cart with checkout |
+| Favorites | Favorites | Liked / saved items |
+| Wall | Wall | User profile, orders, friends |
 
-## 📄 License
+### Detail screens
 
-This project is licensed under a Custom Non-Commercial License - see the [LICENSE](LICENSE) file for details.
+Pushed on the stack from within tabs:
 
-**Key points:**
+- **RecentPieces** — recently swiped products
+- **FriendRecommendations** — recommendations for a friend's size/taste
+- **FriendLikedItems** — items a friend has liked (progressive blur)
 
-- ✅ You may use, modify, and distribute this software for personal and educational purposes
-- ❌ Commercial use is strictly prohibited without explicit permission
-- ❌ Selling or sublicensing this software or derivatives is not allowed
+## Key features
 
-For commercial licensing inquiries, please contact the repository owner.
+- **Swipe discovery** — Tinder-style product cards with flip animation, size/color selection, like/dislike gestures
+- **Social / friends** — friend requests, view friends' likes and recommendations, progressive blur effect
+- **Cart and orders** — persistent cart (AsyncStorage), YooKassa payment redirect, order tracking with push notifications
+- **Auth** — JWT stored in SecureStore, 30-second profile cache, automatic token refresh, 401 event-based logout
+- **Push notifications** — Expo push tokens registered via API, order status updates
+- **Deep linking** — `polka://` custom scheme for product sharing
+- **Theme** — light / dark / system, persisted to AsyncStorage (`@polka_theme_mode`)
+- **Accessibility** — reduced motion support via `useMotion()` hook and `withReducedMotion()` helper
+- **Haptic feedback** — via expo-haptics on interactive elements
 
-## 👥 Contributors
+## EAS build profiles
 
-- [Daniel Igoshin](https://github.com/Xeryto) - Developer
+Defined in `eas.json`:
 
----
+| Profile | Platform | Use |
+|---|---|---|
+| `development` | iOS (simulator) | Local dev builds |
+| `preview` | iOS / Android | Internal testing |
+| `production` | iOS / Android | App Store / Play Store |
 
-<p align="center">Made with ❤️ using React Native and Expo</p>
+Commands from `package.json`:
+
+```bash
+yarn workspace polkamobile build:dev           # iOS dev build (EAS cloud)
+yarn workspace polkamobile build:preview       # iOS preview
+yarn workspace polkamobile build:prod          # iOS production
+yarn workspace polkamobile build:android:dev   # Android dev
+yarn workspace polkamobile build:android:preview
+yarn workspace polkamobile build:android:prod
+yarn workspace polkamobile build:dev:local      # iOS dev build (local)
+yarn workspace polkamobile build:preview:local  # iOS preview build (local)
+```
+
+## App Store submission
+
+### iOS
+
+- Bundle ID: `com.danyvsthewrld.PolkaMobile`
+- EAS project ID: `74d77e39-6b44-4eab-ba2a-5a9a5afb5968`
+- Requires Apple Developer account ($99/year)
+- Build: `yarn workspace polkamobile build:prod`
+- Submit: `eas submit --platform ios`
+- Checklist: screenshots (6.7" + 5.5"), Russian app description, privacy policy URL, App Review guidelines compliance
+
+### Android
+
+- Package: `com.danyvsthewrld.PolkaMobile`
+- Requires Google Play Developer account ($25 one-time)
+- Build: `yarn workspace polkamobile build:android:prod`
+- Submit: `eas submit --platform android`
+
+### OTA updates
+
+Runtime version policy: `appVersion`. Update channel per environment.
+
+```bash
+yarn workspace polkamobile publish:dev         # Push to development channel
+yarn workspace polkamobile publish:preview     # Push to preview channel
+yarn workspace polkamobile publish:prod        # Push to production channel
+```
+
+Updates URL: `https://u.expo.dev/74d77e39-6b44-4eab-ba2a-5a9a5afb5968`
+
+## App config notes
+
+From `app.json`:
+
+- Orientation: portrait only
+- `userInterfaceStyle`: automatic (follows system)
+- `newArchEnabled`: true
+- Custom scheme: `polka` (deep links)
+- Plugins: expo-web-browser, expo-build-properties, expo-secure-store, expo-notifications
+- Fonts: IgraSans, REM-Regular
+
+## Testing
+
+```bash
+yarn workspace polkamobile test      # Jest in watch mode
+```
+
+Uses `jest-expo` preset. Test suite is in early stages.
+
+## Notes
+
+- UI text is in Russian.
+- Install new Expo packages with `npx expo install <pkg>` from `packages/mobile` (for SDK version pinning), then `yarn install` from the monorepo root.

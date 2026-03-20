@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react"; // Added useState and useEffect
+import React, { useState, useEffect } from "react";
 import {
   Card,
   CardContent,
@@ -8,14 +8,14 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft } from "lucide-react";
-import { OrderItemDetailsModal } from "@/components/OrderItemDetailsModal"; // NEW Import
-import { Input } from "@/components/ui/input"; // NEW Import
-import { Label } from "@/components/ui/label"; // NEW Import
-import { useToast } from "@/hooks/use-toast"; // NEW Import
+import { ArrowLeft, Loader2 } from "lucide-react";
+import { OrderItemDetailsModal } from "@/components/OrderItemDetailsModal";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { toast } from "sonner";
 import { formatCurrency } from "@/lib/currency";
-import * as api from "@/services/api"; // Import api
-import { useAuth } from "@/context/AuthContext"; // Import useAuth
+import * as api from "@/services/api";
+import { useAuth } from "@/context/AuthContext";
 import {
   getOrderStatusLabel,
   getOrderStatusColor,
@@ -23,7 +23,7 @@ import {
 } from "@/lib/orderStatus";
 
 interface OrderDetailsPageProps {
-  order: api.OrderResponse;  // Brand view: single order
+  order: api.OrderResponse;
   onBack: () => void;
   onOrderUpdated?: () => void;
 }
@@ -31,102 +31,59 @@ interface OrderDetailsPageProps {
 export function OrderDetailsPage({ order, onBack, onOrderUpdated }: OrderDetailsPageProps) {
   const [orderStatus, setOrderStatus] = useState(order.status);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [selectedOrderItem, setSelectedOrderItem] =
-    useState<api.OrderItemResponse | null>(null); // Explicitly type selectedOrderItem
-  const [trackingNumberInput, setTrackingNumberInput] = useState(
-    order.tracking_number || ""
-  ); // NEW State
-  const [isSavingTracking, setIsSavingTracking] = useState(false); // NEW State
-  const [trackingLinkInput, setTrackingLinkInput] = useState(
-    order.tracking_link || ""
-  ); // NEW State
-  // Shopping information state
-  const [shoppingInfo, setShoppingInfo] = useState<api.ShoppingInfo | null>(
-    null
-  );
-  const [isLoadingShoppingInfo, setIsLoadingShoppingInfo] = useState(false);
-  const { toast } = useToast(); // NEW
-  const { token } = useAuth(); // Get token from useAuth
+  const [selectedOrderItem, setSelectedOrderItem] = useState<api.OrderItemResponse | null>(null);
+  const [trackingNumberInput, setTrackingNumberInput] = useState(order.tracking_number || "");
+  const [isSavingTracking, setIsSavingTracking] = useState(false);
+  const [trackingLinkInput, setTrackingLinkInput] = useState(order.tracking_link || "");
+  const [shoppingInfo, setShoppingInfo] = useState<api.ShoppingInfo | null>(null);
+  const { token } = useAuth();
 
   useEffect(() => {
     setOrderStatus(order.status);
   }, [order.status, order.id]);
 
-  // Load delivery information from the order itself
   useEffect(() => {
     if (order) {
-      // Extract delivery information from the order data
-      const deliveryInfo: api.ShoppingInfo = {
+      setShoppingInfo({
         full_name: order.delivery_full_name || "",
         delivery_email: order.delivery_email || "",
         phone: order.delivery_phone || "",
         address: order.delivery_address || "",
         city: order.delivery_city || "",
         postal_code: order.delivery_postal_code || "",
-      };
-      setShoppingInfo(deliveryInfo);
-      setIsLoadingShoppingInfo(false);
+      });
     }
   }, [order]);
 
   const handleItemClick = (item: api.OrderItemResponse) => {
-    // NEW Handler
     setSelectedOrderItem(item);
     setIsModalOpen(true);
   };
 
-  const handleSKUUpdated = (
-    orderItemId: string,
-    newSKU: string
-  ) => {
-    // NEW Handler
-    // Update the sku in the local order state
-    const updatedItems = (order.items ?? []).map((item) =>
-      item.id === orderItemId ? { ...item, sku: newSKU } : item
-    );
-    // This requires the order prop to be mutable or to re-fetch the order
-    // For now, we'll just update the selectedOrderItem in the modal.
-    // In a real app, you'd likely re-fetch the entire order to ensure data consistency
-    // or pass a setter for the order prop from the parent component.
-    setSelectedOrderItem((prev) =>
-      prev ? { ...prev, sku: newSKU } : null
-    );
+  const handleSKUUpdated = (orderItemId: string, newSKU: string) => {
+    setSelectedOrderItem((prev) => prev ? { ...prev, sku: newSKU } : null);
   };
 
+  const canEditTracking = orderStatus === ORDER_STATUS.PAID || orderStatus === ORDER_STATUS.SHIPPED;
+
   const handleSaveTrackingNumber = async () => {
-    // NEW Handler
     setIsSavingTracking(true);
     if (!token) {
-      toast({
-        title: "ошибка",
-        description: "токен аутентификации не найден. пожалуйста, войдите в систему.",
-        variant: "destructive",
-      });
+      toast.error("Токен не найден. Войдите в систему.");
       setIsSavingTracking(false);
       return;
     }
     try {
       await api.updateOrderTracking(
         order.id,
-        {
-          tracking_number: trackingNumberInput,
-          tracking_link: trackingLinkInput,
-        },
-        token
-      ); // Pass token
+        { tracking_number: trackingNumberInput, tracking_link: trackingLinkInput },
+        token,
+      );
       onOrderUpdated?.();
-      toast({
-        title: "успех",
-        description: "информация об отслеживании успешно обновлена.",
-      });
+      toast.success("Информация об отслеживании обновлена.");
     } catch (error: unknown) {
-      console.error("Failed to update tracking information:", error);
       const err = error as { message?: string };
-      toast({
-        title: "ошибка",
-        description: err.message || "не удалось обновить информацию об отслеживании.",
-        variant: "destructive",
-      });
+      toast.error(err.message || "Не удалось обновить информацию об отслеживании.");
     } finally {
       setIsSavingTracking(false);
     }
@@ -139,132 +96,95 @@ export function OrderDetailsPage({ order, onBack, onOrderUpdated }: OrderDetails
           <ArrowLeft className="h-4 w-4" />
         </Button>
         <div>
-          <h2 className="text-2xl font-bold text-foreground">order details</h2>
+          <h2 className="text-2xl font-bold text-foreground">Детали заказа</h2>
           <p className="text-muted-foreground">
-            Details for order {order.number}
+            Заказ № {order.number}
           </p>
-          {(() => {
-            const canEditTracking = orderStatus === ORDER_STATUS.PAID || orderStatus === ORDER_STATUS.SHIPPED;
-            return (
-            <div className="mt-4">
-              <Label htmlFor="trackingNumber">tracking number</Label>
-              <div className="flex items-center space-x-2 mt-1">
-                <Input
-                  id="trackingNumber"
-                  value={trackingNumberInput}
-                  onChange={(e) => setTrackingNumberInput(e.target.value)}
-                  placeholder="enter tracking number"
-                  className="flex-1"
-                  disabled={!canEditTracking}
-                />
-                <Button
-                  onClick={handleSaveTrackingNumber}
-                  disabled={isSavingTracking || !canEditTracking}
-                >
-                  {isSavingTracking ? "saving..." : "save"}
-                </Button>
-              </div>
-              <div className="mt-4">
-                <Label htmlFor="trackingLink" className="mt-2">
-                  tracking link
-                </Label>
-                <Input
-                  id="trackingLink"
-                  value={trackingLinkInput}
-                  onChange={(e) => setTrackingLinkInput(e.target.value)}
-                  placeholder="enter full tracking URL"
-                  className="mt-1"
-                  disabled={!canEditTracking}
-                />
-                {order.tracking_number && order.tracking_link && (
-                  <p className="text-sm text-muted-foreground mt-1">
-                    <a
-                      href={order.tracking_link}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-blue-400 hover:underline"
-                    >
-                      Track: {order.tracking_number}
-                    </a>
-                  </p>
-                )}
-              </div>
-            </div>
-            );
-          })()}
         </div>
       </div>
-      {/* Shopping Information Display */}
+
+      {/* Tracking */}
+      <Card className="bg-card border-border/30 shadow-sm">
+        <CardHeader>
+          <CardTitle className="text-base">Отслеживание</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div>
+            <Label htmlFor="trackingNumber">Номер отслеживания</Label>
+            <div className="flex items-center gap-2 mt-1">
+              <Input
+                id="trackingNumber"
+                value={trackingNumberInput}
+                onChange={(e) => setTrackingNumberInput(e.target.value)}
+                placeholder="Введите номер отслеживания"
+                className="flex-1"
+                disabled={!canEditTracking}
+              />
+              <Button
+                onClick={handleSaveTrackingNumber}
+                disabled={isSavingTracking || !canEditTracking}
+              >
+                {isSavingTracking && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                {isSavingTracking ? "Сохранение..." : "Сохранить"}
+              </Button>
+            </div>
+          </div>
+          <div>
+            <Label htmlFor="trackingLink">Ссылка на отслеживание</Label>
+            <Input
+              id="trackingLink"
+              value={trackingLinkInput}
+              onChange={(e) => setTrackingLinkInput(e.target.value)}
+              placeholder="Полный URL отслеживания"
+              className="mt-1"
+              disabled={!canEditTracking}
+            />
+            {order.tracking_number && order.tracking_link && (
+              <p className="text-sm text-muted-foreground mt-1">
+                <a
+                  href={order.tracking_link}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-blue-400 hover:underline"
+                >
+                  Отследить: {order.tracking_number}
+                </a>
+              </p>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Shipping info */}
       {shoppingInfo && (
-        <Card className="bg-card border-border/30 shadow-lg">
+        <Card className="bg-card border-border/30 shadow-sm">
           <CardHeader>
-            <CardTitle>Информация о доставке</CardTitle>
-            <CardDescription>Данные получателя для заказа</CardDescription>
+            <CardTitle className="text-base">Информация о доставке</CardTitle>
+            <CardDescription>Данные получателя</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <Label className="text-sm font-medium text-muted-foreground">
-                  Получатель
-                </Label>
-                <p className="text-foreground">
-                  {shoppingInfo.full_name || "Не указано"}
-                </p>
-              </div>
-              <div>
-                <Label className="text-sm font-medium text-muted-foreground">
-                  Телефон
-                </Label>
-                <p className="text-foreground">
-                  {shoppingInfo.phone || "Не указано"}
-                </p>
-              </div>
-              <div>
-                <Label className="text-sm font-medium text-muted-foreground">
-                  Email для доставки
-                </Label>
-                <p className="text-foreground">
-                  {shoppingInfo.delivery_email || "Не указано"}
-                </p>
-              </div>
-              <div>
-                <Label className="text-sm font-medium text-muted-foreground">
-                  Город
-                </Label>
-                <p className="text-foreground">
-                  {shoppingInfo.city || "Не указано"}
-                </p>
-              </div>
+              <InfoField label="Получатель" value={shoppingInfo.full_name} />
+              <InfoField label="Телефон" value={shoppingInfo.phone} />
+              <InfoField label="Email для доставки" value={shoppingInfo.delivery_email} />
+              <InfoField label="Город" value={shoppingInfo.city} />
               <div className="md:col-span-2">
-                <Label className="text-sm font-medium text-muted-foreground">
-                  Адрес доставки
-                </Label>
-                <p className="text-foreground">
-                  {shoppingInfo.address || "Не указано"}
-                </p>
+                <InfoField label="Адрес доставки" value={shoppingInfo.address} />
               </div>
               {shoppingInfo.postal_code && (
-                <div>
-                  <Label className="text-sm font-medium text-muted-foreground">
-                    Почтовый индекс
-                  </Label>
-                  <p className="text-foreground">{shoppingInfo.postal_code}</p>
-                </div>
+                <InfoField label="Почтовый индекс" value={shoppingInfo.postal_code} />
               )}
             </div>
           </CardContent>
         </Card>
       )}
-      <Card className="bg-card border-border/30 shadow-lg">
+
+      {/* Order items */}
+      <Card className="bg-card border-border/30 shadow-sm">
         <CardHeader>
           <div className="flex justify-between items-start">
-            <div>
-              <CardTitle>Заказ № {order.number}</CardTitle>
-            </div>
-            <Badge
-              className={getOrderStatusColor(orderStatus)}
-              variant="outline"
-            >
+            <CardTitle>Заказ № {order.number}</CardTitle>
+            <Badge className={getOrderStatusColor(orderStatus)} variant="outline">
               {getOrderStatusLabel(orderStatus)}
             </Badge>
           </div>
@@ -274,29 +194,33 @@ export function OrderDetailsPage({ order, onBack, onOrderUpdated }: OrderDetails
             {(order.items ?? []).map((item, index) => {
               const isReturned = item.status === "returned";
               return (
-              <div
-                key={index}
-                className={`flex justify-between items-center cursor-pointer hover:bg-muted/50 p-2 rounded-lg${isReturned ? " opacity-45" : ""}`}
-                onClick={() => handleItemClick(item)}
-              >
-                <div>
-                  <p className={`font-medium ${isReturned ? "text-muted-foreground" : "text-foreground"}`}>{item.name}</p>
-                  <p className="text-sm text-muted-foreground">
-                    size: {item.size}
-                  </p>
-                  {item.sku && (
-                    <p className="text-sm text-muted-foreground">
-                      sku: {item.sku}
+                <div
+                  key={index}
+                  className={`flex justify-between items-center cursor-pointer hover:bg-muted/50 p-2 rounded-lg${isReturned ? " opacity-45" : ""}`}
+                  onClick={() => handleItemClick(item)}
+                >
+                  <div>
+                    <p className={`font-medium ${isReturned ? "text-muted-foreground" : "text-foreground"}`}>
+                      {item.name}
                     </p>
-                  )}
-                  {isReturned && (
-                    <span className="inline-block mt-1 text-xs px-2 py-0.5 rounded-full bg-destructive/15 text-destructive font-medium">возвращён</span>
-                  )}
+                    <p className="text-sm text-muted-foreground">
+                      Размер: {item.size}
+                    </p>
+                    {item.sku && (
+                      <p className="text-sm text-muted-foreground">
+                        SKU: {item.sku}
+                      </p>
+                    )}
+                    {isReturned && (
+                      <span className="inline-block mt-1 text-xs px-2 py-0.5 rounded-full bg-destructive/15 text-destructive font-medium">
+                        возвращён
+                      </span>
+                    )}
+                  </div>
+                  <p className={`font-bold ${isReturned ? "text-muted-foreground" : "text-foreground"}`}>
+                    {formatCurrency(item.price)}
+                  </p>
                 </div>
-                <p className={`font-bold ${isReturned ? "text-muted-foreground" : "text-foreground"}`}>
-                  {formatCurrency(item.price)}
-                </p>
-              </div>
               );
             })}
           </div>
@@ -316,6 +240,7 @@ export function OrderDetailsPage({ order, onBack, onOrderUpdated }: OrderDetails
           </div>
         </CardContent>
       </Card>
+
       {selectedOrderItem && (
         <OrderItemDetailsModal
           isOpen={isModalOpen}
@@ -324,8 +249,16 @@ export function OrderDetailsPage({ order, onBack, onOrderUpdated }: OrderDetails
           orderItem={selectedOrderItem}
           onSKUUpdated={handleSKUUpdated}
         />
-      )}{" "}
-      {/* NEW Modal */}
+      )}
+    </div>
+  );
+}
+
+function InfoField({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <Label className="text-sm font-medium text-muted-foreground">{label}</Label>
+      <p className="text-foreground">{value || "Не указано"}</p>
     </div>
   );
 }

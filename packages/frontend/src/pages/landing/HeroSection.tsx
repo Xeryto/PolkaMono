@@ -40,24 +40,24 @@ export function HeroSection({
         <img
           src="/assets/LogoAlt.svg"
           alt="Polka"
-          className={`h-20 w-20 ${isVisible ? "animate-reveal-scale" : ""}`}
+          className={`h-20 w-20 ${isVisible ? "animate-reveal-scale" : "opacity-0"}`}
         />
 
         <div className="space-y-4">
           <h1
-            className={`font-display text-6xl sm:text-7xl md:text-8xl tracking-tight text-brand-dark ${isVisible ? "animate-reveal-up" : ""}`}
+            className={`font-display text-6xl sm:text-7xl md:text-8xl tracking-tight text-brand-dark ${isVisible ? "animate-reveal-up" : "opacity-0"}`}
           >
             Polka
           </h1>
           <p
-            className={`text-lg sm:text-xl text-brand-muted max-w-lg mx-auto leading-relaxed ${isVisible ? "animate-reveal-up [animation-delay:0.15s]" : ""}`}
+            className={`text-lg sm:text-xl text-brand-muted max-w-lg mx-auto leading-relaxed ${isVisible ? "animate-reveal-up [animation-delay:0.15s]" : "opacity-0"}`}
           >
             Открывайте уникальные бренды. Листайте, вдохновляйтесь, покупайте
             — всё в одном приложении.
           </p>
         </div>
 
-        <div className={isVisible ? "animate-reveal-up [animation-delay:0.3s]" : ""}>
+        <div className={isVisible ? "animate-reveal-up [animation-delay:0.3s]" : "opacity-0"}>
           <SignupForm
             id="hero-form"
             email={email}
@@ -69,7 +69,7 @@ export function HeroSection({
         </div>
 
         <p
-          className={`text-sm text-muted-foreground ${isVisible ? "animate-reveal-up [animation-delay:0.45s]" : ""}`}
+          className={`text-sm text-muted-foreground ${isVisible ? "animate-reveal-up [animation-delay:0.45s]" : "opacity-0"}`}
         >
           Эксклюзивный ранний доступ. Бесплатно.
         </p>

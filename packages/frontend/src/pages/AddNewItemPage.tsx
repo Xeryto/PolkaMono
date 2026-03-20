@@ -21,7 +21,7 @@ import { SizesInventoryStep } from "@/components/addItem/SizesInventoryStep";
 import { PreviewStep } from "@/components/addItem/PreviewStep";
 import { getAllowedSizeTypes, type SizeType } from "@/lib/sizes";
 
-const STEP_LABELS = ["Основное", "Доставка", "Фото", "Размеры", "Предпросмотр"];
+const STEP_LABELS = ["Основное", "Доставка", "Цвета и размеры", "Фото", "Предпросмотр"];
 const DRAFT_KEY = "polka_add_item_draft";
 
 const basicSchema = z.object({
@@ -219,13 +219,28 @@ export function AddNewItemPage() {
       setFieldErrors({});
       return true;
     }
-    if (s === 1) return true; // delivery is optional
-    if (s === 2) return true; // images validated on submit
-    if (s === 3) {
+    if (s === 1) {
+      // delivery is optional, but validate min <= max if both set
+      if (deliveryTimeMin !== undefined && deliveryTimeMax !== undefined && deliveryTimeMax < deliveryTimeMin) {
+        toast.error("Максимальный срок доставки не может быть меньше минимального.");
+        return false;
+      }
+      return true;
+    }
+    if (s === 2) {
       for (const cv of colorVariations) {
         if (!cv.colorName.trim()) { toast.error("Выберите цвет для каждого варианта."); return false; }
         const filled = cv.variants.filter((v) => v.size.trim());
         if (filled.length === 0) { toast.error(`Добавьте размер для цвета "${cv.colorName}".`); return false; }
+      }
+      return true;
+    }
+    if (s === 3) {
+      const hasGeneralImages = generalImages.length > 0;
+      const hasOnePerColor = colorVariations.every((cv) => cv.images.length > 0);
+      if (!hasGeneralImages && !hasOnePerColor) {
+        toast.error("Добавьте общие изображения или по изображению на каждый цвет.");
+        return false;
       }
       return true;
     }
@@ -351,19 +366,19 @@ export function AddNewItemPage() {
           )}
 
           {step === 2 && (
+            <SizesInventoryStep
+              colorVariations={colorVariations} selectedCategory={selectedCategory}
+              sizeMode={sizeMode} onSizeModeChange={setSizeMode}
+              onColorVariationsChange={setColorVariations}
+            />
+          )}
+
+          {step === 3 && (
             <ImagesStep
               generalImages={generalImages} generalImageFiles={generalImageFiles}
               colorVariations={colorVariations}
               onGeneralImages={handleGeneralImages} onRemoveGeneralImage={removeGeneralImage}
               onColorVariationImages={handleColorVariationImages} onRemoveColorVariationImage={removeColorVariationImage}
-            />
-          )}
-
-          {step === 3 && (
-            <SizesInventoryStep
-              colorVariations={colorVariations} selectedCategory={selectedCategory}
-              sizeMode={sizeMode} onSizeModeChange={setSizeMode}
-              onColorVariationsChange={setColorVariations}
             />
           )}
 

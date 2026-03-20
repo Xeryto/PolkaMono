@@ -8,6 +8,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
+import { Loader2, RotateCcw, ZoomIn } from "lucide-react";
 
 const ASPECT = 1080 / 1680; // 9:14
 const OUTPUT_W = 1080;
@@ -65,6 +66,7 @@ export const ImageCropModal: React.FC<ImageCropModalProps> = ({
   const [crop, setCrop] = useState({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
   const [croppedArea, setCroppedArea] = useState<Area | null>(null);
+  const [isCropping, setIsCropping] = useState(false);
 
   useEffect(() => {
     setCrop({ x: 0, y: 0 });
@@ -76,20 +78,35 @@ export const ImageCropModal: React.FC<ImageCropModalProps> = ({
     setCroppedArea(croppedPixels);
   }, []);
 
+  const handleReset = () => {
+    setCrop({ x: 0, y: 0 });
+    setZoom(1);
+  };
+
   const handleConfirm = async () => {
     if (!imageSrc || !croppedArea) return;
-    const file = await getCroppedImg(imageSrc, croppedArea, originalFile);
-    onConfirm(file);
+    setIsCropping(true);
+    try {
+      const file = await getCroppedImg(imageSrc, croppedArea, originalFile);
+      onConfirm(file);
+    } finally {
+      setIsCropping(false);
+    }
   };
 
   return (
     <Dialog open={!!imageSrc} onOpenChange={(open) => !open && onCancel()}>
-      <DialogContent className="max-w-xl">
-        <DialogHeader>
-          <DialogTitle>Обрезать изображение</DialogTitle>
+      <DialogContent className="max-w-xl p-0 overflow-hidden bg-card border-border/30">
+        <DialogHeader className="px-6 pt-6 pb-3">
+          <DialogTitle className="text-lg font-bold">Обрезать изображение</DialogTitle>
+          <p className="text-xs text-muted-foreground">
+            Перетащите для позиционирования, колёсико мыши для масштаба
+          </p>
         </DialogHeader>
+
+        {/* Cropper area with inset shadow */}
         <div
-          className="relative w-full min-h-[250px]"
+          className="relative w-full min-h-[250px] bg-black/20"
           style={{ height: "clamp(250px, 50dvh, 400px)" }}
         >
           {imageSrc && (
@@ -104,23 +121,42 @@ export const ImageCropModal: React.FC<ImageCropModalProps> = ({
             />
           )}
         </div>
-        <div className="flex items-center gap-3 px-1">
-          <span className="text-sm text-muted-foreground whitespace-nowrap">
-            Масштаб
-          </span>
-          <Slider
-            min={1}
-            max={3}
-            step={0.01}
-            value={[zoom]}
-            onValueChange={([v]) => setZoom(v)}
-          />
-        </div>
-        <div className="flex justify-end gap-2 pt-2">
-          <Button variant="outline" onClick={onCancel}>
-            Отмена
-          </Button>
-          <Button onClick={handleConfirm}>Применить</Button>
+
+        {/* Controls */}
+        <div className="px-6 pb-6 pt-4 space-y-4">
+          <div className="flex items-center gap-3 rounded-xl bg-surface-elevated/50 p-3">
+            <ZoomIn className="h-4 w-4 text-brand shrink-0" />
+            <Slider
+              min={1}
+              max={3}
+              step={0.01}
+              value={[zoom]}
+              onValueChange={([v]) => setZoom(v)}
+              className="flex-1"
+            />
+            <span className="text-sm font-medium text-foreground w-12 text-right tabular-nums">
+              {Math.round(zoom * 100)}%
+            </span>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 shrink-0 hover:bg-accent/50"
+              onClick={handleReset}
+              title="Сбросить"
+            >
+              <RotateCcw className="h-4 w-4" />
+            </Button>
+          </div>
+
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={onCancel}>
+              Отмена
+            </Button>
+            <Button onClick={handleConfirm} disabled={isCropping}>
+              {isCropping && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              Применить
+            </Button>
+          </div>
         </div>
       </DialogContent>
     </Dialog>

@@ -1,6 +1,5 @@
 import { Sun, Moon } from "lucide-react";
 import { useScrollReveal } from "@/hooks/useScrollReveal";
-import { useParallax } from "@/hooks/useParallax";
 
 interface AppShowcaseProps {
   screenshotTheme: "dark" | "light";
@@ -9,10 +8,9 @@ interface AppShowcaseProps {
 
 export function AppShowcase({ screenshotTheme, onToggleTheme }: AppShowcaseProps) {
   const { ref, isVisible } = useScrollReveal();
-  const offset = useParallax();
 
   return (
-    <section className="py-16 px-4 bg-accent/30 overflow-hidden">
+    <section className="py-16 px-4 bg-accent/30">
       <div ref={ref} className="max-w-3xl mx-auto text-center space-y-8">
         <div className="relative">
           <h2
@@ -48,29 +46,21 @@ export function AppShowcase({ screenshotTheme, onToggleTheme }: AppShowcaseProps
         </div>
 
         <div className="flex justify-center gap-4 py-8">
-          <div
-            className={`w-36 sm:w-44 aspect-[9/19.5] rounded-2xl overflow-hidden shadow-lg -rotate-6 hover:rotate-0 transition-transform duration-300 ${isVisible ? "animate-reveal-right" : "opacity-0"}`}
-            style={{ transform: `translateY(${offset * 0.03}px) rotate(-6deg)` }}
-          >
+          <div className="w-36 sm:w-44 aspect-[9/19.5] rounded-2xl overflow-hidden shadow-sm -rotate-6 hover:rotate-0 transition-transform duration-300">
             <img
               src={`/assets/screenshots/${screenshotTheme}-favorites.png`}
               alt="Favorites"
               className="w-full h-full object-cover"
             />
           </div>
-          <div
-            className={`w-36 sm:w-44 aspect-[9/19.5] rounded-2xl overflow-hidden border border-brand/30 shadow-xl z-10 scale-105 ${isVisible ? "animate-reveal-up [animation-delay:0.1s]" : "opacity-0"}`}
-          >
+          <div className="w-36 sm:w-44 aspect-[9/19.5] rounded-2xl overflow-hidden border border-brand/30 shadow-md z-10 scale-105">
             <img
               src={`/assets/screenshots/${screenshotTheme}-main.png`}
               alt="Swipe discovery"
               className="w-full h-full object-cover"
             />
           </div>
-          <div
-            className={`w-36 sm:w-44 aspect-[9/19.5] rounded-2xl overflow-hidden shadow-lg rotate-6 hover:rotate-0 transition-transform duration-300 ${isVisible ? "animate-reveal-left" : "opacity-0"}`}
-            style={{ transform: `translateY(${offset * 0.03}px) rotate(6deg)` }}
-          >
+          <div className="w-36 sm:w-44 aspect-[9/19.5] rounded-2xl overflow-hidden shadow-sm rotate-6 hover:rotate-0 transition-transform duration-300">
             <img
               src={`/assets/screenshots/${screenshotTheme}-cart.png`}
               alt="Cart"

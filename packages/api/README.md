@@ -1,225 +1,246 @@
-# PolkaAPI - Modern Authentication Backend
+# Polka API
 
-A production-ready, scalable authentication API built with **FastAPI** and **PostgreSQL**, featuring comprehensive user management, OAuth social login integration, and fashion-focused user preferences.
+FastAPI backend for the Polka fashion marketplace. Handles authentication, product catalog, payments, recommendations, push notifications, and admin operations.
 
-## 🚀 **Key Features**
+Part of the [Polka monorepo](../../README.md).
 
-### **Authentication & Security**
+## Tech stack
 
-- **JWT-based authentication** with configurable token expiration
-- **Password hashing** using bcrypt with salt
-- **OAuth 2.0 integration** for Google, Facebook, GitHub, and Apple
-- **Flexible login** - users can authenticate with email OR username
-- **Input validation** with Pydantic models and comprehensive error handling
+- FastAPI 0.104.1 + Uvicorn 0.24.0
+- SQLAlchemy >= 2.0.43 + Alembic 1.12.1
+- Pydantic >= 2.8.0
+- PostgreSQL (psycopg2-binary >= 2.9.10)
+- YooKassa 2.1.0 (payments)
+- Authlib 1.2.1 + python-jose 3.3.0 (OAuth / JWT)
+- APScheduler >= 3.10.0 (background jobs)
+- boto3 >= 1.34.0 (S3 image uploads)
+- slowapi (rate limiting)
 
-### **User Management**
+## Setup
 
-- **Complete user profiles** with gender, size preferences, and personal information
-- **Favorite brands & styles** with many-to-many relationships
-- **Profile completion tracking** with missing field detection
-- **OAuth account linking** - users can connect multiple social accounts
-
-### **Database & Architecture**
-
-- **PostgreSQL** with SQLAlchemy ORM for robust data management
-- **Alembic migrations** for version-controlled schema changes
-- **Proper indexing** on frequently queried fields
-- **Cascade deletes** and referential integrity
-- **Connection pooling** for optimal performance
-
-### **API Design**
-
-- **RESTful endpoints** following best practices
-- **Comprehensive error handling** with proper HTTP status codes
-- **Request/response validation** with Pydantic models
-- **Auto-generated API documentation** (Swagger UI & ReDoc)
-- **CORS support** for cross-origin requests
-
-## 🛠 **Technology Stack**
-
-- **Framework**: FastAPI 0.104.1
-- **Database**: PostgreSQL 15 with SQLAlchemy 2.0.23
-- **Authentication**: JWT, bcrypt, OAuth 2.0
-- **Migrations**: Alembic 1.12.1
-- **Validation**: Pydantic 2.5.0
-- **HTTP Client**: httpx 0.25.2
-- **OAuth**: Authlib 1.2.1
-
-## 📊 **Database Schema**
-
-```sql
--- Core user management
-users (id, username, email, password_hash,
-       gender, selected_size, avatar_url,
-       is_verified, created_at, updated_at)
-
--- OAuth integration
-oauth_accounts (id, user_id, provider, provider_user_id,
-                access_token, refresh_token, expires_at)
-
--- Fashion preferences
-brands (id, name, slug, logo, description)
-styles (id, name, description)
-user_brands (user_id, brand_id) -- Many-to-many
-user_styles (user_id, style_id) -- Many-to-many
-```
-
-## 🔧 **Quick Start**
-
-### **Prerequisites**
-
-- Python 3.8+
-- PostgreSQL 12+
-- pip
-
-### **Installation**
+From the monorepo root:
 
 ```bash
-# Clone repository
-git clone <repository-url>
-cd PolkaAPI
+yarn install:all          # Creates .venv and installs pip deps
+cp packages/api/.env.example packages/api/.env
+# Edit .env with your database URL, secret key, etc.
+cd packages/api
+make db-init              # Runs migrations + seeds sample data
+make run-dev              # Starts uvicorn with --reload on :8000
+```
 
-# Create virtual environment
-python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
+Or manually:
 
-# Install dependencies
-make install
-
-# Set up environment variables
-export SECRET_KEY="your-super-secret-key"
-export DATABASE_URL="postgresql://postgres:postgres@localhost:5432/polkaDB"
-
-# Initialize database
+```bash
+cd packages/api
+python3 -m venv .venv && source .venv/bin/activate
+pip install -r requirements.txt
+cp .env.example .env
 make db-init
-
-# Start development server
-make run
+make run-dev
 ```
 
-### **Available Commands**
+API docs at `http://localhost:8000/docs` (Swagger) and `/redoc`.
+
+## Environment variables
+
+### Core
+
+| Variable | Required | Default | Description |
+|---|---|---|---|
+| `SECRET_KEY` | yes | — | JWT signing secret |
+| `DATABASE_URL` | yes | — | PostgreSQL connection string |
+| `ENVIRONMENT` | no | `development` | `development` / `staging` / `production` |
+| `DEBUG` | no | `False` | Enable debug logging |
+| `OAUTH_REDIRECT_URL` | yes | — | OAuth callback URL |
+| `LOG_LEVEL` | no | `DEBUG` (dev) / `INFO` (prod) | Logging level |
+
+### Payments (YooKassa)
+
+| Variable | Required | Description |
+|---|---|---|
+| `YOOKASSA_SHOP_ID` | for payments | Shop identifier |
+| `YOOKASSA_SECRET_KEY` | for payments | API secret key |
+
+### Email (Unisender)
+
+| Variable | Required | Description |
+|---|---|---|
+| `UNISENDER_API_KEY` | for email | API key |
+| `UNISENDER_FROM_EMAIL` | for email | Sender address |
+| `UNISENDER_FROM_NAME` | for email | Sender display name |
+| `UNISENDER_LIST_ID` | for email | Mailing list ID |
+
+### OAuth
+
+| Variable | Description |
+|---|---|
+| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | Google OAuth |
+| `FACEBOOK_CLIENT_ID` / `FACEBOOK_CLIENT_SECRET` | Facebook OAuth |
+| `GITHUB_CLIENT_ID` / `GITHUB_CLIENT_SECRET` | GitHub OAuth |
+| `APPLE_CLIENT_ID` / `APPLE_CLIENT_SECRET` / `APPLE_TEAM_ID` / `APPLE_KEY_ID` / `APPLE_PRIVATE_KEY` | Apple OAuth |
+
+### S3 (image uploads)
+
+| Variable | Default | Description |
+|---|---|---|
+| `AWS_ACCESS_KEY_ID` | — | AWS credentials |
+| `AWS_SECRET_ACCESS_KEY` | — | AWS credentials |
+| `AWS_REGION` | `us-east-1` | S3 region |
+| `S3_BUCKET_NAME` | — | Bucket for avatars and product images |
+| `S3_PUBLIC_BASE_URL` | — | Optional CloudFront / custom domain for public URLs |
+
+### Admin
+
+| Variable | Description |
+|---|---|
+| `ADMIN_EMAIL` | Admin account email |
+| `ADMIN_PASSWORD` | Admin account password |
+
+### Tuning (all have defaults)
+
+| Variable | Default | Description |
+|---|---|---|
+| `ACCESS_TOKEN_EXPIRE_MINUTES` | `30` | User JWT lifetime |
+| `BRAND_TOKEN_EXPIRE_MINUTES` | `1440` | Brand JWT lifetime |
+| `REFRESH_TOKEN_EXPIRE_DAYS` | `60` | Refresh token lifetime |
+| `EMAIL_VERIFICATION_CODE_EXPIRE_MINUTES` | `10` | Email code expiry |
+| `ORDER_PENDING_EXPIRY_HOURS` | `24` | Auto-cancel unpaid orders after |
+| `OTP_EXPIRE_MINUTES` | `5` | 2FA code lifetime |
+| `OTP_MAX_FAILED_ATTEMPTS` | `5` | Lock after N wrong OTPs |
+| `OTP_LOCKOUT_MINUTES` | `15` | OTP lockout duration |
+| `OTP_MAX_RESENDS` | `3` | Max OTP resend attempts |
+| `OTP_RESEND_COOLDOWN_SECONDS` | `60` | Seconds between OTP resends |
+| `LOGIN_MAX_FAILED_ATTEMPTS` | `5` | Lock after N wrong passwords |
+| `LOGIN_LOCKOUT_MINUTES` | `15` | Login lockout duration |
+| `BRAND_DELETION_GRACE_DAYS` | `30` | Days before brand data is purged |
+
+## Architecture
+
+All routes live in `main.py`. Domain logic is split across service modules:
+
+| Module | Responsibility |
+|---|---|
+| `models.py` | SQLAlchemy ORM models |
+| `schemas.py` | Pydantic request/response schemas |
+| `auth_service.py` | JWT, bcrypt, user/brand CRUD, OTP |
+| `oauth_service.py` | Google / Facebook / GitHub / Apple OAuth |
+| `payment_service.py` | YooKassa payments, webhook verification, order lifecycle |
+| `mail_service.py` | Transactional email via Unisender |
+| `storage_service.py` | S3 presigned URL generation |
+| `notification_service.py` | Expo push notifications, order status updates |
+| `recommendation_service.py` | Swipe-signal product recommendations, category affinity |
+| `profanity.py` | Username filter (EN/RU) with character substitution detection |
+| `database.py` | SQLAlchemy engine, session, `get_db` dependency |
+| `config.py` | Settings from environment variables |
+
+### Dual-entity auth model
+
+Two principal types — `User` (buyers) and `Brand` (sellers) — share a single `AuthAccount` table for credentials (email, password hash, verification codes, 2FA). Brand JWTs include `"is_brand": True`.
+
+- `get_current_user()` returns either a `User` or `Brand`
+- `get_current_brand_user()` asserts the caller is a `Brand`, raises 403 otherwise
+
+User PKs are UUID strings; Brand PKs are auto-increment integers.
+
+### Key data model relationships
+
+```
+AuthAccount ──< User
+             └─< Brand
+User ──< UserProfile (full_name, avatar, size)
+     ├─< UserShippingInfo
+     ├─< UserPreferences (privacy, notifications)
+     ├─< UserBrand (favorite brands, many-to-many)
+     ├─< UserStyle (favorite styles, many-to-many)
+     └─< UserSwipe
+Brand ──< Product ──< ProductColorVariant ──< ProductVariant (size + stock)
+Checkout ──< Order (one per brand) ──< OrderItem
+```
+
+## Endpoint groups
+
+~109 endpoints total, grouped by domain:
+
+| Domain | Count | Prefix | Notes |
+|---|---|---|---|
+| User auth | 16 | `/api/v1/auth/` | Register, login, OAuth, refresh, email verify, password reset, logout |
+| Brand auth | 10 | `/api/v1/brands/auth/` | Login, 2FA enable/verify/disable, password reset |
+| Admin auth | 4 | `/api/v1/admin/auth/` | Login, 2FA verify/resend, session check |
+| User profile | 20 | `/api/v1/user/`, `/api/v1/users/` | Profile CRUD, stats, swipe, shipping, preferences, push token, avatar upload, search, delete account |
+| Brand management | 7 | `/api/v1/brands/` | List, create, profile, stats, image upload, soft-delete |
+| Brand products | 4 | `/api/v1/brands/products/` | CRUD |
+| Brand orders | 2 | `/api/v1/brands/orders/` | Tracking, SKU update |
+| Categories/styles | 5 | `/api/v1/categories/`, `/api/v1/styles/` | Browse categories/sizes, set favorites |
+| Products (public) | 3 | `/api/v1/products/` | Detail, popular, search (pg_trgm + Russian FTS) |
+| Favorites | 3 | `/api/v1/user/favorites/`, `/api/v1/user/recent-swipes` | Toggle, list, recent swipes |
+| Recommendations | 2 | `/api/v1/recommendations/` | For user, for friend |
+| Friends | 8 | `/api/v1/friends/` | Request, accept/reject/cancel, list, remove |
+| Orders | 6 | `/api/v1/orders/` | Create test order, confirm, list, detail, cancel |
+| Payments | 3 | `/api/v1/payments/` | Create, status, YooKassa webhook |
+| Notifications | 2 | `/api/v1/notifications/` | List, mark read |
+| Admin | 14 | `/api/v1/admin/` | Send notifications, returns, orders, withdrawals, brand CRUD |
+| Waitlist | 1 | `/api/v1/exclusive-access-signup` | Email signup for early access |
+| Legacy | 1 | `/api/v1/checkouts/{id}` | Checkout lookup (deprecated) |
+| Utility | 1 | `/health` | Health check |
+
+## Background jobs
+
+APScheduler runs two hourly jobs:
+
+1. **Order expiry** — cancels `CREATED` orders past `expires_at`, restores stock
+2. **Brand purge** — anonymizes brands past their `scheduled_deletion_at` (clears PII, zeroes stock, wipes images)
+
+## Search
+
+Product search uses PostgreSQL `pg_trgm` for fuzzy matching and Russian-language full-text search (`to_tsvector('russian', ...)`). The `pg_trgm` extension is enabled during `db-init`.
+
+## Makefile commands
+
+```
+make help          Show available commands
+make install       pip install -r requirements.txt
+make run           python main.py
+make run-dev       uvicorn with --reload on 0.0.0.0:8000
+make test          pytest tests/ -v
+make coverage      pytest with coverage report (terminal + HTML)
+make format        black + isort
+make lint          flake8 + mypy
+make clean         Remove .pyc / __pycache__ / .egg-info
+make db-init       alembic upgrade head + populate_data.py
+make db-migrate    alembic upgrade head
+make db-migration  alembic autogenerate (message='...')
+make docs          Print Swagger/ReDoc URLs
+```
+
+## Testing
+
+Test suite in `tests/`:
+
+| File | Coverage |
+|---|---|
+| `test_registration.py` | User/brand registration flows |
+| `test_login.py` | Login, JWT, refresh |
+| `test_security.py` | Rate limiting, auth guards |
+| `test_payments.py` | Payment creation, webhooks |
+| `test_preferences.py` | User preferences, favorites |
+| `test_recommendations.py` | Recommendation engine |
+| `test_products.py` | Product CRUD, search |
+| `test_social.py` | Friend requests, social features |
+| `test_user_profile.py` | Profile CRUD, shipping |
+| `test_order_lifecycle.py` | Order creation through completion |
+| `test_cross_account_isolation.py` | User/brand data isolation |
+| `conftest.py` | Fixtures, test DB setup |
+| `factories.py` | Test data factories |
 
 ```bash
-make help          # Show all available commands
-make install       # Install dependencies
-make run           # Start development server
-make run-dev       # Start with auto-reload
-make test          # Run API tests
-make format        # Format code with black & isort
-make lint          # Run linting checks
-make db-init       # Initialize database with sample data
-make db-migrate    # Apply pending migrations
-make docs          # Open API documentation
+make test                # Run all tests
+make coverage            # Tests + coverage report
 ```
 
-## 📚 **API Documentation**
+## Deployment
 
-Once running, visit:
-
-- **Swagger UI**: http://localhost:8000/docs
-- **ReDoc**: http://localhost:8000/redoc
-
-### **Core Endpoints**
-
-| Method | Endpoint                   | Description            |
-| ------ | -------------------------- | ---------------------- |
-| `POST` | `/api/v1/auth/register`    | User registration      |
-| `POST` | `/api/v1/auth/login`       | Login (email/username) |
-| `POST` | `/api/v1/auth/oauth/login` | OAuth login            |
-| `GET`  | `/api/v1/user/profile`     | Get user profile       |
-| `PUT`  | `/api/v1/user/profile`     | Update user profile    |
-| `GET`  | `/api/v1/brands`           | Get available brands   |
-| `POST` | `/api/v1/user/brands`      | Update favorite brands |
-| `GET`  | `/api/v1/styles`           | Get available styles   |
-| `POST` | `/api/v1/user/styles`      | Update favorite styles |
-
-## 🔐 **Security Features**
-
-- **JWT tokens** with configurable expiration
-- **Password hashing** using bcrypt with salt
-- **Input sanitization** and validation
-- **SQL injection protection** via SQLAlchemy ORM
-- **CORS configuration** for secure cross-origin requests
-- **Environment-based configuration** for secrets
-
-## 🧪 **Testing**
-
-```bash
-# Run comprehensive API tests
-make test
-```
-
-The test suite covers:
-
-- User registration and authentication
-- Profile management and updates
-- Brand and style preferences
-- OAuth integration (mock)
-- Error handling and validation
-- Database operations
-
-## 📈 **Performance & Scalability**
-
-- **Connection pooling** for database efficiency
-- **Proper indexing** on frequently queried fields
-- **Lazy loading** of relationships
-- **Stateless JWT authentication** for horizontal scaling
-- **Efficient queries** with SQLAlchemy optimization
-
-## 🏗 **Architecture Highlights**
-
-### **Clean Architecture**
-
-- **Separation of concerns** with dedicated service layers
-- **Dependency injection** for testability
-- **Repository pattern** for data access
-- **Configuration management** with environment variables
-
-### **Code Quality**
-
-- **Type hints** throughout the codebase
-- **Comprehensive error handling**
-- **Logging and monitoring** ready
-- **Code formatting** with black and isort
-- **Linting** with flake8 and mypy
-
-### **Database Design**
-
-- **Normalized schema** with proper relationships
-- **Foreign key constraints** for data integrity
-- **Indexes** on performance-critical fields
-- **Migration system** for schema evolution
-
-## 🚀 **Deployment Ready**
-
-- **Environment configuration** for different stages
-- **Database migration system** for zero-downtime deployments
-- **Health check endpoints** for monitoring
-- **Comprehensive logging** for debugging
-- **Error handling** for production scenarios
-
-## 📝 **Development Workflow**
-
-1. **Feature Development**: Create new Alembic migrations for schema changes
-2. **Testing**: Comprehensive test suite with real API calls
-3. **Code Quality**: Automated formatting and linting
-4. **Documentation**: Auto-generated API docs from code
-5. **Deployment**: Environment-based configuration management
-
-## 🎯 **Business Value**
-
-This API demonstrates:
-
-- **Production-ready authentication** system
-- **Scalable architecture** for high-traffic applications
-- **Modern development practices** with proper tooling
-- **Security best practices** for user data protection
-- **Flexible user preference system** for personalized experiences
-
-## 📞 **Contact**
-
-This project showcases modern backend development practices with FastAPI, PostgreSQL, and comprehensive authentication systems. Perfect for demonstrating full-stack development capabilities and production-ready API design.
-
----
-
-**Built with ❤️ using FastAPI, PostgreSQL, and modern Python practices**
+- **Dockerfile**: multi-stage build on `python:3.10-slim`, non-root `appuser`, exposes port 8000
+- **Alembic prod safety**: `alembic/env.py` blocks migrations against production unless `ALLOW_PROD_MIGRATE=1`
+- **Rate limiting**: all public endpoints rate-limited via slowapi; auth endpoints at 5-10/minute
+- API errors and validation messages are localized to Russian

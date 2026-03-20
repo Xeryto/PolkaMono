@@ -8,8 +8,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Check, Eye, EyeOff, Shield } from "lucide-react";
+import { ArrowLeft, Check, Eye, EyeOff, Loader2, Shield } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
 import * as api from "@/services/api";
 
@@ -26,7 +25,6 @@ const BrandResetPasswordPage = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
-  const { toast } = useToast();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -281,7 +279,7 @@ const BrandResetPasswordPage = () => {
                   !confirmPassword.trim()
                 }
               >
-                <Shield className="mr-2 h-4 w-4" />
+                {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Shield className="mr-2 h-4 w-4" />}
                 {isSubmitting ? "Сброс пароля..." : "Сбросить пароль"}
               </Button>
             </form>

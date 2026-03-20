@@ -43,7 +43,6 @@ import {
   translateColorToRussian,
   translateMaterialToRussian,
 } from "@/lib/translations";
-import NetworkLoadingIndicator from "@/components/NetworkLoadingIndicator";
 import { useNetworkRequest } from "@/hooks/useNetworkRequest";
 import { formatCurrency } from "@/lib/currency";
 import { getTotalStock, hasLowStock } from "@/lib/productUtils";
@@ -149,7 +148,6 @@ export function ProductsView() {
 
   const handleProductUpdated = () => {
     if (token) fetchProducts(token);
-    toast.success("Товар успешно обновлён.");
   };
 
   const handleRemoveSaleClick = (e: React.MouseEvent, product: api.ProductResponse) => {
@@ -242,13 +240,30 @@ export function ProductsView() {
             </Select>
           </div>
 
-          <NetworkLoadingIndicator
-            isLoading={isLoading}
-            error={error}
-            onRetry={retryFetchProducts}
-            timeout={15000}
-            message="загрузка товаров..."
-          />
+          {isLoading && (
+            <div className="space-y-3">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <div key={i} className="flex items-center gap-4 p-3 rounded-lg border border-border/30">
+                  <Skeleton className="h-10 w-10 rounded-full shrink-0" />
+                  <div className="flex-1 space-y-2">
+                    <Skeleton className="h-4 w-1/3" />
+                    <Skeleton className="h-3 w-1/5" />
+                  </div>
+                  <Skeleton className="h-4 w-16" />
+                  <Skeleton className="h-4 w-20" />
+                </div>
+              ))}
+            </div>
+          )}
+
+          {!isLoading && error && (
+            <div className="flex flex-col items-center justify-center py-12 text-center gap-3">
+              <p className="text-muted-foreground text-sm">{error.message}</p>
+              <Button variant="outline" size="sm" onClick={retryFetchProducts}>
+                Повторить
+              </Button>
+            </div>
+          )}
 
           {!isLoading && !error && products && products.length === 0 && (
             <div className="flex flex-col items-center justify-center py-12 text-center">

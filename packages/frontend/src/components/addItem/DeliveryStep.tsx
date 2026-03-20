@@ -37,7 +37,7 @@ export function DeliveryStep({
 }: DeliveryStepProps) {
   return (
     <div className="space-y-6">
-      <div className="space-y-2">
+      <div className="space-y-2 bg-accent/10 rounded-lg p-4">
         <Label>Срок доставки (переопределить по умолчанию бренда — необязательно)</Label>
         <p className="text-xs text-muted-foreground">Если не выбрать — применяется срок из настроек бренда.</p>
         <div className="flex gap-4">
