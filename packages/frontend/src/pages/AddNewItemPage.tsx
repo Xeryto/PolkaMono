@@ -7,59 +7,32 @@ import {
   CardTitle,
   CardDescription,
 } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
-import { Label } from "@/components/ui/label";
-import { PlusCircle, XCircle } from "lucide-react";
+import { ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
 import * as api from "@/services/api";
-import { parsePydanticErrors } from "@/services/api";
-import { useToast } from "@/hooks/use-toast";
-import { colors } from "@/lib/colors";
-import { materials } from "@/lib/materials";
-import { MultiSelect } from "@/components/ui/multi-select";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { FileInput } from "@/components/ui/file-input";
-import { sizes, getSizeType, getAllowedSizeTypes, waistValues, lengthValues, type SizeType } from "@/lib/sizes";
+import { toast } from "sonner";
 import { useAuth } from "@/context/AuthContext";
 import { ImageCropModal } from "@/components/ImageCropModal";
+import { StepIndicator } from "@/components/addItem/StepIndicator";
+import { BasicInfoStep } from "@/components/addItem/BasicInfoStep";
+import { DeliveryStep } from "@/components/addItem/DeliveryStep";
+import { ImagesStep } from "@/components/addItem/ImagesStep";
+import { SizesInventoryStep } from "@/components/addItem/SizesInventoryStep";
+import { PreviewStep } from "@/components/addItem/PreviewStep";
+import { getAllowedSizeTypes, type SizeType } from "@/lib/sizes";
 
-const DELIVERY_TIME_OPTIONS = [
-  { value: 1, label: "1 день" },
-  { value: 3, label: "3 дня" },
-  { value: 5, label: "5 дней" },
-  { value: 7, label: "1 неделя" },
-  { value: 14, label: "2 недели" },
-  { value: 21, label: "3 недели" },
-  { value: 30, label: "1 месяц" },
-  { value: 60, label: "2 месяца" },
-  { value: 90, label: "3 месяца" },
-];
+const STEP_LABELS = ["Основное", "Доставка", "Фото", "Размеры", "Предпросмотр"];
+const DRAFT_KEY = "polka_add_item_draft";
 
-const productSchema = z.object({
-  name: z
-    .string()
-    .min(1, "Название обязательно")
-    .max(255, "Не более 255 символов"),
-  price: z
-    .string()
-    .min(1, "Цена обязательна")
-    .refine(
-      (v) =>
-        !isNaN(Number(v.replace(",", "."))) && Number(v.replace(",", ".")) > 0,
-      "Цена должна быть больше нуля",
-    ),
+const basicSchema = z.object({
+  name: z.string().min(1, "Название обязательно").max(255, "Не более 255 символов"),
+  price: z.string().min(1, "Цена обязательна").refine(
+    (v) => !isNaN(Number(v.replace(",", "."))) && Number(v.replace(",", ".")) > 0,
+    "Цена должна быть больше нуля",
+  ),
   description: z.string().max(1000, "Не более 1000 символов").optional(),
   selectedCategory: z.string().min(1, "Выберите категорию"),
-  selectedMaterials: z
-    .array(z.string())
-    .min(1, "Выберите хотя бы один материал"),
+  selectedMaterials: z.array(z.string()).min(1, "Выберите хотя бы один материал"),
   countryOfManufacture: z.string().min(1, "Укажите страну производства"),
   selectedStyle: z.string().min(1, "Выберите стиль"),
 });
@@ -80,21 +53,13 @@ const defaultColorVariation = (): ColorVariationForm => ({
   variants: [{ size: "", stock_quantity: 0 }],
 });
 
-function hasDuplicateSizes(
-  variants: { size: string; stock_quantity: number }[],
-) {
-  const seen = new Set<string>();
-  for (const v of variants) {
-    if (!v.size.trim()) continue;
-    if (seen.has(v.size)) return true;
-    seen.add(v.size);
-  }
-  return false;
-}
-
 export function AddNewItemPage() {
-  const [name, setName] = useState("");
+  const [step, setStep] = useState(0);
+  const [completedSteps, setCompletedSteps] = useState<Set<number>>(new Set());
   const { token, user } = useAuth();
+
+  // Form state
+  const [name, setName] = useState("");
   const [price, setPrice] = useState("");
   const [description, setDescription] = useState("");
   const [selectedMaterials, setSelectedMaterials] = useState<string[]>([]);
@@ -103,118 +68,98 @@ export function AddNewItemPage() {
   const [categories, setCategories] = useState<api.CategoryResponse[]>([]);
   const [selectedCategory, setSelectedCategory] = useState("");
   const [sizeMode, setSizeMode] = useState<SizeType>("standard");
-  const [colorVariations, setColorVariations] = useState<ColorVariationForm[]>([
-    defaultColorVariation(),
-  ]);
+  const [colorVariations, setColorVariations] = useState<ColorVariationForm[]>([defaultColorVariation()]);
   const [generalImages, setGeneralImages] = useState<string[]>([]);
   const [generalImageFiles, setGeneralImageFiles] = useState<File[]>([]);
-  const [deliveryTimeMin, setDeliveryTimeMin] = useState<number | undefined>(
-    undefined,
-  );
-  const [deliveryTimeMax, setDeliveryTimeMax] = useState<number | undefined>(
-    undefined,
-  );
+  const [deliveryTimeMin, setDeliveryTimeMin] = useState<number | undefined>(undefined);
+  const [deliveryTimeMax, setDeliveryTimeMax] = useState<number | undefined>(undefined);
   const [countryOfManufacture, setCountryOfManufacture] = useState("");
   const [sizingTableImage, setSizingTableImage] = useState<string | null>(null);
   const [sizingTableFile, setSizingTableFile] = useState<File | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [isLoading, setIsLoading] = useState(false);
-  const { toast } = useToast();
 
   // Crop modal state
   const [cropItem, setCropItem] = useState<{
-    file: File;
-    objectUrl: string;
-    target: "general" | { color: number };
+    file: File; objectUrl: string; target: "general" | { color: number };
   } | null>(null);
-  const pendingCropQueue = useRef<
-    { file: File; target: "general" | { color: number } }[]
-  >([]);
+  const pendingCropQueue = useRef<{ file: File; target: "general" | { color: number } }[]>([]);
 
+  // Fetch categories & styles
   useEffect(() => {
-    const fetchData = async () => {
+    (async () => {
       try {
-        const [fetchedStyles, fetchedCategories] = await Promise.all([
-          api.getStyles(),
-          api.getCategories(),
-        ]);
+        const [fetchedStyles, fetchedCategories] = await Promise.all([api.getStyles(), api.getCategories()]);
         setStyles(fetchedStyles);
         setCategories(fetchedCategories);
-      } catch (error) {
-        console.error("Failed to fetch data:", error);
-        toast({
-          title: "ошибка",
-          description: "Не удалось загрузить стили и категории.",
-          variant: "destructive",
-        });
+      } catch {
+        toast.error("Не удалось загрузить стили и категории.");
       }
-    };
-    fetchData();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    })();
   }, []);
 
-  const updateColorVariation = (
-    index: number,
-    upd: Partial<ColorVariationForm>,
-  ) => {
-    setColorVariations((prev) => {
-      const next = [...prev];
-      next[index] = { ...next[index], ...upd };
-      return next;
-    });
-  };
+  // Restore draft on mount
+  useEffect(() => {
+    try {
+      const raw = sessionStorage.getItem(DRAFT_KEY);
+      if (!raw) return;
+      const draft = JSON.parse(raw);
+      if (draft.name) setName(draft.name);
+      if (draft.price) setPrice(draft.price);
+      if (draft.description) setDescription(draft.description);
+      if (draft.selectedMaterials) setSelectedMaterials(draft.selectedMaterials);
+      if (draft.selectedStyle) setSelectedStyle(draft.selectedStyle);
+      if (draft.selectedCategory) setSelectedCategory(draft.selectedCategory);
+      if (draft.countryOfManufacture) setCountryOfManufacture(draft.countryOfManufacture);
+      if (draft.deliveryTimeMin !== undefined) setDeliveryTimeMin(draft.deliveryTimeMin);
+      if (draft.deliveryTimeMax !== undefined) setDeliveryTimeMax(draft.deliveryTimeMax);
+      if (draft.step !== undefined) setStep(draft.step);
+      toast.info("Черновик восстановлен");
+    } catch { /* ignore */ }
+  }, []);
 
-  const startCropQueue = useCallback(
-    (files: File[], target: "general" | { color: number }) => {
-      if (files.length === 0) return;
-      const [first, ...rest] = files;
-      pendingCropQueue.current = rest.map((f) => ({ file: f, target }));
-      setCropItem({
-        file: first,
-        objectUrl: URL.createObjectURL(first),
-        target,
-      });
-    },
-    [],
-  );
+  // Save draft on step change
+  useEffect(() => {
+    try {
+      const draft = {
+        name, price, description, selectedMaterials, selectedStyle,
+        selectedCategory, countryOfManufacture, deliveryTimeMin, deliveryTimeMax, step,
+      };
+      sessionStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
+    } catch { /* ignore */ }
+  }, [step, name, price, description, selectedMaterials, selectedStyle, selectedCategory, countryOfManufacture, deliveryTimeMin, deliveryTimeMax]);
+
+  // Crop helpers
+  const startCropQueue = useCallback((files: File[], target: "general" | { color: number }) => {
+    if (files.length === 0) return;
+    const [first, ...rest] = files;
+    pendingCropQueue.current = rest.map((f) => ({ file: f, target }));
+    setCropItem({ file: first, objectUrl: URL.createObjectURL(first), target });
+  }, []);
 
   const advanceCropQueue = useCallback(() => {
     if (cropItem?.objectUrl) URL.revokeObjectURL(cropItem.objectUrl);
     const next = pendingCropQueue.current.shift();
-    if (next) {
-      setCropItem({
-        file: next.file,
-        objectUrl: URL.createObjectURL(next.file),
-        target: next.target,
-      });
-    } else {
-      setCropItem(null);
-    }
+    if (next) setCropItem({ file: next.file, objectUrl: URL.createObjectURL(next.file), target: next.target });
+    else setCropItem(null);
   }, [cropItem]);
 
-  const handleCropConfirm = useCallback(
-    (croppedFile: File) => {
-      if (!cropItem) return;
-      const url = URL.createObjectURL(croppedFile);
-      if (cropItem.target === "general") {
-        setGeneralImages((prev) => [...prev, url]);
-        setGeneralImageFiles((prev) => [...prev, croppedFile]);
-      } else {
-        const idx = cropItem.target.color;
-        setColorVariations((prev) => {
-          const next = [...prev];
-          next[idx] = {
-            ...next[idx],
-            images: [...next[idx].images, url],
-            imageFiles: [...next[idx].imageFiles, croppedFile],
-          };
-          return next;
-        });
-      }
-      advanceCropQueue();
-    },
-    [cropItem, advanceCropQueue],
-  );
+  const handleCropConfirm = useCallback((croppedFile: File) => {
+    if (!cropItem) return;
+    const url = URL.createObjectURL(croppedFile);
+    if (cropItem.target === "general") {
+      setGeneralImages((prev) => [...prev, url]);
+      setGeneralImageFiles((prev) => [...prev, croppedFile]);
+    } else {
+      const idx = cropItem.target.color;
+      setColorVariations((prev) => {
+        const next = [...prev];
+        next[idx] = { ...next[idx], images: [...next[idx].images, url], imageFiles: [...next[idx].imageFiles, croppedFile] };
+        return next;
+      });
+    }
+    advanceCropQueue();
+  }, [cropItem, advanceCropQueue]);
 
   const handleCropCancel = useCallback(() => {
     if (cropItem?.objectUrl) URL.revokeObjectURL(cropItem.objectUrl);
@@ -222,42 +167,20 @@ export function AddNewItemPage() {
     setCropItem(null);
   }, [cropItem]);
 
-  const handleColorVariationImages = (index: number, files: File[]) => {
-    const prev = colorVariations[index];
-    if (prev.images.length + files.length > 5) {
-      toast({
-        title: "ошибка",
-        description: "Максимум 5 изображений на цвет.",
-        variant: "destructive",
-      });
-      return;
-    }
-    startCropQueue(files, { color: index });
-  };
-
-  const removeColorVariationImage = (
-    colorIndex: number,
-    imageIndex: number,
-  ) => {
-    const prev = colorVariations[colorIndex];
-    const newImages = prev.images.filter((_, i) => i !== imageIndex);
-    const newImageFiles = prev.imageFiles.filter((_, i) => i !== imageIndex);
-    updateColorVariation(colorIndex, {
-      images: newImages,
-      imageFiles: newImageFiles,
-    });
-  };
-
   const handleGeneralImages = (files: File[]) => {
     if (generalImages.length + files.length > 5) {
-      toast({
-        title: "ошибка",
-        description: "Максимум 5 общих изображений.",
-        variant: "destructive",
-      });
+      toast.error("Максимум 5 общих изображений.");
       return;
     }
     startCropQueue(files, "general");
+  };
+
+  const handleColorVariationImages = (index: number, files: File[]) => {
+    if (colorVariations[index].images.length + files.length > 5) {
+      toast.error("Максимум 5 изображений на цвет.");
+      return;
+    }
+    startCropQueue(files, { color: index });
   };
 
   const removeGeneralImage = (index: number) => {
@@ -265,275 +188,124 @@ export function AddNewItemPage() {
     setGeneralImageFiles((prev) => prev.filter((_, i) => i !== index));
   };
 
-  const handleVariantChange = (
-    colorIndex: number,
-    variantIndex: number,
-    field: string,
-    value: string | number,
-  ) => {
-    setColorVariations((prev) => {
-      const next = [...prev];
-      const vars = [...next[colorIndex].variants];
-      (vars[variantIndex] as unknown as Record<string, string | number>)[
-        field
-      ] = value;
-      next[colorIndex] = { ...next[colorIndex], variants: vars };
-      return next;
-    });
-  };
-
-  const getAvailableSizes = (
-    variants: { size: string; stock_quantity: number }[],
-  ) => {
-    const selected = variants.map((v) => v.size.trim()).filter(Boolean);
-    const hasOneSize = selected.includes("One Size");
-    const hasOther = selected.some((s) => s !== "One Size");
-    return sizes.filter((s) => {
-      if (hasOneSize && s.name !== "One Size") return false;
-      if (hasOther && s.name === "One Size") return false;
-      return true;
-    });
-  };
-
-  const allowedSizeTypes = getAllowedSizeTypes(selectedCategory);
-  const currentSizeType = allowedSizeTypes.length > 1 ? sizeMode : allowedSizeTypes[0];
-
-  const canAddVariant = (
-    variants: { size: string; stock_quantity: number }[],
-  ) => {
-    return !variants.some((v) => v.size === "One Size");
-  };
-
-  const addVariant = (colorIndex: number) => {
+  const removeColorVariationImage = (colorIndex: number, imageIndex: number) => {
     setColorVariations((prev) => {
       const next = [...prev];
       next[colorIndex] = {
         ...next[colorIndex],
-        variants: [
-          ...next[colorIndex].variants,
-          { size: "", stock_quantity: 0 },
-        ],
+        images: next[colorIndex].images.filter((_, i) => i !== imageIndex),
+        imageFiles: next[colorIndex].imageFiles.filter((_, i) => i !== imageIndex),
       };
       return next;
     });
   };
 
-  const removeVariant = (colorIndex: number, variantIndex: number) => {
-    setColorVariations((prev) => {
-      const next = [...prev];
-      next[colorIndex] = {
-        ...next[colorIndex],
-        variants: next[colorIndex].variants.filter(
-          (_, i) => i !== variantIndex,
-        ),
-      };
-      return next;
-    });
-  };
-
-  const addColorVariation = () => {
-    setColorVariations((prev) => [...prev, defaultColorVariation()]);
-  };
-
-  const removeColorVariation = (index: number) => {
-    if (colorVariations.length <= 1) {
-      toast({
-        title: "ошибка",
-        description: "Должен остаться хотя бы один цвет.",
-        variant: "destructive",
+  // Validation per step
+  const validateStep = (s: number): boolean => {
+    if (s === 0) {
+      const parsed = basicSchema.safeParse({
+        name, price, description, selectedCategory, selectedMaterials, countryOfManufacture, selectedStyle,
       });
-      return;
+      if (!parsed.success) {
+        const flat = parsed.error.flatten().fieldErrors;
+        setFieldErrors({
+          name: flat.name?.[0] ?? "", price: flat.price?.[0] ?? "",
+          description: flat.description?.[0] ?? "", selectedCategory: flat.selectedCategory?.[0] ?? "",
+          selectedMaterials: flat.selectedMaterials?.[0] ?? "", countryOfManufacture: flat.countryOfManufacture?.[0] ?? "",
+          selectedStyle: flat.selectedStyle?.[0] ?? "",
+        });
+        return false;
+      }
+      setFieldErrors({});
+      return true;
     }
-    setColorVariations((prev) => prev.filter((_, i) => i !== index));
+    if (s === 1) return true; // delivery is optional
+    if (s === 2) return true; // images validated on submit
+    if (s === 3) {
+      for (const cv of colorVariations) {
+        if (!cv.colorName.trim()) { toast.error("Выберите цвет для каждого варианта."); return false; }
+        const filled = cv.variants.filter((v) => v.size.trim());
+        if (filled.length === 0) { toast.error(`Добавьте размер для цвета "${cv.colorName}".`); return false; }
+      }
+      return true;
+    }
+    return true;
   };
 
-  const handleColorSelect = (index: number, colorName: string) => {
-    const c = colors.find((x) => x.name === colorName);
-    if (c) updateColorVariation(index, { colorName: c.name, colorHex: c.hex });
+  const goNext = () => {
+    if (!validateStep(step)) return;
+    setCompletedSteps((prev) => new Set(prev).add(step));
+    setStep((s) => Math.min(s + 1, STEP_LABELS.length - 1));
+  };
+
+  const goPrev = () => setStep((s) => Math.max(s - 1, 0));
+
+  const goToStep = (s: number) => {
+    if (s < step || completedSteps.has(s)) setStep(s);
   };
 
   const handleSubmit = async () => {
-    const parsed = productSchema.safeParse({
-      name,
-      price,
-      description,
-      selectedCategory,
-      selectedMaterials,
-      countryOfManufacture,
-      selectedStyle,
-    });
-    if (!parsed.success) {
-      const flat = parsed.error.flatten().fieldErrors;
-      setFieldErrors({
-        name: flat.name?.[0] ?? "",
-        price: flat.price?.[0] ?? "",
-        description: flat.description?.[0] ?? "",
-        selectedCategory: flat.selectedCategory?.[0] ?? "",
-        selectedMaterials: flat.selectedMaterials?.[0] ?? "",
-        countryOfManufacture: flat.countryOfManufacture?.[0] ?? "",
-        selectedStyle: flat.selectedStyle?.[0] ?? "",
-      });
-      return;
-    }
-    setFieldErrors({});
-    const priceNum = parseFloat(price.replace(",", "."));
-
-    for (let i = 0; i < colorVariations.length; i++) {
-      const cv = colorVariations[i];
-      if (!cv.colorName.trim()) {
-        toast({
-          title: "ошибка",
-          description: `Выберите цвет для варианта ${i + 1}.`,
-          variant: "destructive",
-        });
-        return;
-      }
-      if (hasDuplicateSizes(cv.variants)) {
-        toast({
-          title: "ошибка",
-          description: `Дублирующиеся размеры в варианте цвета "${cv.colorName}".`,
-          variant: "destructive",
-        });
-        return;
-      }
-      const filledSizes = cv.variants.filter((v) => v.size.trim());
-      if (filledSizes.length === 0) {
-        toast({
-          title: "ошибка",
-          description: `Добавьте хотя бы один размер для цвета "${cv.colorName}".`,
-          variant: "destructive",
-        });
-        return;
-      }
-      for (const v of cv.variants) {
-        if (
-          v.size.trim() &&
-          (v.stock_quantity < 0 || !Number.isInteger(v.stock_quantity))
-        ) {
-          toast({
-            title: "ошибка",
-            description: `Количество по размеру не может быть отрицательным (цвет "${cv.colorName}").`,
-            variant: "destructive",
-          });
-          return;
-        }
-      }
-    }
-
-    if (!token) {
-      toast({
-        title: "ошибка",
-        description: "Токен не найден. Войдите в систему.",
-        variant: "destructive",
-      });
-      return;
-    }
-
+    // Final validations
+    if (!token) { toast.error("Токен не найден. Войдите в систему."); return; }
     const hasGeneralImages = generalImageFiles.length > 0;
-    const hasOnePerColor = colorVariations.every(
-      (cv) => cv.imageFiles.length > 0,
-    );
+    const hasOnePerColor = colorVariations.every((cv) => cv.imageFiles.length > 0);
     if (!hasGeneralImages && !hasOnePerColor) {
-      toast({
-        title: "ошибка",
-        description:
-          "Добавьте хотя бы одно общее изображение или хотя бы одно изображение в каждом цвете.",
-        variant: "destructive",
-      });
+      toast.error("Добавьте общие изображения или по изображению на каждый цвет.");
       return;
     }
 
     setIsLoading(true);
     try {
-      // Upload images to S3 via presigned URLs
       const uploadOne = async (file: File): Promise<string> => {
         const contentType = file.type || "image/jpeg";
-        const { upload_url, public_url } =
-          await api.getProductImagePresignedUrl(contentType, token, file.name);
+        const { upload_url, public_url } = await api.getProductImagePresignedUrl(contentType, token, file.name);
         await api.uploadFileToPresignedUrl(file, upload_url, contentType);
         return public_url;
       };
 
-      const generalImageUrls =
-        generalImageFiles.length > 0
-          ? await Promise.all(generalImageFiles.map(uploadOne))
-          : [];
-
+      const generalImageUrls = generalImageFiles.length > 0 ? await Promise.all(generalImageFiles.map(uploadOne)) : [];
       const colorVariantsWithUrls = await Promise.all(
-        colorVariations.map(async (cv) => {
-          const imageUrls =
-            cv.imageFiles.length > 0
-              ? await Promise.all(cv.imageFiles.map(uploadOne))
-              : [];
-          return {
-            color_name: cv.colorName,
-            color_hex: cv.colorHex,
-            images: imageUrls,
-            variants: cv.variants.filter(
-              (v) => v.size.trim() && v.stock_quantity >= 0,
-            ),
-          };
-        }),
+        colorVariations.map(async (cv) => ({
+          color_name: cv.colorName,
+          color_hex: cv.colorHex,
+          images: cv.imageFiles.length > 0 ? await Promise.all(cv.imageFiles.map(uploadOne)) : [],
+          variants: cv.variants.filter((v) => v.size.trim() && v.stock_quantity >= 0),
+        })),
       );
 
       let sizingTableImageUrl: string | null = null;
-      if (sizingTableFile) {
-        sizingTableImageUrl = await uploadOne(sizingTableFile);
-      }
+      if (sizingTableFile) sizingTableImageUrl = await uploadOne(sizingTableFile);
 
-      const productData = {
+      await api.createProduct({
         name,
-        price: priceNum,
+        price: parseFloat(price.replace(",", ".")),
         description,
-        material:
-          selectedMaterials.length > 0
-            ? selectedMaterials.join(", ")
-            : undefined,
+        material: selectedMaterials.length > 0 ? selectedMaterials.join(", ") : undefined,
         brand_id: user?.id ?? "",
         category_id: selectedCategory,
         styles: selectedStyle ? [selectedStyle] : [],
         color_variants: colorVariantsWithUrls,
-        general_images:
-          generalImageUrls.length > 0 ? generalImageUrls : undefined,
+        general_images: generalImageUrls.length > 0 ? generalImageUrls : undefined,
         delivery_time_min: deliveryTimeMin,
         delivery_time_max: deliveryTimeMax,
         country_of_manufacture: countryOfManufacture || undefined,
         sizing_table_image: sizingTableImageUrl || undefined,
-      };
+      }, token);
 
-      await api.createProduct(productData, token);
-      toast({
-        title: "успех",
-        description: "Товар успешно добавлен!",
-      });
-      setName("");
-      setPrice("");
-      setDescription("");
-      setSelectedMaterials([]);
-      setSelectedStyle("");
-      setSelectedCategory("");
-      setColorVariations([defaultColorVariation()]);
-      setGeneralImages([]);
-      setGeneralImageFiles([]);
-      setDeliveryTimeMin(undefined);
-      setDeliveryTimeMax(undefined);
-      setCountryOfManufacture("");
-      setSizingTableImage(null);
-      setSizingTableFile(null);
+      toast.success("Товар успешно добавлен!");
+      sessionStorage.removeItem(DRAFT_KEY);
+
+      // Reset
+      setName(""); setPrice(""); setDescription(""); setSelectedMaterials([]); setSelectedStyle("");
+      setSelectedCategory(""); setColorVariations([defaultColorVariation()]); setGeneralImages([]);
+      setGeneralImageFiles([]); setDeliveryTimeMin(undefined); setDeliveryTimeMax(undefined);
+      setCountryOfManufacture(""); setSizingTableImage(null); setSizingTableFile(null);
+      setStep(0); setCompletedSteps(new Set());
     } catch (error: unknown) {
       console.error("Failed to add product:", error);
-      const err = error as {
-        message?: string;
-        fieldErrors?: Record<string, string>;
-      };
-      if (err.fieldErrors) {
-        setFieldErrors(err.fieldErrors);
-      }
-      toast({
-        title: "ошибка",
-        description: err.message || "Не удалось добавить товар.",
-        variant: "destructive",
-      });
+      const err = error as { message?: string; fieldErrors?: Record<string, string> };
+      if (err.fieldErrors) setFieldErrors(err.fieldErrors);
+      toast.error(err.message || "Не удалось добавить товар.");
     } finally {
       setIsLoading(false);
     }
@@ -541,505 +313,93 @@ export function AddNewItemPage() {
 
   return (
     <div className="space-y-6">
-      <h2 className="text-2xl font-bold text-foreground">
-        Добавить новый товар
-      </h2>
+      <h2 className="text-2xl font-bold text-foreground">Добавить новый товар</h2>
+
+      <StepIndicator
+        steps={STEP_LABELS}
+        currentStep={step}
+        onStepClick={goToStep}
+        completedSteps={completedSteps}
+      />
 
       <Card className="bg-card border-border/30 shadow-lg">
         <CardHeader>
-          <CardTitle>Детали товара</CardTitle>
-          <CardDescription>
-            Заполните детали и варианты по цветам
-          </CardDescription>
+          <CardTitle>{STEP_LABELS[step]}</CardTitle>
+          <CardDescription>Шаг {step + 1} из {STEP_LABELS.length}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div>
-            <Label htmlFor="name">Название товара</Label>
-            <Input
-              id="name"
-              placeholder="напр., Элитное худи"
-              className="mt-1"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
+          {step === 0 && (
+            <BasicInfoStep
+              name={name} price={price} description={description}
+              selectedMaterials={selectedMaterials} countryOfManufacture={countryOfManufacture}
+              selectedCategory={selectedCategory} selectedStyle={selectedStyle}
+              categories={categories} styles={styles} fieldErrors={fieldErrors}
+              onNameChange={setName} onPriceChange={setPrice} onDescriptionChange={setDescription}
+              onMaterialsChange={setSelectedMaterials} onCountryChange={setCountryOfManufacture}
+              onCategoryChange={(v) => { setSelectedCategory(v); setSizeMode(getAllowedSizeTypes(v)[0]); }}
+              onStyleChange={setSelectedStyle}
             />
-            {fieldErrors.name && (
-              <p className="text-xs text-destructive mt-1">
-                {fieldErrors.name}
-              </p>
-            )}
-          </div>
-          <div>
-            <Label htmlFor="price">Цена</Label>
-            <Input
-              id="price"
-              inputMode="decimal"
-              placeholder="напр., 150,00"
-              className="mt-1"
-              value={price}
-              onChange={(e) => setPrice(e.target.value)}
-            />
-            {fieldErrors.price && (
-              <p className="text-xs text-destructive mt-1">
-                {fieldErrors.price}
-              </p>
-            )}
-          </div>
-          <div>
-            <Label htmlFor="description">Описание</Label>
-            <Textarea
-              id="description"
-              placeholder="Краткое описание товара"
-              className="mt-1"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-            />
-            {fieldErrors.description && (
-              <p className="text-xs text-destructive mt-1">
-                {fieldErrors.description}
-              </p>
-            )}
-          </div>
+          )}
 
-          <div>
-            <Label htmlFor="materials">Материал</Label>
-            <MultiSelect
-              options={materials.map((m) => ({
-                label: m.russian,
-                value: m.name,
-              }))}
-              value={selectedMaterials}
-              onValueChange={setSelectedMaterials}
-              placeholder="Выберите материалы"
-              className="mt-1"
+          {step === 1 && (
+            <DeliveryStep
+              deliveryTimeMin={deliveryTimeMin} deliveryTimeMax={deliveryTimeMax}
+              sizingTableImage={sizingTableImage} sizingTableFile={sizingTableFile}
+              onDeliveryTimeMinChange={setDeliveryTimeMin} onDeliveryTimeMaxChange={setDeliveryTimeMax}
+              onSizingTableChange={(file, url) => { setSizingTableFile(file); setSizingTableImage(url); }}
             />
-            {fieldErrors.selectedMaterials && (
-              <p className="text-xs text-destructive mt-1">
-                {fieldErrors.selectedMaterials}
-              </p>
-            )}
-          </div>
+          )}
 
-          <div>
-            <Label htmlFor="country_of_manufacture">Страна производства</Label>
-            <Input
-              id="country_of_manufacture"
-              placeholder="напр., Италия"
-              className="mt-1"
-              value={countryOfManufacture}
-              onChange={(e) => setCountryOfManufacture(e.target.value)}
+          {step === 2 && (
+            <ImagesStep
+              generalImages={generalImages} generalImageFiles={generalImageFiles}
+              colorVariations={colorVariations}
+              onGeneralImages={handleGeneralImages} onRemoveGeneralImage={removeGeneralImage}
+              onColorVariationImages={handleColorVariationImages} onRemoveColorVariationImage={removeColorVariationImage}
             />
-            {fieldErrors.countryOfManufacture && (
-              <p className="text-xs text-destructive mt-1">
-                {fieldErrors.countryOfManufacture}
-              </p>
-            )}
-          </div>
+          )}
 
-          <div>
-            <Label htmlFor="category">Категория</Label>
-            <Select
-              onValueChange={(val) => {
-                setSelectedCategory(val);
-                setSizeMode(getAllowedSizeTypes(val)[0]);
-              }}
-              value={selectedCategory}
+          {step === 3 && (
+            <SizesInventoryStep
+              colorVariations={colorVariations} selectedCategory={selectedCategory}
+              sizeMode={sizeMode} onSizeModeChange={setSizeMode}
+              onColorVariationsChange={setColorVariations}
+            />
+          )}
+
+          {step === 4 && (
+            <PreviewStep
+              name={name} price={price} description={description}
+              selectedMaterials={selectedMaterials} countryOfManufacture={countryOfManufacture}
+              selectedCategory={selectedCategory} selectedStyle={selectedStyle}
+              categories={categories} styles={styles} colorVariations={colorVariations}
+              generalImages={generalImages} deliveryTimeMin={deliveryTimeMin}
+              deliveryTimeMax={deliveryTimeMax} sizingTableImage={sizingTableImage}
+            />
+          )}
+
+          {/* Navigation */}
+          <div className="flex items-center justify-between pt-4 border-t border-border/30">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={goPrev}
+              disabled={step === 0}
             >
-              <SelectTrigger className="w-full mt-1 h-10 rounded-md border border-input bg-background px-3 py-2">
-                <SelectValue placeholder="Выберите категорию" />
-              </SelectTrigger>
-              <SelectContent>
-                {categories.map((category) => (
-                  <SelectItem key={category.id} value={category.id}>
-                    {category.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            {fieldErrors.selectedCategory && (
-              <p className="text-xs text-destructive mt-1">
-                {fieldErrors.selectedCategory}
-              </p>
-            )}
-          </div>
+              <ChevronLeft className="h-4 w-4 mr-1" /> Назад
+            </Button>
 
-          <div>
-            <Label htmlFor="style">Стиль</Label>
-            <Select onValueChange={setSelectedStyle} value={selectedStyle}>
-              <SelectTrigger className="w-full mt-1 h-10 rounded-md border border-input bg-background px-3 py-2">
-                <SelectValue placeholder="Выберите стиль" />
-              </SelectTrigger>
-              <SelectContent>
-                {styles.map((style) => (
-                  <SelectItem key={style.id} value={style.id}>
-                    {style.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            {fieldErrors.selectedStyle && (
-              <p className="text-xs text-destructive mt-1">
-                {fieldErrors.selectedStyle}
-              </p>
-            )}
-          </div>
-
-          <div className="space-y-2">
-            <Label>
-              Срок доставки (переопределить по умолчанию бренда — необязательно)
-            </Label>
-            <p className="text-xs text-muted-foreground">
-              Если не выбрать — применяется срок из настроек бренда.
-            </p>
-            <div className="flex gap-4">
-              <div className="flex-1">
-                <Label className="text-xs text-muted-foreground">
-                  От (дней)
-                </Label>
-                <Select
-                  value={
-                    deliveryTimeMin !== undefined
-                      ? String(deliveryTimeMin)
-                      : "none"
-                  }
-                  onValueChange={(v) =>
-                    setDeliveryTimeMin(v === "none" ? undefined : Number(v))
-                  }
-                >
-                  <SelectTrigger className="mt-1 h-10">
-                    <SelectValue placeholder="По умолчанию" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">По умолчанию</SelectItem>
-                    {DELIVERY_TIME_OPTIONS.map((o) => (
-                      <SelectItem key={o.value} value={String(o.value)}>
-                        {o.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="flex-1">
-                <Label className="text-xs text-muted-foreground">
-                  До (дней)
-                </Label>
-                <Select
-                  value={
-                    deliveryTimeMax !== undefined
-                      ? String(deliveryTimeMax)
-                      : "none"
-                  }
-                  onValueChange={(v) =>
-                    setDeliveryTimeMax(v === "none" ? undefined : Number(v))
-                  }
-                >
-                  <SelectTrigger className="mt-1 h-10">
-                    <SelectValue placeholder="По умолчанию" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">По умолчанию</SelectItem>
-                    {DELIVERY_TIME_OPTIONS.map((o) => (
-                      <SelectItem key={o.value} value={String(o.value)}>
-                        {o.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <Label>Общие изображения (до 5)</Label>
-            <p className="text-xs text-muted-foreground">Для всех цветов</p>
-            <FileInput
-              multiple
-              accept="image/*"
-              onFilesChange={(files) => handleGeneralImages(files)}
-              selectedFileNames={generalImageFiles.map((f) => f.name)}
-              className="mt-1"
-            />
-            <div className="mt-2 flex flex-wrap gap-2">
-              {generalImages.map((url, i) => (
-                <div key={i} className="relative">
-                  <img
-                    src={url}
-                    alt=""
-                    className="w-20 h-20 object-cover rounded-md"
-                  />
-                  <button
-                    type="button"
-                    className="absolute -top-2 -right-2 h-4 w-4 text-red-500"
-                    onClick={() => removeGeneralImage(i)}
-                  >
-                    <XCircle className="h-4 w-4" />
-                  </button>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Sizing table image */}
-          <div className="space-y-2">
-            <Label>Таблица размеров</Label>
-            <p className="text-xs text-muted-foreground">
-              Изображение с таблицей размеров для покупателей
-            </p>
-            <FileInput
-              accept="image/*"
-              onFilesChange={(files) => {
-                if (files[0]) {
-                  setSizingTableFile(files[0]);
-                  setSizingTableImage(URL.createObjectURL(files[0]));
-                }
-              }}
-              selectedFileNames={sizingTableFile ? [sizingTableFile.name] : []}
-              className="mt-1"
-            />
-            {sizingTableImage && (
-              <div className="relative mt-2 inline-block">
-                <img
-                  src={sizingTableImage}
-                  alt="Таблица размеров"
-                  className="h-24 object-contain rounded-md border border-border/30"
-                />
-                <button
-                  type="button"
-                  className="absolute -top-2 -right-2 h-4 w-4 text-red-500"
-                  onClick={() => {
-                    setSizingTableImage(null);
-                    setSizingTableFile(null);
-                  }}
-                >
-                  <XCircle className="h-4 w-4" />
-                </button>
-              </div>
-            )}
-          </div>
-
-          {/* Color variations */}
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <Label>Варианты по цветам</Label>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={addColorVariation}
-              >
-                <PlusCircle className="h-4 w-4 mr-2" /> Добавить цвет
+            {step < STEP_LABELS.length - 1 ? (
+              <Button type="button" onClick={goNext}>
+                Далее <ChevronRight className="h-4 w-4 ml-1" />
               </Button>
-            </div>
-            {colorVariations.map((cv, colorIndex) => (
-              <Card key={colorIndex} className="p-4 border border-border/50">
-                <div className="flex items-center justify-between mb-3">
-                  <span className="font-medium">Цвет {colorIndex + 1}</span>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => removeColorVariation(colorIndex)}
-                    disabled={colorVariations.length <= 1}
-                  >
-                    <XCircle className="h-4 w-4 text-muted-foreground" />
-                  </Button>
-                </div>
-                <div className="space-y-3">
-                  <div>
-                    <Label>Цвет</Label>
-                    <Select
-                      value={cv.colorName}
-                      onValueChange={(v) => handleColorSelect(colorIndex, v)}
-                    >
-                      <SelectTrigger className="w-full mt-1 h-10">
-                        <SelectValue placeholder="Выберите цвет" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {colors.map((c) => (
-                          <SelectItem
-                            key={c.name}
-                            value={c.name}
-                            textValue={c.russian}
-                          >
-                            <div className="flex items-center gap-2">
-                              <div
-                                className="w-4 h-4 min-w-4 min-h-4 shrink-0 rounded-full border"
-                                style={{
-                                  background: c.hex || "#808080",
-                                }}
-                              />
-                              {c.russian}
-                            </div>
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Изображения (до 5)</Label>
-                    <FileInput
-                      multiple
-                      accept="image/*"
-                      onFilesChange={(files) =>
-                        handleColorVariationImages(colorIndex, files)
-                      }
-                      selectedFileNames={cv.imageFiles.map((f) => f.name)}
-                      className="mt-1"
-                    />
-                    <div className="mt-2 flex flex-wrap gap-2">
-                      {cv.images.map((url, imgIdx) => (
-                        <div key={imgIdx} className="relative">
-                          <img
-                            src={url}
-                            alt=""
-                            className="w-20 h-20 object-cover rounded-md"
-                          />
-                          <button
-                            type="button"
-                            className="absolute -top-2 -right-2 h-4 w-4 text-red-500"
-                            onClick={() =>
-                              removeColorVariationImage(colorIndex, imgIdx)
-                            }
-                          >
-                            <XCircle className="h-4 w-4" />
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                  <div>
-                    <Label>Размеры и инвентарь</Label>
-                    {allowedSizeTypes.length > 1 && (
-                      <div className="flex gap-2 mt-1 mb-1">
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant={sizeMode === "standard" ? "default" : "outline"}
-                          onClick={() => setSizeMode("standard")}
-                        >
-                          Стандартные (XS–XL)
-                        </Button>
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant={sizeMode === "waist_length" ? "default" : "outline"}
-                          onClick={() => setSizeMode("waist_length")}
-                        >
-                          Ширина × Длина (см)
-                        </Button>
-                      </div>
-                    )}
-                    {cv.variants.map((v, vIdx) => (
-                      <div key={vIdx} className="flex gap-2 mt-1 items-center">
-                        {currentSizeType === "waist_length" ? (
-                          <div className="flex gap-1 flex-1">
-                            <Select
-                              value={v.size.includes("×") ? v.size.split("×")[0] : ""}
-                              onValueChange={(waist) => {
-                                const length = v.size.includes("×") ? v.size.split("×")[1] : "";
-                                const newSize = length ? `${waist}×${length}` : waist;
-                                handleVariantChange(colorIndex, vIdx, "size", newSize);
-                              }}
-                            >
-                              <SelectTrigger className="flex-1 h-10">
-                                <SelectValue placeholder="Ширина, см" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {waistValues.map((w) => (
-                                  <SelectItem key={w} value={String(w)}>
-                                    {w}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                            <span className="self-center text-muted-foreground">×</span>
-                            <Select
-                              value={v.size.includes("×") ? v.size.split("×")[1] : ""}
-                              onValueChange={(length) => {
-                                const waist = v.size.includes("×") ? v.size.split("×")[0] : "";
-                                const newSize = waist ? `${waist}×${length}` : length;
-                                handleVariantChange(colorIndex, vIdx, "size", newSize);
-                              }}
-                            >
-                              <SelectTrigger className="flex-1 h-10">
-                                <SelectValue placeholder="Длина, см" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {lengthValues.map((l) => (
-                                  <SelectItem key={l} value={String(l)}>
-                                    {l}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </div>
-                        ) : (
-                          <Select
-                            value={v.size}
-                            onValueChange={(val) =>
-                              handleVariantChange(colorIndex, vIdx, "size", val)
-                            }
-                          >
-                            <SelectTrigger className="flex-1 h-10">
-                              <SelectValue placeholder="Размер" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {getAvailableSizes(cv.variants).map((s) => (
-                                <SelectItem key={s.name} value={s.name}>
-                                  {s.russian}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        )}
-                        <Input
-                          type="number"
-                          placeholder="Кол."
-                          value={v.stock_quantity}
-                          min={0}
-                          className="w-24"
-                          onChange={(e) =>
-                            handleVariantChange(
-                              colorIndex,
-                              vIdx,
-                              "stock_quantity",
-                              parseInt(e.target.value) || 0,
-                            )
-                          }
-                        />
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="icon"
-                          onClick={() => removeVariant(colorIndex, vIdx)}
-                        >
-                          <XCircle className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    ))}
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      className="mt-2"
-                      onClick={() => addVariant(colorIndex)}
-                      disabled={!canAddVariant(cv.variants)}
-                    >
-                      <PlusCircle className="h-4 w-4 mr-2" /> Добавить размер
-                    </Button>
-                  </div>
-                </div>
-              </Card>
-            ))}
+            ) : (
+              <Button onClick={handleSubmit} disabled={isLoading}>
+                {isLoading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                {isLoading ? "Добавление..." : "Добавить товар"}
+              </Button>
+            )}
           </div>
-
-          <Button
-            size="lg"
-            className="w-full"
-            onClick={handleSubmit}
-            disabled={isLoading}
-          >
-            {isLoading ? "Добавление..." : "Добавить товар"}
-          </Button>
         </CardContent>
       </Card>
 

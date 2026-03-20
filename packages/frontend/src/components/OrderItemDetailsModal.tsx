@@ -9,15 +9,16 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import * as api from "@/services/api";
-import { useAuth } from "@/context/AuthContext"; // Import useAuth
+import { useAuth } from "@/context/AuthContext";
 import { formatCurrency } from "@/lib/currency";
+import { Loader2 } from "lucide-react";
 
 interface OrderItemDetailsModalProps {
   isOpen: boolean;
   onClose: () => void;
-  orderId: string; // ID of the parent order
+  orderId: string;
   orderItem: api.OrderItemResponse;
   onSKUUpdated: (orderItemId: string, newSKU: string) => void;
 }
@@ -29,49 +30,29 @@ export const OrderItemDetailsModal: React.FC<OrderItemDetailsModalProps> = ({
   orderItem,
   onSKUUpdated,
 }) => {
-  const [skuInput, setSKUInput] = useState(
-    orderItem.sku || ""
-  );
+  const [skuInput, setSKUInput] = useState(orderItem.sku || "");
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const { toast } = useToast();
-  const { token } = useAuth(); // Get token from useAuth
+  const { token } = useAuth();
 
   const handleSaveSKU = async () => {
     if (!skuInput.trim()) {
-      toast({
-        title: "ошибка",
-        description: "sku не может быть пустым.",
-        variant: "destructive",
-      });
+      toast.error("SKU не может быть пустым.");
       return;
     }
-
     if (!token) {
-      toast({
-        title: "ошибка",
-        description: "токен аутентификации не найден. пожалуйста, войдите в систему.",
-        variant: "destructive",
-      });
+      toast.error("Токен не найден. Войдите в систему.");
       return;
     }
 
     setIsSubmitting(true);
     try {
-      // Call API to update SKU
-      await api.updateOrderItemSKU(orderItem.id, skuInput, token); // Pass token
-      toast({
-        title: "успех",
-        description: "sku успешно обновлён.",
-      });
+      await api.updateOrderItemSKU(orderItem.id, skuInput, token);
+      toast.success("SKU успешно обновлён.");
       onSKUUpdated(orderItem.id, skuInput);
       onClose();
     } catch (error: unknown) {
       const err = error as { message?: string };
-      toast({
-        title: "ошибка",
-        description: err.message || "не удалось обновить sku.",
-        variant: "destructive",
-      });
+      toast.error(err.message || "Не удалось обновить SKU.");
     } finally {
       setIsSubmitting(false);
     }
@@ -81,9 +62,9 @@ export const OrderItemDetailsModal: React.FC<OrderItemDetailsModalProps> = ({
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>order item details</DialogTitle>
+          <DialogTitle>Детали позиции заказа</DialogTitle>
           <DialogDescription>
-            View details for {orderItem.name} (Size: {orderItem.size})
+            {orderItem.name} (Размер: {orderItem.size})
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-4">
@@ -95,43 +76,41 @@ export const OrderItemDetailsModal: React.FC<OrderItemDetailsModalProps> = ({
             />
           )}
           <p>
-            <strong>product:</strong> {orderItem.name}
+            <strong>Товар:</strong> {orderItem.name}
           </p>
           <p>
-            <strong>size:</strong> {orderItem.size}
+            <strong>Размер:</strong> {orderItem.size}
           </p>
           <p>
-            <strong>price:</strong> {formatCurrency(orderItem.price)}
+            <strong>Цена:</strong> {formatCurrency(orderItem.price)}
           </p>
 
           <div>
-            <label
-              htmlFor="sku"
-              className="text-sm font-medium text-muted-foreground"
-            >
-              sku (stock keeping unit)
+            <label htmlFor="sku" className="text-sm font-medium text-muted-foreground">
+              SKU (артикул)
             </label>
             <Input
               id="sku"
               value={skuInput}
               onChange={(e) => setSKUInput(e.target.value)}
-              disabled={isSubmitting || !!orderItem.sku} // Disable if submitting or already assigned
+              disabled={isSubmitting || !!orderItem.sku}
               className="mt-1"
             />
             {orderItem.sku && (
               <p className="text-xs text-muted-foreground mt-1">
-                sku is locked once assigned.
+                SKU заблокирован после назначения.
               </p>
             )}
           </div>
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>
-            close
+            Закрыть
           </Button>
-          {!orderItem.sku && ( // Only show save button if SKU is not yet assigned
+          {!orderItem.sku && (
             <Button onClick={handleSaveSKU} disabled={isSubmitting}>
-              {isSubmitting ? "saving..." : "save sku"}
+              {isSubmitting && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              {isSubmitting ? "Сохранение..." : "Сохранить SKU"}
             </Button>
           )}
         </DialogFooter>

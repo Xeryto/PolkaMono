@@ -8,37 +8,35 @@ import { StatsView } from "@/components/StatsView";
 import { AddNewItemPage } from "@/pages/AddNewItemPage";
 import { ProfileSettingsPage } from "@/pages/ProfileSettingsPage";
 import { SecuritySettingsPage } from "@/pages/SecuritySettingsPage";
-
-type DashboardView = 'stats' | 'orders' | 'products' | 'add-item' | 'profile' | 'security';
+import type { DashboardView } from "@/types/dashboard";
 
 const Dashboard = () => {
-  const [currentView, setCurrentView] = useState<DashboardView>('stats');
+  const [currentView, setCurrentView] = useState<DashboardView>("stats");
   const [targetOrderId, setTargetOrderId] = useState<string | null>(null);
 
   useEffect(() => {
-    document.documentElement.classList.add('dark');
-    return () => document.documentElement.classList.remove('dark');
+    document.documentElement.classList.add("dark");
+    return () => document.documentElement.classList.remove("dark");
   }, []);
 
   const renderView = () => {
     switch (currentView) {
-      case 'orders':
+      case "orders":
         return (
           <OrdersView
             targetOrderId={targetOrderId}
             onTargetConsumed={() => setTargetOrderId(null)}
           />
         );
-      case 'products':
+      case "products":
         return <ProductsView />;
-      case 'add-item':
+      case "add-item":
         return <AddNewItemPage />;
-      case 'profile':
+      case "profile":
         return <ProfileSettingsPage />;
-      case 'security':
+      case "security":
         return <SecuritySettingsPage />;
-      case 'stats':
-        return <StatsView />;
+      case "stats":
       default:
         return <StatsView />;
     }
@@ -50,10 +48,16 @@ const Dashboard = () => {
         <DashboardSidebar currentView={currentView} onViewChange={setCurrentView} />
 
         <div className="flex-1 flex flex-col">
-          <DashboardHeader onViewChange={setCurrentView} onTargetOrder={setTargetOrderId} />
+          <DashboardHeader
+            currentView={currentView}
+            onViewChange={setCurrentView}
+            onTargetOrder={setTargetOrderId}
+          />
 
           <main className="flex-1 p-6">
-            {renderView()}
+            <div key={currentView} className="animate-fade-in">
+              {renderView()}
+            </div>
           </main>
         </div>
       </div>
