@@ -204,14 +204,18 @@ export function ProfileSettingsPage() {
           <CardHeader className="relative flex flex-row items-center justify-between">
             <div>
               <CardTitle className="text-lg">Профиль бренда</CardTitle>
-              <p className="text-sm text-muted-foreground mt-0.5">Управление данными и настройками вашего бренда</p>
+              <p className="text-sm text-muted-foreground mt-0.5">
+                Управление данными и настройками вашего бренда
+              </p>
             </div>
             {!isEditing && !isLoading && profile && (
-              <Button onClick={() => setIsEditing(true)} className="rounded-xl">Обновить</Button>
+              <Button onClick={() => setIsEditing(true)} className="rounded-xl">
+                Обновить
+              </Button>
             )}
           </CardHeader>
         </div>
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-4 pt-6">
           {isLoading ? (
             <div className="space-y-4">
               <div>
@@ -301,7 +305,9 @@ export function ProfileSettingsPage() {
                 <div className="space-y-4 bg-accent/10 rounded-xl p-4">
                   <div className="flex items-center gap-2">
                     <div className="h-1.5 w-1.5 rounded-full bg-brand" />
-                    <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Доставка</h3>
+                    <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                      Доставка
+                    </h3>
                   </div>
                   <div>
                     <Label htmlFor="shipping_price">Цена доставки (руб.)</Label>
@@ -455,8 +461,14 @@ export function ProfileSettingsPage() {
                   >
                     Отмена
                   </Button>
-                  <Button onClick={handleSave} disabled={isSaving} className="rounded-xl px-6">
-                    {isSaving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                  <Button
+                    onClick={handleSave}
+                    disabled={isSaving}
+                    className="rounded-xl px-6"
+                  >
+                    {isSaving && (
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    )}
                     {isSaving ? "Сохранение..." : "Сохранить изменения"}
                   </Button>
                 </div>
@@ -466,11 +478,15 @@ export function ProfileSettingsPage() {
                 {/* Basic info cards */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="rounded-xl bg-surface-elevated/50 p-4">
-                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">Название</p>
+                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">
+                      Название
+                    </p>
                     <p className="font-medium">{profile.name}</p>
                   </div>
                   <div className="rounded-xl bg-surface-elevated/50 p-4">
-                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">Контактный email</p>
+                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">
+                      Контактный email
+                    </p>
                     <p className="font-medium">{profile.email}</p>
                   </div>
                 </div>
@@ -478,31 +494,48 @@ export function ProfileSettingsPage() {
                 {/* Delivery section */}
                 <div className="flex items-center gap-2 pt-2">
                   <div className="h-1.5 w-1.5 rounded-full bg-brand" />
-                  <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Доставка</h3>
+                  <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                    Доставка
+                  </h3>
                 </div>
 
                 <div className="bg-accent/10 rounded-xl p-4 space-y-3">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div className="rounded-lg bg-card/50 p-3">
-                      <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">Цена доставки</p>
+                      <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">
+                        Цена доставки
+                      </p>
                       <p className="font-medium">
-                        {profile.shipping_price != null
-                          ? formatCurrency(profile.shipping_price)
-                          : <span className="text-muted-foreground/60 italic text-sm">Не указана</span>}
+                        {profile.shipping_price != null ? (
+                          formatCurrency(profile.shipping_price)
+                        ) : (
+                          <span className="text-muted-foreground/60 italic text-sm">
+                            Не указана
+                          </span>
+                        )}
                       </p>
                     </div>
                     <div className="rounded-lg bg-card/50 p-3">
-                      <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">Мин. для бесплатной</p>
+                      <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">
+                        Мин. для бесплатной
+                      </p>
                       <p className="font-medium">
-                        {profile.min_free_shipping != null
-                          ? formatCurrency(profile.min_free_shipping)
-                          : <span className="text-muted-foreground/60 italic text-sm">Не указана</span>}
+                        {profile.min_free_shipping != null ? (
+                          formatCurrency(profile.min_free_shipping)
+                        ) : (
+                          <span className="text-muted-foreground/60 italic text-sm">
+                            Не указана
+                          </span>
+                        )}
                       </p>
                     </div>
                     <div className="rounded-lg bg-card/50 p-3">
-                      <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">Срок доставки</p>
+                      <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">
+                        Срок доставки
+                      </p>
                       <p className="font-medium">
-                        {profile.delivery_time_min || profile.delivery_time_max ? (
+                        {profile.delivery_time_min ||
+                        profile.delivery_time_max ? (
                           <>
                             {profile.delivery_time_min
                               ? `от ${DELIVERY_TIME_OPTIONS.find((o) => o.value === profile.delivery_time_min)?.label ?? `${profile.delivery_time_min} дн.`}`
@@ -512,14 +545,22 @@ export function ProfileSettingsPage() {
                               : ""}
                           </>
                         ) : (
-                          <span className="text-muted-foreground/60 italic text-sm">Не указан</span>
+                          <span className="text-muted-foreground/60 italic text-sm">
+                            Не указан
+                          </span>
                         )}
                       </p>
                     </div>
                     <div className="rounded-lg bg-card/50 p-3">
-                      <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">Служба доставки</p>
+                      <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">
+                        Служба доставки
+                      </p>
                       <p className="font-medium">
-                        {profile.shipping_provider || <span className="text-muted-foreground/60 italic text-sm">Не указана</span>}
+                        {profile.shipping_provider || (
+                          <span className="text-muted-foreground/60 italic text-sm">
+                            Не указана
+                          </span>
+                        )}
                       </p>
                     </div>
                   </div>
@@ -527,19 +568,26 @@ export function ProfileSettingsPage() {
 
                 {/* Return policy */}
                 <div className="rounded-xl bg-surface-elevated/50 p-4">
-                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">Политика возврата</p>
+                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">
+                    Политика возврата
+                  </p>
                   <p className="font-medium">
-                    {profile.return_policy || <span className="text-muted-foreground/60 italic text-sm">Не указана</span>}
+                    {profile.return_policy || (
+                      <span className="text-muted-foreground/60 italic text-sm">
+                        Не указана
+                      </span>
+                    )}
                   </p>
                 </div>
               </div>
             )
           ) : (
-            <div className="text-muted-foreground">Не удалось загрузить профиль.</div>
+            <div className="text-muted-foreground">
+              Не удалось загрузить профиль.
+            </div>
           )}
         </CardContent>
       </Card>
-
     </div>
   );
 }

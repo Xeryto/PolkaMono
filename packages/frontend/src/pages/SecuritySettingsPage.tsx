@@ -135,11 +135,12 @@ export function SecuritySettingsPage() {
       const newState = !profile.is_inactive;
       await api.toggleBrandInactive(newState, token);
       setProfile((p) => (p ? { ...p, is_inactive: newState } : null));
-      toast.success(newState ? "Аккаунт деактивирован." : "Аккаунт активирован.");
+      toast.success(
+        newState ? "Аккаунт деактивирован." : "Аккаунт активирован.",
+      );
     } catch (err: unknown) {
       toast.error(
-        (err as { message?: string }).message ||
-          "Не удалось изменить статус.",
+        (err as { message?: string }).message || "Не удалось изменить статус.",
       );
     } finally {
       setTogglingInactive(false);
@@ -280,15 +281,12 @@ export function SecuritySettingsPage() {
     setDeleteLoading(true);
     try {
       const result = await api.requestBrandDeletion(token);
-      toast.success(
-        `Удаление запланировано: ${result.scheduled_deletion_at}`,
-      );
+      toast.success(`Удаление запланировано: ${result.scheduled_deletion_at}`);
       logout();
       navigate("/portal");
     } catch (err: unknown) {
       toast.error(
-        (err as { message?: string }).message ||
-          "Не удалось удалить аккаунт.",
+        (err as { message?: string }).message || "Не удалось удалить аккаунт.",
       );
     } finally {
       setDeleteLoading(false);
@@ -302,14 +300,18 @@ export function SecuritySettingsPage() {
       <div className="space-y-6 p-6">
         <Skeleton className="h-8 w-48" />
         <Card className="bg-card border-border/30 shadow-lg">
-          <CardHeader><Skeleton className="h-6 w-40" /></CardHeader>
+          <CardHeader>
+            <Skeleton className="h-6 w-40" />
+          </CardHeader>
           <CardContent className="space-y-3">
             <Skeleton className="h-4 w-64" />
             <Skeleton className="h-10 w-40" />
           </CardContent>
         </Card>
         <Card className="bg-card border-border/30 shadow-lg">
-          <CardHeader><Skeleton className="h-6 w-40" /></CardHeader>
+          <CardHeader>
+            <Skeleton className="h-6 w-40" />
+          </CardHeader>
           <CardContent className="space-y-3">
             <Skeleton className="h-10 w-full" />
             <Skeleton className="h-10 w-full" />
@@ -317,14 +319,18 @@ export function SecuritySettingsPage() {
           </CardContent>
         </Card>
         <Card className="bg-card border-border/30 shadow-lg">
-          <CardHeader><Skeleton className="h-6 w-56" /></CardHeader>
+          <CardHeader>
+            <Skeleton className="h-6 w-56" />
+          </CardHeader>
           <CardContent className="space-y-3">
             <Skeleton className="h-4 w-48" />
             <Skeleton className="h-10 w-36" />
           </CardContent>
         </Card>
         <Card className="bg-card border-border/30 shadow-lg">
-          <CardHeader><Skeleton className="h-6 w-40" /></CardHeader>
+          <CardHeader>
+            <Skeleton className="h-6 w-40" />
+          </CardHeader>
           <CardContent className="space-y-3">
             <Skeleton className="h-4 w-72" />
             <Skeleton className="h-10 w-40" />
@@ -346,10 +352,17 @@ export function SecuritySettingsPage() {
             <CardTitle>Статус аккаунта</CardTitle>
           </CardHeader>
         </div>
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-4 pt-4">
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             Текущий статус:{" "}
-            <Badge variant={profile?.is_inactive ? "destructive" : "default"} className={!profile?.is_inactive ? "bg-green-500/10 text-green-500 border-green-500/20 hover:bg-green-500/20" : ""}>
+            <Badge
+              variant={profile?.is_inactive ? "destructive" : "default"}
+              className={
+                !profile?.is_inactive
+                  ? "bg-green-500/10 text-green-500 border-green-500/20 hover:bg-green-500/20"
+                  : ""
+              }
+            >
               {profile?.is_inactive ? "Неактивный" : "Активный"}
             </Badge>
           </div>
@@ -358,7 +371,9 @@ export function SecuritySettingsPage() {
             onClick={() => setInactiveDialogOpen(true)}
             disabled={togglingInactive}
           >
-            {togglingInactive && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+            {togglingInactive && (
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+            )}
             {profile?.is_inactive
               ? "Активировать аккаунт"
               : "Деактивировать аккаунт"}
@@ -404,7 +419,7 @@ export function SecuritySettingsPage() {
           </CardHeader>
         </div>
         <CardContent>
-          <form onSubmit={handlePwSubmit} className="space-y-4">
+          <form onSubmit={handlePwSubmit} className="space-y-4 pt-4">
             <div>
               <Label htmlFor="current_password">Текущий пароль</Label>
               <Input
@@ -470,12 +485,21 @@ export function SecuritySettingsPage() {
             <CardTitle>Двухфакторная аутентификация</CardTitle>
           </CardHeader>
         </div>
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-4 pt-4">
           {twoFAState === "idle" && (
             <div className="animate-fade-in">
               <div className="flex items-center gap-2 text-sm text-muted-foreground mb-4">
                 Статус 2FA:{" "}
-                <Badge variant={profile?.two_factor_enabled ? "default" : "secondary"} className={profile?.two_factor_enabled ? "bg-green-500/10 text-green-500 border-green-500/20 hover:bg-green-500/20" : ""}>
+                <Badge
+                  variant={
+                    profile?.two_factor_enabled ? "default" : "secondary"
+                  }
+                  className={
+                    profile?.two_factor_enabled
+                      ? "bg-green-500/10 text-green-500 border-green-500/20 hover:bg-green-500/20"
+                      : ""
+                  }
+                >
                   {profile?.two_factor_enabled ? "Включена" : "Отключена"}
                 </Badge>
               </div>
@@ -489,7 +513,9 @@ export function SecuritySettingsPage() {
                 </Button>
               ) : (
                 <Button onClick={handleEnable2FA} disabled={twoFALoading}>
-                  {twoFALoading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                  {twoFALoading && (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  )}
                   {twoFALoading ? "Отправка кода..." : "Включить 2FA"}
                 </Button>
               )}
@@ -547,7 +573,9 @@ export function SecuritySettingsPage() {
                   onClick={handleConfirm2FA}
                   disabled={twoFALoading || otpCode.length !== 6}
                 >
-                  {twoFALoading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                  {twoFALoading && (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  )}
                   {twoFALoading ? "Проверка..." : "Подтвердить"}
                 </Button>
                 <Button
@@ -601,7 +629,9 @@ export function SecuritySettingsPage() {
                   onClick={handleDisable2FA}
                   disabled={twoFALoading || !disablePassword}
                 >
-                  {twoFALoading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                  {twoFALoading && (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  )}
                   {twoFALoading ? "Отключение..." : "Подтвердить отключение"}
                 </Button>
                 <Button
@@ -625,10 +655,12 @@ export function SecuritySettingsPage() {
         <div className="relative">
           <div className="absolute inset-0 bg-gradient-to-r from-destructive/5 via-transparent to-transparent pointer-events-none" />
           <CardHeader className="relative">
-            <CardTitle className="text-destructive">Удаление аккаунта</CardTitle>
+            <CardTitle className="text-destructive">
+              Удаление аккаунта
+            </CardTitle>
           </CardHeader>
         </div>
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-4 pt-4">
           <p className="text-sm text-muted-foreground">
             Это действие нельзя отменить немедленно. У вас есть 30 дней для
             восстановления.
@@ -695,7 +727,9 @@ export function SecuritySettingsPage() {
                   disabled={deleteLoading || deleteNameInput !== profile?.name}
                   className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                 >
-                  {deleteLoading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                  {deleteLoading && (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  )}
                   {deleteLoading ? "Удаление..." : "Удалить аккаунт"}
                 </AlertDialogAction>
               </AlertDialogFooter>

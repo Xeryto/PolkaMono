@@ -21,27 +21,23 @@ export function DateRangePicker({
   const hasValue = dateFrom || dateTo;
 
   return (
-    <div className="flex items-end gap-3">
-      <div className="space-y-1">
-        <Label className="text-xs text-muted-foreground">От</Label>
-        <Input
-          type="date"
-          value={dateFrom}
-          max={dateTo || undefined}
-          onChange={(e) => onDateFromChange(e.target.value)}
-          className="w-[150px] h-9 bg-input border-border/50 text-foreground"
-        />
-      </div>
-      <div className="space-y-1">
-        <Label className="text-xs text-muted-foreground">До</Label>
-        <Input
-          type="date"
-          value={dateTo}
-          min={dateFrom || undefined}
-          onChange={(e) => onDateToChange(e.target.value)}
-          className="w-[150px] h-9 bg-input border-border/50 text-foreground"
-        />
-      </div>
+    <div className="flex items-center gap-2">
+      <Label className="text-xs text-muted-foreground shrink-0">От</Label>
+      <Input
+        type="date"
+        value={dateFrom}
+        max={dateTo || undefined}
+        onChange={(e) => onDateFromChange(e.target.value)}
+        className="w-[150px] h-9 bg-input border-border/50 text-foreground"
+      />
+      <Label className="text-xs text-muted-foreground shrink-0">До</Label>
+      <Input
+        type="date"
+        value={dateTo}
+        min={dateFrom || undefined}
+        onChange={(e) => onDateToChange(e.target.value)}
+        className="w-[150px] h-9 bg-input border-border/50 text-foreground"
+      />
       {hasValue && onClear && (
         <Button
           variant="ghost"
