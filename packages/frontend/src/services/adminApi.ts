@@ -224,6 +224,62 @@ export interface AdminBrandListItem {
   created_at: string | null;
 }
 
+export interface AdminBrandDetailResponse {
+  id: string;
+  name: string;
+  email: string;
+  slug: string;
+  logo: string | null;
+  description: string | null;
+  return_policy: string | null;
+  min_free_shipping: number | null;
+  shipping_price: number | null;
+  shipping_provider: string | null;
+  amount_withdrawn: number;
+  inn: string | null;
+  contact_phone: string | null;
+  tax_system: string | null;
+  vat_payer: boolean | null;
+  vat_rate: string | null;
+  kpp: string | null;
+  ogrn: string | null;
+  registration_address: string | null;
+  payout_account: string | null;
+  delivery_time_min: number | null;
+  delivery_time_max: number | null;
+  is_inactive: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AdminBrandUpdatePayload {
+  name?: string;
+  email?: string;
+  contact_phone?: string;
+  inn?: string;
+  registration_address?: string;
+  payout_account?: string;
+  tax_system?: string;
+  vat_payer?: boolean;
+  vat_rate?: string;
+  kpp?: string;
+  ogrn?: string;
+}
+
+export interface AdminBrandCreatePayload {
+  name: string;
+  email: string;
+  contact_phone: string;
+  inn: string;
+  tax_system: string;
+  vat_payer: boolean;
+  vat_rate?: string;
+  kpp?: string;
+  ogrn: string;
+  registration_address: string;
+  payout_account: string;
+}
+
 export interface AdminBrandCreateResponse {
   id: string;
   name: string;
@@ -239,11 +295,17 @@ export async function getAdminBrands(): Promise<AdminBrandListItem[]> {
   return res.json();
 }
 
-export async function createAdminBrand(name: string, email: string): Promise<AdminBrandCreateResponse> {
+export async function getAdminBrand(brandId: string): Promise<AdminBrandDetailResponse> {
+  const res = await adminApiRequest(`/api/v1/admin/brands/${brandId}`);
+  if (!res.ok) throw new Error("Failed to fetch brand");
+  return res.json();
+}
+
+export async function createAdminBrand(payload: AdminBrandCreatePayload): Promise<AdminBrandCreateResponse> {
   const res = await adminApiRequest("/api/v1/admin/brands", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ name, email }),
+    body: JSON.stringify(payload),
   });
   if (!res.ok) {
     const data = await res.json().catch(() => ({}));
@@ -252,7 +314,7 @@ export async function createAdminBrand(name: string, email: string): Promise<Adm
   return res.json();
 }
 
-export async function updateAdminBrand(brandId: string, updates: { name?: string; email?: string }): Promise<void> {
+export async function updateAdminBrand(brandId: string, updates: AdminBrandUpdatePayload): Promise<AdminBrandDetailResponse> {
   const res = await adminApiRequest(`/api/v1/admin/brands/${brandId}`, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
@@ -262,11 +324,15 @@ export async function updateAdminBrand(brandId: string, updates: { name?: string
     const data = await res.json().catch(() => ({}));
     throw new Error(data.detail || "Failed to update brand");
   }
+  return res.json();
 }
 
 export async function activateAdminBrand(brandId: string): Promise<void> {
   const res = await adminApiRequest(`/api/v1/admin/brands/${brandId}/activate`, { method: "PUT" });
-  if (!res.ok) throw new Error("Failed to activate brand");
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.detail || "Failed to activate brand");
+  }
 }
 
 export async function deactivateAdminBrand(brandId: string): Promise<void> {

@@ -477,18 +477,75 @@ export function ProfileSettingsPage() {
               <div className="space-y-4">
                 {/* Basic info cards */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div className="rounded-xl bg-surface-elevated/50 p-4">
+                  <div className="rounded-xl bg-accent/20 border border-border/20 p-4">
                     <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">
                       Название
                     </p>
                     <p className="font-medium">{profile.name}</p>
                   </div>
-                  <div className="rounded-xl bg-surface-elevated/50 p-4">
+                  <div className="rounded-xl bg-accent/20 border border-border/20 p-4">
                     <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">
                       Контактный email
                     </p>
                     <p className="font-medium">{profile.email}</p>
                   </div>
+                </div>
+
+                {/* Legal section */}
+                <div className="flex items-center gap-2 pt-2">
+                  <div className="h-1.5 w-1.5 rounded-full bg-brand" />
+                  <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                    Юридические данные
+                  </h3>
+                </div>
+                <div className="bg-accent/30 rounded-xl p-4 space-y-3 border border-border/20">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {profile.contact_phone && (
+                      <div className="rounded-lg bg-card/50 p-3">
+                        <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">
+                          Контактный телефон
+                        </p>
+                        <p className="font-medium">{profile.contact_phone}</p>
+                      </div>
+                    )}
+                    {profile.inn && (
+                      <div className="rounded-lg bg-card/50 p-3">
+                        <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">
+                          ИНН
+                        </p>
+                        <p className="font-medium">{profile.inn}</p>
+                      </div>
+                    )}
+                    {profile.tax_system && (
+                      <div className="rounded-lg bg-card/50 p-3">
+                        <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">
+                          Система налогообложения
+                        </p>
+                        <p className="font-medium">{profile.tax_system}</p>
+                      </div>
+                    )}
+                    {profile.vat_payer != null && (
+                      <div className="rounded-lg bg-card/50 p-3">
+                        <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">
+                          Плательщик НДС
+                        </p>
+                        <p className="font-medium">{profile.vat_payer ? "Да" : "Нет"}</p>
+                      </div>
+                    )}
+                    {profile.vat_payer && profile.vat_rate && (
+                      <div className="rounded-lg bg-card/50 p-3">
+                        <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">
+                          Ставка НДС
+                        </p>
+                        <p className="font-medium">{profile.vat_rate}</p>
+                      </div>
+                    )}
+                  </div>
+                  {!profile.contact_phone && !profile.inn && profile.vat_payer == null && (
+                    <p className="text-sm text-muted-foreground/60 italic">
+                      Юридические данные заполняются администратором
+                    </p>
+                  )}
                 </div>
 
                 {/* Delivery section */}
@@ -499,7 +556,7 @@ export function ProfileSettingsPage() {
                   </h3>
                 </div>
 
-                <div className="bg-accent/10 rounded-xl p-4 space-y-3">
+                <div className="bg-accent/30 rounded-xl p-4 space-y-3 border border-border/20">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div className="rounded-lg bg-card/50 p-3">
                       <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">
@@ -567,7 +624,7 @@ export function ProfileSettingsPage() {
                 </div>
 
                 {/* Return policy */}
-                <div className="rounded-xl bg-surface-elevated/50 p-4">
+                <div className="rounded-xl bg-accent/20 border border-border/20 p-4">
                   <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">
                     Политика возврата
                   </p>

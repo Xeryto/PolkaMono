@@ -103,7 +103,7 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({
     product.sizing_table_image ?? null,
   );
   const [sizingTableFile, setSizingTableFile] = useState<File | null>(null);
-  const [deliveryOverride, setDeliveryOverride] = useState(false);
+  const [deliveryOverride, setDeliveryOverride] = useState(!product.delivery_inherited);
   const [deliveryTimeMin, setDeliveryTimeMin] = useState<string>(
     product.delivery_time_min != null ? String(product.delivery_time_min) : "",
   );
@@ -219,8 +219,7 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({
     setSalePrice(product.sale_price != null ? String(product.sale_price) : "");
     setSizingTableImage(product.sizing_table_image ?? null);
     setSizingTableFile(null);
-    const hasCustomDelivery = product.delivery_time_min != null || product.delivery_time_max != null;
-    setDeliveryOverride(hasCustomDelivery);
+    setDeliveryOverride(!product.delivery_inherited);
     setDeliveryTimeMin(
       product.delivery_time_min != null
         ? String(product.delivery_time_min)
@@ -580,7 +579,7 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({
       <DialogContent className="max-w-4xl p-0 overflow-hidden bg-card border-border/30">
         {/* Modal header with gradient accent */}
         <div className="relative px-6 pt-6 pb-4">
-          <div className="absolute inset-0 bg-gradient-to-r from-brand/5 via-transparent to-brand/5 pointer-events-none" />
+          <div className="absolute inset-0 bg-gradient-to-b from-brand/8 via-brand/3 to-transparent pointer-events-none" />
           <div className="relative">
             <h2 className="text-xl font-bold tracking-tight text-foreground">
               Редактировать товар

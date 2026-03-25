@@ -9,6 +9,9 @@ class MailService:
         self.base_url = "https://go2.unisender.ru/ru/transactional/api/v1/email/send.json"
 
     def send_email(self, to_email, subject, html_content):
+        # TODO: SECURITY — remove email body logging once email delivery is stable
+        # and all recipients use real addresses. Currently kept for debugging because
+        # emails are not always sent or not always sent to real addresses.
         if not os.getenv("ENABLE_EMAIL", "false").lower() == "true":
             print(f"[SIMULATED] Email to {to_email}: {subject}")
             print(f"[SIMULATED] Content:\n{html_content}")

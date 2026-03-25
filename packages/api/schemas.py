@@ -390,6 +390,7 @@ class Product(BaseModel):
     general_images: List[str] = []
     delivery_time_min: Optional[int] = None
     delivery_time_max: Optional[int] = None
+    delivery_inherited: bool = False
     sale_price: Optional[float] = None
     sale_type: Optional[str] = None
     sizing_table_image: Optional[str] = None
@@ -628,6 +629,51 @@ class BrandUpdate(BaseModel):
 class AdminBrandCreate(BaseModel):
     name: str = Field(..., max_length=100)
     email: EmailStr
+    contact_phone: str = Field(..., max_length=20)
+    inn: str = Field(..., max_length=20)
+    tax_system: str
+    vat_payer: bool
+    vat_rate: Optional[str] = None
+    kpp: Optional[str] = Field(None, max_length=9)
+    ogrn: str = Field(..., max_length=15)
+    registration_address: str
+    payout_account: str = Field(..., max_length=100)
+
+    @field_validator("tax_system")
+    @classmethod
+    def validate_tax_system(cls, v: str) -> str:
+        if v not in _TAX_SYSTEMS:
+            raise ValueError(f"Система налогообложения должна быть одной из: {', '.join(_TAX_SYSTEMS)}")
+        return v
+
+    @field_validator("vat_rate")
+    @classmethod
+    def validate_vat_rate(cls, v: Optional[str]) -> Optional[str]:
+        if v is not None and v not in _VAT_RATES:
+            raise ValueError(f"Ставка НДС должна быть одной из: {', '.join(_VAT_RATES)}")
+        return v
+
+    @field_validator("kpp")
+    @classmethod
+    def validate_kpp(cls, v: Optional[str]) -> Optional[str]:
+        if v is not None and not v.isdigit():
+            raise ValueError("КПП должен содержать только цифры")
+        return v
+
+    @field_validator("ogrn")
+    @classmethod
+    def validate_ogrn(cls, v: str) -> str:
+        if not v.isdigit() or len(v) not in (13, 15):
+            raise ValueError("ОГРН должен содержать 13 цифр (ЮЛ) или 15 цифр (ИП)")
+        return v
+
+    @model_validator(mode="after")
+    def require_vat_rate_if_payer(self) -> "AdminBrandCreate":
+        if self.vat_payer and not self.vat_rate:
+            raise ValueError("Ставка НДС обязательна при Плательщик НДС = Да")
+        if not self.vat_payer:
+            self.vat_rate = None
+        return self
 
 
 class AdminBrandCreateResponse(BaseModel):
@@ -639,9 +685,56 @@ class AdminBrandCreateResponse(BaseModel):
     is_inactive: bool
 
 
+_TAX_SYSTEMS = {"ОСНО", "УСН", "АУСН", "ПСН"}
+_VAT_RATES = {"5%", "7%", "22%"}
+
+
 class AdminBrandUpdate(BaseModel):
     name: Optional[str] = Field(None, max_length=100)
     email: Optional[EmailStr] = None
+    contact_phone: Optional[str] = Field(None, max_length=20)
+    inn: Optional[str] = Field(None, max_length=20)
+    registration_address: Optional[str] = None
+    payout_account: Optional[str] = Field(None, max_length=100)
+    tax_system: Optional[str] = None
+    vat_payer: Optional[bool] = None
+    vat_rate: Optional[str] = None
+    kpp: Optional[str] = Field(None, max_length=9)
+    ogrn: Optional[str] = Field(None, max_length=15)
+
+    @field_validator("tax_system")
+    @classmethod
+    def validate_tax_system(cls, v: Optional[str]) -> Optional[str]:
+        if v is not None and v not in _TAX_SYSTEMS:
+            raise ValueError(f"Система налогообложения должна быть одной из: {', '.join(_TAX_SYSTEMS)}")
+        return v
+
+    @field_validator("vat_rate")
+    @classmethod
+    def validate_vat_rate(cls, v: Optional[str]) -> Optional[str]:
+        if v is not None and v not in _VAT_RATES:
+            raise ValueError(f"Ставка НДС должна быть одной из: {', '.join(_VAT_RATES)}")
+        return v
+
+    @field_validator("kpp")
+    @classmethod
+    def validate_kpp(cls, v: Optional[str]) -> Optional[str]:
+        if v is not None and not v.isdigit():
+            raise ValueError("КПП должен содержать только цифры")
+        return v
+
+    @field_validator("ogrn")
+    @classmethod
+    def validate_ogrn(cls, v: Optional[str]) -> Optional[str]:
+        if v is not None and (not v.isdigit() or len(v) not in (13, 15)):
+            raise ValueError("ОГРН должен содержать 13 цифр (ЮЛ) или 15 цифр (ИП)")
+        return v
+
+    @model_validator(mode="after")
+    def clear_vat_rate_if_not_payer(self) -> "AdminBrandUpdate":
+        if self.vat_payer is False:
+            self.vat_rate = None
+        return self
 
 
 class AdminBrandListItem(BaseModel):
@@ -666,9 +759,44 @@ class BrandResponse(BaseModel):
     shipping_provider: Optional[str] = None
     amount_withdrawn: float = 0.0
     inn: Optional[str] = None
+    contact_phone: Optional[str] = None
+    tax_system: Optional[str] = None
+    vat_payer: Optional[bool] = None
+    vat_rate: Optional[str] = None
     registration_address: Optional[str] = None
     payout_account: Optional[str] = None
-    payout_account_locked: bool = False
+    delivery_time_min: Optional[int] = None
+    delivery_time_max: Optional[int] = None
+    is_inactive: bool = False
+    scheduled_deletion_at: Optional[datetime] = None
+    two_factor_enabled: bool = False
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class AdminBrandDetailResponse(BaseModel):
+    id: str
+    name: str
+    email: EmailStr
+    slug: str
+    logo: Optional[str] = None
+    description: Optional[str] = None
+    return_policy: Optional[str] = None
+    min_free_shipping: Optional[int] = None
+    shipping_price: Optional[float] = None
+    shipping_provider: Optional[str] = None
+    amount_withdrawn: float = 0.0
+    inn: Optional[str] = None
+    contact_phone: Optional[str] = None
+    tax_system: Optional[str] = None
+    vat_payer: Optional[bool] = None
+    vat_rate: Optional[str] = None
+    kpp: Optional[str] = None
+    ogrn: Optional[str] = None
+    registration_address: Optional[str] = None
+    payout_account: Optional[str] = None
     delivery_time_min: Optional[int] = None
     delivery_time_max: Optional[int] = None
     is_inactive: bool = False

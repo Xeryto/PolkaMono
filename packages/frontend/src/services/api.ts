@@ -73,6 +73,14 @@ export interface BrandResponse {
   shipping_provider?: string;
   delivery_time_min?: number;
   delivery_time_max?: number;
+  inn?: string;
+  contact_phone?: string;
+  tax_system?: string;
+  vat_payer?: boolean;
+  vat_rate?: string;
+  registration_address?: string;
+  payout_account?: string;
+  amount_withdrawn?: number;
   is_inactive: boolean;
   two_factor_enabled: boolean;
   created_at: string;
@@ -135,6 +143,7 @@ export interface ProductResponse {
   general_images?: string[];
   delivery_time_min?: number;
   delivery_time_max?: number;
+  delivery_inherited?: boolean;
   sale_price?: number | null;
   sale_type?: 'percent' | 'exact' | null;
   sizing_table_image?: string | null;

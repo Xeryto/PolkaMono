@@ -178,6 +178,7 @@ def product_to_schema(product, is_liked=None):
         delivery_time_max=product.delivery_time_max
         if product.delivery_time_max is not None
         else product.brand.delivery_time_max,
+        delivery_inherited=product.delivery_time_min is None and product.delivery_time_max is None,
         sale_price=product.sale_price,
         sale_type=product.sale_type,
         sizing_table_image=product.sizing_table_image,
@@ -327,6 +328,9 @@ def _purge_deleted_brands_job():
             brand.logo = None
             brand.description = None
             brand.inn = None
+            brand.contact_phone = None
+            brand.kpp = None
+            brand.ogrn = None
             brand.registration_address = None
             brand.payout_account = None
             brand.return_policy = None
@@ -696,11 +700,14 @@ async def get_brand_profile(
         else None,  # type: ignore
         amount_withdrawn=float(brand.amount_withdrawn),  # type: ignore
         inn=str(brand.inn) if brand.inn else None,  # type: ignore
+        contact_phone=str(brand.contact_phone) if brand.contact_phone else None,  # type: ignore
+        tax_system=str(brand.tax_system) if brand.tax_system else None,  # type: ignore
+        vat_payer=brand.vat_payer,  # type: ignore
+        vat_rate=str(brand.vat_rate) if brand.vat_rate else None,  # type: ignore
         registration_address=str(brand.registration_address)
         if brand.registration_address
         else None,  # type: ignore
         payout_account=str(brand.payout_account) if brand.payout_account else None,  # type: ignore
-        payout_account_locked=brand.payout_account_locked,
         delivery_time_min=int(brand.delivery_time_min)
         if brand.delivery_time_min
         else None,  # type: ignore
@@ -933,11 +940,14 @@ async def update_brand_profile(
         else None,  # type: ignore
         amount_withdrawn=float(brand.amount_withdrawn),  # type: ignore
         inn=str(brand.inn) if brand.inn else None,  # type: ignore
+        contact_phone=str(brand.contact_phone) if brand.contact_phone else None,  # type: ignore
+        tax_system=str(brand.tax_system) if brand.tax_system else None,  # type: ignore
+        vat_payer=brand.vat_payer,  # type: ignore
+        vat_rate=str(brand.vat_rate) if brand.vat_rate else None,  # type: ignore
         registration_address=str(brand.registration_address)
         if brand.registration_address
         else None,  # type: ignore
         payout_account=str(brand.payout_account) if brand.payout_account else None,  # type: ignore
-        payout_account_locked=brand.payout_account_locked,
         delivery_time_min=brand.delivery_time_min,
         delivery_time_max=brand.delivery_time_max,
         created_at=brand.created_at,  # type: ignore
@@ -1772,6 +1782,26 @@ async def toggle_brand_inactive(
 ):
     """Set or clear brand inactive mode"""
     if not payload.is_inactive:
+        legal_missing = [
+            k for k, v in {
+                "ИНН": current_user.inn,
+                "Система налогообложения": current_user.tax_system,
+                "ОГРН": current_user.ogrn,
+                "Контактный телефон": current_user.contact_phone,
+                "Адрес регистрации": current_user.registration_address,
+                "Расчётный счёт": current_user.payout_account,
+            }.items() if v is None
+        ] + ([] if current_user.vat_payer is not None else ["Плательщик НДС"])
+        if legal_missing:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Обратитесь к администратору для заполнения юридических данных: {', '.join(legal_missing)}",
+            )
+        if current_user.vat_payer and current_user.vat_rate is None:
+            raise HTTPException(
+                status_code=400,
+                detail="Обратитесь к администратору для заполнения юридических данных: Ставка НДС",
+            )
         required = {
             "Стоимость доставки": current_user.shipping_price,
             "Служба доставки": current_user.shipping_provider,
@@ -5260,6 +5290,54 @@ def admin_list_brands(
     ]
 
 
+@app.get("/api/v1/admin/brands/{brand_id}", response_model=schemas.AdminBrandDetailResponse)
+@limiter.limit("30/minute")
+def admin_get_brand(
+    request: Request,
+    brand_id: str,
+    admin: AuthAccount = Depends(get_current_admin),
+    db: Session = Depends(get_db),
+):
+    """Admin: get full brand detail including legal/fiscal fields."""
+    brand = (
+        db.query(Brand)
+        .options(joinedload(Brand.auth_account))
+        .filter(Brand.id == brand_id)
+        .first()
+    )
+    if not brand:
+        raise HTTPException(status_code=404, detail="Бренд не найден")
+    return schemas.AdminBrandDetailResponse(
+        id=str(brand.id),
+        name=str(brand.name),
+        email=brand.auth_account.email,
+        slug=str(brand.slug),
+        logo=str(brand.logo) if brand.logo else None,
+        description=str(brand.description) if brand.description else None,
+        return_policy=str(brand.return_policy) if brand.return_policy else None,
+        min_free_shipping=int(brand.min_free_shipping) if brand.min_free_shipping else None,
+        shipping_price=float(brand.shipping_price) if brand.shipping_price else None,
+        shipping_provider=str(brand.shipping_provider) if brand.shipping_provider else None,
+        amount_withdrawn=float(brand.amount_withdrawn),
+        inn=str(brand.inn) if brand.inn else None,
+        contact_phone=str(brand.contact_phone) if brand.contact_phone else None,
+        tax_system=str(brand.tax_system) if brand.tax_system else None,
+        vat_payer=brand.vat_payer,
+        vat_rate=str(brand.vat_rate) if brand.vat_rate else None,
+        kpp=str(brand.kpp) if brand.kpp else None,
+        ogrn=str(brand.ogrn) if brand.ogrn else None,
+        registration_address=str(brand.registration_address) if brand.registration_address else None,
+        payout_account=str(brand.payout_account) if brand.payout_account else None,
+        delivery_time_min=int(brand.delivery_time_min) if brand.delivery_time_min else None,
+        delivery_time_max=int(brand.delivery_time_max) if brand.delivery_time_max else None,
+        is_inactive=bool(brand.is_inactive),
+        scheduled_deletion_at=brand.scheduled_deletion_at,
+        two_factor_enabled=bool(brand.auth_account.two_factor_enabled),
+        created_at=brand.created_at,
+        updated_at=brand.updated_at,
+    )
+
+
 @app.post("/api/v1/admin/brands", response_model=schemas.AdminBrandCreateResponse)
 @limiter.limit("5/minute")
 def admin_create_brand(
@@ -5294,6 +5372,15 @@ def admin_create_brand(
         auth_account_id=acc.id,
         slug=slug,
         is_inactive=True,
+        contact_phone=body.contact_phone,
+        inn=body.inn,
+        tax_system=body.tax_system,
+        vat_payer=body.vat_payer,
+        vat_rate=body.vat_rate,
+        kpp=body.kpp,
+        ogrn=body.ogrn,
+        registration_address=body.registration_address,
+        payout_account=body.payout_account,
     )
     db.add(brand)
     db.commit()
@@ -5320,7 +5407,7 @@ def admin_update_brand(
     admin: AuthAccount = Depends(get_current_admin),
     db: Session = Depends(get_db),
 ):
-    """Admin: update brand name/email."""
+    """Admin: update brand name, email, and legal/fiscal fields."""
     brand = db.query(Brand).filter(Brand.id == brand_id).first()
     if not brand:
         raise HTTPException(status_code=404, detail="Бренд не найден")
@@ -5340,10 +5427,59 @@ def admin_update_brand(
             raise HTTPException(status_code=400, detail="Email уже зарегистрирован")
         brand.auth_account.email = body.email
 
+    if body.contact_phone is not None:
+        brand.contact_phone = body.contact_phone
+    if body.inn is not None:
+        brand.inn = body.inn
+    if body.registration_address is not None:
+        brand.registration_address = body.registration_address
+    if body.payout_account is not None:
+        brand.payout_account = body.payout_account
+    if body.tax_system is not None:
+        brand.tax_system = body.tax_system
+    if body.vat_payer is not None:
+        brand.vat_payer = body.vat_payer
+        if not body.vat_payer:
+            brand.vat_rate = None
+    if body.vat_rate is not None:
+        brand.vat_rate = body.vat_rate
+    if body.kpp is not None:
+        brand.kpp = body.kpp
+    if body.ogrn is not None:
+        brand.ogrn = body.ogrn
+
     brand.updated_at = datetime.now(timezone.utc)
     db.commit()
     db.refresh(brand)
-    return {"id": str(brand.id), "name": str(brand.name), "email": brand.auth_account.email, "slug": str(brand.slug)}
+    return schemas.AdminBrandDetailResponse(
+        id=str(brand.id),
+        name=str(brand.name),
+        email=brand.auth_account.email,
+        slug=str(brand.slug),
+        logo=str(brand.logo) if brand.logo else None,
+        description=str(brand.description) if brand.description else None,
+        return_policy=str(brand.return_policy) if brand.return_policy else None,
+        min_free_shipping=int(brand.min_free_shipping) if brand.min_free_shipping else None,
+        shipping_price=float(brand.shipping_price) if brand.shipping_price else None,
+        shipping_provider=str(brand.shipping_provider) if brand.shipping_provider else None,
+        amount_withdrawn=float(brand.amount_withdrawn),
+        inn=str(brand.inn) if brand.inn else None,
+        contact_phone=str(brand.contact_phone) if brand.contact_phone else None,
+        tax_system=str(brand.tax_system) if brand.tax_system else None,
+        vat_payer=brand.vat_payer,
+        vat_rate=str(brand.vat_rate) if brand.vat_rate else None,
+        kpp=str(brand.kpp) if brand.kpp else None,
+        ogrn=str(brand.ogrn) if brand.ogrn else None,
+        registration_address=str(brand.registration_address) if brand.registration_address else None,
+        payout_account=str(brand.payout_account) if brand.payout_account else None,
+        delivery_time_min=int(brand.delivery_time_min) if brand.delivery_time_min else None,
+        delivery_time_max=int(brand.delivery_time_max) if brand.delivery_time_max else None,
+        is_inactive=bool(brand.is_inactive),
+        scheduled_deletion_at=brand.scheduled_deletion_at,
+        two_factor_enabled=bool(brand.auth_account.two_factor_enabled),
+        created_at=brand.created_at,
+        updated_at=brand.updated_at,
+    )
 
 
 @app.put("/api/v1/admin/brands/{brand_id}/activate")
@@ -5354,10 +5490,33 @@ def admin_activate_brand(
     admin: AuthAccount = Depends(get_current_admin),
     db: Session = Depends(get_db),
 ):
-    """Admin: activate a brand (admin override — no delivery field check)."""
+    """Admin: activate a brand — validates all required legal and operational fields."""
     brand = db.query(Brand).filter(Brand.id == brand_id).first()
     if not brand:
         raise HTTPException(status_code=404, detail="Бренд не найден")
+    required: dict = {
+        "ИНН": brand.inn,
+        "Система налогообложения": brand.tax_system,
+        "ОГРН": brand.ogrn,
+        "Контактный телефон": brand.contact_phone,
+        "Адрес регистрации": brand.registration_address,
+        "Расчётный счёт": brand.payout_account,
+        "Стоимость доставки": brand.shipping_price,
+        "Служба доставки": brand.shipping_provider,
+        "Мин. срок доставки": brand.delivery_time_min,
+        "Макс. срок доставки": brand.delivery_time_max,
+        "Политика возврата": brand.return_policy,
+    }
+    missing = [k for k, v in required.items() if v is None]
+    if brand.vat_payer is None:
+        missing.append("Плательщик НДС")
+    elif brand.vat_payer and brand.vat_rate is None:
+        missing.append("Ставка НДС")
+    if missing:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Заполните обязательные поля перед активацией: {', '.join(missing)}",
+        )
     brand.is_inactive = False
     db.commit()
     return {"id": str(brand.id), "is_inactive": False}

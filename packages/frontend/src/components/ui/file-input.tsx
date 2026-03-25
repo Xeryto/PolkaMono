@@ -10,7 +10,7 @@ interface FileInputProps extends React.InputHTMLAttributes<HTMLInputElement> {
 
 const FileInput = React.forwardRef<HTMLInputElement, FileInputProps>(
   (
-    { onFilesChange, placeholder = "No files selected", selectedFileNames, className, multiple, ...props },
+    { onFilesChange, placeholder = "Файлы не выбраны", selectedFileNames, className, multiple, ...props },
     ref
   ) => {
     const internalRef = useRef<HTMLInputElement>(null);
@@ -56,7 +56,7 @@ const FileInput = React.forwardRef<HTMLInputElement, FileInputProps>(
           variant="outline"
           className="h-full rounded-r-none border-y-0 border-l-0"
         >
-          Choose files
+          Выбрать файлы
         </Button>
         <div
           className={cn(

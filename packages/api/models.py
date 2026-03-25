@@ -345,9 +345,14 @@ class Brand(Base):
     delivery_time_max = Column(Integer, nullable=True)  # days, e.g. 7
     amount_withdrawn = Column(Float, nullable=False, default=0.0)
     inn = Column(String(20), nullable=True)
+    contact_phone = Column(String(20), nullable=True)
+    tax_system = Column(String(10), nullable=True)  # ОСНО, УСН, АУСН, ПСН
+    vat_payer = Column(Boolean, nullable=True)
+    vat_rate = Column(String(5), nullable=True)  # 5%, 7%, 22%
+    kpp = Column(String(9), nullable=True)
+    ogrn = Column(String(15), nullable=True)
     registration_address = Column(Text, nullable=True)
     payout_account = Column(String(100), nullable=True)
-    payout_account_locked = Column(Integer, nullable=False, default=0)
     is_inactive = Column(Boolean, default=False, nullable=False)
     scheduled_deletion_at = Column(
         DateTime(timezone=True), nullable=True
