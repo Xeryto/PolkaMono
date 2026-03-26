@@ -34,6 +34,7 @@ interface EditState {
   // fields
   name: string;
   email: string;
+  official_name: string;
   contact_phone: string;
   inn: string;
   kpp: string;
@@ -52,6 +53,7 @@ export function AdminBrandsView() {
   // Create form
   const [newName, setNewName] = useState("");
   const [newEmail, setNewEmail] = useState("");
+  const [newOfficialName, setNewOfficialName] = useState("");
   const [newPhone, setNewPhone] = useState("");
   const [newInn, setNewInn] = useState("");
   const [newKpp, setNewKpp] = useState("");
@@ -89,7 +91,7 @@ export function AdminBrandsView() {
   }, [fetchBrands]);
 
   const handleCreate = async () => {
-    if (!newName.trim() || !newEmail.trim() || !newPhone.trim() || !newInn.trim() ||
+    if (!newName.trim() || !newEmail.trim() || !newOfficialName.trim() || !newPhone.trim() || !newInn.trim() ||
         !newOgrn.trim() || !newAddress.trim() || !newPayout.trim() || !newTaxSystem) return;
     setCreating(true);
     setCreateError(null);
@@ -98,6 +100,7 @@ export function AdminBrandsView() {
       const payload: AdminBrandCreatePayload = {
         name: newName.trim(),
         email: newEmail.trim(),
+        official_name: newOfficialName.trim(),
         contact_phone: newPhone.trim(),
         inn: newInn.trim(),
         kpp: newKpp.trim() || undefined,
@@ -110,7 +113,7 @@ export function AdminBrandsView() {
       };
       const res = await createAdminBrand(payload);
       setCreated(res);
-      setNewName(""); setNewEmail(""); setNewPhone(""); setNewInn(""); setNewKpp("");
+      setNewName(""); setNewEmail(""); setNewOfficialName(""); setNewPhone(""); setNewInn(""); setNewKpp("");
       setNewOgrn(""); setNewAddress(""); setNewPayout(""); setNewTaxSystem("");
       setNewVatPayer(false); setNewVatRate("");
       fetchBrands();
@@ -154,6 +157,7 @@ export function AdminBrandsView() {
       loading: true,
       name: brand.name,
       email: brand.email,
+      official_name: "",
       contact_phone: "",
       inn: "",
       kpp: "",
@@ -172,6 +176,7 @@ export function AdminBrandsView() {
         ...base,
         detail,
         loading: false,
+        official_name: detail.official_name ?? "",
         contact_phone: detail.contact_phone ?? "",
         inn: detail.inn ?? "",
         kpp: detail.kpp ?? "",
@@ -196,6 +201,7 @@ export function AdminBrandsView() {
       const updates: AdminBrandUpdatePayload = {};
       if (edit.name.trim() !== edit.brand.name) updates.name = edit.name.trim();
       if (edit.email.trim() !== edit.brand.email) updates.email = edit.email.trim();
+      if (edit.official_name.trim() !== (d?.official_name ?? "")) updates.official_name = edit.official_name.trim() || undefined;
       if (edit.contact_phone.trim() !== (d?.contact_phone ?? "")) updates.contact_phone = edit.contact_phone.trim() || undefined;
       if (edit.inn.trim() !== (d?.inn ?? "")) updates.inn = edit.inn.trim() || undefined;
       if (edit.kpp.trim() !== (d?.kpp ?? "")) updates.kpp = edit.kpp.trim() || undefined;
@@ -250,6 +256,10 @@ export function AdminBrandsView() {
 
         <div className="space-y-3">
           <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Юридические данные</h4>
+          <div className="space-y-2">
+            <Label htmlFor="brand-official-name">Официальное название</Label>
+            <Input id="brand-official-name" value={newOfficialName} onChange={(e) => setNewOfficialName(e.target.value)} placeholder="ООО «Название»" />
+          </div>
           <div className="space-y-2">
             <Label htmlFor="brand-inn">ИНН</Label>
             <Input id="brand-inn" value={newInn} onChange={(e) => setNewInn(e.target.value)} placeholder="10 или 12 цифр" />
@@ -306,7 +316,7 @@ export function AdminBrandsView() {
 
         <Button
           onClick={handleCreate}
-          disabled={creating || !newName.trim() || !newEmail.trim() || !newPhone.trim() ||
+          disabled={creating || !newName.trim() || !newEmail.trim() || !newOfficialName.trim() || !newPhone.trim() ||
             !newInn.trim() || !newOgrn.trim() || !newAddress.trim() || !newPayout.trim() ||
             !newTaxSystem || (newVatPayer && !newVatRate)}
           size="sm"
@@ -423,6 +433,10 @@ export function AdminBrandsView() {
               {/* Legal */}
               <div className="space-y-3">
                 <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Юридические данные</h4>
+                <div className="space-y-2">
+                  <Label>Официальное название</Label>
+                  <Input value={edit?.official_name ?? ""} onChange={(e) => setEditField("official_name", e.target.value)} placeholder="ООО «Название»" />
+                </div>
                 <div className="space-y-2">
                   <Label>ИНН</Label>
                   <Input value={edit?.inn ?? ""} onChange={(e) => setEditField("inn", e.target.value)} placeholder="10 или 12 цифр" />

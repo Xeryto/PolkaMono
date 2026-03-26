@@ -345,6 +345,7 @@ class Brand(Base):
     delivery_time_max = Column(Integer, nullable=True)  # days, e.g. 7
     amount_withdrawn = Column(Float, nullable=False, default=0.0)
     inn = Column(String(20), nullable=True)
+    official_name = Column(String(200), nullable=True)  # официальное название юр. лица
     contact_phone = Column(String(20), nullable=True)
     tax_system = Column(String(10), nullable=True)  # ОСНО, УСН, АУСН, ПСН
     vat_payer = Column(Boolean, nullable=True)

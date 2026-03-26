@@ -168,6 +168,7 @@ export function ProfileSettingsPage() {
         slug: profile.slug,
         logo: profile.logo,
         description: profile.description,
+        official_name: profile.official_name,
         return_policy: profile.return_policy,
         min_free_shipping: profile.min_free_shipping,
         shipping_price: profile.shipping_price,
@@ -280,6 +281,21 @@ export function ProfileSettingsPage() {
                       {fieldErrors.email}
                     </p>
                   )}
+                </div>
+                <div>
+                  <label
+                    htmlFor="official_name"
+                    className="text-sm font-medium text-muted-foreground"
+                  >
+                    Официальное название
+                  </label>
+                  <Input
+                    id="official_name"
+                    value={profile.official_name ?? ""}
+                    onChange={handleInputChange}
+                    className="mt-1"
+                    placeholder="ООО «Название»"
+                  />
                 </div>
                 <div>
                   <label
@@ -500,6 +516,14 @@ export function ProfileSettingsPage() {
                 </div>
                 <div className="bg-accent/30 rounded-xl p-4 space-y-3 border border-border/20">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {profile.official_name && (
+                      <div className="rounded-lg bg-card/50 p-3 sm:col-span-2">
+                        <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">
+                          Официальное название
+                        </p>
+                        <p className="font-medium">{profile.official_name}</p>
+                      </div>
+                    )}
                     {profile.contact_phone && (
                       <div className="rounded-lg bg-card/50 p-3">
                         <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">
@@ -541,7 +565,7 @@ export function ProfileSettingsPage() {
                       </div>
                     )}
                   </div>
-                  {!profile.contact_phone && !profile.inn && profile.vat_payer == null && (
+                  {!profile.official_name && !profile.contact_phone && !profile.inn && profile.vat_payer == null && (
                     <p className="text-sm text-muted-foreground/60 italic">
                       Юридические данные заполняются администратором
                     </p>

@@ -700,6 +700,7 @@ async def get_brand_profile(
         else None,  # type: ignore
         amount_withdrawn=float(brand.amount_withdrawn),  # type: ignore
         inn=str(brand.inn) if brand.inn else None,  # type: ignore
+        official_name=str(brand.official_name) if brand.official_name else None,  # type: ignore
         contact_phone=str(brand.contact_phone) if brand.contact_phone else None,  # type: ignore
         tax_system=str(brand.tax_system) if brand.tax_system else None,  # type: ignore
         vat_payer=brand.vat_payer,  # type: ignore
@@ -906,6 +907,8 @@ async def update_brand_profile(
     """Update the authenticated brand user's delivery settings"""
     brand = current_brand_user
 
+    if brand_data.official_name is not None:
+        brand.official_name = brand_data.official_name  # type: ignore
     if brand_data.shipping_price is not None:
         brand.shipping_price = brand_data.shipping_price  # type: ignore
     if brand_data.shipping_provider is not None:
@@ -940,6 +943,7 @@ async def update_brand_profile(
         else None,  # type: ignore
         amount_withdrawn=float(brand.amount_withdrawn),  # type: ignore
         inn=str(brand.inn) if brand.inn else None,  # type: ignore
+        official_name=str(brand.official_name) if brand.official_name else None,  # type: ignore
         contact_phone=str(brand.contact_phone) if brand.contact_phone else None,  # type: ignore
         tax_system=str(brand.tax_system) if brand.tax_system else None,  # type: ignore
         vat_payer=brand.vat_payer,  # type: ignore
@@ -1784,6 +1788,7 @@ async def toggle_brand_inactive(
     if not payload.is_inactive:
         legal_missing = [
             k for k, v in {
+                "Официальное название": current_user.official_name,
                 "ИНН": current_user.inn,
                 "Система налогообложения": current_user.tax_system,
                 "ОГРН": current_user.ogrn,
@@ -5372,6 +5377,7 @@ def admin_create_brand(
         auth_account_id=acc.id,
         slug=slug,
         is_inactive=True,
+        official_name=body.official_name,
         contact_phone=body.contact_phone,
         inn=body.inn,
         tax_system=body.tax_system,
@@ -5427,6 +5433,8 @@ def admin_update_brand(
             raise HTTPException(status_code=400, detail="Email уже зарегистрирован")
         brand.auth_account.email = body.email
 
+    if body.official_name is not None:
+        brand.official_name = body.official_name
     if body.contact_phone is not None:
         brand.contact_phone = body.contact_phone
     if body.inn is not None:
@@ -5495,6 +5503,7 @@ def admin_activate_brand(
     if not brand:
         raise HTTPException(status_code=404, detail="Бренд не найден")
     required: dict = {
+        "Официальное название": brand.official_name,
         "ИНН": brand.inn,
         "Система налогообложения": brand.tax_system,
         "ОГРН": brand.ogrn,

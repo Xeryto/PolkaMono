@@ -85,7 +85,7 @@ export async function sendAdminNotification(message: string): Promise<void> {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ message }),
   });
-  if (!res.ok && res.status !== 204) throw new Error("Failed to send notification");
+  if (!res.ok && res.status !== 204) throw new Error("Не удалось отправить уведомление");
 }
 
 export async function sendAdminBuyerPush(message: string): Promise<void> {
@@ -94,7 +94,7 @@ export async function sendAdminBuyerPush(message: string): Promise<void> {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ message }),
   });
-  if (!res.ok && res.status !== 204) throw new Error("Failed to send buyer push");
+  if (!res.ok && res.status !== 204) throw new Error("Не удалось отправить пуш покупателям");
 }
 
 export interface AdminReturnItem {
@@ -111,7 +111,7 @@ export async function getAdminReturns(dateFrom?: string, dateTo?: string): Promi
   if (dateTo) params.set("date_to", dateTo);
   const qs = params.toString();
   const res = await adminApiRequest(`/api/v1/admin/returns${qs ? `?${qs}` : ""}`);
-  if (!res.ok) throw new Error("Failed to fetch returns");
+  if (!res.ok) throw new Error("Не удалось загрузить список возвратов");
   return res.json();
 }
 
@@ -132,7 +132,7 @@ export async function lookupAdminOrder(orderId: string): Promise<AdminOrderLooku
   const res = await adminApiRequest(
     `/api/v1/admin/orders/lookup?order_id=${encodeURIComponent(orderId)}`
   );
-  if (!res.ok) throw new Error(res.status === 404 ? "Order not found" : "Lookup failed");
+  if (!res.ok) throw new Error(res.status === 404 ? "Заказ не найден" : "Не удалось найти заказ");
   return res.json();
 }
 
@@ -142,7 +142,7 @@ export async function logAdminReturn(orderId: string, itemIds: string[]): Promis
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ order_id: orderId, item_ids: itemIds }),
   });
-  if (!res.ok && res.status !== 204) throw new Error("Failed to log return");
+  if (!res.ok && res.status !== 204) throw new Error("Не удалось зафиксировать возврат");
 }
 
 // --- Order Export ---
@@ -166,7 +166,7 @@ export async function getAdminOrders(dateFrom?: string, dateTo?: string): Promis
   if (dateTo) params.set("date_to", dateTo);
   const qs = params.toString();
   const res = await adminApiRequest(`/api/v1/admin/orders${qs ? `?${qs}` : ""}`);
-  if (!res.ok) throw new Error("Failed to fetch orders");
+  if (!res.ok) throw new Error("Не удалось загрузить список заказов");
   return res.json();
 }
 
@@ -182,7 +182,7 @@ export async function searchBrands(query: string): Promise<BrandSearchResult[]> 
   const res = await adminApiRequest(
     `/api/v1/admin/brands/search?q=${encodeURIComponent(query)}`
   );
-  if (!res.ok) throw new Error("Failed to search brands");
+  if (!res.ok) throw new Error("Не удалось найти бренды");
   return res.json();
 }
 
@@ -208,7 +208,7 @@ export async function recordWithdrawal(
   });
   if (!res.ok) {
     const data = await res.json().catch(() => ({}));
-    throw new Error(data.detail || "Failed to record withdrawal");
+    throw new Error(data.detail || "Не удалось зафиксировать выплату");
   }
   return res.json();
 }
@@ -237,6 +237,7 @@ export interface AdminBrandDetailResponse {
   shipping_provider: string | null;
   amount_withdrawn: number;
   inn: string | null;
+  official_name: string | null;
   contact_phone: string | null;
   tax_system: string | null;
   vat_payer: boolean | null;
@@ -255,6 +256,7 @@ export interface AdminBrandDetailResponse {
 export interface AdminBrandUpdatePayload {
   name?: string;
   email?: string;
+  official_name?: string;
   contact_phone?: string;
   inn?: string;
   registration_address?: string;
@@ -269,6 +271,7 @@ export interface AdminBrandUpdatePayload {
 export interface AdminBrandCreatePayload {
   name: string;
   email: string;
+  official_name: string;
   contact_phone: string;
   inn: string;
   tax_system: string;
@@ -291,13 +294,13 @@ export interface AdminBrandCreateResponse {
 
 export async function getAdminBrands(): Promise<AdminBrandListItem[]> {
   const res = await adminApiRequest("/api/v1/admin/brands");
-  if (!res.ok) throw new Error("Failed to fetch brands");
+  if (!res.ok) throw new Error("Не удалось загрузить список брендов");
   return res.json();
 }
 
 export async function getAdminBrand(brandId: string): Promise<AdminBrandDetailResponse> {
   const res = await adminApiRequest(`/api/v1/admin/brands/${brandId}`);
-  if (!res.ok) throw new Error("Failed to fetch brand");
+  if (!res.ok) throw new Error("Не удалось загрузить данные бренда");
   return res.json();
 }
 
@@ -309,7 +312,7 @@ export async function createAdminBrand(payload: AdminBrandCreatePayload): Promis
   });
   if (!res.ok) {
     const data = await res.json().catch(() => ({}));
-    throw new Error(data.detail || "Failed to create brand");
+    throw new Error(data.detail || "Не удалось создать бренд");
   }
   return res.json();
 }
@@ -322,7 +325,7 @@ export async function updateAdminBrand(brandId: string, updates: AdminBrandUpdat
   });
   if (!res.ok) {
     const data = await res.json().catch(() => ({}));
-    throw new Error(data.detail || "Failed to update brand");
+    throw new Error(data.detail || "Не удалось обновить данные бренда");
   }
   return res.json();
 }
@@ -331,13 +334,16 @@ export async function activateAdminBrand(brandId: string): Promise<void> {
   const res = await adminApiRequest(`/api/v1/admin/brands/${brandId}/activate`, { method: "PUT" });
   if (!res.ok) {
     const data = await res.json().catch(() => ({}));
-    throw new Error(data.detail || "Failed to activate brand");
+    throw new Error(data.detail || "Не удалось активировать бренд");
   }
 }
 
 export async function deactivateAdminBrand(brandId: string): Promise<void> {
   const res = await adminApiRequest(`/api/v1/admin/brands/${brandId}/deactivate`, { method: "PUT" });
-  if (!res.ok) throw new Error("Failed to deactivate brand");
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.detail || "Не удалось деактивировать бренд");
+  }
 }
 
 export async function getWithdrawals(brandId?: string, dateFrom?: string, dateTo?: string): Promise<WithdrawalRecord[]> {
@@ -347,7 +353,7 @@ export async function getWithdrawals(brandId?: string, dateFrom?: string, dateTo
   if (dateTo) params.set("date_to", dateTo);
   const qs = params.toString();
   const res = await adminApiRequest(`/api/v1/admin/withdrawals${qs ? `?${qs}` : ""}`);
-  if (!res.ok) throw new Error("Failed to fetch withdrawals");
+  if (!res.ok) throw new Error("Не удалось загрузить список выплат");
   const data = await res.json();
   return data.withdrawals;
 }

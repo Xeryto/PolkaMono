@@ -590,6 +590,7 @@ class BrandLogin(BaseModel):
 
 
 class BrandUpdate(BaseModel):
+    official_name: Optional[str] = Field(None, max_length=200)
     shipping_price: Optional[float] = None
     shipping_provider: Optional[str] = None
     delivery_time_min: Optional[int] = None  # days
@@ -629,6 +630,7 @@ class BrandUpdate(BaseModel):
 class AdminBrandCreate(BaseModel):
     name: str = Field(..., max_length=100)
     email: EmailStr
+    official_name: str = Field(..., max_length=200)
     contact_phone: str = Field(..., max_length=20)
     inn: str = Field(..., max_length=20)
     tax_system: str
@@ -692,6 +694,7 @@ _VAT_RATES = {"5%", "7%", "22%"}
 class AdminBrandUpdate(BaseModel):
     name: Optional[str] = Field(None, max_length=100)
     email: Optional[EmailStr] = None
+    official_name: Optional[str] = Field(None, max_length=200)
     contact_phone: Optional[str] = Field(None, max_length=20)
     inn: Optional[str] = Field(None, max_length=20)
     registration_address: Optional[str] = None
@@ -759,6 +762,7 @@ class BrandResponse(BaseModel):
     shipping_provider: Optional[str] = None
     amount_withdrawn: float = 0.0
     inn: Optional[str] = None
+    official_name: Optional[str] = None
     contact_phone: Optional[str] = None
     tax_system: Optional[str] = None
     vat_payer: Optional[bool] = None
@@ -789,6 +793,7 @@ class AdminBrandDetailResponse(BaseModel):
     shipping_provider: Optional[str] = None
     amount_withdrawn: float = 0.0
     inn: Optional[str] = None
+    official_name: Optional[str] = None
     contact_phone: Optional[str] = None
     tax_system: Optional[str] = None
     vat_payer: Optional[bool] = None

@@ -74,6 +74,7 @@ export interface BrandResponse {
   delivery_time_min?: number;
   delivery_time_max?: number;
   inn?: string;
+  official_name?: string;
   contact_phone?: string;
   tax_system?: string;
   vat_payer?: boolean;
@@ -106,6 +107,7 @@ export interface BrandProfileUpdateRequest {
   slug?: string;
   logo?: string;
   description?: string;
+  official_name?: string;
   return_policy?: string;
   min_free_shipping?: number;
   shipping_price?: number;
