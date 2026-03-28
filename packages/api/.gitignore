@@ -266,10 +266,6 @@ Desktop.ini
 .env.production
 .env.staging
 
-# Test files
-test_*.py
-*_test.py
-tests/
 
 # Documentation builds
 docs/_build/

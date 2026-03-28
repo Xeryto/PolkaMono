@@ -8,7 +8,7 @@ help: ## Show this help message
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-20s\033[0m %s\n", $$1, $$2}'
 
 install: ## Install Python dependencies
-	pip install -r requirements.txt
+	pip install -r requirements.txt -r requirements-dev.txt
 
 run: ## Run the development server
 	python main.py
