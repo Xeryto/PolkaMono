@@ -50,6 +50,7 @@ if TEST_DATABASE_URL:
     pg_engine = create_engine(
         TEST_DATABASE_URL,
         poolclass=NullPool,  # no connection reuse — each thread gets its own conn
+        connect_args={"options": "-c lock_timeout=10000"},  # 10s lock timeout — no infinite waits
     )
     PgSession = sessionmaker(autocommit=False, autoflush=False, bind=pg_engine)
 else:
@@ -263,8 +264,9 @@ class TestConcurrentStock:
         t2 = threading.Thread(target=attempt_order)
         t1.start()
         t2.start()
-        t1.join()
-        t2.join()
+        t1.join(timeout=30)
+        t2.join(timeout=30)
+        assert not t1.is_alive() and not t2.is_alive(), "Threads timed out (possible deadlock)"
 
         assert len(successes) == 1, f"Expected 1 success, got {len(successes)}: {successes}"
         assert len(errors) == 1, f"Expected 1 error, got {len(errors)}: {errors}"
@@ -308,10 +310,11 @@ class TestConcurrentStock:
         for t in threads:
             t.start()
         for t in threads:
-            t.join()
+            t.join(timeout=30)
+        assert all(not t.is_alive() for t in threads), "Threads timed out (possible deadlock)"
 
-        assert len(successes) == 2
-        assert len(errors) == 1
+        assert len(successes) == 2, f"Expected 2 successes, got {len(successes)}: errors={errors}"
+        assert len(errors) == 1, f"Expected 1 error, got {len(errors)}: errors={errors}"
 
         verify_db = PgSession()
         v = verify_db.query(ProductVariant).filter(ProductVariant.id == variant_id).first()
@@ -369,8 +372,9 @@ class TestConcurrentStock:
         t2 = threading.Thread(target=place_new)
         t1.start()
         t2.start()
-        t1.join()
-        t2.join()
+        t1.join(timeout=30)
+        t2.join(timeout=30)
+        assert not t1.is_alive() and not t2.is_alive(), "Threads timed out (possible deadlock)"
 
         # cancel must succeed
         assert "cancel" in results, f"Cancel failed: {errors.get('cancel')}"
