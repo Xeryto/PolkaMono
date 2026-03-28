@@ -11,7 +11,6 @@ import schemas
 from config import settings
 from dotenv import load_dotenv
 from models import (
-    AuthAccount,
     Brand,
     Checkout,
     Order,

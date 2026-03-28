@@ -12,19 +12,15 @@ import uuid
 from datetime import datetime, timedelta, timezone
 
 import pytest
-from sqlalchemy import create_engine, event, text
+from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import NullPool
 
 from auth_service import auth_service
-from database import get_db
-from factories import create_test_brand_with_product, create_test_user
-from main import app
 from models import (
     AuthAccount,
     Base,
     Brand,
-    Checkout,
     Order,
     OrderItem,
     OrderStatus,
