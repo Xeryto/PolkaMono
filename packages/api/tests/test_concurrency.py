@@ -246,6 +246,8 @@ class TestConcurrentStock:
         setup_db = PgSession()
         user = _make_pg_user(setup_db)
         brand, _, variant = _make_pg_brand_product(setup_db, stock=1)
+        user_id = user.id
+        brand_id = brand.id
         variant_id = variant.id
         setup_db.close()
 
@@ -256,8 +258,8 @@ class TestConcurrentStock:
             db = _thread_session()
             try:
                 # Re-fetch user and brand in this session
-                u = db.query(User).filter(User.id == user.id).first()
-                b = db.query(Brand).filter(Brand.id == brand.id).first()
+                u = db.query(User).filter(User.id == user_id).first()
+                b = db.query(Brand).filter(Brand.id == brand_id).first()
                 order = _direct_order(db, u, b, variant_id)
                 successes.append(order.id)
             except Exception as e:
@@ -287,6 +289,8 @@ class TestConcurrentStock:
         setup_db = PgSession()
         user = _make_pg_user(setup_db)
         brand, _, variant = _make_pg_brand_product(setup_db, stock=2)
+        user_id = user.id
+        brand_id = brand.id
         variant_id = variant.id
         setup_db.close()
 
@@ -297,8 +301,8 @@ class TestConcurrentStock:
         def attempt():
             db = _thread_session()
             try:
-                u = db.query(User).filter(User.id == user.id).first()
-                b = db.query(Brand).filter(Brand.id == brand.id).first()
+                u = db.query(User).filter(User.id == user_id).first()
+                b = db.query(Brand).filter(Brand.id == brand_id).first()
                 order = _direct_order(db, u, b, variant_id)
                 with lock:
                     successes.append(order.id)
@@ -330,6 +334,7 @@ class TestConcurrentStock:
         setup_db = PgSession()
         user = _make_pg_user(setup_db)
         brand, _, variant = _make_pg_brand_product(setup_db, stock=1)
+        user_id = user.id
         brand_id = brand.id
         variant_id = variant.id
 
@@ -360,7 +365,7 @@ class TestConcurrentStock:
             time.sleep(0.05)  # small delay so cancel likely runs first
             db = _thread_session()
             try:
-                u = db.query(User).filter(User.id == user.id).first()
+                u = db.query(User).filter(User.id == user_id).first()
                 b = db.query(Brand).filter(Brand.id == brand_id).first()
                 order = _direct_order(db, u, b, variant_id)
                 results["new_order"] = order.id
