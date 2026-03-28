@@ -69,6 +69,7 @@ def pg_schema():
         return
     with pg_engine.connect() as conn:
         conn.execute(text("CREATE EXTENSION IF NOT EXISTS pg_trgm"))
+        conn.execute(text("CREATE EXTENSION IF NOT EXISTS btree_gin"))
         conn.commit()
     Base.metadata.create_all(bind=pg_engine)
     yield
