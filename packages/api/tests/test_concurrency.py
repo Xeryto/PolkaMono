@@ -2,8 +2,7 @@
 Concurrency tests for stock management.
 
 These tests require a real PostgreSQL connection to exercise SELECT FOR UPDATE.
-They are skipped if TEST_DATABASE_URL is not set (i.e. local dev without PG).
-CI provides a postgres service container and sets this env var.
+conftest.py ensures TEST_DATABASE_URL is set before any test runs.
 """
 
 import os
@@ -11,7 +10,6 @@ import threading
 import uuid
 from datetime import datetime, timedelta, timezone
 
-import pytest
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import NullPool
@@ -19,7 +17,6 @@ from sqlalchemy.pool import NullPool
 from auth_service import auth_service
 from models import (
     AuthAccount,
-    Base,
     Brand,
     Order,
     OrderItem,
@@ -31,63 +28,12 @@ from models import (
 )
 
 # ---------------------------------------------------------------------------
-# Skip everything if no real PG is available
+# PG engine / session factory (NullPool: each thread gets its own connection)
 # ---------------------------------------------------------------------------
-TEST_DATABASE_URL = os.getenv("TEST_DATABASE_URL")
-pytestmark = pytest.mark.skipif(
-    not TEST_DATABASE_URL,
-    reason="TEST_DATABASE_URL not set — skipping concurrency tests",
-)
+TEST_DATABASE_URL = os.environ["TEST_DATABASE_URL"]  # conftest guarantees this is set
 
-# ---------------------------------------------------------------------------
-# PG engine / session factory
-# ---------------------------------------------------------------------------
-if TEST_DATABASE_URL:
-    pg_engine = create_engine(
-        TEST_DATABASE_URL,
-        poolclass=NullPool,  # no connection reuse — each thread gets its own conn
-    )
-    PgSession = sessionmaker(autocommit=False, autoflush=False, bind=pg_engine)
-else:
-    pg_engine = None
-    PgSession = None
-
-
-# ---------------------------------------------------------------------------
-# Fixtures
-# ---------------------------------------------------------------------------
-
-
-@pytest.fixture(scope="module", autouse=True)
-def pg_schema():
-    """Create / drop all tables once for the whole module."""
-    if pg_engine is None:
-        return
-    with pg_engine.connect() as conn:
-        conn.execute(text("CREATE EXTENSION IF NOT EXISTS pg_trgm"))
-        conn.execute(text("CREATE EXTENSION IF NOT EXISTS btree_gin"))
-        conn.commit()
-    Base.metadata.create_all(bind=pg_engine)
-    # search_vector is TSVECTOR GENERATED ALWAYS in prod but patched to Text here;
-    # drop the generated expression so plain inserts work in tests.
-    with pg_engine.connect() as conn:
-        conn.execute(text("ALTER TABLE products ALTER COLUMN search_vector DROP EXPRESSION IF EXISTS"))
-        conn.commit()
-    yield
-    Base.metadata.drop_all(bind=pg_engine)
-
-
-@pytest.fixture()
-def pg_db():
-    """Fresh PG session per test, always rolled back."""
-    if PgSession is None:
-        pytest.skip("No PG session")
-    session = PgSession()
-    try:
-        yield session
-    finally:
-        session.rollback()
-        session.close()
+pg_engine = create_engine(TEST_DATABASE_URL, poolclass=NullPool)
+PgSession = sessionmaker(autocommit=False, autoflush=False, bind=pg_engine)
 
 
 def _make_pg_user(db):

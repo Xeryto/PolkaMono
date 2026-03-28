@@ -1,9 +1,8 @@
-"""Test infrastructure: in-memory SQLite DB, fixtures, factories, mocks."""
+"""Test infrastructure: PostgreSQL DB, fixtures, factories, mocks."""
 
 import os
 import sys
 import uuid
-from datetime import datetime, timezone
 from unittest.mock import MagicMock
 
 import pytest
@@ -11,24 +10,17 @@ import pytest
 # ---------------------------------------------------------------------------
 # 1. Environment overrides — MUST happen before any app imports
 # ---------------------------------------------------------------------------
-os.environ["DATABASE_URL"] = "sqlite://"
+TEST_DATABASE_URL = os.environ.get("TEST_DATABASE_URL")
+if not TEST_DATABASE_URL:
+    pytest.exit(
+        "TEST_DATABASE_URL not set — tests require a PostgreSQL connection. "
+        "Set TEST_DATABASE_URL=postgresql://user:pass@host/db and retry.",
+        returncode=1,
+    )
+
+os.environ["DATABASE_URL"] = TEST_DATABASE_URL
 os.environ["SECRET_KEY"] = "test-secret-key-for-tests"
 os.environ["OAUTH_REDIRECT_URL"] = "http://localhost:3000/callback"
-
-# ---------------------------------------------------------------------------
-# 2. Monkey-patch postgresql types → SQLite-compatible types
-# ---------------------------------------------------------------------------
-from sqlalchemy import JSON, Text
-from sqlalchemy.dialects import postgresql
-
-postgresql.ARRAY = lambda *a, **kw: JSON()  # type: ignore[assignment]
-postgresql.TSVECTOR = Text  # type: ignore[attr-defined]
-
-# ---------------------------------------------------------------------------
-# 2b. We'll add a session event listener later (after engine creation)
-#     to re-attach UTC tzinfo to naive datetimes loaded from SQLite.
-# ---------------------------------------------------------------------------
-import sqlalchemy
 
 # Ensure packages/api is on sys.path so bare imports work
 API_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -41,89 +33,55 @@ if TESTS_DIR not in sys.path:
     sys.path.insert(0, TESTS_DIR)
 
 # ---------------------------------------------------------------------------
-# 3. App imports (after env + ARRAY patch + DateTime patch)
+# 2. App imports
 # ---------------------------------------------------------------------------
-from sqlalchemy import create_engine, event
-from sqlalchemy.orm import sessionmaker
-from sqlalchemy.pool import StaticPool
+from sqlalchemy import create_engine, text  # noqa: E402
+from sqlalchemy.orm import sessionmaker  # noqa: E402
+from sqlalchemy.pool import NullPool  # noqa: E402
 
-from database import get_db
-from models import Base
-
-# Import app last — triggers module-level init
+from database import get_db  # noqa: E402
+from models import Base  # noqa: E402
 from main import app  # noqa: E402
 
-
 # ---------------------------------------------------------------------------
-# 4. SQLite engine — StaticPool ensures ONE shared in-memory DB
+# 3. Engine — NullPool so each session gets its own connection
 # ---------------------------------------------------------------------------
-engine = create_engine(
-    "sqlite://",
-    connect_args={"check_same_thread": False},
-    poolclass=StaticPool,
-    echo=False,
-)
-
-
-@event.listens_for(engine, "connect")
-def _set_sqlite_pragma(dbapi_conn, _):
-    cursor = dbapi_conn.cursor()
-    cursor.execute("PRAGMA foreign_keys=ON")
-    cursor.close()
-
-
+engine = create_engine(TEST_DATABASE_URL, poolclass=NullPool, echo=False)
 TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 
 # ---------------------------------------------------------------------------
-# 4b. Attach UTC tzinfo to naive datetimes loaded from SQLite.
-#     Postgres returns tz-aware; SQLite strips tzinfo. This listener
-#     inspects all DateTime columns on every loaded instance and fixes them.
+# 4. Schema fixtures
 # ---------------------------------------------------------------------------
-from sqlalchemy import inspect as sa_inspect
+
+@pytest.fixture(scope="session", autouse=True)
+def setup_schema():
+    """Create extensions + all tables once for the whole test session."""
+    with engine.connect() as conn:
+        conn.execute(text("CREATE EXTENSION IF NOT EXISTS pg_trgm"))
+        conn.commit()
+    Base.metadata.create_all(bind=engine)
+    yield
+    Base.metadata.drop_all(bind=engine)
 
 
-@event.listens_for(TestingSessionLocal, "loaded_as_persistent")
-def _fix_naive_datetimes(session, instance):
-    mapper = sa_inspect(type(instance))
-    for col in mapper.columns:
-        if isinstance(col.type, sqlalchemy.DateTime):
-            val = getattr(instance, col.key, None)
-            if val is not None and isinstance(val, datetime) and val.tzinfo is None:
-                object.__setattr__(instance, col.key, val.replace(tzinfo=timezone.utc))
+def _truncate_all():
+    table_names = ", ".join(f'"{t.name}"' for t in Base.metadata.sorted_tables)
+    with engine.connect() as conn:
+        conn.execute(text(f"TRUNCATE {table_names} RESTART IDENTITY CASCADE"))
+        conn.commit()
+
+
+@pytest.fixture(autouse=True)
+def setup_db(setup_schema):
+    """Truncate all tables before each test for a clean slate."""
+    _truncate_all()
+    yield
 
 
 # ---------------------------------------------------------------------------
 # 5. Core fixtures
 # ---------------------------------------------------------------------------
-
-
-def _strip_pg_only_objects(metadata):
-    """Neutralise Computed columns and PG-specific indexes so SQLite create_all works."""
-    for table in metadata.tables.values():
-        # Turn Computed columns into plain nullable columns (keep them so ORM
-        # queries don't break — they'll just be NULL in SQLite).
-        for col in table.columns:
-            if getattr(col, "computed", None) is not None:
-                col.computed = None
-                col.server_default = None
-
-        # Drop indexes that use postgresql_using (GIN, etc.)
-        pg_indexes = [
-            idx for idx in table.indexes
-            if idx.dialect_options.get("postgresql", {}).get("using")
-        ]
-        for idx in pg_indexes:
-            table.indexes.discard(idx)
-
-
-@pytest.fixture(autouse=True)
-def setup_db():
-    """Create tables before each test, drop after."""
-    _strip_pg_only_objects(Base.metadata)
-    Base.metadata.create_all(bind=engine)
-    yield
-    Base.metadata.drop_all(bind=engine)
 
 
 @pytest.fixture()
