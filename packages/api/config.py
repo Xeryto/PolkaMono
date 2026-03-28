@@ -3,7 +3,6 @@ Configuration settings for PolkaAPI
 """
 import os
 from typing import List, Optional
-from functools import lru_cache
 from dotenv import load_dotenv
 
 # Load environment variables from .env file

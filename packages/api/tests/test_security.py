@@ -1,6 +1,5 @@
 """Security tests: malicious input, auth bypass, IDOR (10 tests)."""
 
-import uuid
 from datetime import datetime, timedelta, timezone
 
 import jwt as pyjwt
@@ -91,7 +90,7 @@ def test_tampered_token_rejected(client):
     from config import settings
 
     # Create valid token then tamper with payload
-    valid = pyjwt.encode(
+    pyjwt.encode(
         {"sub": "user-123", "exp": datetime.now(timezone.utc) + timedelta(hours=1)},
         settings.SECRET_KEY,
         algorithm="HS256",
@@ -129,7 +128,7 @@ def test_brand_cannot_create_order(client, db):
 
 
 def test_cancel_other_users_order(client, db):
-    from models import Checkout, Order, OrderItem, OrderStatus
+    from models import Order
 
     user_a = create_test_user(db)
     user_b = create_test_user(db)

@@ -1,7 +1,6 @@
 """Order lifecycle, stock integrity, webhooks (17 tests)."""
 
 import json
-import uuid
 from datetime import datetime, timedelta, timezone
 from unittest.mock import patch
 

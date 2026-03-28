@@ -85,7 +85,7 @@ CONTENT_TYPE_TO_EXTENSION = {
 
 
 # Size ordering utility — delegates to size_config for category-aware sorting
-from size_config import get_size_sort_key, validate_size, validate_size_consistency, normalize_size, get_size_type, get_size_types, STANDARD_SIZES, WAIST_VALUES, LENGTH_VALUES
+from size_config import get_size_sort_key, validate_size, validate_size_consistency, normalize_size, get_size_types, STANDARD_SIZES, WAIST_VALUES, LENGTH_VALUES
 
 
 def sort_variants_by_size(variants, category_id=""):

@@ -3,7 +3,6 @@ Authentication service for user operations and OAuth integration
 """
 from typing import Optional, Dict, Any
 from sqlalchemy.orm import Session
-from sqlalchemy import func as sa_func
 from models import User, OAuthAccount, UserProfile, Gender, AuthAccount
 from oauth_service import oauth_service
 from config import settings

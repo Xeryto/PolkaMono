@@ -1,0 +1,19 @@
+[flake8]
+exclude =
+    .venv,
+    alembic,
+    htmlcov,
+    __pycache__,
+    populate_data.py
+
+max-line-length = 220
+
+# Ignored:
+# E501  line too long — handled by max-line-length above
+# E402  module level import not at top — intentional in conftest.py, recommendation_service.py
+# E712  comparison to True/False — common SQLAlchemy filter pattern
+# W291/W292/W293 trailing/missing whitespace — formatting only
+# E301/E302/E303/E305 blank lines — formatting only
+# E261/E262 inline comment spacing — formatting only
+# W503/W504 line break before/after binary operator — conflicting rules
+ignore = E402,E712,W291,W292,W293,E301,E302,E303,E305,E261,E262,W503,W504

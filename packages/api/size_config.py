@@ -70,7 +70,7 @@ def _validate_single_size(size_type: str, size: str) -> Optional[str]:
     if size_type == WAIST_LENGTH:
         m = _WAIST_LENGTH_RE.match(size)
         if not m:
-            return f"Размер должен быть в формате Ш×Д в см (например 76×82)"
+            return "Размер должен быть в формате Ш×Д в см (например 76×82)"
         waist, length = int(m.group(1)), int(m.group(2))
         if waist not in WAIST_VALUES:
             return f"Обхват талии {waist} вне диапазона ({WAIST_VALUES[0]}–{WAIST_VALUES[-1]})"
