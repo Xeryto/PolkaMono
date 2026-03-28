@@ -50,7 +50,6 @@ if TEST_DATABASE_URL:
     pg_engine = create_engine(
         TEST_DATABASE_URL,
         poolclass=NullPool,  # no connection reuse — each thread gets its own conn
-        connect_args={"options": "-c lock_timeout=10000"},  # 10s lock timeout — no infinite waits
     )
     PgSession = sessionmaker(autocommit=False, autoflush=False, bind=pg_engine)
 else:
@@ -193,6 +192,13 @@ def _make_pg_brand_product(db, stock):
     return brand, product, variant
 
 
+def _thread_session():
+    """Session for concurrent threads: 10s lock_timeout so tests fail instead of hanging."""
+    db = PgSession()
+    db.execute(text("SET LOCAL lock_timeout = '10s'"))
+    return db
+
+
 def _direct_order(db, user, brand, variant_id, qty=1):
     """Create Order + OrderItem directly, with locking — mirrors create_payment logic."""
     locked = (
@@ -239,8 +245,7 @@ class TestConcurrentStock:
         """stock=1, two concurrent orders — exactly one should succeed."""
         setup_db = PgSession()
         user = _make_pg_user(setup_db)
-        _, _, variant = _make_pg_brand_product(setup_db, stock=1)
-        brand = setup_db.query(Brand).filter(Brand.id == variant.product_color_variant.product.brand_id).first()
+        brand, _, variant = _make_pg_brand_product(setup_db, stock=1)
         variant_id = variant.id
         setup_db.close()
 
@@ -248,7 +253,7 @@ class TestConcurrentStock:
         errors = []
 
         def attempt_order():
-            db = PgSession()
+            db = _thread_session()
             try:
                 # Re-fetch user and brand in this session
                 u = db.query(User).filter(User.id == user.id).first()
@@ -281,10 +286,7 @@ class TestConcurrentStock:
         """stock=2, three concurrent orders of qty=1 — only two succeed."""
         setup_db = PgSession()
         user = _make_pg_user(setup_db)
-        _, _, variant = _make_pg_brand_product(setup_db, stock=2)
-        brand = setup_db.query(Brand).filter(
-            Brand.id == variant.product_color_variant.product.brand_id
-        ).first()
+        brand, _, variant = _make_pg_brand_product(setup_db, stock=2)
         variant_id = variant.id
         setup_db.close()
 
@@ -293,7 +295,7 @@ class TestConcurrentStock:
         lock = threading.Lock()
 
         def attempt():
-            db = PgSession()
+            db = _thread_session()
             try:
                 u = db.query(User).filter(User.id == user.id).first()
                 b = db.query(Brand).filter(Brand.id == brand.id).first()
@@ -327,12 +329,11 @@ class TestConcurrentStock:
 
         setup_db = PgSession()
         user = _make_pg_user(setup_db)
-        _, _, variant = _make_pg_brand_product(setup_db, stock=1)
-        brand_id = variant.product_color_variant.product.brand_id
+        brand, _, variant = _make_pg_brand_product(setup_db, stock=1)
+        brand_id = brand.id
         variant_id = variant.id
 
         # Create an existing CREATED order that holds the last unit
-        brand = setup_db.query(Brand).filter(Brand.id == brand_id).first()
         existing_order = _direct_order(setup_db, user, brand, variant_id)
         existing_order_id = existing_order.id
         setup_db.close()
@@ -342,7 +343,7 @@ class TestConcurrentStock:
         errors = {}
 
         def cancel_existing():
-            db = PgSession()
+            db = _thread_session()
             try:
                 payment_service.update_order_status(
                     db, existing_order_id, OrderStatus.CANCELED, actor_type="user"
@@ -357,7 +358,7 @@ class TestConcurrentStock:
         def place_new():
             import time
             time.sleep(0.05)  # small delay so cancel likely runs first
-            db = PgSession()
+            db = _thread_session()
             try:
                 u = db.query(User).filter(User.id == user.id).first()
                 b = db.query(Brand).filter(Brand.id == brand_id).first()
