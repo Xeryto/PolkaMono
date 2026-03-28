@@ -72,6 +72,11 @@ def pg_schema():
         conn.execute(text("CREATE EXTENSION IF NOT EXISTS btree_gin"))
         conn.commit()
     Base.metadata.create_all(bind=pg_engine)
+    # search_vector is TSVECTOR GENERATED ALWAYS in prod but patched to Text here;
+    # drop the generated expression so plain inserts work in tests.
+    with pg_engine.connect() as conn:
+        conn.execute(text("ALTER TABLE products ALTER COLUMN search_vector DROP EXPRESSION IF EXISTS"))
+        conn.commit()
     yield
     Base.metadata.drop_all(bind=pg_engine)
 
