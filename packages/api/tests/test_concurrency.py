@@ -12,7 +12,7 @@ import uuid
 from datetime import datetime, timedelta, timezone
 
 import pytest
-from sqlalchemy import create_engine, event
+from sqlalchemy import create_engine, event, text
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import NullPool
 
@@ -67,6 +67,9 @@ def pg_schema():
     """Create / drop all tables once for the whole module."""
     if pg_engine is None:
         return
+    with pg_engine.connect() as conn:
+        conn.execute(text("CREATE EXTENSION IF NOT EXISTS pg_trgm"))
+        conn.commit()
     Base.metadata.create_all(bind=pg_engine)
     yield
     Base.metadata.drop_all(bind=pg_engine)
