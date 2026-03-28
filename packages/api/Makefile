@@ -16,11 +16,19 @@ run: ## Run the development server
 run-dev: ## Run the development server with auto-reload
 	uvicorn main:app --reload --host 0.0.0.0 --port 8000
 
-test: ## Run the API test suite
-	python -m pytest tests/ -v
+test: ## Run the API test suite (requires TEST_DATABASE_URL or .env)
+	@if [ -z "$$TEST_DATABASE_URL" ] && [ -f .env ]; then \
+		export $$(grep -v '^#' .env | grep TEST_DATABASE_URL | xargs) && python -m pytest tests/ -v; \
+	else \
+		python -m pytest tests/ -v; \
+	fi
 
 coverage: ## Run tests with coverage report (terminal + HTML)
-	python -m pytest tests/ --cov=. --cov-report=term-missing --cov-report=html
+	@if [ -z "$$TEST_DATABASE_URL" ] && [ -f .env ]; then \
+		export $$(grep -v '^#' .env | grep TEST_DATABASE_URL | xargs) && python -m pytest tests/ --cov=. --cov-report=term-missing --cov-report=html; \
+	else \
+		python -m pytest tests/ --cov=. --cov-report=term-missing --cov-report=html; \
+	fi
 	@echo ""
 	@echo "HTML report: open htmlcov/index.html"
 	open htmlcov/index.html
