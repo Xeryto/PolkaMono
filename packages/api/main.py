@@ -276,81 +276,9 @@ def _purge_deleted_brands_job():
     """Background job: anonymize brands past their scheduled_deletion_at."""
     db = next(get_db())
     try:
-        now = datetime.now(timezone.utc)
-        brands = (
-            db.query(Brand)
-            .filter(
-                Brand.scheduled_deletion_at.isnot(None),
-                Brand.scheduled_deletion_at <= now,
-            )
-            .all()
-        )
-        if not brands:
-            return
-        for brand in brands:
-            brand_id = brand.id
-            product_ids = [
-                p.id
-                for p in db.query(Product.id).filter(Product.brand_id == brand_id).all()
-            ]
-            if product_ids:
-                # Remove user interactions with brand's products
-                db.query(UserLikedProduct).filter(
-                    UserLikedProduct.product_id.in_(product_ids)
-                ).delete(synchronize_session=False)
-                db.query(UserSwipe).filter(
-                    UserSwipe.product_id.in_(product_ids)
-                ).delete(synchronize_session=False)
-                db.query(ProductStyle).filter(
-                    ProductStyle.product_id.in_(product_ids)
-                ).delete(synchronize_session=False)
-                # Zero out stock, clear images
-                db.query(ProductVariant).filter(
-                    ProductVariant.product_color_variant_id.in_(
-                        db.query(ProductColorVariant.id).filter(
-                            ProductColorVariant.product_id.in_(product_ids)
-                        )
-                    )
-                ).update({ProductVariant.stock_quantity: 0}, synchronize_session=False)
-                db.query(ProductColorVariant).filter(
-                    ProductColorVariant.product_id.in_(product_ids)
-                ).update({ProductColorVariant.images: None}, synchronize_session=False)
-                db.query(Product).filter(Product.id.in_(product_ids)).update(
-                    {Product.general_images: None}, synchronize_session=False
-                )
-            # Remove user favorites for this brand
-            db.query(UserBrand).filter(UserBrand.brand_id == brand_id).delete(
-                synchronize_session=False
-            )
-            # Anonymize brand PII
-            brand.name = f"deleted_{brand_id}"
-            brand.slug = f"deleted_{brand_id}"
-            brand.logo = None
-            brand.description = None
-            brand.inn = None
-            brand.contact_phone = None
-            brand.kpp = None
-            brand.ogrn = None
-            brand.registration_address = None
-            brand.payout_account = None
-            brand.return_policy = None
-            # Anonymize auth account
-            acc = brand.auth_account
-            if acc:
-                acc.email = f"deleted_brand_{brand_id}@anonymized.local"
-                acc.password_hash = None
-                acc.email_verification_code = None
-                acc.email_verification_code_expires_at = None
-                acc.password_reset_token = None
-                acc.password_reset_expires = None
-                acc.password_history = []
-                acc.refresh_token_hash = None
-                acc.refresh_token_expires_at = None
-                acc.otp_code = None
-                acc.otp_code_expires_at = None
-                acc.otp_session_token = None
-        db.commit()
-        print(f"[scheduler] purged {len(brands)} brand(s)")
+        count = payment_service.purge_deleted_brands(db)
+        if count:
+            print(f"[scheduler] purged {count} brand(s)")
     except Exception as e:
         db.rollback()
         print(f"[scheduler] purge_deleted_brands error: {e}")
